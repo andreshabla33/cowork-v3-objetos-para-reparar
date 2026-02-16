@@ -23,8 +23,7 @@ interface InvitacionPendiente {
   id: string;
   email: string;
   rol: string;
-  nombre_invitado?: string;
-  created_at: string;
+  creada_en: string;
   expira_en: string;
 }
 
@@ -72,10 +71,10 @@ export const SettingsMembers: React.FC<SettingsMembersProps> = ({
         .eq('espacio_id', workspaceId),
       supabase
         .from('invitaciones_pendientes')
-        .select('id, email, rol, nombre_invitado, created_at, expira_en')
+        .select('id, email, rol, creada_en, expira_en')
         .eq('espacio_id', workspaceId)
         .eq('usada', false)
-        .order('created_at', { ascending: false }),
+        .order('creada_en', { ascending: false }),
     ]);
 
     if (!membersRes.error && membersRes.data) setMembers(membersRes.data as any);
@@ -177,7 +176,7 @@ export const SettingsMembers: React.FC<SettingsMembersProps> = ({
                       </div>
                       <div>
                         <p className="text-sm font-medium text-white">
-                          {inv.nombre_invitado || inv.email}
+                          {inv.email}
                         </p>
                         <p className="text-xs text-zinc-500">
                           {inv.email} · <span className="capitalize">{inv.rol}</span>

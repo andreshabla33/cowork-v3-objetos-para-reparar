@@ -146,6 +146,17 @@ export function useOnboarding(): UseOnboardingReturn {
         return false;
       }
 
+      // Marcar TODAS las invitaciones pendientes de este email+espacio como usadas
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email && state.espacioId) {
+        await supabase
+          .from('invitaciones_pendientes')
+          .update({ usada: true })
+          .eq('email', user.email.toLowerCase())
+          .eq('espacio_id', state.espacioId)
+          .eq('usada', false);
+      }
+
       setState(prev => ({
         ...prev,
         isLoading: false,

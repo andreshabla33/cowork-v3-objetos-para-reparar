@@ -20,6 +20,11 @@ export const MiembrosView: React.FC = () => {
   const isArcade = theme === 'arcade';
   const esCeoCoo = cargoUsuario === 'ceo' || cargoUsuario === 'coo';
 
+  const cancelarInvitacion = async (id: string) => {
+    await supabase.from('invitaciones_pendientes').delete().eq('id', id);
+    setInvitaciones(prev => prev.filter(i => i.id !== id));
+  };
+
   const fetchData = async () => {
     if (!activeWorkspace) return;
     setLoading(true);
@@ -227,7 +232,7 @@ export const MiembrosView: React.FC = () => {
                     </div>
                     <p className={`text-xs font-black uppercase tracking-widest mb-1 truncate ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>{inv.email}</p>
                     <p className={`text-[9px] font-bold uppercase tracking-widest mb-6 ${isArcade ? 'text-[#00ff41]/40' : 'text-zinc-500'}`}>{inv.rol}</p>
-                    <button className="text-red-500 text-[10px] font-black uppercase tracking-widest hover:text-red-400 hover:underline underline-offset-4">Cancelar</button>
+                    <button onClick={() => cancelarInvitacion(inv.id)} className="text-red-500 text-[10px] font-black uppercase tracking-widest hover:text-red-400 hover:underline underline-offset-4">Cancelar</button>
                  </div>
                ))}
             </div>

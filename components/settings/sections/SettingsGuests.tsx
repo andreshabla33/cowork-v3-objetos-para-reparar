@@ -53,10 +53,10 @@ export const SettingsGuests: React.FC<SettingsGuestsProps> = ({
     
     const { data, error } = await supabase
       .from('invitaciones_pendientes')
-      .select('id, email, creado_en, expira_en')
+      .select('id, email, creada_en, expira_en')
       .eq('espacio_id', workspaceId)
       .eq('usada', false)
-      .order('creado_en', { ascending: false });
+      .order('creada_en', { ascending: false });
 
     if (!error && data) {
       setGuests(data.map((g: any) => ({

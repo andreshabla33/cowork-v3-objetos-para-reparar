@@ -68,6 +68,37 @@ serve(async (req) => {
 
     const empresaId = miembroInvitador.empresa_id;
 
+    // Verificar si ya existe invitación pendiente para este email+espacio
+    const { data: existente } = await supabaseClient
+      .from('invitaciones_pendientes')
+      .select('id')
+      .eq('email', email.toLowerCase().trim())
+      .eq('espacio_id', espacio_id)
+      .eq('usada', false)
+      .maybeSingle();
+
+    if (existente) {
+      return new Response(JSON.stringify({ error: 'Ya existe una invitación pendiente para este email' }), {
+        status: 409,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Verificar si el usuario ya es miembro del espacio
+    const { data: yaEsMiembro } = await supabaseClient
+      .from('miembros_espacio')
+      .select('id')
+      .eq('espacio_id', espacio_id)
+      .eq('usuario_id', (await supabaseClient.from('usuarios').select('id').eq('email', email.toLowerCase().trim()).maybeSingle()).data?.id || '00000000-0000-0000-0000-000000000000')
+      .maybeSingle();
+
+    if (yaEsMiembro) {
+      return new Response(JSON.stringify({ error: 'Este usuario ya es miembro del espacio' }), {
+        status: 409,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // SHA-256 Token Hashing
     const invitationToken = crypto.randomUUID();
     const tokenBytes = new TextEncoder().encode(invitationToken);
