@@ -22,6 +22,9 @@ export interface Avatar3DConfig {
   modelo_url: string;
   escala: number;
   animaciones?: AnimationConfig[];
+  animacion_idle_url?: string | null;
+  animacion_walk_url?: string | null;
+  animacion_salute_url?: string | null;
 }
 
 // Estados de animación disponibles
@@ -128,6 +131,9 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
   // URL del modelo base
   const modelUrl = avatarConfig?.modelo_url || ANIMATION_URLS.idle;
   
+  // Detectar si el avatar tiene animaciones propias (ej: Meshy)
+  const hasAvatarAnims = !!(avatarConfig?.animacion_walk_url);
+  
   // Cargar modelo principal
   const { scene, animations: baseAnimations } = useGLTF(modelUrl);
   
@@ -203,7 +209,7 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
       if (child.isMesh || child.isSkinnedMesh) {
         const mat = child.material as THREE.MeshStandardMaterial;
         if (!mat) return;
-        if (isMixamoCompatible && monicaTexture) {
+        if (isMixamoCompatible && monicaTexture && !hasAvatarAnims) {
           // Modelo Mixamo: aplicar textura atlas de Monica
           monicaTexture.flipY = false;
           monicaTexture.colorSpace = THREE.SRGBColorSpace;
@@ -229,9 +235,9 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
 
   // Cargar idle (fallback si el modelo no tiene animaciones propias)
   const idleGltf = useGLTF(ANIMATION_URLS.idle);
-  // Cargar todas las animaciones
-  const walkGltf = useGLTF(ANIMATION_URLS.walk);
-  const runGltf = useGLTF(ANIMATION_URLS.run);
+  // Cargar animaciones: usar URLs del avatar si existen, sino defaults (Monica)
+  const walkGltf = useGLTF(avatarConfig?.animacion_walk_url || ANIMATION_URLS.walk);
+  const runGltf = useGLTF(hasAvatarAnims ? (avatarConfig!.animacion_walk_url!) : ANIMATION_URLS.run);
   const cheerGltf = useGLTF(ANIMATION_URLS.cheer);
   const danceGltf = useGLTF(ANIMATION_URLS.dance);
   const sitGltf = useGLTF(ANIMATION_URLS.sit);
@@ -253,15 +259,28 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
 
     const anims: THREE.AnimationClip[] = [];
 
-    if (isMixamoCompatible) {
-      // Modelo Mixamo: usar animaciones externas de Monica
-      // Idle: preferir del modelo base, fallback a GLB separado
+    if (hasAvatarAnims) {
+      // Avatar con animaciones propias (ej: Meshy) — NO usar anims de Monica
       if (baseAnimations.length > 0) {
         addAnim(baseAnimations, 'idle', anims);
       } else {
         addAnim(idleGltf.animations, 'idle', anims);
       }
-      // Walk/Run: strip root motion para evitar salto al reiniciar loop
+      // Walk/Run: del archivo propio del avatar
+      addAnim(walkGltf.animations, 'walk', anims, true);
+      addAnim(runGltf.animations, 'run', anims, true);
+      // Cheer/Jump/Victory: estos ya son de Meshy en ANIMATION_URLS
+      addAnim(cheerGltf.animations, 'cheer', anims);
+      addAnim(jumpGltf.animations, 'jump', anims);
+      addAnim(victoryGltf.animations, 'victory', anims);
+      // dance, sit, wave son de Monica → skip para evitar deformación
+    } else if (isMixamoCompatible) {
+      // Modelo Mixamo (Monica): usar animaciones externas de Monica
+      if (baseAnimations.length > 0) {
+        addAnim(baseAnimations, 'idle', anims);
+      } else {
+        addAnim(idleGltf.animations, 'idle', anims);
+      }
       addAnim(walkGltf.animations, 'walk', anims, true);
       addAnim(runGltf.animations, 'run', anims, true);
       addAnim(cheerGltf.animations, 'cheer', anims);
@@ -281,7 +300,7 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
     }
     
     return anims;
-  }, [boneNames, baseAnimations, isMixamoCompatible, idleGltf.animations, walkGltf.animations, runGltf.animations, cheerGltf.animations, danceGltf.animations, sitGltf.animations, waveGltf.animations, jumpGltf.animations, victoryGltf.animations]);
+  }, [boneNames, baseAnimations, isMixamoCompatible, hasAvatarAnims, idleGltf.animations, walkGltf.animations, runGltf.animations, cheerGltf.animations, danceGltf.animations, sitGltf.animations, waveGltf.animations, jumpGltf.animations, victoryGltf.animations]);
   
   // Configurar animaciones usando el ref del grupo raíz
   const { actions } = useAnimations(allAnimations, groupRef);
@@ -497,6 +516,9 @@ export const useAvatar3D = (userId?: string) => {
             nombre: avatar.nombre,
             modelo_url: avatar.modelo_url || BASE_MODEL_URL,
             escala: avatar.escala || 1,
+            animacion_idle_url: avatar.animacion_idle_url || null,
+            animacion_walk_url: avatar.animacion_walk_url || null,
+            animacion_salute_url: avatar.animacion_salute_url || null,
           });
         }
 
