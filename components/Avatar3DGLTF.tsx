@@ -345,30 +345,20 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
     }
   }, [actions]);
 
-  // Aplicar colores: fallback atractivo si no tiene textura, o colores personalizados
+  // Aplicar colores personalizados SOLO si se pasan explícitamente (respetar materiales originales del GLB)
   useEffect(() => {
-    if (!clone) return;
+    if (!clone || (!skinColor && !clothingColor)) return;
     clone.traverse((child: any) => {
       if ((child.isMesh || child.isSkinnedMesh) && child.material) {
         const mat = child.material as THREE.MeshStandardMaterial;
-        
-        // Si no tiene textura, aplicar color por defecto atractivo
-        if (!mat.map) {
-          // Color base: violeta suave (tema de la app) o el color personalizado
-          mat.color = new THREE.Color(clothingColor || '#a78bfa');
-          mat.roughness = 0.6;
-          mat.metalness = 0.05;
-          mat.emissive = new THREE.Color('#1a1a2e');
-          mat.emissiveIntensity = 0.15;
-        }
-        
-        // Colores personalizados por nombre de mesh
         const meshName = child.name.toLowerCase();
         if (skinColor && (meshName.includes('skin') || meshName.includes('head') || meshName.includes('face'))) {
           mat.color = new THREE.Color(skinColor);
+          mat.needsUpdate = true;
         }
         if (clothingColor && (meshName.includes('body') || meshName.includes('cloth') || meshName.includes('shirt'))) {
           mat.color = new THREE.Color(clothingColor);
+          mat.needsUpdate = true;
         }
       }
     });
@@ -449,18 +439,31 @@ export const useAvatar3D = (userId?: string) => {
           .eq('id', targetUserId)
           .maybeSingle();
 
-        const avatarId = usuario?.avatar_3d_id;
+        let avatarId = usuario?.avatar_3d_id;
 
         if (!avatarId) {
-          // Sin avatar asignado, usar config por defecto
-          setAvatarConfig({
-            id: 'default',
-            nombre: 'Default',
-            modelo_url: DEFAULT_MODEL_URL,
-            escala: 1,
-          });
-          setLoading(false);
-          return;
+          // Sin avatar asignado → buscar primer avatar activo como default
+          const { data: defaultAvatar } = await supabase
+            .from('avatares_3d')
+            .select('id')
+            .eq('activo', true)
+            .order('orden', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+          
+          if (defaultAvatar) {
+            avatarId = defaultAvatar.id;
+          } else {
+            // No hay avatares en BD, usar fallback estático
+            setAvatarConfig({
+              id: 'default',
+              nombre: 'Default',
+              modelo_url: DEFAULT_MODEL_URL,
+              escala: 1,
+            });
+            setLoading(false);
+            return;
+          }
         }
 
         // Cargar config del avatar
