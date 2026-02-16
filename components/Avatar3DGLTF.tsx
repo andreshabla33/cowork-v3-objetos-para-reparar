@@ -313,22 +313,45 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
       return;
     }
 
+    // Fallback: si la animación solicitada no existe, buscar alternativa (nunca T-pose)
+    const ANIM_FALLBACKS: Record<string, string[]> = {
+      cheer: ['wave', 'dance', 'victory', 'idle'],
+      wave: ['cheer', 'idle'],
+      victory: ['cheer', 'wave', 'idle'],
+      jump: ['cheer', 'idle'],
+      dance: ['idle'],
+      sit: ['idle'],
+      walk: ['idle'],
+      run: ['walk', 'idle'],
+    };
+
+    const resolveAnim = (anim: string): string => {
+      if (actions[anim]) return anim;
+      const fallbacks = ANIM_FALLBACKS[anim] || ['idle'];
+      for (const fb of fallbacks) {
+        if (actions[fb]) return fb;
+      }
+      return currentAnimation; // Quedarse en la actual si nada existe
+    };
+
+    const resolvedAnim = resolveAnim(targetAnim) as AnimationState;
+
     const applyTransition = (fadeDuration: number) => {
       pendingAnimRef.current = null;
       const current = actions[currentAnimation];
       if (current) {
         current.fadeOut(fadeDuration);
       }
-      const next = actions[targetAnim];
+      const next = actions[resolvedAnim];
       if (next) {
         next.reset();
         next.setLoop(
-          LOOP_ANIMATIONS.includes(targetAnim) ? THREE.LoopRepeat : THREE.LoopOnce,
-          LOOP_ANIMATIONS.includes(targetAnim) ? Infinity : 1
+          LOOP_ANIMATIONS.includes(resolvedAnim) ? THREE.LoopRepeat : THREE.LoopOnce,
+          LOOP_ANIMATIONS.includes(resolvedAnim) ? Infinity : 1
         );
-        next.clampWhenFinished = !LOOP_ANIMATIONS.includes(targetAnim);
+        next.clampWhenFinished = !LOOP_ANIMATIONS.includes(resolvedAnim);
         next.fadeIn(fadeDuration).play();
-        setCurrentAnimation(targetAnim);
+        setCurrentAnimation(resolvedAnim);
       }
     };
 
