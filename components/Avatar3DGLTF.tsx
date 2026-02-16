@@ -442,14 +442,14 @@ export const useAvatar3D = (userId?: string) => {
           return;
         }
 
-        // Buscar avatar asignado al usuario
-        const { data: miembro } = await supabase
-          .from('miembros_espacio')
+        // Buscar avatar asignado al usuario (avatar_3d_id está en tabla usuarios)
+        const { data: usuario } = await supabase
+          .from('usuarios')
           .select('avatar_3d_id')
-          .eq('usuario_id', targetUserId)
+          .eq('id', targetUserId)
           .maybeSingle();
 
-        const avatarId = miembro?.avatar_3d_id;
+        const avatarId = usuario?.avatar_3d_id;
 
         if (!avatarId) {
           // Sin avatar asignado, usar config por defecto
