@@ -317,7 +317,10 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
   const IDLE_DEBOUNCE_MS = 100; // Solo debounce al volver a idle (evita walk→idle→walk flicker)
 
   useEffect(() => {
-    if (!actions || Object.keys(actions).length === 0) return;
+    if (!actions || Object.keys(actions).length === 0) {
+      console.warn('🎭 [ANIM] No actions available:', Object.keys(actions || {}));
+      return;
+    }
     
     const targetAnim = animationState;
     if (currentAnimation === targetAnim) {
@@ -327,6 +330,7 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
       }
       return;
     }
+    console.log('🎭 [ANIM TRANSITION]', currentAnimation, '→', targetAnim, '| actions:', Object.keys(actions).join(','));
 
     // Fallback: si la animación solicitada no existe, buscar alternativa (nunca T-pose)
     const ANIM_FALLBACKS: Record<string, string[]> = {
@@ -366,6 +370,7 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
         );
         next.clampWhenFinished = !LOOP_ANIMATIONS.includes(resolvedAnim);
         next.fadeIn(fadeDuration).play();
+        console.log('🎭 [ANIM APPLIED]', resolvedAnim, '| mixer time:', next.getMixer().time.toFixed(2));
         setCurrentAnimation(resolvedAnim);
       }
     };
