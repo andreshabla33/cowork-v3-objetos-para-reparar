@@ -338,7 +338,9 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
     mixerRef.current = mixer;
     return () => {
       mixer.stopAllAction();
-      mixer.uncacheRoot(groupRef.current!);
+      if (groupRef.current) {
+        mixer.uncacheRoot(groupRef.current);
+      }
       mixerRef.current = null;
     };
   }, []);
