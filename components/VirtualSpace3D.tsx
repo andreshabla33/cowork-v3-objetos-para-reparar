@@ -4387,7 +4387,8 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   // En mini mode (no space tab): solo activar stream si hay llamada activa (proximidad) o rango audio
   // En space tab: activar si hay llamada/audio-range O el usuario tiene cam/mic/screen encendido
   const isOnSpaceTab = activeSubTab === 'space';
-  shouldHaveStreamRef.current = hasActiveCall || hasAnyoneNearby || (isOnSpaceTab && (currentUser.isScreenSharing || currentUser.isCameraOn || currentUser.isMicOn));
+  // Patrón Gather: stream solo cuando el usuario tiene mic/cam/screen activos (no por proximidad)
+  shouldHaveStreamRef.current = currentUser.isMicOn || currentUser.isCameraOn || currentUser.isScreenSharing;
 
   // Manejar stream de video - encender/apagar según proximidad
   useEffect(() => {
@@ -4633,7 +4634,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       mounted = false;
       clearTimeout(timer);
     };
-  }, [currentUser.isMicOn, currentUser.isCameraOn, currentUser.isScreenSharing, hasActiveCall, activeSubTab]);
+  }, [currentUser.isMicOn, currentUser.isCameraOn, currentUser.isScreenSharing]);
 
   // Actualizar conexiones WebRTC cuando cambie el stream procesado (efectos de fondo)
   useEffect(() => {
