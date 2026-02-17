@@ -3202,21 +3202,28 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   }, [USAR_LIVEKIT, activeWorkspace?.id, session?.access_token, currentUser.empresa_id, currentUser.departamento_id, limpiarLivekit, permitirMediaParticipante]);
 
   const hayOtrosUsuariosOnline = onlineUsers.length > 0;
+  const hayOtrosUsuariosRef = useRef(hayOtrosUsuariosOnline);
+  hayOtrosUsuariosRef.current = hayOtrosUsuariosOnline;
+
   useEffect(() => {
     if (!USAR_LIVEKIT || !activeWorkspace?.id) return;
 
     if (hayOtrosUsuariosOnline) {
-      // Hay otros usuarios → conectar a LiveKit (si no estamos ya conectados)
+      // Hay otros usuarios → conectar a LiveKit inmediatamente (si no estamos ya conectados)
       const roomName = crearSalaLivekitPorEspacio(activeWorkspace.id);
       conectarLivekit(roomName).catch((error) => {
         console.error('Error conectando LiveKit:', error);
       });
     } else {
-      // Solo en el espacio → desconectar LiveKit (ahorra recursos)
-      if (livekitRoomRef.current) {
-        console.log('[LIVEKIT] Sin otros usuarios online — desconectando');
-        limpiarLivekit().catch(() => {});
-      }
+      // Debounce disconnect: esperar 5s para confirmar que realmente no hay usuarios
+      // (Supabase Presence puede parpadear brevemente a vacío durante refreshes)
+      const timer = setTimeout(() => {
+        if (!hayOtrosUsuariosRef.current && livekitRoomRef.current) {
+          console.log('[LIVEKIT] Sin otros usuarios online (confirmado tras 5s) — desconectando');
+          limpiarLivekit().catch(() => {});
+        }
+      }, 5000);
+      return () => clearTimeout(timer);
     }
   }, [USAR_LIVEKIT, activeWorkspace?.id, hayOtrosUsuariosOnline, conectarLivekit, limpiarLivekit]);
 
