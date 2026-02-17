@@ -3438,24 +3438,27 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     });
 
     // === NIVEL 1: Proximidad completa (audio + video) ===
+    // SIEMPRE verificar tracks no suscritos (no solo en primera entrada)
+    // Esto cubre el caso donde User A publica DESPUÉS de que User B ya suscribió (0 tracks iniciales)
     idsEnProximidad.forEach(userId => {
       // No suscribir si el usuario está en una conversación bloqueada que me excluye
       if (idsBloqueados.has(userId)) {
         console.log(`[LIVEKIT BLOCKED] ${userId} — conversación bloqueada, no suscribir`);
         return;
       }
-      if (!idsPreviosProximidad.has(userId)) {
-        const participant = room.getParticipantByIdentity(userId);
-        if (participant) {
-          const wasAudioOnly = idsPreviosAudio.has(userId);
-          let subsCount = 0;
-          participant.trackPublications.forEach(pub => {
-            if (pub instanceof RemoteTrackPublication && !pub.isSubscribed) {
-              pub.setSubscribed(true);
-              subsCount++;
-            }
-          });
-          console.log(`[LIVEKIT SUBSCRIBE] ${userId} — ${subsCount} tracks suscritos${wasAudioOnly ? ' (upgrade de audio-only)' : ''}`);
+      const participant = room.getParticipantByIdentity(userId);
+      if (participant) {
+        const isNewEntry = !idsPreviosProximidad.has(userId);
+        const wasAudioOnly = idsPreviosAudio.has(userId);
+        let subsCount = 0;
+        participant.trackPublications.forEach(pub => {
+          if (pub instanceof RemoteTrackPublication && !pub.isSubscribed) {
+            pub.setSubscribed(true);
+            subsCount++;
+          }
+        });
+        if (subsCount > 0 || isNewEntry) {
+          console.log(`[LIVEKIT SUBSCRIBE] ${userId} — ${subsCount} tracks suscritos${wasAudioOnly ? ' (upgrade de audio-only)' : ''}${isNewEntry ? ' (nueva entrada)' : ' (re-check)'}`);
         }
       }
     });
