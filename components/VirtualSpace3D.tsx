@@ -3415,12 +3415,24 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   const [proximidadNotificada, setProximidadNotificada] = useState(false);
   const proximidadNotificadaRef = useRef(false);
 
-  // === SUSCRIPCIÓN SELECTIVA POR PROXIMIDAD + AUDIO ESPACIAL (patrón Gather/LiveKit HQ) ===
-  // Nivel 1: Proximidad (usersInCall) → subscribe ALL tracks (audio + video)
-  // Nivel 2: Audio range (usersInAudioRange) → subscribe AUDIO-ONLY tracks (audio espacial por el pasillo)
+  // === SUSCRIPCIÓN SELECTIVA — PATRÓN LIVEKIT BEST PRACTICE (setEnabled vs setSubscribed) ===
+  // Docs: https://docs.livekit.io/transport/media/subscribe/#enabling-disabling-tracks
+  // "Subscribing requires a negotiation handshake with the LiveKit server, while enable/disable does not.
+  //  This can make enable/disable more efficient, especially when a track may be turned on or off frequently."
+  //
+  // Patrón (estilo Gather/LiveKit HQ):
+  //   SUBSCRIBE (1 vez) al entrar en rango amplio → negociación SDP única
+  //   setEnabled(true/false) al cruzar bordes de proximidad → instantáneo, sin negociación
+  //   UNSUBSCRIBE solo al salir de TODOS los rangos (con 5s debounce) → raro
+  //
+  // Nivel 1: Proximidad (usersInCall) → ALL tracks enabled (conversación completa)
+  // Nivel 2: Audio range (usersInAudioRange) → ALL tracks enabled (cam bubble + spatial audio)
+  // Fuera de rangos → tracks disabled → luego unsubscribe tras 5s
   const livekitSubscribedIdsRef = useRef<Set<string>>(new Set());
   const livekitAudioOnlyIdsRef = useRef<Set<string>>(new Set());
   const pendingUnsubscribeTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  // Set de IDs que están suscritos a nivel de transporte (setSubscribed), independiente de enabled/disabled
+  const livekitTransportSubscribedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!USAR_LIVEKIT || !livekitConnected) return;
     const room = livekitRoomRef.current;
@@ -3430,99 +3442,106 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     const idsEnAudioRange = new Set(usersInAudioRange.map(u => u.id));
     const idsPreviosProximidad = livekitSubscribedIdsRef.current;
     const idsPreviosAudio = livekitAudioOnlyIdsRef.current;
+    const idsTransportSuscritos = livekitTransportSubscribedRef.current;
 
     // Check: ¿Hay alguna conversación bloqueada que me excluya?
     const idsBloqueados = new Set<string>();
     conversacionesBloqueadasRemoto.forEach((participants, lockerId) => {
       if (!session?.user?.id || participants.includes(session.user.id)) return;
-      // Yo NO soy participante → bloquear suscripción a estos usuarios
       participants.forEach(pid => idsBloqueados.add(pid));
       idsBloqueados.add(lockerId);
     });
 
-    // === NIVEL 1: Proximidad completa (audio + video) ===
-    // SIEMPRE verificar tracks no suscritos (no solo en primera entrada)
-    // Esto cubre el caso donde User A publica DESPUÉS de que User B ya suscribió (0 tracks iniciales)
-    idsEnProximidad.forEach(userId => {
-      // No suscribir si el usuario está en una conversación bloqueada que me excluye
-      if (idsBloqueados.has(userId)) {
-        console.log(`[LIVEKIT BLOCKED] ${userId} — conversación bloqueada, no suscribir`);
-        return;
+    // Todos los IDs actualmente en algún rango
+    const idsEnAlgunRango = new Set([...idsEnProximidad, ...idsEnAudioRange]);
+
+    // === PASO 1: SUBSCRIBE nuevos (solo 1 vez por usuario — negociación SDP) ===
+    idsEnAlgunRango.forEach(userId => {
+      if (idsBloqueados.has(userId)) return;
+      const participant = room.getParticipantByIdentity(userId);
+      if (!participant) return;
+
+      // Cancelar pending unsubscribe si existe
+      const pendingTimer = pendingUnsubscribeTimersRef.current.get(userId);
+      if (pendingTimer) {
+        clearTimeout(pendingTimer);
+        pendingUnsubscribeTimersRef.current.delete(userId);
+        console.log(`[LIVEKIT] Cancelado unsubscribe pendiente de ${userId} (volvió a rango)`);
       }
+
+      // Subscribe tracks que no están suscritos (SDP negociación — solo la primera vez)
+      let subsCount = 0;
+      participant.trackPublications.forEach(pub => {
+        if (pub instanceof RemoteTrackPublication && !pub.isSubscribed) {
+          pub.setSubscribed(true);
+          subsCount++;
+        }
+      });
+
+      // Enable ALL tracks para usuarios en rango (rápido, sin negociación)
+      participant.trackPublications.forEach(pub => {
+        if (pub instanceof RemoteTrackPublication && pub.isSubscribed && !pub.isEnabled) {
+          pub.setEnabled(true);
+        }
+      });
+
+      if (subsCount > 0 || !idsTransportSuscritos.has(userId)) {
+        const isNewEntry = !idsPreviosProximidad.has(userId) && !idsPreviosAudio.has(userId);
+        console.log(`[LIVEKIT SUBSCRIBE] ${userId} — ${subsCount} tracks${isNewEntry ? ' (nueva entrada)' : ' (re-check)'}${idsEnProximidad.has(userId) ? ' [proximidad]' : ' [rango espacial]'}`);
+      }
+      idsTransportSuscritos.add(userId);
+    });
+
+    // === PASO 2: DISABLE/ENABLE por nivel (sin negociación SDP — instantáneo) ===
+    // Downgrade: estaba en proximidad, ahora solo en audio range → video sigue enabled (cam bubble)
+    // En nuestro diseño, ambos niveles mantienen todos los tracks enabled (cam bubble visible a distancia)
+    // Solo se diferencian en la lógica del HUD/VideoHUD, no en el transporte
+
+    // === PASO 3: Salió de TODOS los rangos → disable inmediato + unsubscribe diferido ===
+    idsTransportSuscritos.forEach(userId => {
+      if (idsEnAlgunRango.has(userId)) return; // Aún en rango, no tocar
+
       const participant = room.getParticipantByIdentity(userId);
       if (participant) {
-        const isNewEntry = !idsPreviosProximidad.has(userId);
-        const wasAudioOnly = idsPreviosAudio.has(userId);
-        let subsCount = 0;
+        // DISABLE inmediato — sin negociación, corta el flujo de datos al instante
         participant.trackPublications.forEach(pub => {
-          if (pub instanceof RemoteTrackPublication && !pub.isSubscribed) {
-            pub.setSubscribed(true);
-            subsCount++;
+          if (pub instanceof RemoteTrackPublication && pub.isSubscribed && pub.isEnabled) {
+            pub.setEnabled(false);
           }
         });
-        if (subsCount > 0 || isNewEntry) {
-          console.log(`[LIVEKIT SUBSCRIBE] ${userId} — ${subsCount} tracks suscritos${wasAudioOnly ? ' (upgrade de audio-only)' : ''}${isNewEntry ? ' (nueva entrada)' : ' (re-check)'}`);
-        }
       }
-    });
 
-    // === NIVEL 2: Rango espacial (audio + video para cam bubble a distancia media) ===
-    idsEnAudioRange.forEach(userId => {
-      // No suscribir si conversación bloqueada
-      if (idsBloqueados.has(userId)) return;
-      // Bug 3 Fix: Evitar race condition. Si ya está en proximidad, NO suscribir como rango espacial (ya está en Nivel 1)
-      if (!idsPreviosAudio.has(userId) && !idsEnProximidad.has(userId) && !idsPreviosProximidad.has(userId)) {
-        const participant = room.getParticipantByIdentity(userId);
-        if (participant) {
-          let subsCount = 0;
-          participant.trackPublications.forEach(pub => {
-            if (pub instanceof RemoteTrackPublication && !pub.isSubscribed) {
-              pub.setSubscribed(true);
-              subsCount++;
-            }
-          });
-          if (subsCount > 0) console.log(`[LIVEKIT SPATIAL RANGE] ${userId} — ${subsCount} tracks suscritos (rango espacial, cam bubble + audio)`);
-        }
-      }
-    });
-
-    // === DESUSCRIBIR con DEBOUNCE: evita ciclos rápidos subscribe/unsubscribe en el borde de proximidad ===
-    const todosPrevios = new Set([...idsPreviosProximidad, ...idsPreviosAudio]);
-    todosPrevios.forEach(userId => {
-      // Si sigue en proximidad O en rango espacial → cancelar pending unsubscribe si existe
-      if (idsEnProximidad.has(userId) || idsEnAudioRange.has(userId)) {
-        // Cancelar timer pendiente de desuscripción
-        const pendingTimer = pendingUnsubscribeTimersRef.current.get(userId);
-        if (pendingTimer) {
-          clearTimeout(pendingTimer);
-          pendingUnsubscribeTimersRef.current.delete(userId);
-          console.log(`[LIVEKIT] Cancelado unsubscribe pendiente de ${userId} (volvió a rango)`);
-        }
-        if (idsPreviosProximidad.has(userId) && !idsEnProximidad.has(userId) && idsEnAudioRange.has(userId)) {
-          console.log(`[LIVEKIT DOWNGRADE] ${userId} — tracks mantenidos (rango espacial, cam bubble visible)`);
-        }
-        return;
-      }
-      // Salió de TODOS los rangos → programar desuscripción con 3s de gracia
+      // Programar UNSUBSCRIBE con 5s de gracia (la negociación SDP es costosa)
       if (!pendingUnsubscribeTimersRef.current.has(userId)) {
-        console.log(`[LIVEKIT] Programando unsubscribe de ${userId} en 3s (gracia por borde de proximidad)`);
+        console.log(`[LIVEKIT] ${userId} fuera de rango — disabled (instantáneo), unsubscribe en 5s`);
         const timer = setTimeout(() => {
           pendingUnsubscribeTimersRef.current.delete(userId);
-          // Re-verificar: si volvió a entrar durante los 3s, no desuscribir
+          // Re-verificar: si volvió a entrar durante los 5s, no desuscribir
           if (livekitSubscribedIdsRef.current.has(userId) || livekitAudioOnlyIdsRef.current.has(userId)) {
             console.log(`[LIVEKIT] Unsubscribe cancelado — ${userId} volvió a rango durante gracia`);
+            // Re-enable tracks
+            const p = room.getParticipantByIdentity(userId);
+            if (p) {
+              p.trackPublications.forEach(pub => {
+                if (pub instanceof RemoteTrackPublication && pub.isSubscribed && !pub.isEnabled) {
+                  pub.setEnabled(true);
+                }
+              });
+            }
             return;
           }
-          const participant = room.getParticipantByIdentity(userId);
-          if (participant) {
-            participant.trackPublications.forEach(pub => {
+          // Confirmar unsubscribe (negociación SDP — pero es raro llegar aquí)
+          const p = room.getParticipantByIdentity(userId);
+          if (p) {
+            p.trackPublications.forEach(pub => {
               if (pub instanceof RemoteTrackPublication && pub.isSubscribed) {
                 pub.setSubscribed(false);
               }
             });
-            console.log(`[LIVEKIT UNSUBSCRIBE] ${userId} — tracks desuscritos (confirmado fuera de todos los rangos tras 3s)`);
+            console.log(`[LIVEKIT UNSUBSCRIBE] ${userId} — tracks desuscritos (confirmado fuera de rangos tras 5s)`);
           }
-        }, 3000);
+          idsTransportSuscritos.delete(userId);
+        }, 5000);
         pendingUnsubscribeTimersRef.current.set(userId, timer);
       }
     });
@@ -3541,12 +3560,10 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       if (!participant) return;
       const enProximidad = livekitSubscribedIdsRef.current.has(participant.identity);
       const enAudioRange = livekitAudioOnlyIdsRef.current.has(participant.identity);
-      if (enProximidad && !publication.isSubscribed) {
+      if ((enProximidad || enAudioRange) && !publication.isSubscribed) {
         publication.setSubscribed(true);
-        console.log(`[LIVEKIT SUBSCRIBE] Nuevo track de ${participant.identity} suscrito (ya en proximidad)`);
-      } else if (enAudioRange && !publication.isSubscribed) {
-        publication.setSubscribed(true);
-        console.log(`[LIVEKIT SPATIAL RANGE] Nuevo track de ${participant.identity} suscrito (rango espacial)`);
+        livekitTransportSubscribedRef.current.add(participant.identity);
+        console.log(`[LIVEKIT SUBSCRIBE] Nuevo track de ${participant.identity} suscrito${enProximidad ? ' (proximidad)' : ' (rango espacial)'}`);
       }
     };
 
