@@ -58,6 +58,7 @@ export interface User {
   departamento?: string;
   status: PresenceStatus;
   statusText?: string;
+  avatar3DConfig?: { id: string; nombre: string; modelo_url: string; escala: number; textura_url?: string | null; animaciones?: { id: string; nombre: string; url: string; loop: boolean; orden: number; strip_root_motion?: boolean }[] } | null;
 }
 
 export interface Departamento {

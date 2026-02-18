@@ -287,6 +287,7 @@ interface AvatarProps {
   showName?: boolean;
   lodLevel?: AvatarLodLevel;
   esFantasma?: boolean;
+  remoteAvatar3DConfig?: any;
 }
 
 // Labels de estado para mostrar al hacer clic
@@ -297,7 +298,7 @@ const STATUS_LABELS: Record<PresenceStatus, string> = {
   [PresenceStatus.DND]: 'No molestar',
 };
 
-const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, isCurrentUser, animationState = 'idle', direction, reaction, videoStream, camOn, showVideoBubble = true, message, onClickAvatar, mirrorVideo: mirrorVideoProp, hideSelfView: hideSelfViewProp, showName: showNameProp, lodLevel: lodLevelProp, esFantasma = false }) => {
+const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, isCurrentUser, animationState = 'idle', direction, reaction, videoStream, camOn, showVideoBubble = true, message, onClickAvatar, mirrorVideo: mirrorVideoProp, hideSelfView: hideSelfViewProp, showName: showNameProp, lodLevel: lodLevelProp, esFantasma = false, remoteAvatar3DConfig }) => {
   const [showStatusLabel, setShowStatusLabel] = useState(false);
   const { avatar3DConfig } = useStore();
   
@@ -340,8 +341,8 @@ const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, isCurre
       {/* Avatar 3D GLTF — misma empresa siempre GLTF (estilo Gather) */}
       {renderGLTF && (
         <GLTFAvatar
-          key={isCurrentUser ? (avatar3DConfig?.modelo_url || 'default') : 'remote'}
-          avatarConfig={isCurrentUser ? avatar3DConfig : undefined}
+          key={isCurrentUser ? (avatar3DConfig?.modelo_url || 'default') : (remoteAvatar3DConfig?.modelo_url || 'remote')}
+          avatarConfig={isCurrentUser ? avatar3DConfig : (remoteAvatar3DConfig || undefined)}
           animationState={effectiveAnimState}
           direction={direction}
           skinColor={config?.skinColor}
@@ -682,6 +683,7 @@ const RemoteAvatarInterpolated: React.FC<{
               message={message}
               lodLevel={isVisible ? lodLevel : 'low'}
               esFantasma={!!user.esFantasma}
+              remoteAvatar3DConfig={user.avatar3DConfig}
             />
           )
         )}
@@ -3418,6 +3420,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   // Nivel 2: Audio range (usersInAudioRange) → subscribe AUDIO-ONLY tracks (audio espacial por el pasillo)
   const livekitSubscribedIdsRef = useRef<Set<string>>(new Set());
   const livekitAudioOnlyIdsRef = useRef<Set<string>>(new Set());
+  const pendingUnsubscribeTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   useEffect(() => {
     if (!USAR_LIVEKIT || !livekitConnected) return;
     const room = livekitRoomRef.current;
@@ -3483,25 +3486,44 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       }
     });
 
-    // === DESUSCRIBIR: un solo pase sobre TODOS los usuarios previos (evita race conditions) ===
+    // === DESUSCRIBIR con DEBOUNCE: evita ciclos rápidos subscribe/unsubscribe en el borde de proximidad ===
     const todosPrevios = new Set([...idsPreviosProximidad, ...idsPreviosAudio]);
     todosPrevios.forEach(userId => {
-      // Si sigue en proximidad O en rango espacial → no tocar
+      // Si sigue en proximidad O en rango espacial → cancelar pending unsubscribe si existe
       if (idsEnProximidad.has(userId) || idsEnAudioRange.has(userId)) {
+        // Cancelar timer pendiente de desuscripción
+        const pendingTimer = pendingUnsubscribeTimersRef.current.get(userId);
+        if (pendingTimer) {
+          clearTimeout(pendingTimer);
+          pendingUnsubscribeTimersRef.current.delete(userId);
+          console.log(`[LIVEKIT] Cancelado unsubscribe pendiente de ${userId} (volvió a rango)`);
+        }
         if (idsPreviosProximidad.has(userId) && !idsEnProximidad.has(userId) && idsEnAudioRange.has(userId)) {
           console.log(`[LIVEKIT DOWNGRADE] ${userId} — tracks mantenidos (rango espacial, cam bubble visible)`);
         }
         return;
       }
-      // Salió de TODOS los rangos → desuscribir todo
-      const participant = room.getParticipantByIdentity(userId);
-      if (participant) {
-        participant.trackPublications.forEach(pub => {
-          if (pub instanceof RemoteTrackPublication && pub.isSubscribed) {
-            pub.setSubscribed(false);
+      // Salió de TODOS los rangos → programar desuscripción con 3s de gracia
+      if (!pendingUnsubscribeTimersRef.current.has(userId)) {
+        console.log(`[LIVEKIT] Programando unsubscribe de ${userId} en 3s (gracia por borde de proximidad)`);
+        const timer = setTimeout(() => {
+          pendingUnsubscribeTimersRef.current.delete(userId);
+          // Re-verificar: si volvió a entrar durante los 3s, no desuscribir
+          if (livekitSubscribedIdsRef.current.has(userId) || livekitAudioOnlyIdsRef.current.has(userId)) {
+            console.log(`[LIVEKIT] Unsubscribe cancelado — ${userId} volvió a rango durante gracia`);
+            return;
           }
-        });
-        console.log(`[LIVEKIT UNSUBSCRIBE] ${userId} — tracks desuscritos (fuera de todos los rangos)`);
+          const participant = room.getParticipantByIdentity(userId);
+          if (participant) {
+            participant.trackPublications.forEach(pub => {
+              if (pub instanceof RemoteTrackPublication && pub.isSubscribed) {
+                pub.setSubscribed(false);
+              }
+            });
+            console.log(`[LIVEKIT UNSUBSCRIBE] ${userId} — tracks desuscritos (confirmado fuera de todos los rangos tras 3s)`);
+          }
+        }, 3000);
+        pendingUnsubscribeTimersRef.current.set(userId, timer);
       }
     });
 

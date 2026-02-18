@@ -25,7 +25,7 @@ import { MiniModeOverlay } from './MiniModeOverlay';
 import { ProductTour } from './onboarding/ProductTour';
 
 export const WorkspaceLayout: React.FC = () => {
-  const { activeWorkspace, activeSubTab, setActiveSubTab, setActiveWorkspace, currentUser, theme, setTheme, setView, session, setOnlineUsers, addNotification, unreadChatCount, clearUnreadChat, userRoleInActiveWorkspace, setMiniMode, isMiniMode, setEmpresaId, setDepartamentoId, setEmpresasAutorizadas } = useStore();
+  const { activeWorkspace, activeSubTab, setActiveSubTab, setActiveWorkspace, currentUser, theme, setTheme, setView, session, setOnlineUsers, addNotification, unreadChatCount, clearUnreadChat, userRoleInActiveWorkspace, setMiniMode, isMiniMode, setEmpresaId, setDepartamentoId, setEmpresasAutorizadas, avatar3DConfig } = useStore();
   const [showViben, setShowViben] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showGameHub, setShowGameHub] = useState(false);
@@ -38,6 +38,8 @@ export const WorkspaceLayout: React.FC = () => {
   const prevOnlineUsersRef = useRef<Set<string>>(new Set());
   const lastNotificationRef = useRef<Map<string, number>>(new Map());
   const currentUserRef = useRef(currentUser);
+  const avatar3DConfigRef = useRef(avatar3DConfig);
+  avatar3DConfigRef.current = avatar3DConfig;
   const [currentLang, setCurrentLang] = useState<Language>(getCurrentLanguage());
 
   // Responsive: detectar mobile con resize listener
@@ -109,6 +111,7 @@ export const WorkspaceLayout: React.FC = () => {
               avatar: presence.profilePhoto || '',
               profilePhoto: presence.profilePhoto || '',
               avatarConfig: presence.avatarConfig || { skinColor: '#fcd34d', clothingColor: '#6366f1', hairColor: '#4b2c20', accessory: 'none' },
+              avatar3DConfig: presence.avatar3DConfig || null,
               empresa_id: presence.empresa_id || undefined,
               departamento_id: presence.departamento_id || undefined,
               x: presence.x || 500,
@@ -169,6 +172,7 @@ export const WorkspaceLayout: React.FC = () => {
       profilePhoto: usuarioActual.profilePhoto,
       isMicOn: usuarioActual.isMicOn,
       isCameraOn: usuarioActual.isCameraOn,
+      avatar3DConfig: avatar3DConfigRef.current || null,
     };
     const payloadPublico = {
       ...payloadBase,
