@@ -461,14 +461,12 @@ const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, isCurre
       return;
     }
 
-    // Clic simple → toggle card flotante (Fase A)
-    if (avatarInteractions) {
-      setShowRadialWheel(false);
-      setShowFloatingCard(prev => !prev);
-    } else if (onClickRemoteAvatar) {
+    // Clic simple → emitir evento al componente principal para card screen-space (Fase A)
+    setShowRadialWheel(false);
+    if (onClickRemoteAvatar) {
       onClickRemoteAvatar(userId);
     }
-  }, [isCurrentUser, userId, onClickAvatar, onClickRemoteAvatar, avatarInteractions]);
+  }, [isCurrentUser, userId, onClickAvatar, onClickRemoteAvatar]);
   
   return (
     <group position={position}
@@ -581,59 +579,7 @@ const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, isCurre
         </Html>
       )}
 
-      {/* === FASE A: Card flotante anclada al avatar (clic simple) === */}
-      {showFloatingCard && !isCurrentUser && userId && avatarInteractions && (
-        <Html position={[0, camOn ? 6.5 : 4.0, 0]} center distanceFactor={6} zIndexRange={[300, 0]} style={{ minWidth: '220px' }}>
-          <div className="select-none pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-zinc-900/90 backdrop-blur-2xl rounded-2xl border border-white/15 shadow-2xl shadow-black/70 w-[240px] overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-              {/* Header compacto */}
-              <div className="flex items-center gap-2.5 px-3 pt-3 pb-2">
-                <div className="relative flex-shrink-0">
-                  <div className={`w-9 h-9 rounded-full border-2 flex items-center justify-center overflow-hidden ${
-                    status === PresenceStatus.AVAILABLE ? 'border-green-500' :
-                    status === PresenceStatus.BUSY ? 'border-red-500' :
-                    status === PresenceStatus.AWAY ? 'border-yellow-500' : 'border-purple-500'
-                  }`}>
-                    {avatarInteractions.profilePhoto ? (
-                      <img src={avatarInteractions.profilePhoto} alt={name} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-sm font-black text-white">{name.charAt(0)}</span>
-                    )}
-                  </div>
-                  <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-zinc-900 ${
-                    status === PresenceStatus.AVAILABLE ? 'bg-green-500' :
-                    status === PresenceStatus.BUSY ? 'bg-red-500' :
-                    status === PresenceStatus.AWAY ? 'bg-yellow-500' : 'bg-purple-500'
-                  }`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-white truncate">{name}</p>
-                  <p className="text-[9px] text-white/40">{STATUS_LABELS[status]}</p>
-                </div>
-                <button onClick={() => setShowFloatingCard(false)} className="w-5 h-5 rounded-md bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/30 hover:text-white text-[10px] transition-colors">✕</button>
-              </div>
-              {/* Acciones rápidas */}
-              <div className="flex items-center gap-1 px-3 pb-2.5">
-                <button onClick={() => { avatarInteractions.onWave?.(userId); setShowFloatingCard(false); }} className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/20 text-amber-400 text-[10px] font-semibold transition-all" title="Saludar">
-                  👋
-                </button>
-                <button onClick={() => { avatarInteractions.onGoTo?.(userId); setShowFloatingCard(false); }} className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/20 text-indigo-400 text-[10px] font-semibold transition-all" title="Ir hacia">
-                  📍 Go to
-                </button>
-                <button onClick={() => { avatarInteractions.onNudge?.(userId); setShowFloatingCard(false); }} className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-pink-500/15 hover:bg-pink-500/25 border border-pink-500/20 text-pink-400 text-[10px] font-semibold transition-all" title="Ring">
-                  🔔 Ring
-                </button>
-              </div>
-              {/* Hint */}
-              <div className="px-3 pb-2 text-center">
-                <span className="text-[8px] text-white/20">Doble clic = teleport · Mantener clic = más</span>
-              </div>
-            </div>
-            {/* Flecha apuntando al avatar */}
-            <div className="flex justify-center -mt-0.5"><div className="w-2.5 h-2.5 bg-zinc-900/95 rotate-45 border-r border-b border-white/10"></div></div>
-          </div>
-        </Html>
-      )}
+      {/* Card flotante Fase A movida a screen-space overlay en componente principal */}
 
       {/* === FASE C: Radial Wheel (clic sostenido 500ms) estilo LoL === */}
       {showRadialWheel && !isCurrentUser && userId && avatarInteractions && (
@@ -1049,6 +995,38 @@ const CameraFollow: React.FC<{ orbitControlsRef: React.MutableRefObject<any> }> 
 
       lastPlayerPos.current = { x: playerPos.x, z: playerPos.z };
     }
+  });
+
+  return null;
+};
+
+// ============== BRIDGE: Proyectar posición 3D → screen coords para card screen-space ==============
+const AvatarScreenProjector: React.FC<{
+  selectedUserId: string | null;
+  ecsStateRef: React.MutableRefObject<EstadoEcsEspacio>;
+  screenPosRef: React.MutableRefObject<{ x: number; y: number } | null>;
+  onlineUsers: User[];
+}> = ({ selectedUserId, ecsStateRef, screenPosRef, onlineUsers }) => {
+  const { camera, gl } = useThree();
+  const vec3 = useMemo(() => new THREE.Vector3(), []);
+
+  useFrame(() => {
+    if (!selectedUserId) { screenPosRef.current = null; return; }
+    const ecsData = obtenerEstadoUsuarioEcs(ecsStateRef.current, selectedUserId);
+    let wx: number, wz: number;
+    if (ecsData && Date.now() - (ecsData.timestamp ?? 0) <= 3000) {
+      wx = ecsData.x; wz = ecsData.z;
+    } else {
+      const u = onlineUsers.find(u => u.id === selectedUserId);
+      if (!u) { screenPosRef.current = null; return; }
+      wx = u.x / 16; wz = u.y / 16;
+    }
+    vec3.set(wx, 3.5, wz);
+    vec3.project(camera);
+    const canvas = gl.domElement;
+    const x = (vec3.x * 0.5 + 0.5) * canvas.clientWidth;
+    const y = (-vec3.y * 0.5 + 0.5) * canvas.clientHeight;
+    screenPosRef.current = { x, y };
   });
 
   return null;
@@ -2490,6 +2468,122 @@ const ICE_SERVERS = [
   },
 ];
 
+// ============== CARD SCREEN-SPACE (tamaño fijo, posición proyectada desde 3D) ==============
+const ScreenSpaceProfileCard: React.FC<{
+  user: User;
+  screenPosRef: React.MutableRefObject<{ x: number; y: number } | null>;
+  onClose: () => void;
+  onWave: (id: string) => void;
+  onGoTo: (id: string) => void;
+  onNudge: (id: string) => void;
+  onInvite: (id: string) => void;
+  onFollow: (id: string) => void;
+  followTargetId: string | null;
+}> = ({ user, screenPosRef, onClose, onWave, onGoTo, onNudge, onInvite, onFollow, followTargetId }) => {
+  const [pos, setPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Actualizar posición desde el ref del projector (60fps)
+  useEffect(() => {
+    let raf: number;
+    const update = () => {
+      if (screenPosRef.current) {
+        setPos(screenPosRef.current);
+      }
+      raf = requestAnimationFrame(update);
+    };
+    raf = requestAnimationFrame(update);
+    return () => cancelAnimationFrame(raf);
+  }, [screenPosRef]);
+
+  // Cerrar con Escape
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  // Cerrar al hacer clic fuera de la card (en el canvas/espacio 3D)
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (cardRef.current && !cardRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    // Delay para no capturar el clic que abrió la card
+    const timer = setTimeout(() => {
+      window.addEventListener('mousedown', handleClickOutside);
+    }, 100);
+    return () => { clearTimeout(timer); window.removeEventListener('mousedown', handleClickOutside); };
+  }, [onClose]);
+
+  const borderClass = user.status === PresenceStatus.AVAILABLE ? 'border-green-500' :
+    user.status === PresenceStatus.BUSY ? 'border-red-500' :
+    user.status === PresenceStatus.AWAY ? 'border-yellow-500' : 'border-purple-500';
+  const dotClass = user.status === PresenceStatus.AVAILABLE ? 'bg-green-500' :
+    user.status === PresenceStatus.BUSY ? 'bg-red-500' :
+    user.status === PresenceStatus.AWAY ? 'bg-yellow-500' : 'bg-purple-500';
+
+  return (
+    <div
+      ref={cardRef}
+      className="fixed z-[300] pointer-events-auto animate-in fade-in zoom-in-95 duration-150"
+      style={{
+        left: `${Math.max(16, Math.min(pos.x - 140, window.innerWidth - 296))}px`,
+        top: `${Math.max(16, Math.min(pos.y - 200, window.innerHeight - 220))}px`,
+      }}
+    >
+      <div className="bg-zinc-900/90 backdrop-blur-2xl rounded-2xl border border-white/15 shadow-2xl shadow-black/70 w-[280px] overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-4 pt-4 pb-3">
+          <div className="relative flex-shrink-0">
+            <div className={`w-11 h-11 rounded-full border-2 flex items-center justify-center overflow-hidden ${borderClass}`}>
+              {user.profilePhoto ? (
+                <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-lg font-black text-white">{user.name.charAt(0)}</span>
+              )}
+            </div>
+            <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-zinc-900 ${dotClass}`} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-white truncate">{user.name}</p>
+            <p className="text-[10px] text-white/50">{STATUS_LABELS[user.status]}</p>
+          </div>
+          <button onClick={onClose} className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-colors text-xs">✕</button>
+        </div>
+        {/* Acciones */}
+        <div className="flex items-center gap-1.5 px-4 pb-3">
+          <button onClick={() => onWave(user.id)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/20 text-amber-400 text-xs font-semibold transition-all hover:scale-105" title="Saludar">
+            👋 Hola
+          </button>
+          <button onClick={() => onGoTo(user.id)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-500/20 text-indigo-400 text-xs font-semibold transition-all hover:scale-105" title="Ir hacia">
+            📍 Ir
+          </button>
+          <button onClick={() => onNudge(user.id)} className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-pink-500/15 hover:bg-pink-500/25 border border-pink-500/20 text-pink-400 text-xs font-semibold transition-all hover:scale-105" title="Ring">
+            🔔 Ring
+          </button>
+        </div>
+        {/* Acciones secundarias */}
+        <div className="flex items-center gap-1.5 px-4 pb-3">
+          <button onClick={() => onInvite(user.id)} className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-[10px] font-medium transition-all">
+            📨 Invitar
+          </button>
+          <button onClick={() => onFollow(user.id)} className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg border text-[10px] font-medium transition-all ${followTargetId === user.id ? 'bg-violet-500/25 border-violet-500/30 text-violet-400' : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/60 hover:text-white'}`}>
+            👁 {followTargetId === user.id ? 'Dejar de seguir' : 'Seguir'}
+          </button>
+        </div>
+        {/* Hint */}
+        <div className="px-4 pb-2.5 text-center">
+          <span className="text-[9px] text-white/25">Doble clic = teleport · Mantener clic = más opciones</span>
+        </div>
+      </div>
+      {/* Flecha */}
+      <div className="flex justify-center -mt-0.5"><div className="w-3 h-3 bg-zinc-900/90 rotate-45 border-r border-b border-white/15"></div></div>
+    </div>
+  );
+};
+
 const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameHubOpen = false, isPlayingGame = false, showroomMode = false, showroomDuracionMin = 5, showroomNombreVisitante }) => {
   const { currentUser, onlineUsers, setPosition, activeWorkspace, toggleMic, toggleCamera, toggleScreenShare, togglePrivacy, setPrivacy, session, setActiveSubTab, setActiveChatGroupId, activeSubTab, empresasAutorizadas, setEmpresasAutorizadas } = useStore();
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -3110,6 +3204,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   const [localReactions, setLocalReactions] = useState<Array<{ id: string; emoji: string }>>([]);
   const [remoteReaction, setRemoteReaction] = useState<{ emoji: string; from: string; fromName: string } | null>(null);
   const orbitControlsRef = useRef<any>(null);
+  const cardScreenPosRef = useRef<{ x: number; y: number } | null>(null);
   const realtimePositionsRef = useRef<Map<string, any>>(new Map());
   const chunkVecinosRef = useRef<Set<string>>(new Set());
   const usuariosVisiblesRef = useRef<Set<string>>(new Set());
@@ -3580,6 +3675,8 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
          // Log solo al entrar
          if (!wasInCall) {
            console.log(`[PROXIMITY ENTER] User ${u.name} entered. Dist: ${dist.toFixed(1)} < ${userProximityRadius}`);
+           // Cerrar card flotante si el usuario seleccionado entra en proximidad
+           if (selectedRemoteUser?.id === u.id) setSelectedRemoteUser(null);
          }
       } else if (wasInCall) {
          console.log(`[PROXIMITY EXIT] User ${u.name} exited. Dist: ${dist.toFixed(1)} > ${threshold.toFixed(1)} (Radius: ${userProximityRadius})`);
@@ -5399,6 +5496,12 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
         }}
       >
         <AdaptiveFrameloop />
+        <AvatarScreenProjector
+          selectedUserId={selectedRemoteUser?.id || null}
+          ecsStateRef={ecsStateRef}
+          screenPosRef={cardScreenPosRef}
+          onlineUsers={usuariosEnChunks}
+        />
         <PerformanceMonitor
           onDecline={() => {
             setAdaptiveDpr((prev) => Math.max(minDpr, prev - 0.25));
@@ -5791,7 +5894,20 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
         </div>
       )}
 
-      {/* Profile Popup movido a Card flotante anclada al avatar 3D (Fase A) — ver Avatar component */}
+      {/* === FASE A: Card flotante screen-space (tamaño fijo, posición proyectada desde 3D) === */}
+      {selectedRemoteUser && (
+        <ScreenSpaceProfileCard
+          user={selectedRemoteUser}
+          screenPosRef={cardScreenPosRef}
+          onClose={() => setSelectedRemoteUser(null)}
+          onWave={(id) => { handleWaveUser(id); setSelectedRemoteUser(null); }}
+          onGoTo={(id) => { handleGoToUser(id); }}
+          onNudge={(id) => { handleNudgeUser(id); }}
+          onInvite={(id) => { handleInviteUser(id); }}
+          onFollow={(id) => { handleFollowUser(id); setSelectedRemoteUser(null); }}
+          followTargetId={followTargetId}
+        />
+      )}
 
       {/* Notificación de Nudge entrante */}
       {incomingNudge && (
