@@ -135,6 +135,27 @@ const playTeleportSound = () => {
   } catch (e) { /* Audio no disponible */ }
 };
 
+// Sonido de wave/saludo (estilo Gather - chime amigable y cálido)
+const playWaveSound = () => {
+  try {
+    const ctx = new AudioContext();
+    const now = ctx.currentTime;
+    // Acorde mayor cálido: C5 → E5 → G5 (do-mi-sol)
+    [523, 659, 784].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + i * 0.1);
+      gain.gain.setValueAtTime(0.18, now + i * 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.35);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now + i * 0.1);
+      osc.stop(now + i * 0.1 + 0.35);
+    });
+    setTimeout(() => ctx.close(), 700);
+  } catch (e) { /* Audio no disponible */ }
+};
+
 // Sonido de nudge (estilo Gather - notificación corta y amigable)
 const playNudgeSound = () => {
   try {
@@ -562,9 +583,9 @@ const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, isCurre
 
       {/* === FASE A: Card flotante anclada al avatar (clic simple) === */}
       {showFloatingCard && !isCurrentUser && userId && avatarInteractions && (
-        <Html position={[0, camOn ? 6.5 : 4.0, 0]} center distanceFactor={10} zIndexRange={[300, 0]}>
+        <Html position={[0, camOn ? 6.5 : 4.0, 0]} center distanceFactor={6} zIndexRange={[300, 0]} style={{ minWidth: '220px' }}>
           <div className="select-none pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="bg-zinc-900/95 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl shadow-black/60 w-[220px] overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+            <div className="bg-zinc-900/90 backdrop-blur-2xl rounded-2xl border border-white/15 shadow-2xl shadow-black/70 w-[240px] overflow-hidden animate-in fade-in zoom-in-95 duration-100">
               {/* Header compacto */}
               <div className="flex items-center gap-2.5 px-3 pt-3 pb-2">
                 <div className="relative flex-shrink-0">
@@ -616,7 +637,7 @@ const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, isCurre
 
       {/* === FASE C: Radial Wheel (clic sostenido 500ms) estilo LoL === */}
       {showRadialWheel && !isCurrentUser && userId && avatarInteractions && (
-        <Html position={[0, camOn ? 5.0 : 2.8, 0]} center distanceFactor={10} zIndexRange={[310, 0]}>
+        <Html position={[0, camOn ? 5.0 : 2.8, 0]} center distanceFactor={6} zIndexRange={[310, 0]}>
           <div className="select-none pointer-events-auto" onClick={(e) => { e.stopPropagation(); setShowRadialWheel(false); }}>
             <div className="relative w-[160px] h-[160px] animate-in fade-in zoom-in-50 duration-100">
               {/* Centro: nombre */}
@@ -4019,7 +4040,10 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     if (mensaje.type === 'wave') {
       if (mensaje.payload.from === session.user.id) return;
       if (mensaje.payload.to && mensaje.payload.to !== session.user.id) return;
+      playWaveSound();
       setIncomingWave({ from: mensaje.payload.from, fromName: mensaje.payload.fromName });
+      setTimeout(() => setIncomingWave(null), 4000);
+      sendDesktopNotification(`👋 ${mensaje.payload.fromName}`, 'te está saludando');
       return;
     }
 
@@ -5750,16 +5774,16 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       
       {/* Notificación de Wave entrante */}
       {incomingWave && (
-        <div className="fixed top-20 right-4 z-[201] animate-slide-in">
-          <div className="bg-amber-500 text-black px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3">
-            <span className="text-3xl animate-wave">👋</span>
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[201] animate-slide-in">
+          <div className="bg-amber-500/90 backdrop-blur-xl text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-pulse border border-amber-400/30">
+            <span className="text-2xl">👋</span>
             <div>
               <p className="font-bold text-sm">{incomingWave.fromName}</p>
-              <p className="text-xs opacity-80">te está saludando</p>
+              <p className="text-xs opacity-90">te está saludando</p>
             </div>
             <button 
               onClick={() => setIncomingWave(null)}
-              className="ml-2 w-6 h-6 rounded-full bg-black/20 flex items-center justify-center hover:bg-black/30"
+              className="ml-2 w-6 h-6 rounded-full bg-black/20 flex items-center justify-center hover:bg-black/40 text-white/80 hover:text-white transition-colors"
             >
               ✕
             </button>
