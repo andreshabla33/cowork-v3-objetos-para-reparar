@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrthographicCamera, PerspectiveCamera, Grid, Text, OrbitControls, Html, PerformanceMonitor } from '@react-three/drei';
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
-import { Room, RoomEvent, Track, VideoPresets, LocalAudioTrack, LocalVideoTrack, RemoteTrackPublication } from 'livekit-client';
+import { Room, RoomEvent, Track, VideoPresets, ScreenSharePresets, LocalAudioTrack, LocalVideoTrack, RemoteTrackPublication } from 'livekit-client';
 import { useStore } from '@/store/useStore';
 import { AutorizacionEmpresa, User, PresenceStatus, ZonaEmpresa } from '@/types';
 import { supabase } from '@/lib/supabase';
@@ -2152,8 +2152,8 @@ const VideoHUD: React.FC<VideoHUDProps> = ({
           return (
             <React.Fragment key={`screen-group-${u.id}`}>
               {/* Burbuja de pantalla compartida */}
-              <div className="relative bg-black rounded-[28px] overflow-hidden border border-green-500/30 shadow-2xl group w-52 h-36">
-                <StableVideo stream={remoteScreen} className="w-full h-full object-cover" />
+              <div className="relative bg-black rounded-[28px] overflow-hidden border border-green-500/30 shadow-2xl group w-80 h-48">
+                <StableVideo stream={remoteScreen} className="w-full h-full object-contain" />
                 {/* Label minimalista y transparente */}
                 <div className="absolute top-2 left-2 bg-black/30 backdrop-blur-sm px-1.5 py-0.5 rounded-md opacity-60 group-hover:opacity-100 transition-opacity">
                   <span className="text-[8px] font-medium text-white/80 truncate max-w-[80px] block">{u.name.split(' ')[0]}</span>
@@ -3004,9 +3004,15 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     // Primera publicación o fallback tras error de replaceTrack
     const localTrack = tipo === 'audio' ? new LocalAudioTrack(track) : new LocalVideoTrack(track);
     livekitLocalTracksRef.current[tipo] = localTrack;
-    await room.localParticipant.publishTrack(localTrack, {
+    const publishOptions: any = {
       source: tipo === 'screen' ? Track.Source.ScreenShare : tipo === 'video' ? Track.Source.Camera : Track.Source.Microphone,
-    });
+    };
+    if (tipo === 'screen') {
+      publishOptions.simulcast = false;
+      publishOptions.videoEncoding = { maxBitrate: 2_500_000, maxFramerate: 15 };
+      publishOptions.scalabilityMode = 'L1T3';
+    }
+    await room.localParticipant.publishTrack(localTrack, publishOptions);
     console.log(`[LIVEKIT] Track ${tipo} publicado por primera vez`);
   }, []);
 
@@ -3088,7 +3094,11 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       publishDefaults: {
         simulcast: true,
         videoSimulcastLayers: [VideoPresets.h90, VideoPresets.h216, VideoPresets.h540],
-        screenShareSimulcastLayers: [VideoPresets.h216, VideoPresets.h540],
+        screenShareSimulcastLayers: [],
+        screenShareEncoding: {
+          maxBitrate: 2_500_000,
+          maxFramerate: 15,
+        },
       },
     });
 
@@ -4888,7 +4898,10 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   const handleToggleScreenShare = async () => {
     if (!currentUser.isScreenSharing) {
       try {
-        const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({
+          video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 15 } },
+          audio: false,
+        });
         displayStream.getVideoTracks()[0].onended = () => {
           toggleScreenShare(false);
           if (activeScreenRef.current) {
