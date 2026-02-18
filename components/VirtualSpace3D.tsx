@@ -3093,7 +3093,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     });
 
     room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
-      console.log(`[LIVEKIT TrackSubscribed] from=${participant?.identity} kind=${track?.kind} source=${track?.source} allowed=${permitirMediaParticipante(participant?.metadata)}`);
+      console.log(`[LIVEKIT TrackSubscribed] from=${participant?.identity} kind=${track?.kind} source=${track?.source} trackId=${track?.mediaStreamTrack?.id} allowed=${permitirMediaParticipante(participant?.metadata)}`);
       if (!participant || !track || !permitirMediaParticipante(participant.metadata)) return;
       if (track.kind === Track.Kind.Video) {
         const stream = new MediaStream([track.mediaStreamTrack]);
@@ -3123,15 +3123,34 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
 
     room.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
       if (!participant || !track) return;
+      console.log(`[LIVEKIT TrackUnsubscribed] from=${participant.identity} kind=${track.kind} source=${track.source} trackId=${track.mediaStreamTrack?.id}`);
       if (track.kind === Track.Kind.Video) {
         if (track.source === Track.Source.ScreenShare) {
           setRemoteScreenStreams(prev => {
+            const existing = prev.get(participant.identity);
+            // Solo borrar si el stream actual usa el MISMO track (evita race condition unpublish/republish)
+            if (existing) {
+              const existingTrackId = existing.getVideoTracks()[0]?.id;
+              if (existingTrackId && existingTrackId !== track.mediaStreamTrack?.id) {
+                console.log(`[LIVEKIT] TrackUnsubscribed ignorado para screen ${participant.identity} — stream actual tiene track diferente (race condition resuelta)`);
+                return prev;
+              }
+            }
             const next = new Map(prev);
             next.delete(participant.identity);
             return next;
           });
         } else {
           setRemoteStreams(prev => {
+            const existing = prev.get(participant.identity);
+            // Solo borrar si el stream actual usa el MISMO track (evita race condition unpublish/republish)
+            if (existing) {
+              const existingTrackId = existing.getVideoTracks()[0]?.id;
+              if (existingTrackId && existingTrackId !== track.mediaStreamTrack?.id) {
+                console.log(`[LIVEKIT] TrackUnsubscribed ignorado para ${participant.identity} — stream actual tiene track diferente (race condition resuelta)`);
+                return prev;
+              }
+            }
             const next = new Map(prev);
             next.delete(participant.identity);
             return next;
@@ -3140,6 +3159,10 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       }
       if (track.kind === Track.Kind.Audio) {
         setRemoteAudioTracks(prev => {
+          const existing = prev.get(participant.identity);
+          if (existing && existing.id !== track.mediaStreamTrack?.id) {
+            return prev;
+          }
           const next = new Map(prev);
           next.delete(participant.identity);
           return next;
