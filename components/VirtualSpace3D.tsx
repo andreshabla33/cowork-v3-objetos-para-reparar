@@ -2539,6 +2539,12 @@ const ScreenSpaceProfileCard: React.FC<{
             <p className="text-white text-xs font-bold truncate">{user.name}</p>
             <p className="text-white/50 text-[9px]">{statusLabel}</p>
           </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            className="w-5 h-5 rounded-md bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors flex-shrink-0"
+          >
+            <svg className="w-2.5 h-2.5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
         </div>
         {/* Acciones — estilo idéntico al bubble de proximidad */}
         <div className="flex items-center gap-1.5 px-3 pb-2.5">
