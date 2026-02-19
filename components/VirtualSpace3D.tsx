@@ -2520,61 +2520,51 @@ const ScreenSpaceProfileCard: React.FC<{
   return (
     <div
       ref={cardRef}
-      className="fixed z-[300] pointer-events-auto top-16 right-4 animate-in fade-in slide-in-from-right-2 duration-200"
+      className="fixed z-[300] pointer-events-auto top-16 right-4 animate-slide-in"
     >
-      <div className="bg-white/10 backdrop-blur-2xl rounded-2xl border border-white/15 shadow-2xl shadow-black/40 w-[240px] overflow-hidden">
+      <div className="backdrop-blur-xl rounded-2xl border shadow-2xl overflow-hidden bg-slate-950/80 border-slate-600/40">
         {/* Header con foto + nombre + estado */}
-        <div className="flex items-center gap-3 px-4 pt-3.5 pb-3">
+        <div className="flex items-center gap-2 px-3.5 py-2">
           <div className="relative flex-shrink-0">
-            <div className={`w-10 h-10 rounded-full border-2 ${borderClass} flex items-center justify-center overflow-hidden bg-zinc-800`}>
+            <div className={`w-8 h-8 rounded-full border-2 ${borderClass} flex items-center justify-center overflow-hidden bg-zinc-800`}>
               {user.profilePhoto ? (
                 <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-sm font-bold text-white/80">{user.name.charAt(0).toUpperCase()}</span>
+                <span className="text-xs font-bold text-white/80">{user.name.charAt(0).toUpperCase()}</span>
               )}
             </div>
-            <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-zinc-900 ${dotClass}`} />
+            <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-slate-950 ${dotClass}`} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-white truncate">{user.name}</p>
-            <p className="text-[10px] text-white/40">{statusLabel}</p>
+            <p className="text-white text-xs font-bold truncate">{user.name}</p>
+            <p className="text-white/50 text-[9px]">{statusLabel}</p>
           </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); onClose(); }}
-            className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors group"
-          >
-            <svg className="w-3 h-3 text-white/40 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
         </div>
-        {/* Separador */}
-        <div className="mx-4 border-t border-white/5" />
-        {/* Acciones */}
-        <div className="flex items-center gap-1.5 px-3 py-2.5">
+        {/* Acciones — estilo idéntico al bubble de proximidad */}
+        <div className="flex items-center gap-1.5 px-3 pb-2.5">
           <button
             onClick={(e) => { e.stopPropagation(); onWave(user.id); }}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white/5 hover:bg-amber-500/15 border border-white/5 hover:border-amber-500/20 text-white/60 hover:text-amber-400 text-[11px] font-medium transition-all"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all bg-white/10 text-white/70 hover:bg-white/20 border border-white/10"
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" /></svg>
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" /></svg>
             Saludar
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onInvite(user.id); }}
-            className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white/5 hover:bg-indigo-500/15 border border-white/5 hover:border-indigo-500/20 text-white/60 hover:text-indigo-400 text-[11px] font-medium transition-all"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all bg-white/10 text-white/70 hover:bg-white/20 border border-white/10"
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
             Invitar
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onFollow(user.id); }}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border text-[11px] font-medium transition-all ${
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
               isFollowing
-                ? 'bg-violet-500/20 border-violet-500/25 text-violet-400'
-                : 'bg-white/5 hover:bg-violet-500/15 border-white/5 hover:border-violet-500/20 text-white/60 hover:text-violet-400'
+                ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30'
+                : 'bg-white/10 text-white/70 hover:bg-white/20 border border-white/10'
             }`}
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
             {isFollowing ? 'Siguiendo' : 'Seguir'}
           </button>
         </div>
