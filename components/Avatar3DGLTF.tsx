@@ -110,9 +110,12 @@ function remapAnimationTracks(clip: THREE.AnimationClip, boneNames: Set<string>,
     return true;
   });
 
+  const matchRate = clip.tracks.length > 0 ? remapped.tracks.length / clip.tracks.length : 0;
   if (remapped.tracks.length === 0 && clip.tracks.length > 0) {
-    console.warn(`⚠️ remapAnimationTracks: ${clip.name} — 0/${clip.tracks.length} tracks matched. Posible mismatch de huesos.`);
+    console.warn(`⚠️ remapAnimationTracks: ${clip.name} — 0/${clip.tracks.length} tracks matched. Esqueleto incompatible.`);
   }
+  // Marcar el clip con el ratio de match para que el caller pueda decidir si usarlo
+  (remapped as any)._matchRate = matchRate;
   return remapped;
 }
 
@@ -137,6 +140,20 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
   // Clonar la escena correctamente para soportar SkinnedMesh
   const clone = useMemo(() => {
     const clonedScene = SkeletonUtils.clone(scene);
+    // Asegurar que texturas embebidas del GLB usen el color space correcto
+    clonedScene.traverse((child: any) => {
+      if ((child.isMesh || child.isSkinnedMesh) && child.material) {
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        mats.forEach((mat: any) => {
+          if (mat.map) {
+            mat.map.colorSpace = THREE.SRGBColorSpace;
+            mat.map.needsUpdate = true;
+          }
+          // Asegurar que el material se renderice correctamente
+          mat.needsUpdate = true;
+        });
+      }
+    });
     return clonedScene;
   }, [scene]);
 
@@ -233,17 +250,11 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
     const loadAnimations = async () => {
       let animaciones = avatarConfig?.animaciones;
 
-      // Si no hay avatarConfig (avatar remoto), obtener el primer avatar activo de BD
+      // Si no hay avatarId, no intentar cargar animaciones de otro avatar
+      // (cada avatar tiene su propio esqueleto, cargar anims de otro causa mismatch)
       if (!avatarId) {
-        const { data: defaultAvatar } = await supabase
-          .from('avatares_3d')
-          .select('id')
-          .eq('activo', true)
-          .order('orden', { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        if (!defaultAvatar) return;
-        avatarId = defaultAvatar.id;
+        console.log('🎬 Avatar sin ID, usando animaciones embebidas del GLB si las tiene');
+        return;
       }
 
       // Si el config no trae animaciones, cargarlas directamente de BD
@@ -294,6 +305,12 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
       results.forEach((r) => {
         if (r && r.clips.length > 0) {
           const clip = remapAnimationTracks(r.clips[0], boneNames, r.strip);
+          const matchRate = (clip as any)._matchRate ?? 0;
+          // Solo usar la animación si al menos 10% de los tracks coinciden con el esqueleto
+          if (matchRate < 0.1 && r.clips[0].tracks.length > 0) {
+            console.warn(`⚠️ ${r.nombre}: solo ${Math.round(matchRate * 100)}% tracks matched — descartada (esqueleto incompatible)`);
+            return;
+          }
           clip.name = r.nombre;
           clips[r.nombre] = clip;
         }
