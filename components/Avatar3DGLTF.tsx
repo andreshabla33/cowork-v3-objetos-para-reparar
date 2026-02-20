@@ -219,88 +219,32 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
   const { nodes } = useGraph(clone);
 
   // Auto-corrección de escala y posición Y (dinámico para cualquier modelo)
+  // Usar scene original (del GLTF loader, con matrices correctas) para bounding box
   const { modelScaleCorrection, modelYOffset } = useMemo(() => {
-    // Muchos modelos GLB (Mixamo, Meshy AI, etc.) tienen la escala en nodos intermedios
-    // (Armature, Scene, etc.) y geometrías muy pequeñas. Box3.setFromObject() falla con
-    // SkinnedMesh porque depende de la pose de los huesos.
-    // Estrategia: calcular la escala acumulada del nodo raíz y multiplicar por el bbox de geometría.
+    // Box3.setFromObject en scene original — el GLTF loader ya resolvió las matrices
+    const box = new THREE.Box3().setFromObject(scene);
+    
+    if (box.isEmpty()) return { modelScaleCorrection: 1, modelYOffset: 0 };
 
-    // 1) Obtener escala acumulada del árbol de nodos (Armature suele tener scale=100)
-    // Calcular producto de escalas en la cadena padre→hijo (no solo el máximo)
-    let rootScale = 1;
-    clone.traverse((child: any) => {
-      if (child.scale && child !== clone) {
-        const s = Math.max(child.scale.x, child.scale.y, child.scale.z);
-        if (s !== 1 && s > 0) {
-          rootScale *= s;
-        }
-      }
-    });
-    // Debug: mostrar estructura de nodos con escala
-    if (rootScale === 1) {
-      // Si no encontramos escala en nodos, intentar desde matrixWorld
-      const tempScene = new THREE.Scene();
-      tempScene.add(clone);
-      clone.updateWorldMatrix(true, true);
-      clone.traverse((child: any) => {
-        if ((child.isMesh || child.isSkinnedMesh) && child.matrixWorld) {
-          const worldScale = new THREE.Vector3();
-          child.matrixWorld.decompose(new THREE.Vector3(), new THREE.Quaternion(), worldScale);
-          const s = Math.max(worldScale.x, worldScale.y, worldScale.z);
-          if (s > rootScale) rootScale = s;
-        }
-      });
-      tempScene.remove(clone);
-    }
-
-    // 2) Calcular bounding box desde geometrías (sin matrixWorld, que puede no estar actualizada)
-    const geoBox = new THREE.Box3();
-    let hasGeometry = false;
-    clone.traverse((child: any) => {
-      if ((child.isMesh || child.isSkinnedMesh) && child.geometry) {
-        child.geometry.computeBoundingBox();
-        const bb = child.geometry.boundingBox;
-        if (bb && !bb.isEmpty()) {
-          geoBox.union(bb);
-          hasGeometry = true;
-        }
-      }
-    });
-
-    // 3) Fallback: calcular desde posiciones de huesos
-    if (!hasGeometry || geoBox.isEmpty()) {
-      clone.updateWorldMatrix(true, true);
-      clone.traverse((child: any) => {
-        if (child.isBone) {
-          const pos = new THREE.Vector3();
-          child.getWorldPosition(pos);
-          geoBox.expandByPoint(pos);
-        }
-      });
-    }
-
-    if (geoBox.isEmpty()) return { modelScaleCorrection: 1, modelYOffset: 0 };
-
-    const rawSize = geoBox.getSize(new THREE.Vector3());
-    // Altura real = altura de geometría × escala del nodo raíz
-    const effectiveHeight = Math.max(rawSize.y * rootScale, 0.01);
+    const size = box.getSize(new THREE.Vector3());
+    const height = Math.max(size.y, 0.001);
     const TARGET_HEIGHT = 1.7;
 
+    // Escala: normalizar a TARGET_HEIGHT si está fuera de rango razonable
     let scaleCorrection = 1;
-    if (effectiveHeight < 1.2 || effectiveHeight > 2.5) {
-      scaleCorrection = TARGET_HEIGHT / effectiveHeight;
+    if (height < 1.2 || height > 2.5) {
+      scaleCorrection = TARGET_HEIGHT / height;
     }
 
-    // Clamp de seguridad: nunca mayor a 200x ni menor a 0.01x
-    // (modelos Mixamo pueden necesitar escalas altas si la geometría es en metros)
-    scaleCorrection = Math.max(0.01, Math.min(scaleCorrection, 200));
+    // Clamp de seguridad
+    scaleCorrection = Math.max(0.1, Math.min(scaleCorrection, 100));
 
-    // Posición Y: ajustar para que la base del modelo esté en Y=0
-    const yOffset = -geoBox.min.y;
+    // Posición Y: base del modelo en Y=0
+    const yOffset = -box.min.y;
 
-    console.log(`📐 ${avatarConfig?.nombre || 'avatar'}: rawH=${rawSize.y.toFixed(4)} rootScale=${rootScale.toFixed(1)} effectiveH=${effectiveHeight.toFixed(2)} scale=${scaleCorrection.toFixed(2)} yOff=${yOffset.toFixed(2)}`);
+    console.log(`📐 ${avatarConfig?.nombre || 'avatar'}: h=${height.toFixed(4)} scale=${scaleCorrection.toFixed(2)} yOff=${yOffset.toFixed(4)}`);
     return { modelScaleCorrection: scaleCorrection, modelYOffset: yOffset };
-  }, [clone]);
+  }, [scene]);
 
   // Recopilar nombres de huesos del modelo
   const boneNames = useMemo(() => {
