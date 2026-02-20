@@ -52,6 +52,13 @@ const App: React.FC = () => {
       setSession(session);
       
       if (event === 'SIGNED_IN') {
+        // Si ya estamos inicializados con un workspace activo, NO re-inicializar
+        // (evita race condition INITIAL_SESSION → SIGNED_IN que desmonta componentes)
+        const state = useStore.getState();
+        if (state.initialized && state.activeWorkspace) {
+          console.log("Auth Event SIGNED_IN: Already initialized with workspace, skipping re-init");
+          return;
+        }
         await initialize();
       } else if (event === 'SIGNED_OUT') {
         setView('dashboard');

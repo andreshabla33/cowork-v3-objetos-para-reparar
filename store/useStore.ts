@@ -137,6 +137,15 @@ export const useStore = create<AppState>((set, get) => ({
       console.log("initialize: Already initializing, skipping");
       return;
     }
+    // Si ya estamos inicializados con workspace activo, solo refrescar sesión (no resetear estado)
+    if (get().initialized && get().activeWorkspace) {
+      console.log("initialize: Already initialized with active workspace, refreshing session only");
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) set({ session });
+      } catch (e) { /* ignore */ }
+      return;
+    }
     set({ isInitializing: true });
     console.log("initialize: Starting...");
     
@@ -329,9 +338,8 @@ export const useStore = create<AppState>((set, get) => ({
           name: user.user_metadata?.full_name || user.email.split('@')[0],
         }
       });
-      if (get().workspaces.length === 0) {
-        get().fetchWorkspaces();
-      }
+      // NO llamar fetchWorkspaces aquí — initialize() se encarga de eso.
+      // Llamarlo aquí causa fetches duplicados y race conditions con initialize().
     } else {
       set({ session: null });
     }
@@ -385,12 +393,15 @@ export const useStore = create<AppState>((set, get) => ({
   
   setActiveWorkspace: (workspace, role) => {
     if (workspace) {
+      const current = get().activeWorkspace;
+      const isSameWorkspace = current?.id === workspace.id;
       localStorage.setItem(STORAGE_WS_KEY, workspace.id);
       set({ 
         activeWorkspace: workspace, 
         userRoleInActiveWorkspace: role || (workspace as any).userRole || null,
         view: 'workspace',
-        activeSubTab: 'space'
+        // Solo resetear activeSubTab si cambiamos de workspace (no si es el mismo)
+        ...(isSameWorkspace ? {} : { activeSubTab: 'space' as const })
       });
     } else {
       localStorage.removeItem(STORAGE_WS_KEY);
