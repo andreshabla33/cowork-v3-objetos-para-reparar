@@ -128,23 +128,35 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
   // Cargar modelo principal (useGLTF solo para el modelo, no animaciones)
   const { scene, animations: baseAnimations } = useGLTF(modelUrl);
   
-  // Clonar la escena correctamente para soportar SkinnedMesh
+  // Clonar la escena — usar SkeletonUtils.clone solo si tiene SkinnedMesh (esqueleto)
   const clone = useMemo(() => {
-    const clonedScene = SkeletonUtils.clone(scene);
-    // Asegurar que texturas embebidas del GLB usen el color space correcto
+    // Detectar si el modelo tiene SkinnedMesh (necesita SkeletonUtils.clone)
+    let hasSkinnedMesh = false;
+    scene.traverse((child: any) => {
+      if (child.isSkinnedMesh) hasSkinnedMesh = true;
+    });
+
+    // SkeletonUtils.clone para modelos con esqueleto, .clone() normal para estáticos
+    const clonedScene = hasSkinnedMesh ? SkeletonUtils.clone(scene) : scene.clone(true);
+
+    // Asegurar que texturas y materiales embebidos del GLB se rendericen correctamente
     clonedScene.traverse((child: any) => {
       if ((child.isMesh || child.isSkinnedMesh) && child.material) {
+        // Clonar material para no afectar el original compartido
+        if (!hasSkinnedMesh) {
+          child.material = child.material.clone();
+        }
         const mats = Array.isArray(child.material) ? child.material : [child.material];
         mats.forEach((mat: any) => {
           if (mat.map) {
             mat.map.colorSpace = THREE.SRGBColorSpace;
             mat.map.needsUpdate = true;
           }
-          // Asegurar que el material se renderice correctamente
           mat.needsUpdate = true;
         });
       }
     });
+    console.log(`🎨 ${avatarConfig?.nombre || 'avatar'}: clone OK (skinned: ${hasSkinnedMesh})`);
     return clonedScene;
   }, [scene]);
 
