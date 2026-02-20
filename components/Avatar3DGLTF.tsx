@@ -165,30 +165,22 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
 
   // Auto-corrección de escala y posición Y (dinámico para cualquier modelo)
   const { modelScaleCorrection, modelYOffset } = useMemo(() => {
-    // Escala: usar bounding box de geometría local (sin transforms de bones/skeleton)
-    const localBox = new THREE.Box3();
-    clone.traverse((child: any) => {
-      if ((child.isMesh || child.isSkinnedMesh) && child.geometry) {
-        child.geometry.computeBoundingBox();
-        if (child.geometry.boundingBox) {
-          localBox.union(child.geometry.boundingBox);
-        }
-      }
-    });
-    const localSize = localBox.getSize(new THREE.Vector3());
+    const worldBox = new THREE.Box3().setFromObject(clone);
+    if (worldBox.isEmpty()) return { modelScaleCorrection: 1, modelYOffset: 0 };
+
+    const worldSize = worldBox.getSize(new THREE.Vector3());
+    const TARGET_HEIGHT = 1.7;
+
+    // Escala: normalizar modelos fuera de rango razonable (0.5 - 3.0)
     let scaleCorrection = 1;
-    if (localSize.y > 0 && localSize.y < 0.5) {
-      const TARGET_HEIGHT = 1.5;
-      scaleCorrection = TARGET_HEIGHT / localSize.y;
+    if (worldSize.y > 0 && (worldSize.y < 0.5 || worldSize.y > 3.0)) {
+      scaleCorrection = TARGET_HEIGHT / worldSize.y;
     }
 
-    // Posición Y: usar bounding box en world space para posicionar correctamente sobre el piso
-    const worldBox = new THREE.Box3().setFromObject(clone);
-    let yOffset = 0;
-    if (!worldBox.isEmpty()) {
-      // Siempre ajustar para que la base del modelo esté en Y=0
-      yOffset = -worldBox.min.y;
-    }
+    // Posición Y: siempre ajustar para que la base del modelo esté en Y=0
+    const yOffset = -worldBox.min.y;
+
+    console.log(`📐 ${avatarConfig?.nombre || 'avatar'}: h=${worldSize.y.toFixed(2)} scale=${scaleCorrection.toFixed(2)} yOff=${yOffset.toFixed(2)}`);
     return { modelScaleCorrection: scaleCorrection, modelYOffset: yOffset };
   }, [clone]);
 
