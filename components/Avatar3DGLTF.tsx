@@ -168,14 +168,16 @@ function remapAnimationTracks(
 
     // Strip .scale tracks: los exports de Meshy incluyen scale keyframes que difieren
     // del rest-pose del modelo, causando inflación de huesos (ej: cabeza como globo).
-    // Solo .quaternion y .position son necesarios para animación humanoid.
     if (property === '.scale') return false;
 
-    // Strip root motion: eliminar position tracks del Hips (root bone)
-    // Esto evita que el avatar "salte atrás" al reiniciar el loop de walk/run
-    if (stripRootMotion) {
+    // Strip .position tracks de huesos no-root: en animación humanoid solo el root (Hips)
+    // necesita position tracks. Position en otros huesos causa deformación/inflación
+    // porque traslada el hueso en espacio local (estirando la mesh).
+    // Ref: https://discourse.threejs.org/t/retargeting-issues/45895
+    if (property === '.position') {
       const isHips = boneName.toLowerCase().includes('hips');
-      if (isHips && property === '.position') return false;
+      if (!isHips) return false; // Strip position de todo menos Hips
+      if (stripRootMotion) return false; // Strip Hips.position también si es walk/run
     }
     return true;
   });
