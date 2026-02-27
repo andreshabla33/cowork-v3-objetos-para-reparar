@@ -164,10 +164,16 @@ function remapAnimationTracks(
     const boneName = dotIdx !== -1 ? track.name.substring(0, dotIdx) : track.name;
     if (!boneNames.has(boneName)) return false;
 
+    const property = track.name.substring(dotIdx);
+
+    // Strip .scale tracks: los exports de Meshy incluyen scale keyframes que difieren
+    // del rest-pose del modelo, causando inflación de huesos (ej: cabeza como globo).
+    // Solo .quaternion y .position son necesarios para animación humanoid.
+    if (property === '.scale') return false;
+
     // Strip root motion: eliminar position tracks del Hips (root bone)
     // Esto evita que el avatar "salte atrás" al reiniciar el loop de walk/run
     if (stripRootMotion) {
-      const property = track.name.substring(dotIdx);
       const isHips = boneName.toLowerCase().includes('hips');
       if (isHips && property === '.position') return false;
     }
