@@ -175,6 +175,24 @@ function remapAnimationTracks(
   });
 
   const matchRate = clip.tracks.length > 0 ? remapped.tracks.length / clip.tracks.length : 0;
+  // Diagnóstico: mostrar huesos no mapeados
+  const unmatchedBones = new Set<string>();
+  clip.tracks.forEach(track => {
+    const dotIdx = track.name.indexOf('.');
+    const boneName = dotIdx !== -1 ? track.name.substring(0, dotIdx) : track.name;
+    // Verificar si este bone terminó en remapped.tracks
+    const found = remapped.tracks.some(rt => {
+      const rd = rt.name.indexOf('.');
+      return rd !== -1 ? rt.name.substring(0, rd) === boneName || rt.name.substring(0, rd) === (normalizedBoneMap.get(normalizeBoneName(boneName).toLowerCase()) || '') : false;
+    });
+    if (!boneNames.has(boneName) && !normalizedBoneMap.has(normalizeBoneName(boneName).toLowerCase()) && !aliasToModelBone.has(normalizeBoneName(boneName).toLowerCase())) {
+      unmatchedBones.add(boneName);
+    }
+  });
+  if (unmatchedBones.size > 0) {
+    console.warn(`❌ remap ${clip.name}: huesos sin match:`, [...unmatchedBones].join(', '));
+  }
+  console.log(`📊 remap ${clip.name}: ${remapped.tracks.length}/${clip.tracks.length} tracks (${Math.round(matchRate * 100)}%)`);
   if (remapped.tracks.length === 0 && clip.tracks.length > 0) {
     console.warn(`⚠️ remapAnimationTracks: ${clip.name} — 0/${clip.tracks.length} tracks matched. Esqueleto incompatible.`);
   }
@@ -410,6 +428,10 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
       const clips: Record<string, THREE.AnimationClip> = {};
       results.forEach((r) => {
         if (r && r.clips.length > 0) {
+          // Diagnóstico: mostrar nombres de huesos originales en la animación
+          const origBones = [...new Set(r.clips[0].tracks.map(t => t.name.split('.')[0]))];
+          console.log(`🔍 ${r.nombre}: ${r.clips[0].tracks.length} tracks, huesos anim: [${origBones.join(', ')}]`);
+          console.log(`🔍 ${r.nombre}: huesos modelo: [${[...boneNames].join(', ')}]`);
           const clip = remapAnimationTracks(r.clips[0], boneNames, r.strip, spineChainMap);
           const matchRate = (clip as any)._matchRate ?? 0;
           // Solo usar la animación si al menos 30% de los tracks coinciden con el esqueleto
