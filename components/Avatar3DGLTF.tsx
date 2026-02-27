@@ -46,15 +46,17 @@ const DEFAULT_MODEL_URL = `${STORAGE_BASE}/Monica_Idle.glb`;
 const LOOP_ANIMATIONS: AnimationState[] = ['idle', 'walk', 'run', 'dance'];
 
 // Tabla de equivalencias entre convenciones de nombres de huesos
-// Mixamo (post-strip) → nombres alternativos comunes en otros esqueletos
+// Después de normalizeBoneName (strip prefixes + leading zeros), estos aliases
+// cubren convenciones genuinamente distintas (ej: pelvis/hips, chest/spine1)
+// Ya NO necesitamos spine01→spine1 porque normalizeBoneName lo resuelve automáticamente.
 const BONE_ALIASES: Record<string, string[]> = {
   'hips': ['hips', 'pelvis', 'root'],
-  'spine': ['spine', 'spine01', 'spine1'],
-  'spine1': ['spine1', 'spine02', 'spine2', 'chest'],
-  'spine2': ['spine2', 'spine03', 'spine3', 'upperchest'],
-  'neck': ['neck', 'neck01'],
-  'head': ['head', 'head01'],
-  'headtop_end': ['headtop_end', 'headtop', 'head_end'],
+  'spine': ['spine'],
+  'spine1': ['spine1', 'chest'],
+  'spine2': ['spine2', 'upperchest'],
+  'neck': ['neck'],
+  'head': ['head'],
+  'headtop_end': ['headtop_end', 'headtop', 'head_end', 'headfront'],
   'leftshoulder': ['leftshoulder', 'leftcollar', 'l_shoulder', 'shoulder_l'],
   'leftarm': ['leftarm', 'leftuparm', 'l_upperarm', 'upperarm_l'],
   'leftforearm': ['leftforearm', 'leftlowarm', 'l_forearm', 'forearm_l', 'leftlowerarm'],
@@ -75,7 +77,8 @@ const BONE_ALIASES: Record<string, string[]> = {
   'righttoe_end': ['righttoe_end', 'righttoeend'],
 };
 
-// Normalizar nombre de hueso: quitar prefijos comunes de Mixamo, Meshy AI, Blender, etc.
+// Normalizar nombre de hueso: quitar prefijos comunes y unificar sufijos numéricos.
+// Objetivo: que Mixamo "mixamorigSpine1" y Meshy "Spine01" normalicen igual → "Spine1"
 function normalizeBoneName(name: string): string {
   let n = name;
   // Quitar prefijo Armature| o Armature/ (Blender/Meshy)
@@ -84,18 +87,33 @@ function normalizeBoneName(name: string): string {
   n = n.replace(/^mixamorig[:]?/, '');
   // Quitar prefijo Character_ o Root_ (otros exportadores)
   n = n.replace(/^(Character_|Root_)/, '');
+  // Normalizar sufijos numéricos: Spine01→Spine1, Spine02→Spine2, neck01→neck1
+  // Esto unifica Meshy (01,02) con Mixamo (1,2) automáticamente
+  n = n.replace(/(\D)0+(\d+)$/, '$1$2');
   return n;
 }
 
 // Remapeo de tracks: Mixamo/Meshy/Blender → huesos del modelo
 // stripRootMotion: elimina position tracks del Hips para evitar saltos al hacer loop (walk/run)
-function remapAnimationTracks(clip: THREE.AnimationClip, boneNames: Set<string>, stripRootMotion = false): THREE.AnimationClip {
+function remapAnimationTracks(
+  clip: THREE.AnimationClip,
+  boneNames: Set<string>,
+  stripRootMotion = false,
+  spineOverrides?: Map<string, string>
+): THREE.AnimationClip {
   const remapped = clip.clone();
 
   // Pre-calcular mapa normalizado de huesos del modelo para matching rápido
   const normalizedBoneMap = new Map<string, string>();
   for (const bn of boneNames) {
     normalizedBoneMap.set(normalizeBoneName(bn).toLowerCase(), bn);
+  }
+
+  // Aplicar overrides de jerarquía spine (resuelve Meshy reversed: Spine02→Spine01→Spine)
+  if (spineOverrides) {
+    for (const [normalizedKey, actualBone] of spineOverrides) {
+      normalizedBoneMap.set(normalizedKey, actualBone);
+    }
   }
 
   // Pre-calcular mapa inverso de aliases: para cada alias → nombre real del hueso del modelo
@@ -226,14 +244,47 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
     return { modelScaleCorrection: 1, modelYOffset: 0 };
   }, [scene]);
 
-  // Recopilar nombres de huesos del modelo
-  const boneNames = useMemo(() => {
+  // Recopilar nombres de huesos del modelo + detectar cadena spine por jerarquía
+  const { boneNames, spineChainMap } = useMemo(() => {
     const names = new Set<string>();
+    let hipsNode: any = null;
     clone.traverse((child: any) => {
-      if (child.isBone) names.add(child.name);
+      if (child.isBone) {
+        names.add(child.name);
+        if (!hipsNode && normalizeBoneName(child.name).toLowerCase() === 'hips') {
+          hipsNode = child;
+        }
+      }
     });
-    console.log(`🦴 ${avatarConfig?.nombre || 'avatar'}: ${names.size} huesos —`, [...names].slice(0, 10).join(', '), names.size > 10 ? '...' : '');
-    return names;
+    console.log(`🦴 ${avatarConfig?.nombre || 'avatar'}: ${names.size} huesos —`, [...names].join(', '));
+
+    // Recorrer jerarquía spine desde Hips → primer hijo spine → siguiente → ...
+    // Esto detecta automáticamente el orden real sin importar la convención de nombres
+    const chainMap = new Map<string, string>();
+    if (hipsNode) {
+      const chain: string[] = [];
+      let current = hipsNode;
+      while (current) {
+        const spineChild = current.children.find((c: any) => {
+          if (!c.isBone) return false;
+          const n = normalizeBoneName(c.name).toLowerCase();
+          return n.includes('spine') || n === 'chest' || n === 'upperchest';
+        });
+        if (!spineChild) break;
+        chain.push(spineChild.name);
+        current = spineChild;
+      }
+      // Mapear posiciones de la cadena a nombres Mixamo normalizados
+      const mixamoSpineKeys = ['spine', 'spine1', 'spine2'];
+      for (let i = 0; i < Math.min(chain.length, mixamoSpineKeys.length); i++) {
+        chainMap.set(mixamoSpineKeys[i], chain[i]);
+      }
+      if (chain.length > 0) {
+        console.log(`🔗 ${avatarConfig?.nombre || 'avatar'}: spine chain [${chain.join(' → ')}]`);
+      }
+    }
+
+    return { boneNames: names, spineChainMap: chainMap };
   }, [clone]);
 
   // ============== CARGA DINÁMICA DE TEXTURA (desde BD) ==============
@@ -359,7 +410,7 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
       const clips: Record<string, THREE.AnimationClip> = {};
       results.forEach((r) => {
         if (r && r.clips.length > 0) {
-          const clip = remapAnimationTracks(r.clips[0], boneNames, r.strip);
+          const clip = remapAnimationTracks(r.clips[0], boneNames, r.strip, spineChainMap);
           const matchRate = (clip as any)._matchRate ?? 0;
           // Solo usar la animación si al menos 30% de los tracks coinciden con el esqueleto
           if (matchRate < 0.3 && r.clips[0].tracks.length > 0) {
@@ -385,7 +436,7 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
     if (loadedAnimClips['idle']) {
       anims.push(loadedAnimClips['idle']);
     } else if (baseAnimations.length > 0) {
-      const clip = remapAnimationTracks(baseAnimations[0], boneNames);
+      const clip = remapAnimationTracks(baseAnimations[0], boneNames, false, spineChainMap);
       clip.name = 'idle';
       anims.push(clip);
     }
@@ -396,7 +447,7 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
     });
 
     return anims;
-  }, [baseAnimations, boneNames, loadedAnimClips]);
+  }, [baseAnimations, boneNames, loadedAnimClips, spineChainMap]);
   
   // ============== MIXER MANUAL (reemplaza useAnimations de drei para aislamiento total) ==============
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);

@@ -23,6 +23,7 @@ import { cargarMetricasEspacio } from '../lib/metricasAnalisis';
 import { obtenerChunk, obtenerChunksVecinos } from '../lib/chunkSystem';
 import { MiniModeOverlay } from './MiniModeOverlay';
 import { ProductTour } from './onboarding/ProductTour';
+import { useIdleDetection } from '../hooks/useIdleDetection';
 
 export const WorkspaceLayout: React.FC = () => {
   const { activeWorkspace, activeSubTab, setActiveSubTab, setActiveWorkspace, currentUser, theme, setTheme, setView, session, setOnlineUsers, addNotification, unreadChatCount, clearUnreadChat, userRoleInActiveWorkspace, setMiniMode, isMiniMode, setEmpresaId, setDepartamentoId, setEmpresasAutorizadas, avatar3DConfig } = useStore();
@@ -85,6 +86,9 @@ export const WorkspaceLayout: React.FC = () => {
 
   const onVibenToggle = () => setShowViben(prev => !prev);
   const isAdmin = userRoleInActiveWorkspace === 'super_admin' || userRoleInActiveWorkspace === 'admin';
+
+  // Detección de inactividad: después de 5 min sin actividad → estado 'away'
+  useIdleDetection();
 
   useEffect(() => {
     currentUserRef.current = currentUser;
