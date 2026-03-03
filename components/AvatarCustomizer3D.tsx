@@ -91,14 +91,24 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
           .maybeSingle();
         
         if (userData?.avatar_3d_id) {
-          setSelectedAvatarId(userData.avatar_3d_id);
+          // Verificar que el avatar aún existe en el catálogo
+          const existsInCatalog = availableAvatars.length === 0 || availableAvatars.some(a => a.id === userData.avatar_3d_id);
+          if (existsInCatalog) {
+            setSelectedAvatarId(userData.avatar_3d_id);
+          } else {
+            // Avatar eliminado — seleccionar el primero del catálogo
+            console.warn('⚠️ Avatar asignado no existe en catálogo, usando primer disponible');
+            if (availableAvatars.length > 0) {
+              setSelectedAvatarId(availableAvatars[0].id);
+            }
+          }
         }
       } catch (error) {
         console.error('🎭 Error cargando avatar usuario:', error);
       }
     };
     loadUserAvatar();
-  }, [session?.user?.id]);
+  }, [session?.user?.id, availableAvatars]);
 
   const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

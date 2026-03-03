@@ -209,7 +209,7 @@ function remapAnimationTracks(
 }
 
 // ============== COMPONENTE PRINCIPAL AVATAR GLTF ==============
-export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({ 
+const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({ 
   avatarConfig,
   animationState = 'idle',
   direction = 'front',
@@ -383,8 +383,9 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
           anims = data;
         }
 
-        // 2) Fallback: si no tiene propias, buscar animaciones del primer avatar que tenga (genéricas)
-        if (!anims || anims.length === 0) {
+        // 2) Fallback: si no tiene propias Y el modelo NO tiene animaciones embebidas,
+        //    buscar animaciones del primer avatar que tenga (genéricas)
+        if ((!anims || anims.length === 0) && baseAnimations.length <= 1) {
           console.log('🎬 Sin animaciones propias, buscando fallback genérico para', avatarConfig?.nombre || 'avatar');
           const { data: fallbackAnims } = await supabase
             .from('avatar_animaciones')
@@ -396,6 +397,9 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
             const firstAvatarId = (fallbackAnims[0] as any).avatar_id;
             anims = fallbackAnims.filter((a: any) => a.avatar_id === firstAvatarId);
           }
+        } else if ((!anims || anims.length === 0) && baseAnimations.length > 1) {
+          console.log(`🎬 ${avatarConfig?.nombre || 'avatar'}: ${baseAnimations.length} animaciones embebidas en GLB, skip fallback BD`);
+          return; // Dejar que allAnimations use las embebidas
         }
 
         if (!anims || anims.length === 0) return;
@@ -455,25 +459,69 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
     };
 
     loadAnimations();
-  }, [avatarConfig?.id, avatarConfig?.animaciones, boneNames]);
+  }, [avatarConfig?.id, avatarConfig?.animaciones, boneNames, baseAnimations]);
 
   // Combinar animaciones: embedded del modelo + cargadas dinámicamente desde BD
   const allAnimations = useMemo(() => {
     const anims: THREE.AnimationClip[] = [];
+    const hasBDAnims = Object.keys(loadedAnimClips).length > 0;
 
-    // Idle: usar del BD si existe, sino del modelo embedded
-    if (loadedAnimClips['idle']) {
-      anims.push(loadedAnimClips['idle']);
-    } else if (baseAnimations.length > 0) {
+    // Si hay animaciones de BD, usarlas como prioridad
+    if (hasBDAnims) {
+      if (loadedAnimClips['idle']) {
+        anims.push(loadedAnimClips['idle']);
+      } else if (baseAnimations.length > 0) {
+        const clip = remapAnimationTracks(baseAnimations[0], boneNames, false, spineChainMap);
+        clip.name = 'idle';
+        anims.push(clip);
+      }
+      Object.entries(loadedAnimClips).forEach(([name, clip]) => {
+        if (name !== 'idle') anims.push(clip);
+      });
+    } else if (baseAnimations.length > 1) {
+      // GLB con múltiples animaciones embebidas (all-in-one) — mapear nombres a AnimationState
+      const EMBEDDED_NAME_MAP: Record<string, AnimationState> = {
+        'idle': 'idle', 'breathing idle': 'idle', 'happy idle': 'idle',
+        'walk': 'walk', 'walking': 'walk', 'walk forward': 'walk',
+        'run': 'run', 'running': 'run', 'jog': 'run', 'run forward': 'run',
+        'dance': 'dance', 'dancing': 'dance', 'hip hop dancing': 'dance', 'samba dancing': 'dance',
+        'cheer': 'cheer', 'cheering': 'cheer', 'cheer with both hands': 'cheer',
+        'sit': 'sit', 'sitting': 'sit', 'sitting idle': 'sit',
+        'wave': 'wave', 'waving': 'wave', 'wave gesture': 'wave',
+        'jump': 'jump', 'jumping': 'jump', 'happy jump': 'jump', 'happy jump f': 'jump',
+        'victory': 'victory', 'victory cheer': 'victory',
+      };
+      const usedStates = new Set<string>();
+      console.log(`🎬 GLB all-in-one: ${baseAnimations.length} animaciones embebidas:`, baseAnimations.map(c => c.name).join(', '));
+      baseAnimations.forEach((baseClip, idx) => {
+        const clipNameLower = baseClip.name.toLowerCase().trim();
+        const stripRoot = clipNameLower.includes('walk') || clipNameLower.includes('run') || clipNameLower.includes('jog');
+        const clip = remapAnimationTracks(baseClip, boneNames, stripRoot, spineChainMap);
+        // Mapear nombre: buscar match exacto, luego parcial
+        let mappedName: string | null = EMBEDDED_NAME_MAP[clipNameLower] || null;
+        if (!mappedName) {
+          for (const [pattern, state] of Object.entries(EMBEDDED_NAME_MAP)) {
+            if (clipNameLower.includes(pattern) && !usedStates.has(state)) {
+              mappedName = state;
+              break;
+            }
+          }
+        }
+        // Fallback: primer clip sin nombre reconocido → idle
+        if (!mappedName && idx === 0 && !usedStates.has('idle')) mappedName = 'idle';
+        if (!mappedName) mappedName = baseClip.name; // conservar nombre original si no mapea
+        if (usedStates.has(mappedName)) return; // evitar duplicados del mismo estado
+        usedStates.add(mappedName);
+        clip.name = mappedName;
+        anims.push(clip);
+      });
+      console.log(`🎬 Animaciones embebidas mapeadas:`, anims.map(a => a.name).join(', '));
+    } else if (baseAnimations.length === 1) {
+      // Solo 1 animación embebida → idle (comportamiento original)
       const clip = remapAnimationTracks(baseAnimations[0], boneNames, false, spineChainMap);
       clip.name = 'idle';
       anims.push(clip);
     }
-
-    // Todas las demás animaciones cargadas desde BD
-    Object.entries(loadedAnimClips).forEach(([name, clip]) => {
-      if (name !== 'idle') anims.push(clip);
-    });
 
     return anims;
   }, [baseAnimations, boneNames, loadedAnimClips, spineChainMap]);
@@ -677,6 +725,50 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = ({
   );
 };
 
+// ============== ERROR BOUNDARY PARA AVATAR (GLB roto/404/400) ==============
+interface AvatarErrorBoundaryProps {
+  fallbackConfig: Avatar3DConfig;
+  children: React.ReactNode;
+  avatarProps: GLTFAvatarProps;
+}
+interface AvatarErrorBoundaryState {
+  hasError: boolean;
+}
+class AvatarErrorBoundary extends React.Component<AvatarErrorBoundaryProps, AvatarErrorBoundaryState> {
+  constructor(props: AvatarErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any) {
+    console.error('🚨 GLTFAvatar crash (GLB roto/inaccesible). Usando avatar fallback.', error?.message || error);
+  }
+  render() {
+    if (this.state.hasError) {
+      const { avatarProps, fallbackConfig } = this.props;
+      return <GLTFAvatarInner {...avatarProps} avatarConfig={fallbackConfig} />;
+    }
+    return this.props.children;
+  }
+}
+
+// ============== WRAPPER SEGURO (captura GLB 400/404) ==============
+export const GLTFAvatar: React.FC<GLTFAvatarProps> = (props) => {
+  const fallbackConfig: Avatar3DConfig = {
+    id: 'default',
+    nombre: 'Default',
+    modelo_url: DEFAULT_MODEL_URL,
+    escala: 1,
+  };
+  return (
+    <AvatarErrorBoundary fallbackConfig={fallbackConfig} avatarProps={props}>
+      <GLTFAvatarInner {...props} />
+    </AvatarErrorBoundary>
+  );
+};
+
 // ============== HOOK PARA CARGAR AVATAR Y ANIMACIONES ==============
 export const useAvatar3D = (userId?: string) => {
   const [avatarConfig, setAvatarConfig] = useState<Avatar3DConfig | null>(null);
@@ -738,22 +830,48 @@ export const useAvatar3D = (userId?: string) => {
         }
 
         // Cargar config del avatar
-        const { data: avatar, error: avatarError } = await supabase
+        let { data: avatar } = await supabase
           .from('avatares_3d')
           .select('*')
           .eq('id', avatarId)
-          .single();
+          .maybeSingle();
 
-        if (avatarError) {
-          console.warn('⚠️ Error cargando avatar:', avatarError.message);
-          setAvatarConfig({
-            id: 'default',
-            nombre: 'Default',
-            modelo_url: DEFAULT_MODEL_URL,
-            escala: 1,
-          });
-        } else if (avatar) {
-          // Config base del avatar
+        // Si el avatar asignado fue eliminado, fallback al primer avatar activo
+        if (!avatar) {
+          console.warn('⚠️ Avatar asignado no existe en BD (eliminado). Buscando fallback...');
+          const { data: fallbackAvatar } = await supabase
+            .from('avatares_3d')
+            .select('*')
+            .eq('activo', true)
+            .order('orden', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+          if (fallbackAvatar) {
+            avatar = fallbackAvatar;
+            avatarId = fallbackAvatar.id;
+            // Corregir avatar_3d_id del usuario para que no vuelva a pasar
+            if (targetUserId) {
+              await supabase
+                .from('usuarios')
+                .update({ avatar_3d_id: fallbackAvatar.id })
+                .eq('id', targetUserId);
+              console.log('✅ Avatar reseteado a fallback:', fallbackAvatar.nombre);
+            }
+          } else {
+            // No hay avatares en BD
+            setAvatarConfig({
+              id: 'default',
+              nombre: 'Default',
+              modelo_url: DEFAULT_MODEL_URL,
+              escala: 1,
+            });
+            setLoading(false);
+            return;
+          }
+        }
+
+        if (avatar) {
           const config: Avatar3DConfig = {
             id: avatar.id,
             nombre: avatar.nombre,

@@ -214,12 +214,35 @@ export const useStore = create<AppState>((set, get) => ({
           }
           
           if (avatarId) {
-            const { data: avatar3D } = await supabase
+            let avatar3D = (await supabase
               .from('avatares_3d')
               .select('id, nombre, modelo_url, escala, textura_url')
               .eq('id', avatarId)
-              .maybeSingle();
+              .maybeSingle()).data;
             
+            // Si el avatar asignado fue eliminado, fallback al primer avatar activo
+            if (!avatar3D) {
+              console.warn('⚠️ Avatar asignado no existe en BD (eliminado). Buscando fallback...');
+              const { data: fallbackAvatar } = await supabase
+                .from('avatares_3d')
+                .select('id, nombre, modelo_url, escala, textura_url')
+                .eq('activo', true)
+                .order('orden', { ascending: true })
+                .limit(1)
+                .maybeSingle();
+              
+              if (fallbackAvatar) {
+                avatar3D = fallbackAvatar;
+                avatarId = fallbackAvatar.id;
+                // Corregir el avatar_3d_id del usuario para que no vuelva a pasar
+                await supabase
+                  .from('usuarios')
+                  .update({ avatar_3d_id: fallbackAvatar.id })
+                  .eq('id', user.id);
+                console.log('✅ Avatar reseteado a fallback:', fallbackAvatar.nombre);
+              }
+            }
+
             if (avatar3D) {
               // Cargar animaciones desde avatar_animaciones
               const { data: anims } = await supabase
