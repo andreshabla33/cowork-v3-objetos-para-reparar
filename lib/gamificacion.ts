@@ -14,6 +14,7 @@ export const XP_POR_ACCION = {
   emote_enviado: 3,
   mision_completada: 0, // varía por misión
   saludo_wave: 5,
+  interaccion_social: 5,
   teleport: 1,
 } as const;
 
@@ -21,6 +22,10 @@ export const XP_POR_ACCION = {
 export const xpParaNivel = (nivel: number): number => Math.floor(100 * Math.pow(nivel, 1.5));
 
 export const calcularNivel = (xpTotal: number): { nivel: number; xpActual: number; xpSiguiente: number; progreso: number } => {
+  // Protección contra NaN/Infinity que causaría while(true) infinito → freeze del navegador
+  if (!Number.isFinite(xpTotal) || xpTotal < 0) {
+    return { nivel: 1, xpActual: 0, xpSiguiente: xpParaNivel(1), progreso: 0 };
+  }
   let nivel = 1;
   let xpAcumulado = 0;
   while (true) {
@@ -128,7 +133,8 @@ export async function otorgarXP(
   const perfil = await obtenerPerfilGamificacion(usuarioId, espacioId);
   if (!perfil) return null;
 
-  const nuevoXP = perfil.xp_total + cantidad;
+  const cantidadSegura = Number.isFinite(cantidad) ? cantidad : 0;
+  const nuevoXP = perfil.xp_total + cantidadSegura;
   const nivelAnterior = perfil.nivel;
   const { nivel: nuevoNivel } = calcularNivel(nuevoXP);
 
