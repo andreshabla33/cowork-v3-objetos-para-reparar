@@ -4,26 +4,16 @@ import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { useFrame, useGraph } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { SkeletonUtils, GLTFLoader } from 'three-stdlib';
+import { SkeletonUtils } from 'three-stdlib';
 import { supabase } from '../lib/supabase';
 
 // ============== TIPOS ==============
-interface AnimationConfig {
-  id: string;
-  nombre: string;
-  url: string;
-  loop: boolean;
-  orden: number;
-  strip_root_motion?: boolean;
-}
-
 export interface Avatar3DConfig {
   id: string;
   nombre: string;
   modelo_url: string;
   escala: number;
   textura_url?: string | null;
-  animaciones?: AnimationConfig[];
 }
 
 // Estados de animación disponibles
@@ -223,7 +213,7 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
   // URL del modelo base
   const modelUrl = avatarConfig?.modelo_url || DEFAULT_MODEL_URL;
   
-  // Cargar modelo principal (useGLTF solo para el modelo, no animaciones)
+  // Cargar modelo principal + animaciones embebidas del GLB
   const { scene, animations: baseAnimations } = useGLTF(modelUrl);
   
   // Clonar la escena — usar SkeletonUtils.clone solo si tiene SkinnedMesh (esqueleto)
@@ -348,192 +338,69 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
     });
   }, [clone, externalTexture]);
 
-  // ============== CARGA DINÁMICA DE ANIMACIONES (desde BD) ==============
-  const [loadedAnimClips, setLoadedAnimClips] = useState<Record<string, THREE.AnimationClip>>({});
-  const animConfigRef = useRef<string>('');
+  // ============== ANIMACIONES EMBEBIDAS DEL GLB ==============
+  // Todas las animaciones vienen dentro del model.glb (all-in-one).
+  // No se consulta avatar_animaciones ni se descargan GLBs separados.
+  const allAnimations = useMemo(() => {
+    if (boneNames.size === 0 || baseAnimations.length === 0) return [];
 
-  // Ref para trackear el avatar actual y evitar re-cargas innecesarias
-  const currentAvatarIdRef = useRef<string>('');
-
-  useEffect(() => {
-    if (boneNames.size === 0) return;
-    let avatarId = avatarConfig?.id;
-    if (avatarId === 'default') return;
-
-    // Si ya cargamos para este avatar (o default), no re-cargar
-    const cacheKey = avatarId || '_default_';
-    if (cacheKey === currentAvatarIdRef.current && Object.keys(loadedAnimClips).length > 0) return;
-
-    // Intentar usar animaciones del config, sino cargar de BD
-    const loadAnimations = async () => {
-      let animaciones = avatarConfig?.animaciones;
-
-      // Si el config no trae animaciones, cargarlas de BD
-      if (!animaciones || animaciones.length === 0) {
-        let anims: any[] | null = null;
-
-        // 1) Buscar animaciones propias del avatar
-        if (avatarId) {
-          const { data } = await supabase
-            .from('avatar_animaciones')
-            .select('id, nombre, url, loop, orden, strip_root_motion')
-            .eq('avatar_id', avatarId)
-            .eq('activo', true)
-            .order('orden', { ascending: true });
-          anims = data;
-        }
-
-        // 2) Fallback: si no tiene propias Y el modelo NO tiene animaciones embebidas,
-        //    buscar animaciones del primer avatar que tenga (genéricas)
-        if ((!anims || anims.length === 0) && baseAnimations.length <= 1) {
-          console.log('🎬 Sin animaciones propias, buscando fallback genérico para', avatarConfig?.nombre || 'avatar');
-          const { data: fallbackAnims } = await supabase
-            .from('avatar_animaciones')
-            .select('id, avatar_id, nombre, url, loop, orden, strip_root_motion')
-            .eq('activo', true)
-            .order('orden', { ascending: true });
-          // Tomar solo las del primer avatar_id encontrado (set coherente)
-          if (fallbackAnims && fallbackAnims.length > 0) {
-            const firstAvatarId = (fallbackAnims[0] as any).avatar_id;
-            anims = fallbackAnims.filter((a: any) => a.avatar_id === firstAvatarId);
-          }
-        } else if ((!anims || anims.length === 0) && baseAnimations.length > 1) {
-          console.log(`🎬 ${avatarConfig?.nombre || 'avatar'}: ${baseAnimations.length} animaciones embebidas en GLB, skip fallback BD`);
-          return; // Dejar que allAnimations use las embebidas
-        }
-
-        if (!anims || anims.length === 0) return;
-        animaciones = anims.map((a: any) => ({
-          id: a.id,
-          nombre: a.nombre,
-          url: a.url,
-          loop: a.loop ?? false,
-          orden: a.orden ?? 0,
-          strip_root_motion: a.strip_root_motion ?? false,
-        }));
-      }
-
-      // Evitar re-cargar si la config no cambió
-      const configKey = animaciones.map(a => a.url).join('|');
-      if (configKey === animConfigRef.current) return;
-      animConfigRef.current = configKey;
-      currentAvatarIdRef.current = cacheKey;
-
-      const loader = new GLTFLoader();
-      console.log('🎬 Cargando', animaciones.length, 'anims:', avatarConfig?.nombre || 'avatar remoto');
-
-      const results = await Promise.all(
-        animaciones.map(async (anim) => {
-          try {
-            const gltf = await loader.loadAsync(anim.url);
-            return { nombre: anim.nombre, clips: gltf.animations, strip: anim.strip_root_motion ?? false };
-          } catch (err) {
-            console.warn(`  ❌ Error loading ${anim.nombre}:`, err);
-            return null;
-          }
-        })
-      );
-
-      // Solo aplicar si seguimos en el mismo avatar
-      if (currentAvatarIdRef.current !== cacheKey) return;
-      const clips: Record<string, THREE.AnimationClip> = {};
-      results.forEach((r) => {
-        if (r && r.clips.length > 0) {
-          // Diagnóstico: mostrar nombres de huesos originales en la animación
-          const origBones = [...new Set(r.clips[0].tracks.map(t => t.name.split('.')[0]))];
-          console.log(`🔍 ${r.nombre}: ${r.clips[0].tracks.length} tracks, huesos anim: [${origBones.join(', ')}]`);
-          console.log(`🔍 ${r.nombre}: huesos modelo: [${[...boneNames].join(', ')}]`);
-          const clip = remapAnimationTracks(r.clips[0], boneNames, r.strip, spineChainMap);
-          const matchRate = (clip as any)._matchRate ?? 0;
-          // Solo usar la animación si al menos 30% de los tracks coinciden con el esqueleto
-          if (matchRate < 0.3 && r.clips[0].tracks.length > 0) {
-            console.warn(`⚠️ ${r.nombre}: solo ${Math.round(matchRate * 100)}% tracks matched — descartada (esqueleto incompatible)`);
-            return;
-          }
-          clip.name = r.nombre;
-          clips[r.nombre] = clip;
-        }
-      });
-      console.log('🎬 Anims OK:', Object.keys(clips).join(','));
-      setLoadedAnimClips(clips);
+    const EMBEDDED_NAME_MAP: Record<string, AnimationState> = {
+      'idle': 'idle', 'breathing idle': 'idle', 'happy idle': 'idle',
+      'walk': 'walk', 'walking': 'walk', 'walk forward': 'walk',
+      'run': 'run', 'running': 'run', 'jog': 'run', 'run forward': 'run',
+      'dance': 'dance', 'dancing': 'dance', 'hip hop dancing': 'dance', 'samba dancing': 'dance',
+      'cheer': 'cheer', 'cheering': 'cheer', 'cheer with both hands': 'cheer',
+      'sit': 'sit', 'sitting': 'sit', 'sitting idle': 'sit',
+      'wave': 'wave', 'waving': 'wave', 'wave gesture': 'wave',
+      'jump': 'jump', 'jumping': 'jump', 'happy jump': 'jump', 'happy jump f': 'jump',
+      'victory': 'victory', 'victory cheer': 'victory',
     };
 
-    loadAnimations();
-  }, [avatarConfig?.id, avatarConfig?.animaciones, boneNames, baseAnimations]);
-
-  // Combinar animaciones: embedded del modelo + cargadas dinámicamente desde BD
-  const allAnimations = useMemo(() => {
     const anims: THREE.AnimationClip[] = [];
-    const hasBDAnims = Object.keys(loadedAnimClips).length > 0;
+    const usedStates = new Set<string>();
+    console.log(`🎬 GLB embebidas: ${baseAnimations.length} clips:`, baseAnimations.map(c => c.name).join(', '));
 
-    // Si hay animaciones de BD, usarlas como prioridad
-    if (hasBDAnims) {
-      if (loadedAnimClips['idle']) {
-        anims.push(loadedAnimClips['idle']);
-      } else if (baseAnimations.length > 0) {
-        const clip = remapAnimationTracks(baseAnimations[0], boneNames, false, spineChainMap);
-        clip.name = 'idle';
-        anims.push(clip);
+    // Pre-scan: detectar si algún clip tiene nombre explícito que mapea a 'idle'
+    // para NO asignar idle al primer clip desconocido (ej: Armature|clip0|baselayer = T-pose)
+    const hasExplicitIdle = baseAnimations.some(c => {
+      const n = c.name.toLowerCase().trim();
+      if (EMBEDDED_NAME_MAP[n] === 'idle') return true;
+      return Object.entries(EMBEDDED_NAME_MAP).some(([p, s]) => s === 'idle' && n.includes(p));
+    });
+
+    baseAnimations.forEach((baseClip, idx) => {
+      const clipNameLower = baseClip.name.toLowerCase().trim();
+      const stripRoot = clipNameLower.includes('walk') || clipNameLower.includes('run') || clipNameLower.includes('jog');
+      const clip = remapAnimationTracks(baseClip, boneNames, stripRoot, spineChainMap);
+      const matchRate = (clip as any)._matchRate ?? 0;
+
+      // Descartar clips con < 30% match (esqueleto incompatible)
+      if (matchRate < 0.3 && baseClip.tracks.length > 0) {
+        console.warn(`⚠️ ${baseClip.name}: solo ${Math.round(matchRate * 100)}% tracks matched — descartada`);
+        return;
       }
-      Object.entries(loadedAnimClips).forEach(([name, clip]) => {
-        if (name !== 'idle') anims.push(clip);
-      });
-    } else if (baseAnimations.length > 1) {
-      // GLB con múltiples animaciones embebidas (all-in-one) — mapear nombres a AnimationState
-      const EMBEDDED_NAME_MAP: Record<string, AnimationState> = {
-        'idle': 'idle', 'breathing idle': 'idle', 'happy idle': 'idle',
-        'walk': 'walk', 'walking': 'walk', 'walk forward': 'walk',
-        'run': 'run', 'running': 'run', 'jog': 'run', 'run forward': 'run',
-        'dance': 'dance', 'dancing': 'dance', 'hip hop dancing': 'dance', 'samba dancing': 'dance',
-        'cheer': 'cheer', 'cheering': 'cheer', 'cheer with both hands': 'cheer',
-        'sit': 'sit', 'sitting': 'sit', 'sitting idle': 'sit',
-        'wave': 'wave', 'waving': 'wave', 'wave gesture': 'wave',
-        'jump': 'jump', 'jumping': 'jump', 'happy jump': 'jump', 'happy jump f': 'jump',
-        'victory': 'victory', 'victory cheer': 'victory',
-      };
-      const usedStates = new Set<string>();
-      console.log(`🎬 GLB all-in-one: ${baseAnimations.length} animaciones embebidas:`, baseAnimations.map(c => c.name).join(', '));
 
-      // Pre-scan: detectar si algún clip tiene nombre explícito que mapea a 'idle'
-      // para NO asignar idle al primer clip desconocido (ej: Armature|clip0|baselayer = T-pose)
-      const hasExplicitIdle = baseAnimations.some(c => {
-        const n = c.name.toLowerCase().trim();
-        if (EMBEDDED_NAME_MAP[n] === 'idle') return true;
-        return Object.entries(EMBEDDED_NAME_MAP).some(([p, s]) => s === 'idle' && n.includes(p));
-      });
-
-      baseAnimations.forEach((baseClip, idx) => {
-        const clipNameLower = baseClip.name.toLowerCase().trim();
-        const stripRoot = clipNameLower.includes('walk') || clipNameLower.includes('run') || clipNameLower.includes('jog');
-        const clip = remapAnimationTracks(baseClip, boneNames, stripRoot, spineChainMap);
-        // Mapear nombre: buscar match exacto, luego parcial
-        let mappedName: string | null = EMBEDDED_NAME_MAP[clipNameLower] || null;
-        if (!mappedName) {
-          for (const [pattern, state] of Object.entries(EMBEDDED_NAME_MAP)) {
-            if (clipNameLower.includes(pattern) && !usedStates.has(state)) {
-              mappedName = state;
-              break;
-            }
+      // Mapear nombre: buscar match exacto, luego parcial
+      let mappedName: string | null = EMBEDDED_NAME_MAP[clipNameLower] || null;
+      if (!mappedName) {
+        for (const [pattern, state] of Object.entries(EMBEDDED_NAME_MAP)) {
+          if (clipNameLower.includes(pattern) && !usedStates.has(state)) {
+            mappedName = state;
+            break;
           }
         }
-        // Fallback: primer clip sin nombre reconocido → idle, SOLO si no hay un clip explícito idle
-        if (!mappedName && idx === 0 && !usedStates.has('idle') && !hasExplicitIdle) mappedName = 'idle';
-        if (!mappedName) mappedName = baseClip.name; // conservar nombre original si no mapea
-        if (usedStates.has(mappedName)) return; // evitar duplicados del mismo estado
-        usedStates.add(mappedName);
-        clip.name = mappedName;
-        anims.push(clip);
-      });
-      console.log(`🎬 Animaciones embebidas mapeadas:`, anims.map(a => a.name).join(', '));
-    } else if (baseAnimations.length === 1) {
-      // Solo 1 animación embebida → idle (comportamiento original)
-      const clip = remapAnimationTracks(baseAnimations[0], boneNames, false, spineChainMap);
-      clip.name = 'idle';
+      }
+      // Fallback: primer clip sin nombre reconocido → idle, SOLO si no hay un clip explícito idle
+      if (!mappedName && idx === 0 && !usedStates.has('idle') && !hasExplicitIdle) mappedName = 'idle';
+      if (!mappedName) mappedName = baseClip.name;
+      if (usedStates.has(mappedName)) return;
+      usedStates.add(mappedName);
+      clip.name = mappedName;
       anims.push(clip);
-    }
-
+    });
+    console.log(`🎬 Animaciones mapeadas:`, anims.map(a => a.name).join(', '));
     return anims;
-  }, [baseAnimations, boneNames, loadedAnimClips, spineChainMap]);
+  }, [baseAnimations, boneNames, spineChainMap]);
   
   // ============== MIXER MANUAL (reemplaza useAnimations de drei para aislamiento total) ==============
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
@@ -778,10 +645,9 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = (props) => {
   );
 };
 
-// ============== HOOK PARA CARGAR AVATAR Y ANIMACIONES ==============
+// ============== HOOK PARA CARGAR AVATAR ==============
 export const useAvatar3D = (userId?: string) => {
   const [avatarConfig, setAvatarConfig] = useState<Avatar3DConfig | null>(null);
-  const [animaciones, setAnimaciones] = useState<AnimationConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -891,27 +757,8 @@ export const useAvatar3D = (userId?: string) => {
           setAvatarConfig(config);
         }
 
-        // Cargar animaciones desde avatar_animaciones (100% dinámico desde BD)
-        const { data: anims } = await supabase
-          .from('avatar_animaciones')
-          .select('*')
-          .eq('avatar_id', avatarId)
-          .eq('activo', true)
-          .order('orden', { ascending: true });
-
-        if (anims && anims.length > 0) {
-          const animConfigs = anims.map((a: any) => ({
-            id: a.id,
-            nombre: a.nombre,
-            url: a.url,
-            loop: a.loop ?? false,
-            orden: a.orden ?? 0,
-            strip_root_motion: a.strip_root_motion ?? false,
-          }));
-          setAnimaciones(animConfigs);
-          // Inyectar animaciones en el avatarConfig para que GLTFAvatar las cargue
-          setAvatarConfig(prev => prev ? { ...prev, animaciones: animConfigs } : prev);
-        }
+        // Animaciones vienen embebidas en el GLB (model.glb all-in-one).
+        // No se necesita consultar avatar_animaciones.
       } catch (err: any) {
         console.error('❌ Error en useAvatar3D:', err);
         setError(err.message || 'Error desconocido');
@@ -929,7 +776,7 @@ export const useAvatar3D = (userId?: string) => {
     loadAvatar();
   }, [userId]);
 
-  return { avatarConfig, animaciones, loading, error };
+  return { avatarConfig, loading, error };
 };
 
 // ============== HOOK PARA CONTROLES DE TECLADO ==============
