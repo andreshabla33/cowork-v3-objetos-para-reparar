@@ -4,16 +4,26 @@ import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { useFrame, useGraph } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { SkeletonUtils } from 'three-stdlib';
+import { SkeletonUtils, GLTFLoader } from 'three-stdlib';
 import { supabase } from '../lib/supabase';
 
 // ============== TIPOS ==============
+export interface AnimationConfig {
+  id: string;
+  nombre: string;
+  url: string;
+  loop: boolean;
+  orden: number;
+  strip_root_motion?: boolean;
+}
+
 export interface Avatar3DConfig {
   id: string;
   nombre: string;
   modelo_url: string;
   escala: number;
   textura_url?: string | null;
+  animaciones?: AnimationConfig[];
 }
 
 // Estados de animación disponibles
@@ -338,11 +348,87 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
     });
   }, [clone, externalTexture]);
 
-  // ============== ANIMACIONES EMBEBIDAS DEL GLB ==============
-  // Todas las animaciones vienen dentro del model.glb (all-in-one).
-  // No se consulta avatar_animaciones ni se descargan GLBs separados.
+  // ============== CARGA DINÁMICA DE ANIMACIONES (desde BD) ==============
+  // Solo se usa si el GLB NO tiene animaciones embebidas (ej: avatares Mixamo sin anims)
+  const [loadedAnimClips, setLoadedAnimClips] = useState<THREE.AnimationClip[]>([]);
+  const animConfigRef = useRef<AnimationConfig[] | null>(null);
+  const currentAvatarIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const animConfigs = avatarConfig?.animaciones;
+    const avatarId = avatarConfig?.id || null;
+
+    // Si hay animaciones embebidas en el GLB, no cargar desde BD
+    if (baseAnimations.length > 0) {
+      if (loadedAnimClips.length > 0) setLoadedAnimClips([]);
+      return;
+    }
+
+    // Si no hay configs de BD, nada que cargar
+    if (!animConfigs || animConfigs.length === 0) {
+      if (loadedAnimClips.length > 0) setLoadedAnimClips([]);
+      return;
+    }
+
+    // Evitar recarga si el avatar y configs son los mismos
+    if (avatarId === currentAvatarIdRef.current && animConfigRef.current === animConfigs) return;
+    currentAvatarIdRef.current = avatarId;
+    animConfigRef.current = animConfigs;
+
+    const loader = new GLTFLoader();
+    let cancelled = false;
+
+    const loadAnimations = async () => {
+      const clips: THREE.AnimationClip[] = [];
+      console.log(`🎬 Cargando ${animConfigs.length} animaciones desde BD para "${avatarConfig?.nombre}"...`);
+
+      for (const anim of animConfigs) {
+        try {
+          const gltf = await loader.loadAsync(anim.url);
+          if (cancelled) return;
+          if (gltf.animations.length > 0) {
+            const clip = gltf.animations[0];
+            const stripRoot = anim.strip_root_motion || false;
+            const remapped = remapAnimationTracks(clip, boneNames, stripRoot, spineChainMap);
+            const matchRate = (remapped as any)._matchRate ?? 0;
+
+            if (matchRate >= 0.3 || clip.tracks.length === 0) {
+              remapped.name = anim.nombre;
+              clips.push(remapped);
+              console.log(`  ✅ "${anim.nombre}": ${remapped.tracks.length} tracks (match ${Math.round(matchRate * 100)}%)`);
+            } else {
+              console.warn(`  ⚠️ "${anim.nombre}": solo ${Math.round(matchRate * 100)}% match — descartada`);
+            }
+          }
+        } catch (err) {
+          console.warn(`  ⚠️ Error cargando "${anim.nombre}" (${anim.url}):`, err);
+        }
+      }
+
+      if (!cancelled) {
+        console.log(`🎬 BD animaciones cargadas: ${clips.length}/${animConfigs.length}:`, clips.map(c => c.name).join(', '));
+        setLoadedAnimClips(clips);
+      }
+    };
+
+    loadAnimations();
+    return () => { cancelled = true; };
+  }, [avatarConfig?.id, avatarConfig?.animaciones, baseAnimations.length, boneNames, spineChainMap]);
+
+  // ============== ANIMACIONES (HÍBRIDO: embebidas GLB + BD) ==============
+  // Prioridad 1: animaciones embebidas del GLB (all-in-one)
+  // Prioridad 2: animaciones cargadas desde avatar_animaciones BD (Mixamo sin embebidas)
   const allAnimations = useMemo(() => {
-    if (boneNames.size === 0 || baseAnimations.length === 0) return [];
+    if (boneNames.size === 0) return [];
+
+    // --- Prioridad 2: animaciones desde BD (ya remapeadas y nombradas) ---
+    if (baseAnimations.length === 0 && loadedAnimClips.length > 0) {
+      console.log(`🎬 Usando ${loadedAnimClips.length} animaciones desde BD`);
+      return loadedAnimClips;
+    }
+
+    // --- Prioridad 1: animaciones embebidas del GLB ---
+    if (baseAnimations.length === 0) return [];
 
     const EMBEDDED_NAME_MAP: Record<string, AnimationState> = {
       'idle': 'idle', 'breathing idle': 'idle', 'happy idle': 'idle',
@@ -400,7 +486,7 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
     });
     console.log(`🎬 Animaciones mapeadas:`, anims.map(a => a.name).join(', '));
     return anims;
-  }, [baseAnimations, boneNames, spineChainMap]);
+  }, [baseAnimations, loadedAnimClips, boneNames, spineChainMap]);
   
   // ============== MIXER MANUAL (reemplaza useAnimations de drei para aislamiento total) ==============
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
@@ -747,18 +833,31 @@ export const useAvatar3D = (userId?: string) => {
         }
 
         if (avatar) {
+          // Cargar animaciones desde avatar_animaciones (para avatares sin embebidas en el GLB)
+          const { data: anims } = await supabase
+            .from('avatar_animaciones')
+            .select('id, nombre, url, loop, orden, strip_root_motion, avatar_id')
+            .eq('avatar_id', avatarId)
+            .eq('activo', true)
+            .order('orden', { ascending: true });
+
           const config: Avatar3DConfig = {
             id: avatar.id,
             nombre: avatar.nombre,
             modelo_url: avatar.modelo_url || DEFAULT_MODEL_URL,
             escala: avatar.escala || 1,
             textura_url: avatar.textura_url || null,
+            animaciones: anims?.map((a: any) => ({
+              id: a.id,
+              nombre: a.nombre,
+              url: a.url,
+              loop: a.loop ?? false,
+              orden: a.orden ?? 0,
+              strip_root_motion: a.strip_root_motion ?? false,
+            })) || [],
           };
           setAvatarConfig(config);
         }
-
-        // Animaciones vienen embebidas en el GLB (model.glb all-in-one).
-        // No se necesita consultar avatar_animaciones.
       } catch (err: any) {
         console.error('❌ Error en useAvatar3D:', err);
         setError(err.message || 'Error desconocido');
