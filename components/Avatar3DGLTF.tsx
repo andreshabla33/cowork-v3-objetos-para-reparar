@@ -349,7 +349,8 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
   }, [clone, externalTexture]);
 
   // ============== CARGA DINÁMICA DE ANIMACIONES (desde BD) ==============
-  // Solo se usa si el GLB NO tiene animaciones embebidas (ej: avatares Mixamo sin anims)
+  // Se cargan SIEMPRE que haya configs en avatar_animaciones.
+  // Complementan (o reemplazan) las embebidas del GLB.
   const [loadedAnimClips, setLoadedAnimClips] = useState<THREE.AnimationClip[]>([]);
   const animConfigRef = useRef<AnimationConfig[] | null>(null);
   const currentAvatarIdRef = useRef<string | null>(null);
@@ -357,12 +358,6 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
   useEffect(() => {
     const animConfigs = avatarConfig?.animaciones;
     const avatarId = avatarConfig?.id || null;
-
-    // Si hay animaciones embebidas en el GLB, no cargar desde BD
-    if (baseAnimations.length > 0) {
-      if (loadedAnimClips.length > 0) setLoadedAnimClips([]);
-      return;
-    }
 
     // Si no hay configs de BD, nada que cargar
     if (!animConfigs || animConfigs.length === 0) {
@@ -413,22 +408,13 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
 
     loadAnimations();
     return () => { cancelled = true; };
-  }, [avatarConfig?.id, avatarConfig?.animaciones, baseAnimations.length, boneNames, spineChainMap]);
+  }, [avatarConfig?.id, avatarConfig?.animaciones, boneNames, spineChainMap]);
 
-  // ============== ANIMACIONES (HÍBRIDO: embebidas GLB + BD) ==============
-  // Prioridad 1: animaciones embebidas del GLB (all-in-one)
-  // Prioridad 2: animaciones cargadas desde avatar_animaciones BD (Mixamo sin embebidas)
+  // ============== ANIMACIONES (MERGE: embebidas GLB + BD) ==============
+  // Embebidas del GLB tienen prioridad por nombre de estado.
+  // BD complementa con estados faltantes (ej: Monica tiene idle embebido + walk/run/dance desde BD).
   const allAnimations = useMemo(() => {
     if (boneNames.size === 0) return [];
-
-    // --- Prioridad 2: animaciones desde BD (ya remapeadas y nombradas) ---
-    if (baseAnimations.length === 0 && loadedAnimClips.length > 0) {
-      console.log(`🎬 Usando ${loadedAnimClips.length} animaciones desde BD`);
-      return loadedAnimClips;
-    }
-
-    // --- Prioridad 1: animaciones embebidas del GLB ---
-    if (baseAnimations.length === 0) return [];
 
     const EMBEDDED_NAME_MAP: Record<string, AnimationState> = {
       'idle': 'idle', 'breathing idle': 'idle', 'happy idle': 'idle',
@@ -444,47 +430,59 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
 
     const anims: THREE.AnimationClip[] = [];
     const usedStates = new Set<string>();
-    console.log(`🎬 GLB embebidas: ${baseAnimations.length} clips:`, baseAnimations.map(c => c.name).join(', '));
 
-    // Pre-scan: detectar si algún clip tiene nombre explícito que mapea a 'idle'
-    // para NO asignar idle al primer clip desconocido (ej: Armature|clip0|baselayer = T-pose)
-    const hasExplicitIdle = baseAnimations.some(c => {
-      const n = c.name.toLowerCase().trim();
-      if (EMBEDDED_NAME_MAP[n] === 'idle') return true;
-      return Object.entries(EMBEDDED_NAME_MAP).some(([p, s]) => s === 'idle' && n.includes(p));
-    });
+    // --- Paso 1: Procesar animaciones embebidas del GLB (prioridad) ---
+    if (baseAnimations.length > 0) {
+      console.log(`🎬 GLB embebidas: ${baseAnimations.length} clips:`, baseAnimations.map(c => c.name).join(', '));
 
-    baseAnimations.forEach((baseClip, idx) => {
-      const clipNameLower = baseClip.name.toLowerCase().trim();
-      const stripRoot = clipNameLower.includes('walk') || clipNameLower.includes('run') || clipNameLower.includes('jog');
-      const clip = remapAnimationTracks(baseClip, boneNames, stripRoot, spineChainMap);
-      const matchRate = (clip as any)._matchRate ?? 0;
+      // Pre-scan: detectar si algún clip tiene nombre explícito que mapea a 'idle'
+      const hasExplicitIdle = baseAnimations.some(c => {
+        const n = c.name.toLowerCase().trim();
+        if (EMBEDDED_NAME_MAP[n] === 'idle') return true;
+        return Object.entries(EMBEDDED_NAME_MAP).some(([p, s]) => s === 'idle' && n.includes(p));
+      });
 
-      // Descartar clips con < 30% match (esqueleto incompatible)
-      if (matchRate < 0.3 && baseClip.tracks.length > 0) {
-        console.warn(`⚠️ ${baseClip.name}: solo ${Math.round(matchRate * 100)}% tracks matched — descartada`);
-        return;
-      }
+      baseAnimations.forEach((baseClip, idx) => {
+        const clipNameLower = baseClip.name.toLowerCase().trim();
+        const stripRoot = clipNameLower.includes('walk') || clipNameLower.includes('run') || clipNameLower.includes('jog');
+        const clip = remapAnimationTracks(baseClip, boneNames, stripRoot, spineChainMap);
+        const matchRate = (clip as any)._matchRate ?? 0;
 
-      // Mapear nombre: buscar match exacto, luego parcial
-      let mappedName: string | null = EMBEDDED_NAME_MAP[clipNameLower] || null;
-      if (!mappedName) {
-        for (const [pattern, state] of Object.entries(EMBEDDED_NAME_MAP)) {
-          if (clipNameLower.includes(pattern) && !usedStates.has(state)) {
-            mappedName = state;
-            break;
+        if (matchRate < 0.3 && baseClip.tracks.length > 0) {
+          console.warn(`⚠️ ${baseClip.name}: solo ${Math.round(matchRate * 100)}% tracks matched — descartada`);
+          return;
+        }
+
+        let mappedName: string | null = EMBEDDED_NAME_MAP[clipNameLower] || null;
+        if (!mappedName) {
+          for (const [pattern, state] of Object.entries(EMBEDDED_NAME_MAP)) {
+            if (clipNameLower.includes(pattern) && !usedStates.has(state)) {
+              mappedName = state;
+              break;
+            }
           }
         }
-      }
-      // Fallback: primer clip sin nombre reconocido → idle, SOLO si no hay un clip explícito idle
-      if (!mappedName && idx === 0 && !usedStates.has('idle') && !hasExplicitIdle) mappedName = 'idle';
-      if (!mappedName) mappedName = baseClip.name;
-      if (usedStates.has(mappedName)) return;
-      usedStates.add(mappedName);
-      clip.name = mappedName;
-      anims.push(clip);
-    });
-    console.log(`🎬 Animaciones mapeadas:`, anims.map(a => a.name).join(', '));
+        if (!mappedName && idx === 0 && !usedStates.has('idle') && !hasExplicitIdle) mappedName = 'idle';
+        if (!mappedName) mappedName = baseClip.name;
+        if (usedStates.has(mappedName)) return;
+        usedStates.add(mappedName);
+        clip.name = mappedName;
+        anims.push(clip);
+      });
+    }
+
+    // --- Paso 2: Complementar con animaciones de BD (estados no cubiertos por embebidas) ---
+    if (loadedAnimClips.length > 0) {
+      loadedAnimClips.forEach(clip => {
+        if (!usedStates.has(clip.name)) {
+          anims.push(clip);
+          usedStates.add(clip.name);
+          console.log(`  📥 BD complementa: "${clip.name}"`);
+        }
+      });
+    }
+
+    console.log(`🎬 Animaciones finales (${anims.length}):`, anims.map(a => a.name).join(', '));
     return anims;
   }, [baseAnimations, loadedAnimClips, boneNames, spineChainMap]);
   
@@ -833,13 +831,40 @@ export const useAvatar3D = (userId?: string) => {
         }
 
         if (avatar) {
-          // Cargar animaciones desde avatar_animaciones (para avatares sin embebidas en el GLB)
-          const { data: anims } = await supabase
+          // Cargar animaciones desde avatar_animaciones
+          let { data: anims } = await supabase
             .from('avatar_animaciones')
             .select('id, nombre, url, loop, orden, strip_root_motion, avatar_id')
             .eq('avatar_id', avatarId)
             .eq('activo', true)
             .order('orden', { ascending: true });
+
+          // Fallback genérico: si no tiene anims propias, buscar de otro avatar Mixamo-compatible
+          if (!anims || anims.length === 0) {
+            console.log(`⚠️ ${avatar.nombre}: sin anims propias, buscando fallback genérico...`);
+            const { data: fallbackAnims } = await supabase
+              .from('avatar_animaciones')
+              .select('id, nombre, url, loop, orden, strip_root_motion, avatar_id')
+              .eq('activo', true)
+              .order('avatar_id', { ascending: true })
+              .order('orden', { ascending: true });
+            // Agrupar por avatar_id y tomar el primer avatar que tenga >= 3 anims (idle+walk+run mínimo)
+            if (fallbackAnims && fallbackAnims.length > 0) {
+              const byAvatar = new Map<string, typeof fallbackAnims>();
+              fallbackAnims.forEach(a => {
+                const arr = byAvatar.get(a.avatar_id) || [];
+                arr.push(a);
+                byAvatar.set(a.avatar_id, arr);
+              });
+              for (const [, group] of byAvatar) {
+                if (group.length >= 3) {
+                  anims = group;
+                  console.log(`✅ Fallback: usando ${group.length} anims de avatar ${group[0].avatar_id}`);
+                  break;
+                }
+              }
+            }
+          }
 
           const config: Avatar3DConfig = {
             id: avatar.id,
