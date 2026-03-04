@@ -560,24 +560,11 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
 
     // --- Paso 2: Complementar con animaciones de BD (estados no cubiertos por embebidas) ---
     if (loadedAnimClips.length > 0) {
-      // Validar que los clips cargados sean compatibles con el esqueleto actual
-      // (Previene aplicar clips del avatar A al avatar B durante re-renders transitorios)
-      const isClipCompatible = (clip: THREE.AnimationClip) => {
-        if (clip.tracks.length === 0) return false;
-        // Tomar el primer track que tenga un nombre de hueso y ver si existe en boneNames
-        const testTrack = clip.tracks.find(t => t.name.includes('.'));
-        if (!testTrack) return false;
-        const trackBoneName = testTrack.name.split('.')[0];
-        return boneNames.has(trackBoneName);
-      };
-
       loadedAnimClips.forEach(clip => {
-        if (!usedStates.has(clip.name) && isClipCompatible(clip)) {
+        if (!usedStates.has(clip.name)) {
           anims.push(clip);
           usedStates.add(clip.name);
           console.log(`  📥 BD complementa: "${clip.name}"`);
-        } else if (!isClipCompatible(clip)) {
-          console.log(`  ❌ BD clip "${clip.name}" ignorado (esqueleto incompatible)`);
         }
       });
     }
@@ -640,9 +627,13 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
 
       const newActions: Record<string, THREE.AnimationAction> = {};
       allAnimations.forEach(clip => {
-        // Envolver en try-catch por seguridad contra PropertyBinding errors
+        // Envolver en try-catch por seguridad contra PropertyBinding errors masivos
         try {
-          newActions[clip.name] = mixer.clipAction(clip, root);
+          // Pre-validar: no bindear si el clip no tiene tracks válidos para evitar
+          // warnings internos masivos de Three.js que crashean el contexto WebGL
+          if (clip.tracks.length > 0) {
+            newActions[clip.name] = mixer.clipAction(clip, root);
+          }
         } catch (err) {
           console.warn(`Error creando action para ${clip.name}:`, err);
         }
@@ -650,10 +641,13 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
       actionsRef.current = newActions;
       clipVersionRef.current++;
 
+      // Iniciar idle, pero evitar setState loop si ya es idle
       if (newActions['idle']) {
         newActions['idle'].reset().fadeIn(0.2).play();
       }
-      setCurrentAnimation('idle');
+      
+      // SOLO setear si es diferente para no triggerear re-render masivo
+      setCurrentAnimation(prev => prev !== 'idle' ? 'idle' : prev);
     };
 
     // Delay mínimo (0ms) envía la ejecución al final del event loop
