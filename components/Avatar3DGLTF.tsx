@@ -327,15 +327,17 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
 
     let correction = 1;
     if (measuredHeight > MAX_HEIGHT) {
-      correction = TARGET_HEIGHT / measuredHeight;
+      // Escalar hacia ABAJO al máximo permitido (no a un target fijo)
+      correction = MAX_HEIGHT / measuredHeight;
     } else if (measuredHeight < MIN_HEIGHT) {
-      correction = TARGET_HEIGHT / measuredHeight;
+      // Escalar hacia ARRIBA al mínimo permitido
+      correction = MIN_HEIGHT / measuredHeight;
     }
     // Clamp final por seguridad
     correction = Math.max(0.1, Math.min(5.0, correction));
     const yOffset = -minY * correction;
 
-    console.log(`📐 ${avatarConfig?.nombre || 'avatar'}: altura=${measuredHeight.toFixed(3)}, correction=${correction.toFixed(3)} (target=${TARGET_HEIGHT}, rango=[${MIN_HEIGHT}-${MAX_HEIGHT}])`);
+    console.log(`📐 ${avatarConfig?.nombre || 'avatar'}: altura=${measuredHeight.toFixed(3)}, correction=${correction.toFixed(3)}, final=${(measuredHeight * correction).toFixed(3)} (rango=[${MIN_HEIGHT}-${MAX_HEIGHT}])`);
     return { modelScaleCorrection: correction, modelYOffset: yOffset };
   }, [clone]);
 
@@ -569,7 +571,8 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
   const actionsRef = useRef<Record<string, THREE.AnimationAction>>({});
   const clipVersionRef = useRef(0);
 
-  // Crear mixer una sola vez cuando el grupo esté montado
+  // Recrear mixer cuando el modelo (clone) cambia — asegura que bone bindings
+  // apuntan al scene graph correcto (evita T-pose al cambiar avatar sin reload).
   useEffect(() => {
     if (!groupRef.current) return;
     const mixer = new THREE.AnimationMixer(groupRef.current);
@@ -581,7 +584,7 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
       }
       mixerRef.current = null;
     };
-  }, []);
+  }, [clone]);
 
   // Reconstruir actions cuando cambian los clips
   useEffect(() => {
