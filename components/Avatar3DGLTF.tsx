@@ -101,7 +101,6 @@ function remapAnimationTracks(
   boneNames: Set<string>,
   stripRootMotion = false,
   spineOverrides?: Map<string, string>,
-  stripPositions = false
 ): THREE.AnimationClip {
   const remapped = clip.clone();
 
@@ -166,20 +165,10 @@ function remapAnimationTracks(
     const boneName = dotIdx !== -1 ? track.name.substring(0, dotIdx) : track.name;
     if (!boneNames.has(boneName)) return false;
 
-    const property = track.name.substring(dotIdx);
-
-    // Strip .scale tracks: los exports de Meshy incluyen scale keyframes que difieren
-    // del rest-pose del modelo, causando inflación de huesos (ej: cabeza como globo).
-    if (property === '.scale') return false;
-
-    // Strip ALL .position tracks para animaciones cross-skeleton (fallback genérico).
-    // Las .position tracks codifican largos de huesos específicos del modelo original.
-    // Para cross-skeleton solo se usan .quaternion (rotaciones) que son transferibles.
-    if (stripPositions && property === '.position') return false;
-
-    // Strip root motion: eliminar position tracks del Hips (root bone) para walk/run
-    // Esto evita que el avatar "salte atrás" al reiniciar el loop
+    // Strip root motion: eliminar position tracks del Hips (root bone)
+    // Esto evita que el avatar "salte atrás" al reiniciar el loop de walk/run
     if (stripRootMotion) {
+      const property = track.name.substring(dotIdx);
       const isHips = boneName.toLowerCase().includes('hips');
       if (isHips && property === '.position') return false;
     }
@@ -283,63 +272,13 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
   // Obtener nodos del grafo clonado (necesario para animated components si los hubiera)
   const { nodes } = useGraph(clone);
 
-  // Auto-scale: medir altura real del modelo por esqueleto (bones) y normalizar.
-  // Box3.setFromObject NO es fiable con SkinnedMesh → usar bone world positions.
-  // Best practice: https://discourse.threejs.org/t/normalized-scale-for-different-size-meshes/22330
+  // Escala viene 100% de la BD (avatarConfig.escala). No auto-escalar.
+  // Box3.setFromObject NO funciona con SkinnedMesh (reporta h=0.027 en vez de 1.7).
+  // Solo calcular Y-offset para posicionar la base del modelo en Y=0.
   const { modelScaleCorrection, modelYOffset } = useMemo(() => {
-    const TARGET_HEIGHT = 1.0;  // Altura objetivo (unidades del mundo virtual)
-    const MIN_HEIGHT = 0.3;     // Si el modelo mide menos, escalar hacia arriba
-    const MAX_HEIGHT = 1.5;     // Si el modelo mide más, escalar hacia abajo
-
-    // Actualizar matrices del mundo para que getWorldPosition funcione
-    clone.updateWorldMatrix(true, true);
-    clone.traverse((child: any) => { child.updateWorldMatrix(true, false); });
-
-    // Medir altura por bone positions (más fiable que Box3 para SkinnedMesh)
-    let minY = Infinity, maxY = -Infinity;
-    let hasBones = false;
-    clone.traverse((child: any) => {
-      if (child.isBone) {
-        hasBones = true;
-        const wp = new THREE.Vector3();
-        child.getWorldPosition(wp);
-        if (wp.y < minY) minY = wp.y;
-        if (wp.y > maxY) maxY = wp.y;
-      }
-    });
-
-    let measuredHeight = 0;
-    if (hasBones && maxY > minY) {
-      measuredHeight = maxY - minY;
-    } else {
-      // Fallback: Box3 para modelos sin esqueleto
-      const box = new THREE.Box3().setFromObject(clone);
-      const size = new THREE.Vector3();
-      box.getSize(size);
-      measuredHeight = size.y;
-      minY = box.min.y;
-    }
-
-    if (measuredHeight < 0.01) {
-      console.log(`📐 ${avatarConfig?.nombre || 'avatar'}: altura no medible, sin auto-scale`);
-      return { modelScaleCorrection: 1, modelYOffset: 0 };
-    }
-
-    let correction = 1;
-    if (measuredHeight > MAX_HEIGHT) {
-      // Escalar hacia ABAJO al máximo permitido (no a un target fijo)
-      correction = MAX_HEIGHT / measuredHeight;
-    } else if (measuredHeight < MIN_HEIGHT) {
-      // Escalar hacia ARRIBA al mínimo permitido
-      correction = MIN_HEIGHT / measuredHeight;
-    }
-    // Clamp final por seguridad
-    correction = Math.max(0.1, Math.min(5.0, correction));
-    const yOffset = -minY * correction;
-
-    console.log(`📐 ${avatarConfig?.nombre || 'avatar'}: altura=${measuredHeight.toFixed(3)}, correction=${correction.toFixed(3)}, final=${(measuredHeight * correction).toFixed(3)} (rango=[${MIN_HEIGHT}-${MAX_HEIGHT}])`);
-    return { modelScaleCorrection: correction, modelYOffset: yOffset };
-  }, [clone]);
+    console.log(`📐 ${avatarConfig?.nombre || 'avatar'}: escala BD=${avatarConfig?.escala || 1} (sin auto-scale)`);
+    return { modelScaleCorrection: 1, modelYOffset: 0 };
+  }, [scene]);
 
   // Recopilar nombres de huesos del modelo + detectar cadena spine por jerarquía
   const { boneNames, spineChainMap } = useMemo(() => {
