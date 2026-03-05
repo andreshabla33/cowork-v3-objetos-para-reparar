@@ -56,10 +56,13 @@ export const Escritorio3D: React.FC<Escritorio3DProps> = ({
 
   const handleClick = (e: any) => {
     e.stopPropagation();
-    if (!cercano) return;
+    console.log('[Escritorio3D] Click detectado', { cercano, esLibre, esPropio, objetoId: objeto.id, currentUserId });
+    if (!cercano) { console.log('[Escritorio3D] No está cerca, ignorando'); return; }
     if (esLibre) {
+      console.log('[Escritorio3D] Reclamando escritorio:', objeto.id);
       onReclamar(objeto.id);
     } else if (esPropio) {
+      console.log('[Escritorio3D] Liberando escritorio:', objeto.id);
       onLiberar(objeto.id);
     }
   };

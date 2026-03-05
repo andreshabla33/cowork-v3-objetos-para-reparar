@@ -131,16 +131,25 @@ export function useEspacioObjetos(
 
   // Reclamar un objeto (escritorio libre → asignar owner_id)
   const reclamarObjeto = useCallback(async (objetoId: string): Promise<boolean> => {
-    if (!userId) return false;
+    console.log('[useEspacioObjetos] reclamarObjeto llamado', { objetoId, userId, espacioId });
+    if (!userId) { console.warn('[useEspacioObjetos] userId es null, no se puede reclamar'); return false; }
 
-    const { error } = await supabase
+    const { data, error, count } = await supabase
       .from('espacio_objetos')
       .update({ owner_id: userId })
       .eq('id', objetoId)
-      .is('owner_id', null); // Solo si está libre
+      .is('owner_id', null)
+      .select();
+
+    console.log('[useEspacioObjetos] Resultado reclamar:', { data, error, count });
 
     if (error) {
       console.error('[useEspacioObjetos] Error reclamando objeto:', error);
+      return false;
+    }
+
+    if (!data || data.length === 0) {
+      console.warn('[useEspacioObjetos] Update no afectó filas — posible bloqueo RLS o ya reclamado');
       return false;
     }
 
@@ -151,7 +160,7 @@ export function useEspacioObjetos(
     }
 
     return true;
-  }, [userId, objetos]);
+  }, [userId, objetos, espacioId]);
 
   // Liberar un objeto (quitar owner_id)
   const liberarObjeto = useCallback(async (objetoId: string): Promise<boolean> => {
