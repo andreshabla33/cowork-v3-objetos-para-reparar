@@ -74,6 +74,8 @@ interface BottomControlBarProps {
   onToggleLock?: () => void;
   isLocked?: boolean;
   showLockButton?: boolean;
+  onIrAMiEscritorio?: () => void;
+  tieneMiEscritorio?: boolean;
 }
 
 // Configuración de estados con iconos y colores (estilo 2026)
@@ -113,6 +115,8 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
   onToggleLock,
   isLocked = false,
   showLockButton = false,
+  onIrAMiEscritorio,
+  tieneMiEscritorio = false,
 }) => {
   const { currentUser, updateStatus } = useStore();
   const emojis = ['👍', '🔥', '❤️', '👏', '😂', '😮', '🚀', '✨'];
@@ -667,6 +671,18 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
           />
         </div>
 
+        {/* Ir a mi escritorio */}
+        {tieneMiEscritorio && onIrAMiEscritorio && (
+          <ControlButton 
+            onClick={onIrAMiEscritorio} 
+            isActive={false} 
+            activeColor="bg-indigo-500 text-white" 
+            inactiveColor="bg-transparent text-white/70 hover:bg-white/10 hover:text-white"
+            icon={<IconDesk />}
+            tooltip="Ir a mi escritorio"
+          />
+        )}
+
         {/* Mini Juegos - Ocultar si ya estamos en un juego */}
         {onOpenGameHub && !isGameActive && (
           <ControlButton 
@@ -798,6 +814,12 @@ const IconReaction = () => (
 const IconChat = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+  </svg>
+);
+
+const IconDesk = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 6v4h16V6M6 10v8M18 10v8M4 14h16" />
   </svg>
 );
 

@@ -32,6 +32,7 @@ export const Escritorio3D: React.FC<Escritorio3DProps> = ({
 }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const [cercano, setCercano] = useState(false);
+  const cercanoRef = useRef(false);
   const [hover, setHover] = useState(false);
 
   const esPropio = objeto.owner_id === currentUserId;
@@ -45,24 +46,24 @@ export const Escritorio3D: React.FC<Escritorio3DProps> = ({
     return '#1e293b'; // Dark — libre
   }, [esPropio, esLibre]);
 
-  // Proximidad check en useFrame (no dispara re-renders excesivos)
+  // Proximidad check en useFrame — ref para click handler, state para renders
   useFrame(() => {
     const dx = playerPosition.x - posicion[0];
     const dz = playerPosition.z - posicion[2];
     const dist = Math.sqrt(dx * dx + dz * dz);
     const ahora = dist < PROXIMIDAD_INTERACCION;
+    cercanoRef.current = ahora;
     if (ahora !== cercano) setCercano(ahora);
   });
 
   const handleClick = (e: any) => {
     e.stopPropagation();
-    console.log('[Escritorio3D] Click detectado', { cercano, esLibre, esPropio, objetoId: objeto.id, currentUserId });
-    if (!cercano) { console.log('[Escritorio3D] No está cerca, ignorando'); return; }
+    const estaCerca = cercanoRef.current;
+    console.log('[Escritorio3D] Click', { estaCerca, esLibre, esPropio, id: objeto.id });
+    if (!estaCerca) return;
     if (esLibre) {
-      console.log('[Escritorio3D] Reclamando escritorio:', objeto.id);
       onReclamar(objeto.id);
     } else if (esPropio) {
-      console.log('[Escritorio3D] Liberando escritorio:', objeto.id);
       onLiberar(objeto.id);
     }
   };

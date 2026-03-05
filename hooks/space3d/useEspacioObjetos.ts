@@ -37,6 +37,7 @@ export interface UseEspacioObjetosReturn {
   objetos: EspacioObjeto[];
   loading: boolean;
   spawnPersonal: SpawnPersonal;
+  miEscritorio: EspacioObjeto | null;
   reclamarObjeto: (objetoId: string) => Promise<boolean>;
   liberarObjeto: (objetoId: string) => Promise<boolean>;
   moverObjeto: (objetoId: string, x: number, y: number, z: number) => Promise<boolean>;
@@ -129,27 +130,42 @@ export function useEspacioObjetos(
     fetchSpawn();
   }, [espacioId, userId]);
 
-  // Reclamar un objeto (escritorio libre → asignar owner_id)
-  const reclamarObjeto = useCallback(async (objetoId: string): Promise<boolean> => {
-    console.log('[useEspacioObjetos] reclamarObjeto llamado', { objetoId, userId, espacioId });
-    if (!userId) { console.warn('[useEspacioObjetos] userId es null, no se puede reclamar'); return false; }
+  // Escritorio del usuario actual
+  const miEscritorio = objetos.find((o) => o.owner_id === userId) || null;
 
-    const { data, error, count } = await supabase
+  // Reclamar un objeto (escritorio libre → asignar owner_id)
+  // Enforce: un solo escritorio por usuario — libera el anterior si existe
+  const reclamarObjeto = useCallback(async (objetoId: string): Promise<boolean> => {
+    console.log('[useEspacioObjetos] reclamarObjeto', { objetoId, userId, espacioId });
+    if (!userId) { console.warn('[useEspacioObjetos] userId es null'); return false; }
+
+    // Si ya tiene un escritorio, liberarlo primero
+    const escritorioActual = objetos.find((o) => o.owner_id === userId);
+    if (escritorioActual && escritorioActual.id !== objetoId) {
+      console.log('[useEspacioObjetos] Liberando escritorio anterior:', escritorioActual.id);
+      await supabase
+        .from('espacio_objetos')
+        .update({ owner_id: null })
+        .eq('id', escritorioActual.id)
+        .eq('owner_id', userId);
+    }
+
+    const { data, error } = await supabase
       .from('espacio_objetos')
       .update({ owner_id: userId })
       .eq('id', objetoId)
       .is('owner_id', null)
       .select();
 
-    console.log('[useEspacioObjetos] Resultado reclamar:', { data, error, count });
+    console.log('[useEspacioObjetos] Resultado reclamar:', { data, error });
 
     if (error) {
-      console.error('[useEspacioObjetos] Error reclamando objeto:', error);
+      console.error('[useEspacioObjetos] Error reclamando:', error);
       return false;
     }
 
     if (!data || data.length === 0) {
-      console.warn('[useEspacioObjetos] Update no afectó filas — posible bloqueo RLS o ya reclamado');
+      console.warn('[useEspacioObjetos] No se reclamó — RLS o ya ocupado');
       return false;
     }
 
@@ -164,29 +180,35 @@ export function useEspacioObjetos(
 
   // Liberar un objeto (quitar owner_id)
   const liberarObjeto = useCallback(async (objetoId: string): Promise<boolean> => {
-    if (!userId) return false;
+    console.log('[useEspacioObjetos] liberarObjeto', { objetoId, userId });
+    if (!userId) { console.warn('[useEspacioObjetos] userId null en liberar'); return false; }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('espacio_objetos')
       .update({ owner_id: null })
       .eq('id', objetoId)
-      .eq('owner_id', userId); // Solo si eres el dueño
+      .eq('owner_id', userId)
+      .select();
+
+    console.log('[useEspacioObjetos] Resultado liberar:', { data, error });
 
     if (error) {
-      console.error('[useEspacioObjetos] Error liberando objeto:', error);
+      console.error('[useEspacioObjetos] Error liberando:', error);
       return false;
     }
 
     // Limpiar spawn personal
-    await supabase
-      .from('miembros_espacio')
-      .update({ spawn_x: null, spawn_z: null })
-      .eq('espacio_id', objetos.find((o) => o.id === objetoId)?.espacio_id || '')
-      .eq('usuario_id', userId);
+    if (espacioId) {
+      await supabase
+        .from('miembros_espacio')
+        .update({ spawn_x: null, spawn_z: null })
+        .eq('espacio_id', espacioId)
+        .eq('usuario_id', userId);
+    }
 
     setSpawnPersonal({ spawn_x: null, spawn_z: null });
     return true;
-  }, [userId, objetos]);
+  }, [userId, espacioId]);
 
   // Mover un objeto (actualizar posición)
   const moverObjeto = useCallback(async (objetoId: string, x: number, y: number, z: number): Promise<boolean> => {
@@ -225,6 +247,7 @@ export function useEspacioObjetos(
     objetos,
     loading,
     spawnPersonal,
+    miEscritorio,
     reclamarObjeto,
     liberarObjeto,
     moverObjeto,

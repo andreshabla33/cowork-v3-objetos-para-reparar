@@ -73,10 +73,27 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   const { selectedRemoteUser, setSelectedRemoteUser, followTargetId, setFollowTargetId, followTargetIdRef, handleClickRemoteAvatar, avatarInteractionsMemo, handleWaveUser, handleInviteUser, handleFollowUser } = s.interactions;
 
   // Objetos persistentes (escritorios reclamables)
-  const { objetos: espacioObjetos, reclamarObjeto, liberarObjeto, spawnPersonal } = useEspacioObjetos(
+  const { objetos: espacioObjetos, reclamarObjeto, liberarObjeto, spawnPersonal, miEscritorio } = useEspacioObjetos(
     activeWorkspace?.id || null,
     session?.user?.id || null
   );
+
+  // Teleport/correr al escritorio propio
+  const handleIrAMiEscritorio = useCallback(() => {
+    if (!miEscritorio) return;
+    const destX = miEscritorio.posicion_x;
+    const destZ = miEscritorio.posicion_z;
+    const playerX = (currentUserEcs?.x || 400) / 16;
+    const playerZ = (currentUserEcs?.y || 400) / 16;
+    const dx = destX - playerX;
+    const dz = destZ - playerZ;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    if (dist > TELEPORT_DISTANCE) {
+      setTeleportTarget({ x: destX, z: destZ });
+    } else {
+      setMoveTarget({ x: destX, z: destZ });
+    }
+  }, [miEscritorio, currentUserEcs]);
 
   // Inyectar funciones de sonido al hook de broadcast
   useEffect(() => {
@@ -418,6 +435,8 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
         }}
         isGameActive={isPlayingGame}
         isGameHubOpen={isGameHubOpen}
+        onIrAMiEscritorio={handleIrAMiEscritorio}
+        tieneMiEscritorio={!!miEscritorio}
       />}
 
       {/* Input de Chat Flotante - Minimalista */}
