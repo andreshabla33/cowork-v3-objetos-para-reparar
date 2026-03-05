@@ -167,20 +167,25 @@ function remapAnimationTracks(
     if (!boneNames.has(boneName)) return false;
 
     const property = track.name.substring(dotIdx);
+    const isHips = boneName.toLowerCase().includes('hips');
 
     // En animaciones fallback (cross-skeleton):
-    // Eliminar TODAS las rotaciones de escala (.scale) y posición (.position).
-    // Esto evita la "cabeza gigante" (escala de Monica) y el "encogimiento" (posiciones cortas).
-    if (stripPositions && (property === '.position' || property === '.scale')) {
-      return false;
+    // 1. Eliminar tracks de escala (evita cabezas gigantes si se hereda de un chibi)
+    // 2. Mantener posiciones de huesos, ya que Mixamo a menudo define la longitud 
+    //    de los huesos en el track de posición. Si los borramos, el esqueleto colapsa al piso.
+    if (stripPositions) {
+      if (property === '.scale') return false;
+      // Solo eliminamos la posición global (Hips) para evitar que el avatar flote o se hunda 
+      // usando el offset del avatar original.
+      if (isHips && property === '.position') return false;
     }
 
     // Strip root motion: eliminar position tracks del Hips (root bone) para walk/run
     // Esto evita que el avatar "salte atrás" al reiniciar el loop
-    if (stripPositions) {
-      const isHips = boneName.toLowerCase().includes('hips');
-      if (isHips && property === '.position') return false;
+    if (stripRootMotion && isHips && property === '.position') {
+      return false;
     }
+    
     return true;
   });
 
