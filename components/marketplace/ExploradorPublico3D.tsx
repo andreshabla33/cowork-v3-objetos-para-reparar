@@ -310,7 +310,7 @@ const GestureOrbitBridge: React.FC<{
     } else if (g === 'pinch_zoom') {
       controls.enabled = false;
       controls.autoRotate = false;
-      const zoomDir = d.deltaY > 0 ? -1 : 1;
+      const zoomDir = d.deltaY > 0 ? -0.3 : 0.3;
       const dist = camera.position.distanceTo(controls.target);
       const newDist = THREE.MathUtils.clamp(dist + zoomDir, 10, 120);
       const dir = camera.position.clone().sub(controls.target).normalize();
@@ -343,6 +343,8 @@ const GestureOrbitBridge: React.FC<{
       enablePan
       enableZoom
       enableRotate
+      enableDamping
+      dampingFactor={0.08}
       minDistance={10}
       maxDistance={120}
       maxPolarAngle={Math.PI / 2.2}

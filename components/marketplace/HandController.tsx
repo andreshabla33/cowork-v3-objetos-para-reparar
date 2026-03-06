@@ -81,8 +81,8 @@ type GestureState = 'idle' | 'pinching' | 'dragging' | 'zooming' | 'open_hand' |
 const FRAMES_TO_CONFIRM = 3;
 const FRAMES_TO_EXIT = 10;
 const PINCH_THRESHOLD = 0.07;
-const DRAG_THRESHOLD = 0.008;
-const ZOOM_THRESHOLD = 0.012;
+const DRAG_THRESHOLD = 0.006;
+const ZOOM_THRESHOLD = 0.035;
 const THROTTLE_MS = 50;
 
 const TAP_MAX_DURATION_MS = 400;
