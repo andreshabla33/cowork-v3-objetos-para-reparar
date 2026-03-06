@@ -13,8 +13,8 @@ import { PanelDetalleEmpresa } from './PanelDetalleEmpresa';
 import { HUDMarketplace } from './HUDMarketplace';
 
 const ESPACIO_GLOBAL_ID = '91887e81-1f26-448c-9d6d-9839e7d83b5d';
-const WORLD_SCALE = 0.02;
-const WORLD_SIZE_PX = 2000;
+const WORLD_SCALE = 1 / 16; // Igual que VirtualSpace3D: posicion / 16
+const WORLD_SIZE_PX = 1200;
 const WORLD_CENTER = (WORLD_SIZE_PX * WORLD_SCALE) / 2;
 
 /**
@@ -36,7 +36,7 @@ const ZonaExistente3D: React.FC<{
   const esComun = zona.es_comun;
   const miembros = empresa?.miembros_count || 0;
   const nombre = esComun ? 'Zona Común' : (empresa?.nombre || zona.nombre_zona || 'Empresa');
-  const edificioH = esComun ? 0.3 : 0.15 + Math.min(miembros * 0.06, 0.8);
+  const edificioH = esComun ? 0.8 : 0.5 + Math.min(miembros * 0.15, 2.5);
 
   return (
     <group position={[posX, 0, posZ]}>
@@ -79,8 +79,8 @@ const ZonaExistente3D: React.FC<{
 
       {/* Techo del edificio */}
       {!esComun && (
-        <mesh position={[0, edificioH + 0.02, 0]}>
-          <boxGeometry args={[anchoW * 0.65, 0.03, altoW * 0.65]} />
+        <mesh position={[0, edificioH + 0.05, 0]}>
+          <boxGeometry args={[anchoW * 0.65, 0.08, altoW * 0.65]} />
           <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.2} />
         </mesh>
       )}
@@ -89,20 +89,20 @@ const ZonaExistente3D: React.FC<{
       {!esComun && miembros > 0 && (
         <pointLight
           color={color}
-          intensity={seleccionada ? 2 : 0.6}
-          distance={3}
-          position={[0, edificioH + 0.2, 0]}
+          intensity={seleccionada ? 3 : 1}
+          distance={10}
+          position={[0, edificioH + 0.5, 0]}
         />
       )}
 
       {/* Nombre */}
       <Text
-        position={[0, esComun ? 0.25 : edificioH + 0.2, 0]}
-        fontSize={0.2}
+        position={[0, esComun ? 0.7 : edificioH + 0.6, 0]}
+        fontSize={0.65}
         color="white"
         anchorX="center"
         anchorY="middle"
-        outlineWidth={0.015}
+        outlineWidth={0.04}
         outlineColor="#000000"
       >
         {nombre}
@@ -111,12 +111,12 @@ const ZonaExistente3D: React.FC<{
       {/* Subtítulo: industria */}
       {!esComun && empresa?.industria && (
         <Text
-          position={[0, edificioH + 0.05, 0]}
-          fontSize={0.1}
+          position={[0, edificioH + 0.15, 0]}
+          fontSize={0.35}
           color={color}
           anchorX="center"
           anchorY="middle"
-          outlineWidth={0.006}
+          outlineWidth={0.02}
           outlineColor="#000000"
         >
           {empresa.industria}
@@ -126,17 +126,17 @@ const ZonaExistente3D: React.FC<{
       {/* Indicador miembros activos (bolita verde pulsante) */}
       {!esComun && miembros > 0 && (
         <>
-          <mesh position={[anchoW * 0.3 - 0.1, edificioH + 0.15, 0]}>
-            <sphereGeometry args={[0.04, 8, 8]} />
+          <mesh position={[anchoW * 0.3 - 0.3, edificioH + 0.45, 0]}>
+            <sphereGeometry args={[0.12, 8, 8]} />
             <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={1} />
           </mesh>
           <Text
-            position={[anchoW * 0.3 + 0.05, edificioH + 0.15, 0]}
-            fontSize={0.08}
+            position={[anchoW * 0.3 + 0.05, edificioH + 0.45, 0]}
+            fontSize={0.25}
             color="#22c55e"
             anchorX="left"
             anchorY="middle"
-            outlineWidth={0.005}
+            outlineWidth={0.015}
             outlineColor="#000000"
           >
             {miembros}
@@ -144,10 +144,10 @@ const ZonaExistente3D: React.FC<{
         </>
       )}
 
-      {/* Esquineros sutiles */}
+      {/* Esquineros */}
       {[[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sz], i) => (
-        <mesh key={i} position={[sx * anchoW / 2, 0.05, sz * altoW / 2]}>
-          <cylinderGeometry args={[0.015, 0.015, 0.1, 6]} />
+        <mesh key={i} position={[sx * anchoW / 2, 0.15, sz * altoW / 2]}>
+          <cylinderGeometry args={[0.05, 0.05, 0.3, 6]} />
           <meshStandardMaterial color={color} transparent opacity={0.4} />
         </mesh>
       ))}
@@ -178,62 +178,32 @@ const EscenaMarketplace: React.FC<{
     <>
       {/* Iluminación */}
       <ambientLight intensity={0.4} />
-      <directionalLight position={[10, 15, 10]} intensity={0.8} castShadow />
-      <directionalLight position={[-5, 10, -5]} intensity={0.3} />
+      <directionalLight position={[30, 40, 30]} intensity={0.8} castShadow />
+      <directionalLight position={[-15, 25, -15]} intensity={0.3} />
 
       {/* Cielo/ambiente */}
-      <fog attach="fog" args={['#0a0a1a', 30, 80]} />
+      <fog attach="fog" args={['#0a0a1a', 60, 180]} />
       <color attach="background" args={['#0a0a1a']} />
 
       {/* Grid del suelo */}
       <Grid
-        args={[60, 60]}
+        args={[120, 120]}
         position={[WORLD_CENTER, -0.01, WORLD_CENTER]}
-        cellSize={1}
+        cellSize={4}
         cellThickness={0.5}
         cellColor="#1e293b"
-        sectionSize={5}
+        sectionSize={16}
         sectionThickness={1}
         sectionColor="#334155"
-        fadeDistance={50}
+        fadeDistance={100}
         infiniteGrid
       />
 
       {/* Suelo receptor de sombras */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[WORLD_CENTER, -0.02, WORLD_CENTER]} receiveShadow>
-        <planeGeometry args={[80, 80]} />
+        <planeGeometry args={[150, 150]} />
         <meshStandardMaterial color="#0f172a" transparent opacity={0.8} />
       </mesh>
-
-      {/* Separador visual: línea entre zonas y terrenos */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[940 * WORLD_SCALE, 0.005, WORLD_CENTER]}>
-        <planeGeometry args={[0.04, 40]} />
-        <meshStandardMaterial color="#334155" transparent opacity={0.5} />
-      </mesh>
-
-      {/* Labels de sección */}
-      <Text
-        position={[490 * WORLD_SCALE, 0.3, 50 * WORLD_SCALE]}
-        fontSize={0.4}
-        color="#475569"
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={0.01}
-        outlineColor="#000000"
-      >
-        EMPRESAS
-      </Text>
-      <Text
-        position={[1400 * WORLD_SCALE, 0.3, 50 * WORLD_SCALE]}
-        fontSize={0.4}
-        color="#475569"
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={0.01}
-        outlineColor="#000000"
-      >
-        TERRENOS DISPONIBLES
-      </Text>
 
       {/* Zonas de empresas existentes — con objetos reales + GhostAvatars */}
       {zonas.map((zona) => (
@@ -262,13 +232,13 @@ const EscenaMarketplace: React.FC<{
         enablePan
         enableZoom
         enableRotate
-        minDistance={5}
-        maxDistance={60}
+        minDistance={10}
+        maxDistance={120}
         maxPolarAngle={Math.PI / 2.2}
         minPolarAngle={0.2}
         target={[WORLD_CENTER, 0, WORLD_CENTER]}
         autoRotate
-        autoRotateSpeed={0.2}
+        autoRotateSpeed={0.15}
       />
     </>
   );
@@ -356,10 +326,10 @@ export const ExploradorPublico3D: React.FC = () => {
       {/* Canvas 3D */}
       <Canvas
         camera={{
-          position: [WORLD_CENTER + 15, 18, WORLD_CENTER + 15],
+          position: [WORLD_CENTER + 35, 45, WORLD_CENTER + 35],
           fov: 50,
           near: 0.1,
-          far: 200,
+          far: 500,
         }}
         shadows
         dpr={[1, 1.5]}

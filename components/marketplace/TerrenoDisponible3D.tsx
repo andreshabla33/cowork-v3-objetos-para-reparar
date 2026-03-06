@@ -27,7 +27,7 @@ export const TerrenoDisponible3D: React.FC<TerrenoDisponible3DProps> = ({
   const esReservado = terreno.estado === 'reservado';
 
   const color = useMemo(() => new THREE.Color(tierInfo.color), [tierInfo.color]);
-  const escalaBase = 0.02;
+  const escalaBase = 1 / 16;
 
   const anchoWorld = terreno.ancho * escalaBase;
   const altoWorld = terreno.alto * escalaBase;
@@ -97,7 +97,7 @@ export const TerrenoDisponible3D: React.FC<TerrenoDisponible3DProps> = ({
           rotation={[-Math.PI / 2, 0, 0]}
           position={[0, 0.01, 0]}
         >
-          <planeGeometry args={[anchoWorld + 0.3, altoWorld + 0.3]} />
+          <planeGeometry args={[anchoWorld + 1, altoWorld + 1]} />
           <meshBasicMaterial
             color={color}
             transparent
@@ -119,12 +119,12 @@ export const TerrenoDisponible3D: React.FC<TerrenoDisponible3DProps> = ({
 
       {/* Nombre del terreno */}
       <Text
-        position={[0, 0.6, 0]}
-        fontSize={0.3}
+        position={[0, 1.8, 0]}
+        fontSize={0.9}
         color="white"
         anchorX="center"
         anchorY="middle"
-        outlineWidth={0.02}
+        outlineWidth={0.05}
         outlineColor="#000000"
       >
         {terreno.nombre}
@@ -132,12 +132,12 @@ export const TerrenoDisponible3D: React.FC<TerrenoDisponible3DProps> = ({
 
       {/* Tier badge */}
       <Text
-        position={[0, 0.3, 0]}
-        fontSize={0.18}
+        position={[0, 0.9, 0]}
+        fontSize={0.55}
         color={tierInfo.color}
         anchorX="center"
         anchorY="middle"
-        outlineWidth={0.01}
+        outlineWidth={0.03}
         outlineColor="#000000"
       >
         {tierInfo.label} · {precioTexto}
@@ -146,12 +146,12 @@ export const TerrenoDisponible3D: React.FC<TerrenoDisponible3DProps> = ({
       {/* Estado badge */}
       {esReservado && (
         <Text
-          position={[0, 0.9, 0]}
-          fontSize={0.22}
+          position={[0, 2.7, 0]}
+          fontSize={0.7}
           color="#ef4444"
           anchorX="center"
           anchorY="middle"
-          outlineWidth={0.02}
+          outlineWidth={0.05}
           outlineColor="#000000"
         >
           RESERVADO
@@ -162,9 +162,9 @@ export const TerrenoDisponible3D: React.FC<TerrenoDisponible3DProps> = ({
       {[[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sz], i) => (
         <mesh
           key={i}
-          position={[sx * anchoWorld / 2, 0.15, sz * altoWorld / 2]}
+          position={[sx * anchoWorld / 2, 0.4, sz * altoWorld / 2]}
         >
-          <cylinderGeometry args={[0.03, 0.03, 0.3, 8]} />
+          <cylinderGeometry args={[0.08, 0.08, 0.8, 8]} />
           <meshStandardMaterial
             color={esReservado ? '#ef4444' : tierInfo.color}
             emissive={esReservado ? '#ef4444' : tierInfo.color}
@@ -175,18 +175,18 @@ export const TerrenoDisponible3D: React.FC<TerrenoDisponible3DProps> = ({
 
       {/* Destacado: banderín */}
       {terreno.destacado && esDisponible && (
-        <group position={[anchoWorld / 2 - 0.1, 0, -altoWorld / 2 + 0.1]}>
-          <mesh position={[0, 0.5, 0]}>
-            <cylinderGeometry args={[0.02, 0.02, 1, 8]} />
+        <group position={[anchoWorld / 2 - 0.3, 0, -altoWorld / 2 + 0.3]}>
+          <mesh position={[0, 1.2, 0]}>
+            <cylinderGeometry args={[0.06, 0.06, 2.4, 8]} />
             <meshStandardMaterial color="#f59e0b" />
           </mesh>
           <Text
-            position={[0.15, 0.85, 0]}
-            fontSize={0.14}
+            position={[0.4, 2.2, 0]}
+            fontSize={0.45}
             color="#f59e0b"
             anchorX="left"
             anchorY="middle"
-            outlineWidth={0.01}
+            outlineWidth={0.03}
             outlineColor="#000000"
           >
             ★ DESTACADO
