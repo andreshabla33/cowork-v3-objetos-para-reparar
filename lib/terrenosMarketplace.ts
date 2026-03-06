@@ -83,6 +83,36 @@ export const cargarEmpresasPublicas = async (
   }));
 };
 
+export interface ObjetoEspacio {
+  id: string;
+  tipo: string;
+  nombre: string;
+  posicion_x: number;
+  posicion_y: number;
+  posicion_z: number;
+  rotacion_y: number;
+  escala_x: number;
+  escala_y: number;
+  escala_z: number;
+  owner_id: string | null;
+  modelo_url: string | null;
+}
+
+export const cargarObjetosPublicos = async (
+  espacioId: string
+): Promise<ObjetoEspacio[]> => {
+  const { data, error } = await supabase
+    .from('espacio_objetos')
+    .select('id, tipo, nombre, posicion_x, posicion_y, posicion_z, rotacion_y, escala_x, escala_y, escala_z, owner_id, modelo_url')
+    .eq('espacio_id', espacioId);
+
+  if (error) {
+    console.warn('Error cargando objetos públicos:', error.message);
+    return [];
+  }
+  return (data || []) as ObjetoEspacio[];
+};
+
 export const cargarTodosTerrenos = async (
   espacioId: string
 ): Promise<TerrenoMarketplace[]> => {
