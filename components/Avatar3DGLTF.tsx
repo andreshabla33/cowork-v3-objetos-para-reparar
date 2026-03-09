@@ -425,6 +425,7 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
     // Intentar usar animaciones del config, sino cargar de BD
     const loadAnimations = async () => {
       let animaciones = avatarConfig?.animaciones;
+      let isCrossSkeleton = false;
 
       // Si el config no trae animaciones, cargarlas de BD
       if (!animaciones || animaciones.length === 0) {
@@ -452,6 +453,7 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
             .order('orden', { ascending: true });
           if (universalAnims && universalAnims.length > 0) {
             anims = universalAnims;
+            isCrossSkeleton = true;
             console.log(`✅ Universales: usando ${anims.length} anims compartidas`);
           }
         }
@@ -480,7 +482,7 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
         animaciones.map(async (anim) => {
           try {
             const gltf = await loader.loadAsync(anim.url);
-            return { nombre: anim.nombre, clips: gltf.animations, strip: anim.strip_root_motion ?? false };
+            return { nombre: anim.nombre, clips: gltf.animations, strip: anim.strip_root_motion ?? false, isUniversal: isCrossSkeleton };
           } catch (err) {
             console.warn(`  ❌ Error loading ${anim.nombre}:`, err);
             return null;
@@ -493,7 +495,9 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
       const clips: Record<string, THREE.AnimationClip> = {};
       results.forEach((r) => {
         if (r && r.clips.length > 0) {
-          const clip = remapAnimationTracks(r.clips[0], boneNames, r.strip, spineChainMap);
+          // Cross-skeleton (universales): stripPositions=true elimina Hips .position + .scale
+          // Esto evita estiramiento y pies bajo el suelo por proporciones distintas
+          const clip = remapAnimationTracks(r.clips[0], boneNames, r.strip, spineChainMap, r.isUniversal, r.isUniversal);
           const matchRate = (clip as any)._matchRate ?? 0;
           // Solo usar la animación si al menos 30% de los tracks coinciden con el esqueleto
           if (matchRate < 0.3 && r.clips[0].tracks.length > 0) {
@@ -918,7 +922,7 @@ export const useAvatar3D = (userId?: string) => {
             console.log(`⚠️ ${avatar.nombre}: sin anims propias, buscando universales...`);
             const { data: universalAnims } = await supabase
               .from('avatar_animaciones')
-              .select('id, nombre, url, loop, orden, strip_root_motion')
+              .select('id, nombre, url, loop, orden, strip_root_motion, avatar_id')
               .eq('es_universal', true)
               .eq('activo', true)
               .order('orden', { ascending: true });
