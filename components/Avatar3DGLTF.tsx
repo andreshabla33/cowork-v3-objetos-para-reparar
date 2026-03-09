@@ -215,7 +215,19 @@ function remapAnimationTracks(
     return true;
   });
 
-  const matchRate = clip.tracks.length > 0 ? remapped.tracks.length / clip.tracks.length : 0;
+  // Calcular match rate basado en huesos que coincidieron (ANTES de strip),
+  // no en tracks supervivientes (que penaliza el strip intencional de positions/scale)
+  const matchedBones = new Set<string>();
+  remapped.tracks.forEach(t => {
+    const d = t.name.indexOf('.');
+    if (d !== -1) matchedBones.add(t.name.substring(0, d));
+  });
+  const sourceBones = new Set<string>();
+  clip.tracks.forEach(t => {
+    const d = t.name.indexOf('.');
+    if (d !== -1) sourceBones.add(t.name.substring(0, d));
+  });
+  const matchRate = sourceBones.size > 0 ? matchedBones.size / sourceBones.size : 0;
   // Diagnóstico: mostrar huesos no mapeados
   const unmatchedBones = new Set<string>();
   clip.tracks.forEach(track => {
@@ -429,6 +441,11 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
     const loadAnimations = async () => {
       let animaciones = avatarConfig?.animaciones;
       let isCrossSkeleton = false;
+
+      // Detectar si las animaciones del config son fallback/universales (vienen de useAvatar3D)
+      if (animaciones && animaciones.length > 0 && (animaciones as any[])[0]?.es_fallback) {
+        isCrossSkeleton = true;
+      }
 
       // Si el config no trae animaciones, cargarlas de BD
       if (!animaciones || animaciones.length === 0) {
