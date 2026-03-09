@@ -37,6 +37,7 @@ interface GLTFAvatarProps {
   skinColor?: string;
   clothingColor?: string;
   scale?: number;
+  onHeightComputed?: (height: number) => void;
 }
 
 // Configurar DRACOLoader para soportar GLBs con compresión Draco (gltf-transform)
@@ -261,7 +262,8 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
   direction = 'front',
   skinColor,
   clothingColor,
-  scale = 1
+  scale = 1,
+  onHeightComputed,
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const [currentAnimation, setCurrentAnimation] = useState<AnimationState>('idle');
@@ -319,6 +321,16 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
     console.log(`📐 ${avatarConfig?.nombre || 'avatar'}: escala BD=${avatarConfig?.escala || 1} (fija, sin auto-scale)`);
     return { modelScaleCorrection: 1, modelYOffset: 0 };
   }, [avatarConfig?.escala, avatarConfig?.nombre]);
+
+  // Calcular altura real del modelo via Box3 y reportar al padre para posicionar labels
+  useEffect(() => {
+    if (!clone || !onHeightComputed) return;
+    const box = new THREE.Box3().setFromObject(clone);
+    const rawHeight = box.max.y - box.min.y;
+    const finalHeight = rawHeight * (avatarConfig?.escala || 1) * scale;
+    console.log(`📏 ${avatarConfig?.nombre || 'avatar'}: altura=${finalHeight.toFixed(2)} (raw=${rawHeight.toFixed(2)}, escala=${avatarConfig?.escala || 1}, scale=${scale})`);
+    onHeightComputed(finalHeight);
+  }, [clone, avatarConfig?.escala, scale, onHeightComputed]);
 
   // Recopilar nombres de huesos del modelo + detectar cadena spine por jerarquía
   const { boneNames, spineChainMap } = useMemo(() => {

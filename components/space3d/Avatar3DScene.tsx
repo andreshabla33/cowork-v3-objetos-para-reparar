@@ -27,7 +27,7 @@ import {
   CHAIR_SIT_RADIUS, CHAIR_POSITIONS_3D, LOD_NEAR_DISTANCE, LOD_MID_DISTANCE,
   USAR_LIVEKIT, playTeleportSound, IconPrivacy, IconExpand,
 } from './shared';
-import { statusColors, STATUS_LABELS, type VirtualSpace3DProps } from './spaceTypes';
+import { statusColors, type VirtualSpace3DProps } from './spaceTypes';
 import { StableVideo } from './Overlays';
 
 // --- Avatar ---
@@ -77,10 +77,22 @@ export const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, 
   const [showStatusLabel, setShowStatusLabel] = useState(false);
   const [showFloatingCard, setShowFloatingCard] = useState(false);
   const [showRadialWheel, setShowRadialWheel] = useState(false);
+  const [avatarHeight, setAvatarHeight] = useState(2.0);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastClickRef = useRef(0);
   const clickPreventedRef = useRef(false);
   const { avatar3DConfig } = useStore();
+  
+  // Padding constante sobre la cabeza del avatar para labels
+  const NAME_PADDING = 0.3;
+  const VIDEO_PADDING = 1.2;
+  const CHAT_PADDING = 1.0;
+  const REACTION_PADDING = 0.5;
+  const nameY = avatarHeight + NAME_PADDING;
+  const videoY = avatarHeight + VIDEO_PADDING;
+  const chatY = avatarHeight + (camOn ? VIDEO_PADDING + CHAT_PADDING + 1.0 : CHAT_PADDING);
+  const reactionY = avatarHeight + (camOn ? VIDEO_PADDING + REACTION_PADDING + 0.5 : REACTION_PADDING);
+  const radialY = avatarHeight + (camOn ? VIDEO_PADDING + 1.0 : REACTION_PADDING);
   
   // Leer video settings, space3d settings y performance settings desde localStorage
   const videoSettings = useMemo(() => getSettingsSection('video'), []);
@@ -193,6 +205,7 @@ export const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, 
           skinColor={config?.skinColor}
           clothingColor={config?.clothingColor}
           scale={gltfScale}
+          onHeightComputed={setAvatarHeight}
         />
       )}
       {/* Sprites solo para otras empresas o LOD bajo sin empresa */}
@@ -204,7 +217,7 @@ export const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, 
       
       {/* Mensaje de Chat - Burbuja moderna 2026 (glassmorphism + pill shape) */}
       {allowMessage && (
-        <Html position={[0, camOn ? 5.8 : 3.2, 0]} center distanceFactor={10} zIndexRange={[100, 0]}>
+        <Html position={[0, chatY, 0]} center distanceFactor={10} zIndexRange={[100, 0]}>
           <div className="animate-chat-bubble">
             <div className="bg-white/95 backdrop-blur-sm text-gray-800 px-3 py-1.5 rounded-full shadow-lg max-w-[180px] text-xs font-medium whitespace-nowrap overflow-hidden text-ellipsis">
               {message}
@@ -219,7 +232,7 @@ export const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, 
       
       {/* Video Bubble above avatar (Gather style) */}
       {allowVideo && showVideoBubble && !(isCurrentUser && hideSelfView) && (
-        <Html position={[0, 3.5, 0]} center distanceFactor={12} zIndexRange={[100, 0]}>
+        <Html position={[0, videoY, 0]} center distanceFactor={12} zIndexRange={[100, 0]}>
           <div className="w-24 h-16 rounded-[12px] overflow-hidden border-[2px] border-[#6366f1] shadow-lg bg-black relative transform transition-all hover:scale-125 flex items-center justify-center">
              {videoStream && videoStream.getVideoTracks().length > 0 ? (
                <StableVideo stream={videoStream} muted={isCurrentUser} className={`w-full h-full object-cover transform scale-110 ${isCurrentUser && mirrorVideo ? '-scale-x-100' : ''}`} />
@@ -240,7 +253,7 @@ export const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, 
       
       {/* Reacción emoji encima del avatar - Animación 2026 */}
       {allowReaction && (
-        <Html position={[0, camOn ? 4.5 : 2.8, 0]} center distanceFactor={8} zIndexRange={[200, 0]}>
+        <Html position={[0, reactionY, 0]} center distanceFactor={8} zIndexRange={[200, 0]}>
           <div className="animate-emoji-float text-5xl drop-shadow-[0_4px_12px_rgba(0,0,0,0.4)]">
             {reaction}
           </div>
@@ -249,7 +262,7 @@ export const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, 
       
       {/* Nombre flotante con indicador de estado - Clickeable para ver estado */}
       {!allowVideo && allowName && (
-        <Html position={[0, 2.4, 0]} center distanceFactor={10} zIndexRange={[100, 0]} sprite>
+        <Html position={[0, nameY, 0]} center distanceFactor={10} zIndexRange={[100, 0]} sprite>
           <div 
             className={`flex items-center gap-1 whitespace-nowrap ${!isCurrentUser ? 'cursor-pointer hover:scale-105 transition-transform' : ''}`}
             style={{ willChange: 'transform' }}
@@ -284,7 +297,7 @@ export const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, 
 
       {/* === FASE C: Radial Wheel (clic sostenido 500ms) estilo LoL === */}
       {showRadialWheel && !isCurrentUser && userId && avatarInteractions && (
-        <Html position={[0, camOn ? 5.0 : 2.8, 0]} center distanceFactor={6} zIndexRange={[310, 0]}>
+        <Html position={[0, radialY, 0]} center distanceFactor={6} zIndexRange={[310, 0]}>
           <div className="select-none pointer-events-auto" onClick={(e) => { e.stopPropagation(); setShowRadialWheel(false); }}>
             <div className="relative w-[160px] h-[160px] animate-in fade-in zoom-in-50 duration-100">
               {/* Centro: nombre */}
