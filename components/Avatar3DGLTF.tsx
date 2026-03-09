@@ -294,16 +294,28 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
         }
         const mats = Array.isArray(child.material) ? child.material : [child.material];
         mats.forEach((mat: any) => {
+          // FIX BLENDER EXPORT: Muchos modelos de Blender exportan Vertex Colors azules/morados por error.
+          // Desactivar vertexColors a menos que estemos seguros de que el modelo los necesita.
+          mat.vertexColors = false;
+          
           if (mat.map) {
-            mat.map.colorSpace = THREE.SRGBColorSpace;
+            // Ya no forzamos THREE.SRGBColorSpace porque GLTFLoader en Three.js 150+ lo hace auto.
+            // Hacerlo manual a veces causa dobles conversiones o problemas de renderizado.
             mat.map.needsUpdate = true;
-            // Forzar PBR web-compatible para avatares del pipeline FBX→Blender→GLB.
-            // Sin esto, el metalness alto del exportador hace que el avatar se vea morado/azul
-            // al reflejar el entorno (que es azul oscuro en el espacio virtual).
-            mat.metalness = 0;
-            mat.roughness = 0.9;
-            mat.side = THREE.DoubleSide;
           }
+          
+          // Forzar PBR web-compatible para avatares del pipeline FBX→Blender→GLB.
+          // Sin esto, el metalness alto del exportador hace que el avatar se vea morado/azul
+          // al reflejar el entorno (que es azul oscuro en el espacio virtual).
+          if (mat.isMeshStandardMaterial) {
+            mat.metalness = 0.0;
+            mat.roughness = 0.8;
+            // Asegurar color base blanco si vertexColors estaba tiñendo todo
+            if (!mat.map && mat.color.getHex() === 0xffffff) {
+               // Dejar el color original
+            }
+          }
+          mat.side = THREE.DoubleSide;
           mat.needsUpdate = true;
         });
       }
