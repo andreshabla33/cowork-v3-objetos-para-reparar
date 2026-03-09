@@ -322,14 +322,47 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
     return { modelScaleCorrection: 1, modelYOffset: 0 };
   }, [avatarConfig?.escala, avatarConfig?.nombre]);
 
-  // Reportar escala del avatar al padre para posicionar labels.
-  // No medimos huesos (getWorldPosition es inconsistente entre modelos).
-  // Todos los Mixamo son ~1.7m base; la escala de BD controla el tamaño visual.
-  useEffect(() => {
-    if (!onHeightComputed) return;
-    const escala = avatarConfig?.escala || 1;
-    onHeightComputed(escala);
-  }, [avatarConfig?.escala, onHeightComputed]);
+  // Medir altura REAL del avatar DESPUÉS del primer render (cuando SkinnedMesh ya está posado).
+  // Usa computeBoundingBox() que calcula vértices reales transformados por huesos.
+  // Referencia: https://discourse.threejs.org/t/boundingbox-wrong-calculation-with-skinned-meshes/48204
+  const heightComputedRef = useRef(false);
+  const frameCountRef = useRef(0);
+  useFrame(() => {
+    if (heightComputedRef.current || !groupRef.current || !onHeightComputed) return;
+    // Esperar 2 frames para asegurar que el skeleton esté actualizado
+    frameCountRef.current++;
+    if (frameCountRef.current < 3) return;
+
+    let maxWorldY = -Infinity;
+    let found = false;
+    clone.traverse((child: any) => {
+      if (child.isSkinnedMesh) {
+        found = true;
+        child.computeBoundingBox();
+        if (child.geometry.boundingBox) {
+          const worldMax = child.geometry.boundingBox.max.clone();
+          child.localToWorld(worldMax);
+          if (worldMax.y > maxWorldY) maxWorldY = worldMax.y;
+        }
+      }
+    });
+    // Fallback para modelos estáticos sin SkinnedMesh
+    if (!found) {
+      const box = new THREE.Box3().setFromObject(clone);
+      if (box.max.y > maxWorldY) maxWorldY = box.max.y;
+      found = true;
+    }
+    if (found && maxWorldY > -Infinity) {
+      const rootPos = new THREE.Vector3();
+      groupRef.current!.getWorldPosition(rootPos);
+      const height = maxWorldY - rootPos.y;
+      if (height > 0.3) {
+        heightComputedRef.current = true;
+        console.log(`📏 ${avatarConfig?.nombre || 'avatar'}: altura=${height.toFixed(2)} (computeBoundingBox post-render)`);
+        onHeightComputed(height);
+      }
+    }
+  });
 
   // Recopilar nombres de huesos del modelo + detectar cadena spine por jerarquía
   const { boneNames, spineChainMap } = useMemo(() => {

@@ -77,7 +77,7 @@ export const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, 
   const [showStatusLabel, setShowStatusLabel] = useState(false);
   const [showFloatingCard, setShowFloatingCard] = useState(false);
   const [showRadialWheel, setShowRadialWheel] = useState(false);
-  const [avatarEscala, setAvatarEscala] = useState(1.0);
+  const [avatarHeight, setAvatarHeight] = useState(2.0);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastClickRef = useRef(0);
   const clickPreventedRef = useRef(false);
@@ -100,14 +100,13 @@ export const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, 
   const renderSprite = !renderGLTF && (showMid || showLow);
   const gltfScale = showHigh ? 1.2 : showMid ? 0.9 : 0.6; // Escala reducida a distancia
   
-  // Posiciones Y proporcionales al tamaño del avatar (escala BD × gltfScale).
-  // Valores de referencia calibrados al hardcoded original: nameY=2.4 @ escala=1, gltfScale=1.2
-  const sf = avatarEscala * gltfScale; // scale factor
-  const nameY = 2.0 * sf;
-  const videoY = 2.9 * sf;
-  const chatY = camOn ? 4.8 * sf : 2.7 * sf;
-  const reactionY = camOn ? 3.7 * sf : 2.3 * sf;
-  const radialY = camOn ? 4.2 * sf : 2.3 * sf;
+  // Posiciones Y basadas en altura REAL medida con computeBoundingBox post-render.
+  // avatarHeight = altura visual real del avatar en unidades de escena.
+  const nameY = avatarHeight + 0.15;
+  const videoY = avatarHeight + 0.9;
+  const chatY = avatarHeight + (camOn ? 2.5 : 0.7);
+  const reactionY = avatarHeight + (camOn ? 1.5 : 0.4);
+  const radialY = avatarHeight + (camOn ? 1.8 : 0.4);
   const allowDetails = showHigh;
   // Misma empresa: nombre visible a cualquier distancia, video bubble visible a cualquier LOD (estilo LOL/Roblox)
   const allowName = showName && (!camOn || !(showHigh || showMid)) && (esMismaEmpresa || lodLevel !== 'low');
@@ -203,7 +202,7 @@ export const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, 
           skinColor={config?.skinColor}
           clothingColor={config?.clothingColor}
           scale={gltfScale}
-          onHeightComputed={setAvatarEscala}
+          onHeightComputed={setAvatarHeight}
         />
       )}
       {/* Sprites solo para otras empresas o LOD bajo sin empresa */}
