@@ -288,8 +288,11 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
     // Asegurar que texturas y materiales embebidos del GLB se rendericen correctamente
     clonedScene.traverse((child: any) => {
       if ((child.isMesh || child.isSkinnedMesh) && child.material) {
-        // Clonar material para no afectar el original compartido
-        if (!hasSkinnedMesh) {
+        // Clonar material SIEMPRE para no afectar el original del caché GLTF
+        // (SkeletonUtils.clone NO clona materiales, solo geometría y esqueleto)
+        if (Array.isArray(child.material)) {
+          child.material = child.material.map((m: any) => m.clone());
+        } else {
           child.material = child.material.clone();
         }
         const mats = Array.isArray(child.material) ? child.material : [child.material];
