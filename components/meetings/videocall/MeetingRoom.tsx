@@ -13,6 +13,7 @@ import '@livekit/components-styles';
 import { Room, Track, RoomEvent } from 'livekit-client';
 import { useStore } from '@/store/useStore';
 import { supabase } from '@/lib/supabase';
+import { CONFIG_PUBLICA_APP } from '@/lib/env';
 import { otorgarXP, XP_POR_ACCION } from '@/lib/gamificacion';
 import { MeetingControlBar, TipoReunion } from './MeetingControlBar';
 import { TipoReunionUnificado, InvitadoExterno } from '@/types/meeting-types';
@@ -48,6 +49,8 @@ interface TokenData {
   reunion_id?: string;
   invitado_externo?: InvitadoExterno;
 }
+
+const SUPABASE_URL = CONFIG_PUBLICA_APP.urlSupabase;
 
 // Estilos por tema
 const themeStyles = {
@@ -141,7 +144,6 @@ export const MeetingRoom: React.FC<MeetingRoomProps> = ({
         body.sala_id = salaId;
       }
 
-      const SUPABASE_URL = 'https://lcryrsdyrzotjqdxcwtp.supabase.co';
       console.log('🔵 Llamando Edge Function livekit-token...', { body });
       
       const response = await fetch(

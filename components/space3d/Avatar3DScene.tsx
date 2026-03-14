@@ -1,11 +1,13 @@
-﻿'use client';
+'use client';
 import React, { useRef, useEffect, useMemo, Suspense, useState, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { OrthographicCamera, PerspectiveCamera, Grid, Text, CameraControls, Html, PerformanceMonitor, useGLTF } from '@react-three/drei';
+import { OrthographicCamera, PerspectiveCamera, Grid, Text, CameraControls, Html, PerformanceMonitor, useGLTF, Billboard } from '@react-three/drei';
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { User, PresenceStatus, ZonaEmpresa } from '@/types';
-import { GLTFAvatar, useAvatarControls, AnimationState } from '../Avatar3DGLTF';
+import { GLTFAvatar } from '../avatar3d/GLTFAvatar';
+import { useAvatarControls } from '../avatar3d/useAvatarControls';
+import type { AnimationState } from '../avatar3d/shared';
 import { VideoWithBackground } from '../VideoWithBackground';
 import { GhostAvatar } from '../3d/GhostAvatar';
 import { ZonaEmpresa as ZonaEmpresa3D } from '../3d/ZonaEmpresa';
@@ -39,6 +41,10 @@ export interface AvatarProps {
   isCurrentUser?: boolean;
   animationState?: AnimationState;
   direction?: string;
+  isSitting?: boolean;
+  sitPosition?: THREE.Vector3;
+  sitRotation?: number;
+  sitTransitionDurationMs?: number;
   reaction?: string | null;
   videoStream?: MediaStream | null;
   camOn?: boolean;
@@ -53,6 +59,8 @@ export interface AvatarProps {
   lodLevel?: AvatarLodLevel;
   esFantasma?: boolean;
   remoteAvatar3DConfig?: any;
+  onAvatarHeightComputed?: (height: number) => void;
+  onMetricasAvatarComputadas?: (metricas: { altura: number; alturaCadera: number; alturaCaderaSentada?: number }) => void;
   // Interacciones Gather-style avanzadas (Fases A-C)
   avatarInteractions?: {
     onGoTo?: (userId: string) => void;
@@ -73,7 +81,33 @@ const STATUS_LABELS: Record<PresenceStatus, string> = {
   [PresenceStatus.DND]: 'No molestar',
 };
 
-export const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, isCurrentUser, animationState = 'idle', direction, reaction, videoStream, camOn, showVideoBubble = true, message, onClickAvatar, onClickRemoteAvatar, userId, mirrorVideo: mirrorVideoProp, hideSelfView: hideSelfViewProp, showName: showNameProp, lodLevel: lodLevelProp, esFantasma = false, remoteAvatar3DConfig, avatarInteractions }) => {
+export const Avatar: React.FC<AvatarProps> = ({ 
+  position, 
+  config, 
+  name, 
+  status, 
+  isCurrentUser, 
+  animationState = 'idle', 
+  direction, 
+  isSitting = false,
+  reaction, 
+  videoStream, 
+  camOn, 
+  showVideoBubble = true, 
+  message, 
+  onClickAvatar, 
+  onClickRemoteAvatar, 
+  userId, 
+  mirrorVideo: mirrorVideoProp, 
+  hideSelfView: hideSelfViewProp, 
+  showName: showNameProp, 
+  lodLevel: lodLevelProp, 
+  esFantasma = false, 
+  remoteAvatar3DConfig, 
+  onAvatarHeightComputed,
+  onMetricasAvatarComputadas,
+  avatarInteractions 
+}) => {
   const [showStatusLabel, setShowStatusLabel] = useState(false);
   const [showFloatingCard, setShowFloatingCard] = useState(false);
   const [showRadialWheel, setShowRadialWheel] = useState(false);
@@ -82,7 +116,7 @@ export const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, 
   const lastClickRef = useRef(0);
   const clickPreventedRef = useRef(false);
   const { avatar3DConfig } = useStore();
-  
+
   // Leer video settings, space3d settings y performance settings desde localStorage
   const videoSettings = useMemo(() => getSettingsSection('video'), []);
   const space3dS = useMemo(() => getSettingsSection('space3d'), []);
@@ -98,8 +132,8 @@ export const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, 
   const esMismaEmpresa = !esFantasma && !isCurrentUser;
   const renderGLTF = showHigh || (esMismaEmpresa && (showMid || showLow));
   const renderSprite = !renderGLTF && (showMid || showLow);
-  const gltfScale = showHigh ? 1.2 : showMid ? 0.9 : 0.6; // Escala reducida a distancia
-  
+  const gltfScale = 1;
+
   // Posiciones Y basadas en altura REAL medida con computeBoundingBox post-render.
   // avatarHeight = altura visual real del avatar en unidades de escena (top del HeadTop_End).
   // Sumamos un padding extra para evitar que el nombre choque con cuernos, sombreros, etc.
@@ -117,7 +151,13 @@ export const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, 
   const spriteColor = isCurrentUser ? '#60a5fa' : statusColors[status];
   // Si animaciones desactivadas, forzar idle
   const effectiveAnimState = perfS.showAvatarAnimations === false ? 'idle' as AnimationState : animationState;
-  
+
+  useEffect(() => {
+    if (onAvatarHeightComputed && avatarHeight > 0) {
+      onAvatarHeightComputed(avatarHeight);
+    }
+  }, [avatarHeight, onAvatarHeightComputed]);
+
   // Auto-ocultar el label después de 2 segundos
   useEffect(() => {
     if (showStatusLabel) {
@@ -178,7 +218,7 @@ export const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, 
       onClickRemoteAvatar(userId);
     }
   }, [isCurrentUser, userId, onClickAvatar, onClickRemoteAvatar]);
-  
+
   return (
     <group position={position}
       onClick={handleClick}
@@ -200,10 +240,12 @@ export const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, 
           avatarConfig={isCurrentUser ? avatar3DConfig : (remoteAvatar3DConfig || undefined)}
           animationState={effectiveAnimState}
           direction={direction}
+          isSitting={isSitting}
           skinColor={config?.skinColor}
           clothingColor={config?.clothingColor}
           scale={gltfScale}
           onHeightComputed={setAvatarHeight}
+          onMetricasAvatarComputadas={onMetricasAvatarComputadas}
         />
       )}
       {/* Sprites solo para otras empresas o LOD bajo sin empresa */}
@@ -212,7 +254,7 @@ export const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, 
           <spriteMaterial color={spriteColor} />
         </sprite>
       )}
-      
+
       {/* Mensaje de Chat - Burbuja moderna 2026 (glassmorphism + pill shape) */}
       {allowMessage && (
         <Html position={[0, chatY, 0]} center distanceFactor={10} zIndexRange={[100, 0]}>
@@ -227,28 +269,28 @@ export const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, 
           </div>
         </Html>
       )}
-      
+
       {/* Video Bubble above avatar (Gather style) */}
       {allowVideo && showVideoBubble && !(isCurrentUser && hideSelfView) && (
         <Html position={[0, videoY, 0]} center distanceFactor={12} zIndexRange={[100, 0]}>
           <div className="w-24 h-16 rounded-[12px] overflow-hidden border-[2px] border-[#6366f1] shadow-lg bg-black relative transform transition-all hover:scale-125 flex items-center justify-center">
-             {videoStream && videoStream.getVideoTracks().length > 0 ? (
-               <StableVideo stream={videoStream} muted={isCurrentUser} className={`w-full h-full object-cover transform scale-110 ${isCurrentUser && mirrorVideo ? '-scale-x-100' : ''}`} />
-             ) : (
-               /* Placeholder cuando hay cámara pero no hay stream (usuario lejos) */
-               <div className="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-indigo-900/80 to-purple-900/80">
-                 <div className="w-8 h-8 rounded-full bg-indigo-500/30 flex items-center justify-center mb-1">
-                   <svg className="w-4 h-4 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                   </svg>
-                 </div>
-                 <span className="text-[9px] text-white/80 font-medium">{name.split(' ')[0]}</span>
-               </div>
-             )}
+            {videoStream && videoStream.getVideoTracks().length > 0 ? (
+              <StableVideo stream={videoStream} muted={isCurrentUser} className={`w-full h-full object-cover transform scale-110 ${isCurrentUser && mirrorVideo ? '-scale-x-100' : ''}`} />
+            ) : (
+              /* Placeholder cuando hay cámara pero no hay stream (usuario lejos) */
+              <div className="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-indigo-900/80 to-purple-900/80">
+                <div className="w-8 h-8 rounded-full bg-indigo-500/30 flex items-center justify-center mb-1">
+                  <svg className="w-4 h-4 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <span className="text-[9px] text-white/80 font-medium">{name.split(' ')[0]}</span>
+              </div>
+            )}
           </div>
         </Html>
       )}
-      
+
       {/* Reacción emoji encima del avatar - Animación 2026 */}
       {allowReaction && (
         <Html position={[0, reactionY, 0]} center distanceFactor={8} zIndexRange={[200, 0]}>
@@ -257,38 +299,57 @@ export const Avatar: React.FC<AvatarProps> = ({ position, config, name, status, 
           </div>
         </Html>
       )}
-      
-      {/* Nombre flotante con indicador de estado - Clickeable para ver estado */}
+
+      {/* Nombre flotante y punto verde — Todo puro WebGL con Billboard (Best Practice).
+          Elimina por completo el lag del DOM de <Html> y garantiza rotación perfecta. */}
       {!allowVideo && allowName && (
-        <Html position={[0, nameY, 0]} center distanceFactor={10} zIndexRange={[100, 0]} sprite>
-          <div 
-            className={`flex items-center gap-1 whitespace-nowrap ${!isCurrentUser ? 'cursor-pointer hover:scale-105 transition-transform' : ''}`}
-            style={{ willChange: 'transform' }}
-            onClick={() => !isCurrentUser && setShowStatusLabel(true)}
-          >
-            <span 
-              className="text-sm font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
-              style={{ color: isCurrentUser ? '#60a5fa' : '#ffffff' }}
+        <Billboard
+          position={[0, nameY, 0]}
+          follow={true}
+          lockX={false}
+          lockY={false}
+          lockZ={false}
+        >
+          {/* Contenedor del nombre y punto */}
+          <group>
+            {/* Texto del nombre */}
+            <Text
+              position={[0, 0, 0]}
+              fontSize={0.24}
+              color={isCurrentUser ? '#60a5fa' : '#ffffff'}
+              anchorX="center"
+              anchorY="middle"
+              outlineWidth={0.015}
+              outlineColor="#000000"
+              renderOrder={10}
+              depthOffset={-1}
+              onClick={(e) => { e.stopPropagation(); !isCurrentUser && setShowStatusLabel(true); }}
             >
               {name}
-            </span>
-            <span 
-              className="w-2 h-2 rounded-full flex-shrink-0"
-              style={{ backgroundColor: statusColors[status] }}
-            />
-          </div>
-          {/* Tooltip con nombre del estado al hacer clic */}
+            </Text>
+
+            {/* Punto de estado (verde/rojo, etc) pegado a la derecha del texto */}
+            <mesh position={[name.length * 0.08 + 0.05, 0, 0]}>
+              <sphereGeometry args={[0.06, 16, 16]} />
+              <meshBasicMaterial color={statusColors[status]} />
+            </mesh>
+          </group>
+
+          {/* Tooltip temporal sigue como Html al clic (no importa jitter aquí) */}
           {showStatusLabel && !isCurrentUser && (
-            <div className="absolute -top-8 left-1/2 -translate-x-1/2 animate-emoji-popup">
-              <div 
-                className="px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider text-white shadow-lg whitespace-nowrap"
-                style={{ backgroundColor: statusColors[status] }}
-              >
-                {STATUS_LABELS[status]}
+            <Html position={[0, 0.45, 0]} center zIndexRange={[200, 0]}>
+              <div className="animate-emoji-popup">
+                <div
+                  className="px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider text-white shadow-lg whitespace-nowrap"
+                  style={{ backgroundColor: statusColors[status] }}
+                  onClick={() => setShowStatusLabel(false)}
+                >
+                  {STATUS_LABELS[status]}
+                </div>
               </div>
-            </div>
+            </Html>
           )}
-        </Html>
+        </Billboard>
       )}
 
       {/* Card flotante Fase A movida a screen-space overlay en componente principal */}
@@ -374,11 +435,11 @@ export const RemoteAvatarInterpolated: React.FC<{
   const lastDirectionRef = useRef<DireccionAvatar>(user.direction as DireccionAvatar);
   const lastMovingRef = useRef(false);
   const lastTargetRef = useRef<{ x: number; z: number } | null>(null);
-  
+
   // Estado local para dirección, movimiento y animación (viene del broadcast)
-  const remoteStateRef = useRef<{ direction: DireccionAvatar; isMoving: boolean; animState: string; renderedAnim: string }>({ 
-    direction: user.direction as DireccionAvatar, 
-    isMoving: false, 
+  const remoteStateRef = useRef<{ direction: DireccionAvatar; isMoving: boolean; animState: string; renderedAnim: string }>({
+    direction: user.direction as DireccionAvatar,
+    isMoving: false,
     animState: 'idle',
     renderedAnim: 'idle'
   });
@@ -479,7 +540,7 @@ export const RemoteAvatarInterpolated: React.FC<{
         remoteStateRef.current.isMoving = data.isMoving;
         const newAnim = data.animState || (data.isMoving ? 'walk' : 'idle');
         remoteStateRef.current.animState = newAnim;
-        
+
         // Bug 4 Fix: Usar ref para chequear el último anim renderizado y evitar stale closures
         if (newAnim !== remoteStateRef.current.renderedAnim) {
           remoteStateRef.current.renderedAnim = newAnim;
@@ -511,7 +572,7 @@ export const RemoteAvatarInterpolated: React.FC<{
           // ECS no tiene animState, inferir de isMoving
           const ecsAnim = ecsData.isMoving ? 'walk' : 'idle';
           remoteStateRef.current.animState = ecsAnim;
-          
+
           if (ecsAnim !== remoteStateRef.current.renderedAnim) {
             remoteStateRef.current.renderedAnim = ecsAnim;
             setRemoteAnimState(ecsAnim);
@@ -522,12 +583,13 @@ export const RemoteAvatarInterpolated: React.FC<{
 
     if (!groupRef.current || remoteTeleport) return;
 
+    let targetX = currentPos.current.x;
+    let targetZ = currentPos.current.z;
+
     const workerData = posicionesInterpoladasRef?.current?.get(user.id);
     if (workerData) {
-      currentPos.current.x = workerData.x;
-      currentPos.current.z = workerData.z;
-      groupRef.current.position.x = workerData.x;
-      groupRef.current.position.z = workerData.z;
+      targetX = workerData.x;
+      targetZ = workerData.z;
 
       if (workerData.direction) {
         remoteStateRef.current.direction = workerData.direction;
@@ -535,14 +597,27 @@ export const RemoteAvatarInterpolated: React.FC<{
       const nuevoEstadoMov = !!workerData.isMoving;
       if (isMoving !== nuevoEstadoMov) setIsMoving(nuevoEstadoMov);
     } else if (ecsData && Date.now() - (ecsData.timestamp ?? 0) <= 2000) {
-      currentPos.current.x = ecsData.x;
-      currentPos.current.z = ecsData.z;
-      groupRef.current.position.x = ecsData.x;
-      groupRef.current.position.z = ecsData.z;
+      targetX = ecsData.x;
+      targetZ = ecsData.z;
       remoteStateRef.current.direction = ecsData.direction as DireccionAvatar;
       const nuevoEstadoMov = !!ecsData.isMoving;
       if (isMoving !== nuevoEstadoMov) setIsMoving(nuevoEstadoMov);
     }
+
+    // ── INTERPOLACIÓN VISUAL (DAMPING) SOBRE LOS DATOS DEL WORKER ──
+    const lerpSpeed = isMoving ? 0.4 : 0.25;
+    const s = 1 - Math.pow(1 - lerpSpeed, delta * 60);
+
+    if (Math.abs(targetX - currentPos.current.x) > 2 || Math.abs(targetZ - currentPos.current.z) > 2) {
+      currentPos.current.x = targetX;
+      currentPos.current.z = targetZ;
+    } else {
+      currentPos.current.x = THREE.MathUtils.lerp(currentPos.current.x, targetX, s);
+      currentPos.current.z = THREE.MathUtils.lerp(currentPos.current.z, targetZ, s);
+    }
+
+    groupRef.current.position.x = currentPos.current.x;
+    groupRef.current.position.z = currentPos.current.z;
 
     if (frustumRef?.current && groupRef.current) {
       groupRef.current.getWorldPosition(tempVec);
@@ -670,51 +745,56 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({ users, remoteStreams, 
 };
 
 // --- CameraFollow ---
-// ============== CAMERA FOLLOW (CameraControls API) ==============
-// Usa CameraControls de drei (basado en camera-controls de yomotsu).
-// setTarget + setPosition con enableTransition=false preserva el ángulo/zoom del usuario
-// mientras desplaza cámara y target por el delta de movimiento del jugador.
+// ============== CAMERA FOLLOW (OrbitControls) ==============
+// Usa OrbitControls de drei. Muta el target y la cámara directamente para evitar latencia.
+// Sincronización exacta estilo v2.2 (monolito) que funcionaba fluido.
 export const CameraFollow: React.FC<{ controlsRef: React.MutableRefObject<any> }> = ({ controlsRef }) => {
   const { camera } = useThree();
   const lastPlayerPos = useRef<{ x: number; z: number } | null>(null);
   const initialized = useRef(false);
-  const targetVec = useMemo(() => new THREE.Vector3(), []);
+  const isDragging = useStore((s) => s.isDragging);
 
+  // Prioridad -1: CameraFollow ejecuta DESPUÉS del Player (-2) pero ANTES del Render.
   useFrame(() => {
     const playerPos = (camera as any).userData?.playerPosition;
     const controls = controlsRef.current;
     if (!playerPos || !controls) return;
 
-    // Primera vez: posicionar cámara detrás y arriba del jugador
+    // Deshabilitar controles si se está arrastrando un objeto
+    controls.enabled = !isDragging;
+
+    // Detectar si el jugador se movió (threshold mínimo para evitar jitter por precisión de coma flotante)
+    const moved = !lastPlayerPos.current ||
+      Math.abs(playerPos.x - lastPlayerPos.current.x) > 0.001 ||
+      Math.abs(playerPos.z - lastPlayerPos.current.z) > 0.001;
+
     if (!initialized.current) {
-      controls.setLookAt(
-        playerPos.x, 15, playerPos.z + 15,  // posición cámara
-        playerPos.x, 0, playerPos.z,         // target (jugador)
-        false                                 // sin transición
-      );
-      lastPlayerPos.current = { x: playerPos.x, z: playerPos.z };
-      initialized.current = true;
+      if (controls.target) {
+        controls.target.set(playerPos.x, 0, playerPos.z);
+        camera.position.set(playerPos.x, 15, playerPos.z + 15);
+        controls.update();
+        lastPlayerPos.current = { x: playerPos.x, z: playerPos.z };
+        initialized.current = true;
+      }
       return;
     }
 
-    if (!lastPlayerPos.current) {
-      lastPlayerPos.current = { x: playerPos.x, z: playerPos.z };
-      return;
-    }
+    if (moved && lastPlayerPos.current) {
+      const deltaX = playerPos.x - lastPlayerPos.current.x;
+      const deltaZ = playerPos.z - lastPlayerPos.current.z;
 
-    const deltaX = playerPos.x - lastPlayerPos.current.x;
-    const deltaZ = playerPos.z - lastPlayerPos.current.z;
-    const moved = Math.abs(deltaX) > 0.001 || Math.abs(deltaZ) > 0.001;
+      // Mover target y cámara juntos (mantiene la rotación y zoom actuales del usuario)
+      controls.target.x += deltaX;
+      controls.target.z += deltaZ;
+      camera.position.x += deltaX;
+      camera.position.z += deltaZ;
 
-    if (moved) {
-      // Obtener target actual y calcular offset cámara→target
-      controls.getTarget(targetVec);
-      // Mover target y cámara por el mismo delta (preserva rotación/zoom del usuario)
-      controls.setTarget(targetVec.x + deltaX, targetVec.y, targetVec.z + deltaZ, false);
-      controls.setPosition(camera.position.x + deltaX, camera.position.y, camera.position.z + deltaZ, false);
+      // OrbitControls necesita update() para sincronizar el estado interno tras cambios manuales
+      controls.update();
+
       lastPlayerPos.current = { x: playerPos.x, z: playerPos.z };
     }
-  });
+  }, -1);
 
   return null;
 };

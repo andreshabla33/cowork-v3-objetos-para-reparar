@@ -1,22 +1,11 @@
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { lazy, Suspense, useEffect, useState, useRef, useCallback } from 'react';
 import { useStore } from '../store/useStore';
-import VirtualSpace3D from './VirtualSpace3D';
-import { TaskBoard } from './TaskBoard';
-import { MiembrosView } from './MiembrosView';
-import AvatarCustomizer3D from './AvatarCustomizer3D';
-import { ChatPanel } from './ChatPanel';
-import { CalendarPanel } from './meetings/CalendarPanel';
-import { GrabacionesHistorial } from './meetings/recording/GrabacionesHistorial';
-import { MetricasEmpresaPanel } from './MetricasEmpresaPanel';
-import { VibenAssistant } from './VibenAssistant';
 import { AvatarPreview } from './Navbar';
 import { UserAvatar } from './UserAvatar';
 import { StatusSelector } from './StatusSelector';
-import { GameHub, GameInvitationNotification } from './games';
-import { SettingsModal } from './settings/SettingsModal';
 import { Role, PresenceStatus, ThemeType, User } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, SUPABASE_ANON_KEY, SUPABASE_URL } from '../lib/supabase';
 import { Language, getCurrentLanguage, subscribeToLanguageChange, t } from '../lib/i18n';
 import { getSettingsSection } from '../lib/userSettings';
 import { cargarMetricasEspacio } from '../lib/metricasAnalisis';
@@ -24,6 +13,28 @@ import { obtenerChunk, obtenerChunksVecinos } from '../lib/chunkSystem';
 import { MiniModeOverlay } from './MiniModeOverlay';
 import { ProductTour } from './onboarding/ProductTour';
 import { useIdleDetection } from '../hooks/useIdleDetection';
+
+const VirtualSpace3D = lazy(() => import('./VirtualSpace3D'));
+const TaskBoard = lazy(() => import('./TaskBoard').then(module => ({ default: module.TaskBoard })));
+const MiembrosView = lazy(() => import('./MiembrosView').then(module => ({ default: module.MiembrosView })));
+const AvatarCustomizer3D = lazy(() => import('./AvatarCustomizer3D'));
+const ChatPanel = lazy(() => import('./ChatPanel').then(module => ({ default: module.ChatPanel })));
+const CalendarPanel = lazy(() => import('./meetings/CalendarPanel'));
+const GrabacionesHistorial = lazy(() => import('./meetings/recording/GrabacionesHistorial'));
+const MetricasEmpresaPanel = lazy(() => import('./MetricasEmpresaPanel'));
+const VibenAssistant = lazy(() => import('./VibenAssistant').then(module => ({ default: module.VibenAssistant })));
+const GameHub = lazy(() => import('./games').then(module => ({ default: module.GameHub })));
+const GameInvitationNotification = lazy(() => import('./games').then(module => ({ default: module.GameInvitationNotification })));
+const SettingsModal = lazy(() => import('./settings/SettingsModal'));
+
+const FallbackWorkspacePanel = () => (
+  <div className="flex h-full w-full items-center justify-center">
+    <div className="flex flex-col items-center gap-4 text-zinc-500">
+      <div className="w-10 h-10 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
+      <p className="text-[10px] font-black uppercase tracking-[0.3em]">Cargando módulo</p>
+    </div>
+  </div>
+);
 
 export const WorkspaceLayout: React.FC = () => {
   const { activeWorkspace, activeSubTab, setActiveSubTab, setActiveWorkspace, currentUser, theme, setTheme, setView, session, setOnlineUsers, addNotification, unreadChatCount, clearUnreadChat, userRoleInActiveWorkspace, setMiniMode, isMiniMode, setEmpresaId, setDepartamentoId, setEmpresasAutorizadas, avatar3DConfig } = useStore();
@@ -384,12 +395,12 @@ export const WorkspaceLayout: React.FC = () => {
     // Al cerrar pestaña, registrar desconexión via fetch keepalive (soporta headers)
     const handleBeforeUnload = () => {
       if (conexionId) {
-        const url = `https://lcryrsdyrzotjqdxcwtp.supabase.co/rest/v1/registro_conexiones?id=eq.${conexionId}`;
+        const url = `${SUPABASE_URL}/rest/v1/registro_conexiones?id=eq.${conexionId}`;
         fetch(url, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxjcnlyc2R5cnpvdGpxZHhjd3RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2NDg0MTgsImV4cCI6MjA4MzIyNDQxOH0.8fsqkKHHOVCZMi8tAb85HN_It2QCSWP0delcFn56vd4',
+            'apikey': SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${session.access_token}`,
             'Prefer': 'return=minimal'
           },
@@ -586,7 +597,9 @@ export const WorkspaceLayout: React.FC = () => {
       {!isMobile ? (
         <aside className={`w-[260px] ${s.sidebar} flex flex-col shrink-0 border-r ${s.border} z-90 shadow-2xl relative overflow-hidden`} data-tour-step="sidebar-chat">
           {theme === 'arcade' && <div className="absolute top-0 left-0 w-full h-1 bg-[#00ff41] animate-pulse" />}
-          <ChatPanel sidebarOnly={true} showNotifications={true} />
+          <Suspense fallback={<FallbackWorkspacePanel />}>
+            <ChatPanel sidebarOnly={true} showNotifications={true} />
+          </Suspense>
         </aside>
       ) : mobileDrawerOpen ? (
         <>
@@ -602,7 +615,9 @@ export const WorkspaceLayout: React.FC = () => {
               </button>
             </div>
             <div className="flex-1 overflow-y-auto">
-              <ChatPanel sidebarOnly={true} showNotifications={true} onChannelSelect={() => setMobileDrawerOpen(false)} />
+              <Suspense fallback={<FallbackWorkspacePanel />}>
+                <ChatPanel sidebarOnly={true} showNotifications={true} onChannelSelect={() => setMobileDrawerOpen(false)} />
+              </Suspense>
             </div>
           </aside>
         </>
@@ -708,7 +723,9 @@ export const WorkspaceLayout: React.FC = () => {
             style={activeSubTab !== 'space' ? { visibility: 'hidden' } : undefined}
             data-tour-step="space-canvas"
           >
-            <VirtualSpace3D theme={theme} isGameHubOpen={showGameHub} isPlayingGame={isPlayingGame} />
+            <Suspense fallback={<FallbackWorkspacePanel />}>
+              <VirtualSpace3D theme={theme} isGameHubOpen={showGameHub} isPlayingGame={isPlayingGame} />
+            </Suspense>
           </div>
           {activeSubTab !== 'space' && (
             <div className="h-full w-full flex flex-col overflow-hidden animate-in fade-in duration-500">
@@ -727,13 +744,15 @@ export const WorkspaceLayout: React.FC = () => {
                 </div>
               )}
               <div className={`flex-1 overflow-y-auto ${isMobile ? 'pb-16' : ''}`}>
-                {activeSubTab === 'tasks' && <TaskBoard />}
-                {activeSubTab === 'miembros' && <MiembrosView />}
-                {activeSubTab === 'avatar' && <AvatarCustomizer3D />}
-                {activeSubTab === 'chat' && <ChatPanel chatOnly={true} />}
-                {activeSubTab === 'calendar' && <CalendarPanel />}
-                {activeSubTab === 'grabaciones' && <GrabacionesHistorial />}
-                {activeSubTab === 'metricas' && <MetricasEmpresaPanel />}
+                <Suspense fallback={<FallbackWorkspacePanel />}>
+                  {activeSubTab === 'tasks' && <TaskBoard />}
+                  {activeSubTab === 'miembros' && <MiembrosView />}
+                  {activeSubTab === 'avatar' && <AvatarCustomizer3D />}
+                  {activeSubTab === 'chat' && <ChatPanel chatOnly={true} />}
+                  {activeSubTab === 'calendar' && <CalendarPanel />}
+                  {activeSubTab === 'grabaciones' && <GrabacionesHistorial />}
+                  {activeSubTab === 'metricas' && <MetricasEmpresaPanel />}
+                </Suspense>
               {activeSubTab === 'settings' && (
                 <div className="p-6 md:p-16 max-w-4xl mx-auto">
                   <h2 className="text-2xl md:text-5xl font-black uppercase italic tracking-tighter mb-6 md:mb-10">{t('settings.title', currentLang)}</h2>
@@ -763,34 +782,42 @@ export const WorkspaceLayout: React.FC = () => {
         {showViben && (
           <div className="fixed bottom-4 right-4 z-[200] w-[calc(100vw-2rem)] sm:w-[340px] flex flex-col items-end pointer-events-none">
             <div className="w-full pointer-events-auto animate-in slide-in-from-right-4 duration-500">
-              <VibenAssistant onClose={() => setShowViben(false)} />
+              <Suspense fallback={<FallbackWorkspacePanel />}>
+                <VibenAssistant onClose={() => setShowViben(false)} />
+              </Suspense>
             </div>
           </div>
         )}
 
         {/* Game Hub Modal */}
-        <GameHub 
-          isOpen={showGameHub} 
-          onClose={() => {
-            setShowGameHub(false);
-            setIsPlayingGame(false);
-            setPendingGameInvitation(null);
-          }}
-          espacioId={activeWorkspace?.id}
-          currentUserId={session?.user?.id}
-          currentUserName={currentUser?.name}
-          pendingInvitation={pendingGameInvitation}
-          onPendingInvitationHandled={() => setPendingGameInvitation(null)}
-          onGamePlayingChange={setIsPlayingGame}
-        />
+        {showGameHub && (
+          <Suspense fallback={<FallbackWorkspacePanel />}>
+            <GameHub 
+              isOpen={showGameHub} 
+              onClose={() => {
+                setShowGameHub(false);
+                setIsPlayingGame(false);
+                setPendingGameInvitation(null);
+              }}
+              espacioId={activeWorkspace?.id}
+              currentUserId={session?.user?.id}
+              currentUserName={currentUser?.name}
+              pendingInvitation={pendingGameInvitation}
+              onPendingInvitationHandled={() => setPendingGameInvitation(null)}
+              onGamePlayingChange={setIsPlayingGame}
+            />
+          </Suspense>
+        )}
 
         {/* Notificaciones de invitación a juegos */}
         {activeWorkspace?.id && session?.user?.id && (
-          <GameInvitationNotification
-            userId={session.user.id}
-            espacioId={activeWorkspace.id}
-            onAccept={handleGameInvitationAccepted}
-          />
+          <Suspense fallback={null}>
+            <GameInvitationNotification
+              userId={session.user.id}
+              espacioId={activeWorkspace.id}
+              onAccept={handleGameInvitationAccepted}
+            />
+          </Suspense>
         )}
 
         {/* ===== MOBILE FAB + OVERLAY MENU — Patrón gaming 2026 (Wild Rift style) ===== */}
@@ -875,14 +902,18 @@ export const WorkspaceLayout: React.FC = () => {
       </main>
 
       {/* Settings Modal */}
-      <SettingsModal
-        isOpen={showSettings}
-        onClose={() => setShowSettings(false)}
-        workspaceId={activeWorkspace?.id || ''}
-        isAdmin={isAdmin}
-        currentTheme={theme}
-        onThemeChange={(newTheme) => setTheme(newTheme as any)}
-      />
+      {showSettings && (
+        <Suspense fallback={<FallbackWorkspacePanel />}>
+          <SettingsModal
+            isOpen={showSettings}
+            onClose={() => setShowSettings(false)}
+            workspaceId={activeWorkspace?.id || ''}
+            isAdmin={isAdmin}
+            currentTheme={theme}
+            onThemeChange={(newTheme) => setTheme(newTheme as any)}
+          />
+        </Suspense>
+      )}
 
       {/* Mini Mode Overlay */}
       <MiniModeOverlay />

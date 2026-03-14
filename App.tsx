@@ -1,115 +1,72 @@
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { lazy, useEffect, useState, Suspense } from 'react';
 import { useStore } from './store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { supabase } from './lib/supabase';
+import { useBootstrapAplicacion } from './hooks/app/useBootstrapAplicacion';
+import { useRutasReunion } from './hooks/app/useRutasReunion';
+import { seleccionarBootstrapApp, seleccionarProcesadorInvitacion } from './store/selectores';
 import './lib/i18n-config'; // Inicializar i18next
 import { LoginScreen } from './components/LoginScreen';
-import { Dashboard } from './components/Dashboard';
-import { WorkspaceLayout } from './components/WorkspaceLayout';
 import { CargoSelector } from './components/onboarding/CargoSelector';
-import { OnboardingCreador } from './components/onboarding/OnboardingCreador';
-import { MeetingLobby, MeetingRoom } from './components/meetings/videocall';
-import { ExploradorPublico3D } from './components/marketplace/ExploradorPublico3D';
 import type { CargoLaboral, CargoDB } from './components/onboarding/CargoSelector';
+
+const Dashboard = lazy(() => import('./components/Dashboard').then(module => ({ default: module.Dashboard })));
+const WorkspaceLayout = lazy(() => import('./components/WorkspaceLayout').then(module => ({ default: module.WorkspaceLayout })));
+const OnboardingCreador = lazy(() => import('./components/onboarding/OnboardingCreador').then(module => ({ default: module.OnboardingCreador })));
+const MeetingLobby = lazy(() => import('./components/meetings/videocall/MeetingLobby').then(module => ({ default: module.MeetingLobby })));
+const MeetingRoom = lazy(() => import('./components/meetings/videocall/MeetingRoom'));
+const ExploradorPublico3D = lazy(() => import('./components/marketplace/ExploradorPublico3D').then(module => ({ default: module.ExploradorPublico3D })));
 
 const ESPACIO_GLOBAL_ID = '91887e81-1f26-448c-9d6d-9839e7d83b5d';
 
+const FallbackPantalla = () => (
+  <div className="fixed inset-0 z-[1000] bg-black flex flex-col items-center justify-center gap-6">
+    <div className="w-16 h-16 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
+    <div className="text-center">
+      <p className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-500 animate-pulse">Cargando módulo</p>
+      <p className="text-[8px] font-bold text-zinc-700 uppercase mt-2">Preparando experiencia...</p>
+    </div>
+  </div>
+);
+
 const App: React.FC = () => {
-  const { session, setSession, view, setView, initialize, initialized, setAuthFeedback, fetchWorkspaces, setActiveWorkspace } = useStore();
-
-  useEffect(() => {
-    // Verificar confirmación de email via token_hash en URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const tokenHash = urlParams.get('token_hash');
-    const type = urlParams.get('type');
-
-    const verifyAndInit = async () => {
-      if (tokenHash && (type === 'signup' || type === 'email')) {
-        try {
-          const { data, error } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type: type === 'signup' ? 'signup' : 'email',
-          });
-          if (error) {
-            console.error('Error verificando email:', error.message);
-            setAuthFeedback({ type: 'error', message: 'Error al confirmar email. Intenta registrarte de nuevo.' });
-          } else if (data.session) {
-            setSession(data.session);
-            setAuthFeedback({ type: 'success', message: '¡Email confirmado! Bienvenido a Cowork.' });
-          }
-          // Limpiar URL params después de verificar
-          window.history.replaceState({}, '', window.location.pathname);
-        } catch (err) {
-          console.error('Error en verifyOtp:', err);
-        }
-      }
-      await initialize();
-    };
-
-    verifyAndInit();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth Event:", event);
-      setSession(session);
-      
-      if (event === 'SIGNED_IN') {
-        // Si ya estamos inicializados con un workspace activo, NO re-inicializar
-        // (evita race condition INITIAL_SESSION → SIGNED_IN que desmonta componentes)
-        const state = useStore.getState();
-        if (state.initialized && state.activeWorkspace) {
-          console.log("Auth Event SIGNED_IN: Already initialized with workspace, skipping re-init");
-          return;
-        }
-        await initialize();
-      } else if (event === 'SIGNED_OUT') {
-        setView('dashboard');
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Detectar si es una invitación de videollamada (URL: /join/TOKEN) o acceso directo (URL: /sala/ID)
-  const [meetingToken, setMeetingToken] = useState<string | null>(null);
-  const [directSalaId, setDirectSalaId] = useState<string | null>(
-    sessionStorage.getItem('pending_sala_id')
+  const { session, setSession, view, setView, initialize, initialized, setAuthFeedback, fetchWorkspaces, setActiveWorkspace } = useStore(
+    useShallow(seleccionarBootstrapApp)
   );
-  const [inMeeting, setInMeeting] = useState(false);
-  const [meetingNombre, setMeetingNombre] = useState('');
-  const [showThankYou, setShowThankYou] = useState(false);
+  const {
+    directSalaId,
+    inMeeting,
+    meetingNombre,
+    meetingToken,
+    showThankYou,
+    cerrarAgradecimiento,
+    iniciarLobbyInvitacion,
+    mostrarAgradecimiento,
+    salirSalaDirecta,
+  } = useRutasReunion();
 
-  useEffect(() => {
-    const path = window.location.pathname;
-    if (path.startsWith('/join/')) {
-      const token = path.replace('/join/', '');
-      if (token) {
-        setMeetingToken(token);
-      }
-    } else if (path.startsWith('/sala/')) {
-      const salaId = path.replace('/sala/', '');
-      if (salaId) {
-        setDirectSalaId(salaId);
-        sessionStorage.setItem('pending_sala_id', salaId);
-      }
-    }
-  }, []);
+  useBootstrapAplicacion({ initialize, setSession, setView, setAuthFeedback });
 
   // Ruta pública: /explorar — Marketplace de terrenos virtuales (sin auth)
   if (window.location.pathname === '/explorar') {
-    return <ExploradorPublico3D />;
+    return (
+      <Suspense fallback={<FallbackPantalla />}>
+        <ExploradorPublico3D />
+      </Suspense>
+    );
   }
 
   // Si hay token de videollamada, mostrar lobby o sala (no requiere sesión)
   if (meetingToken && !inMeeting) {
     return (
-      <MeetingLobby
-        tokenInvitacion={meetingToken}
-        onJoin={(token, nombre) => {
-          setMeetingNombre(nombre);
-          setInMeeting(true);
-        }}
-        onError={(error) => console.error('Error en lobby:', error)}
-      />
+      <Suspense fallback={<FallbackPantalla />}>
+        <MeetingLobby
+          tokenInvitacion={meetingToken}
+          onJoin={iniciarLobbyInvitacion}
+          onError={(error) => console.error('Error en lobby:', error)}
+        />
+      </Suspense>
     );
   }
 
@@ -130,11 +87,7 @@ const App: React.FC = () => {
           </p>
           <div className="flex flex-col gap-3">
             <button
-              onClick={() => {
-                setShowThankYou(false);
-                setMeetingToken(null);
-                window.history.pushState({}, '', '/');
-              }}
+              onClick={cerrarAgradecimiento}
               className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold transition-all"
             >
               Cerrar
@@ -148,15 +101,14 @@ const App: React.FC = () => {
 
   if (meetingToken && inMeeting) {
     return (
-      <MeetingRoom
-        salaId=""
-        tokenInvitacion={meetingToken}
-        nombreInvitado={meetingNombre}
-        onLeave={() => {
-          setInMeeting(false);
-          setShowThankYou(true);
-        }}
-      />
+      <Suspense fallback={<FallbackPantalla />}>
+        <MeetingRoom
+          salaId=""
+          tokenInvitacion={meetingToken}
+          nombreInvitado={meetingNombre}
+          onLeave={mostrarAgradecimiento}
+        />
+      </Suspense>
     );
   }
 
@@ -165,14 +117,12 @@ const App: React.FC = () => {
     // Si hay sesión, abrir la sala directamente
     if (session) {
       return (
-        <MeetingRoom
-          salaId={directSalaId}
-          onLeave={() => {
-            setDirectSalaId(null);
-            sessionStorage.removeItem('pending_sala_id');
-            window.history.pushState({}, '', '/');
-          }}
-        />
+        <Suspense fallback={<FallbackPantalla />}>
+          <MeetingRoom
+            salaId={directSalaId}
+            onLeave={salirSalaDirecta}
+          />
+        </Suspense>
       );
     }
     // Si no hay sesión pero está inicializando, mostrar loading
@@ -205,27 +155,37 @@ const App: React.FC = () => {
         </div>
       )}
       
-      {initialized && view === 'dashboard' && <Dashboard />}
-      {initialized && view === 'workspace' && <WorkspaceLayout />}
+      {initialized && view === 'dashboard' && (
+        <Suspense fallback={<FallbackPantalla />}>
+          <Dashboard />
+        </Suspense>
+      )}
+      {initialized && view === 'workspace' && (
+        <Suspense fallback={<FallbackPantalla />}>
+          <WorkspaceLayout />
+        </Suspense>
+      )}
       {view === 'invitation' && <InvitationProcessor />}
       {view === 'onboarding' && <OnboardingCargoView />}
       {view === 'onboarding_creador' && session && (
-        <OnboardingCreador
-          userId={session.user.id}
-          userEmail={session.user.email || ''}
-          userName={session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Usuario'}
-          onComplete={async () => {
-            await initialize();
-            const workspaces = await fetchWorkspaces();
-            const espacioGlobal = workspaces.find(ws => ws.id === ESPACIO_GLOBAL_ID) || workspaces[0];
-            if (espacioGlobal) {
-              setActiveWorkspace(espacioGlobal, (espacioGlobal as any).userRole);
-              setView('workspace');
-              return;
-            }
-            setView('dashboard');
-          }}
-        />
+        <Suspense fallback={<FallbackPantalla />}>
+          <OnboardingCreador
+            userId={session.user.id}
+            userEmail={session.user.email || ''}
+            userName={session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'Usuario'}
+            onComplete={async () => {
+              await initialize();
+              const workspaces = await fetchWorkspaces();
+              const espacioGlobal = workspaces.find(ws => ws.id === ESPACIO_GLOBAL_ID) || workspaces[0];
+              if (espacioGlobal) {
+                setActiveWorkspace(espacioGlobal, (espacioGlobal as any).userRole);
+                setView('workspace');
+                return;
+              }
+              setView('dashboard');
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );
@@ -255,7 +215,9 @@ const InvitationProcessor: React.FC = () => {
   const [procesando, setProcesando] = useState(false);
   const [errorLocal, setErrorLocal] = useState('');
   const [tokenHashLocal, setTokenHashLocal] = useState<string>('');
-  const { session, setAuthFeedback, setView, theme, fetchWorkspaces } = useStore();
+  const { session, setAuthFeedback, setView, theme, fetchWorkspaces } = useStore(
+    useShallow(seleccionarProcesadorInvitacion)
+  );
 
   const token = new URLSearchParams(window.location.search).get('token');
 

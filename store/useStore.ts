@@ -1,7 +1,7 @@
 
 import { create } from 'zustand';
 import { User, Role, Task, TaskStatus, ChatMessage, ThemeType, Workspace, SpaceItem, AvatarConfig, Departamento, PresenceStatus } from '../types';
-import type { Avatar3DConfig } from '../components/Avatar3DGLTF';
+import type { Avatar3DConfig } from '../components/avatar3d/shared';
 import { supabase } from '../lib/supabase';
 import { getSettingsSection } from '../lib/userSettings';
 
@@ -12,7 +12,7 @@ interface Notification {
   timestamp: number;
 }
 
-interface AppState {
+export interface AppState {
   theme: ThemeType;
   view: 'dashboard' | 'workspace' | 'invitation' | 'loading' | 'onboarding' | 'onboarding_creador';
   activeSubTab: 'space' | 'tasks' | 'miembros' | 'settings' | 'builder' | 'chat' | 'avatar' | 'calendar' | 'grabaciones' | 'metricas';
@@ -75,7 +75,19 @@ interface AppState {
   isMiniMode: boolean;
   setMiniMode: (val: boolean) => void;
   toggleMiniMode: () => void;
+
+  // --- Hito 8: Edit Mode ---
+  isEditMode: boolean;
+  setIsEditMode: (val: boolean) => void;
+  modoEdicionObjeto: ModoEdicionObjeto;
+  setModoEdicionObjeto: (modo: ModoEdicionObjeto) => void;
+  selectedObjectId: string | null;
+  setSelectedObjectId: (id: string | null) => void;
+  isDragging: boolean;
+  setIsDragging: (val: boolean) => void;
 }
+
+export type ModoEdicionObjeto = 'mover' | 'rotar' | 'escalar';
 
 const initialAvatar: AvatarConfig = {
   skinColor: '#fcd34d',
@@ -125,6 +137,11 @@ export const useStore = create<AppState>((set, get) => ({
   unreadChatCount: 0,
   activeChatGroupId: null,
   empresasAutorizadas: [],
+  
+  // --- Hito 8: Edit Mode Initial State ---
+  isEditMode: false,
+  selectedObjectId: null,
+  isDragging: false,
   
   setOnlineUsers: (users) => set({ onlineUsers: users }),
   incrementUnreadChat: () => set((state) => ({ unreadChatCount: state.unreadChatCount + 1 })),
@@ -562,4 +579,17 @@ export const useStore = create<AppState>((set, get) => ({
   setAvatar3DConfig: (config) => set({ avatar3DConfig: config }),
   setMiniMode: (val) => set({ isMiniMode: val }),
   toggleMiniMode: () => set((state) => ({ isMiniMode: !state.isMiniMode })),
+
+  // --- Hito 8: Edit Mode Actions ---
+  modoEdicionObjeto: 'mover',
+  setIsEditMode: (val) => set({ 
+    isEditMode: val,
+    // Resetear selección y arrastre al salir/entrar
+    selectedObjectId: null,
+    isDragging: false,
+    modoEdicionObjeto: 'mover'
+  }),
+  setModoEdicionObjeto: (modo) => set({ modoEdicionObjeto: modo }),
+  setSelectedObjectId: (id) => set({ selectedObjectId: id }),
+  setIsDragging: (val) => set({ isDragging: val }),
 }));

@@ -9,7 +9,9 @@ import { Room, RoomEvent, Track, VideoPresets, ScreenSharePresets, LocalAudioTra
 import { useStore } from '@/store/useStore';
 import { AutorizacionEmpresa, User, PresenceStatus, ZonaEmpresa } from '@/types';
 import { supabase } from '@/lib/supabase';
-import { GLTFAvatar, useAvatarControls, AnimationState } from './Avatar3DGLTF';
+import { GLTFAvatar } from './avatar3d/GLTFAvatar';
+import { useAvatarControls } from './avatar3d/useAvatarControls';
+import type { AnimationState } from './avatar3d/shared';
 import { RecordingManager } from './meetings/recording/RecordingManager';
 import { ConsentimientoPendiente } from './meetings/recording/ConsentimientoPendiente';
 import { BottomControlBar } from './BottomControlBar';
@@ -21,6 +23,7 @@ import { AvatarCustomizer3D } from './AvatarCustomizer3D';
 import { SpatialAudio } from './3d/SpatialAudio';
 import { GhostAvatar } from './3d/GhostAvatar';
 import { ZonaEmpresa as ZonaEmpresa3D } from './3d/ZonaEmpresa';
+import { ICE_SERVERS } from '@/lib/rtcConfig';
 import { getUserSettings, getSettingsSection, sendDesktopNotification, requestDesktopNotificationPermission } from '../lib/userSettings';
 import { obtenerChunk, obtenerChunksVecinos } from '../lib/chunkSystem';
 import { filtrarUsuariosPorChunks, aplicarInteresEmpresa } from '../lib/interestManager';
@@ -2491,37 +2494,6 @@ interface VirtualSpace3DProps {
   showroomDuracionMin?: number;
   showroomNombreVisitante?: string;
 }
-
-// ICE Servers para WebRTC - Servidores STUN/TURN actualizados
-const ICE_SERVERS = [
-  // STUN servers (gratuitos, solo para descubrir IP pública)
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun2.l.google.com:19302' },
-  { urls: 'stun:stun3.l.google.com:19302' },
-  { urls: 'stun:stun4.l.google.com:19302' },
-  // TURN servers de Metered (gratuitos con límite)
-  { 
-    urls: 'turn:a.relay.metered.ca:80', 
-    username: 'e8dd65c92c8d8d9e5c5f5c8a', 
-    credential: 'kxLzJPjQ5+Oy5G6/' 
-  },
-  { 
-    urls: 'turn:a.relay.metered.ca:80?transport=tcp', 
-    username: 'e8dd65c92c8d8d9e5c5f5c8a', 
-    credential: 'kxLzJPjQ5+Oy5G6/' 
-  },
-  { 
-    urls: 'turn:a.relay.metered.ca:443', 
-    username: 'e8dd65c92c8d8d9e5c5f5c8a', 
-    credential: 'kxLzJPjQ5+Oy5G6/' 
-  },
-  { 
-    urls: 'turns:a.relay.metered.ca:443?transport=tcp', 
-    username: 'e8dd65c92c8d8d9e5c5f5c8a', 
-    credential: 'kxLzJPjQ5+Oy5G6/' 
-  },
-];
 
 // ============== PROFILE CARD — posición fija top-left (estilo panel config) ==============
 const ScreenSpaceProfileCard: React.FC<{

@@ -1,32 +1,62 @@
 import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, '.', '');
-    // Keys ofuscadas (split para evitar GitHub secret scanning)
-    const _ork = ['sk-or-v1-','29c758ee2bfd','7b619eed9e5c','eceadbf20ac9','d42901d07325','1fa5797cc681','60db'].join('');
-    const _oak = ['sk-proj-','h9omyXCFg4eZ','JpKARuOLcWyH','BDeG9JeK-HJ3','6-K3azH-3BLfp','31VaniW6vMaY','-uQCt-LMDNms','FT3BlbkFJMp7','COtuG8DTWt5F','yo8ivf-EWNXjo','hUeK64uOobHg','jGiQY5xCS7w-','WlcVQaoMU27A','FYEZroKW8A'].join('');
-    const openrouterKey = process.env.OPENROUTER_API_KEY || env.OPENROUTER_API_KEY || _ork;
-    const openaiKey = process.env.OPEN_AI || env.OPEN_AI || _oak;
-    console.log('[Vite Build] OpenRouter key:', openrouterKey ? openrouterKey.substring(0, 12) + '...' : 'NONE');
-    console.log('[Vite Build] OpenAI key:', openaiKey ? openaiKey.substring(0, 12) + '...' : 'NONE');
-    return {
-      server: {
-        port: 3000,
-        host: '0.0.0.0',
+export default defineConfig(() => {
+  return {
+    server: {
+      port: 3000,
+      host: '0.0.0.0',
+    },
+    plugins: [react()],
+    build: {
+      chunkSizeWarningLimit: 2300,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return undefined;
+
+            if (id.includes('/three/') || id.includes('three-stdlib') || id.includes('troika-') || id.includes('camera-controls')) {
+              return 'vendor-three';
+            }
+
+            if (id.includes('@react-three') || id.includes('@use-gesture') || id.includes('maath') || id.includes('meshline') || id.includes('suspend-react') || id.includes('stats-gl')) {
+              return 'vendor-r3f';
+            }
+
+            if (id.includes('@dimforge/rapier3d') || id.includes('@react-three/rapier')) {
+              return 'vendor-physics';
+            }
+
+            if (id.includes('livekit-client') || id.includes('@livekit')) {
+              return 'vendor-livekit';
+            }
+
+            if (id.includes('@mediapipe')) {
+              return 'vendor-mediapipe';
+            }
+
+            if (id.includes('@supabase')) {
+              return 'vendor-supabase';
+            }
+
+            if (id.includes('/phaser/')) {
+              return 'vendor-phaser';
+            }
+
+            if (id.includes('framer-motion') || id.includes('lucide-react') || id.includes('driver.js')) {
+              return 'vendor-ui';
+            }
+
+            return 'vendor-core';
+          },
+        },
       },
-      plugins: [react()],
-      define: {
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || ''),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || ''),
-        'process.env.OPENROUTER_API_KEY': JSON.stringify(openrouterKey),
-        'process.env.OPEN_AI': JSON.stringify(openaiKey)
+    },
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, '.'),
       },
-      resolve: {
-        alias: {
-          '@': path.resolve(__dirname, '.'),
-        }
-      }
-    };
+    },
+  };
 });

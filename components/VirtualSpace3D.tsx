@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useRef, useEffect, Suspense, useCallback } from 'react';
 import { Canvas } from '@react-three/fiber';
@@ -19,9 +19,17 @@ import { DayNightCycle } from './3d/DayNightCycle';
 import { hapticFeedback } from '@/lib/mobileDetect';
 import { GamificacionPanel } from './GamificacionPanel';
 import { useSpace3D } from '@/hooks/space3d';
-import { useEspacioObjetos } from '@/hooks/space3d/useEspacioObjetos';
+import { useEspacioObjetos, type EspacioObjeto, type TransformacionObjetoInput } from '@/hooks/space3d/useEspacioObjetos';
+import { useHistorialEdicion } from '@/hooks/space3d/useHistorialEdicion';
+import { useOcupacionAsientos } from '@/hooks/space3d/useOcupacionAsientos';
 import { setBroadcastSoundFunctions } from '@/hooks/space3d/useBroadcast';
+import { XP_POR_ACCION } from '@/lib/gamificacion';
+import { useStore } from '@/store/useStore';
 // GameHub ahora se importa en WorkspaceLayout
+import { EditModeHUD, EditModeToast, InspectorEdicionObjeto, PlacementHUD, PlacementToast } from './3d/PlacementHUD';
+import type { CatalogoObjeto3D, ObjetoPreview3D } from '@/types/objetos3d';
+import type { AsientoRuntime3D } from './space3d/asientosRuntime';
+import { normalizarInteraccionConfigObjeto, resolverDestinoTeleportObjeto, resolverDisplayObjeto, resolverUseObjeto, type DisplayRuntimeNormalizado3D } from './space3d/interaccionesObjetosRuntime';
 
 import { themeColors, TELEPORT_DISTANCE, USAR_LIVEKIT, playWaveSound, playNudgeSound, playInviteSound } from './space3d/shared';
 
@@ -31,9 +39,21 @@ import { Minimap, StableVideo, Avatar, RemoteAvatarInterpolated, RemoteUsers, Ca
 const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameHubOpen = false, isPlayingGame = false, showroomMode = false, showroomDuracionMin = 5, showroomNombreVisitante }) => {
   // ========== Domain Hook Facade ==========
   const s = useSpace3D({ theme, isGameHubOpen, isPlayingGame, showroomMode, showroomDuracionMin, showroomNombreVisitante });
+  const addNotification = useStore((state) => state.addNotification);
 
   // Store
-  const { currentUser, onlineUsers, setPosition, activeWorkspace, toggleMic, toggleCamera, toggleScreenShare, togglePrivacy, setPrivacy, session, setActiveSubTab, setActiveChatGroupId, activeSubTab, empresasAutorizadas, setEmpresasAutorizadas } = s;
+  const { currentUser, onlineUsers, setPosition, activeWorkspace, toggleMic, toggleCamera, toggleScreenShare, togglePrivacy, setPrivacy, session, setActiveSubTab, setActiveChatGroupId, activeSubTab, empresasAutorizadas, setEmpresasAutorizadas, isEditMode, setIsEditMode, isDragging, setIsDragging } = s;
+
+  const [editToastMessage, setEditToastMessage] = React.useState<string | null>(null);
+  const [objetoEnColocacion, setObjetoEnColocacion] = React.useState<ObjetoPreview3D | null>(null);
+  const [placementToastName, setPlacementToastName] = React.useState<string | null>(null);
+  const [ultimoObjetoColocadoId, setUltimoObjetoColocadoId] = React.useState<string | null>(null);
+  const setSelectedObjectId = useStore((state) => state.setSelectedObjectId);
+  const selectedObjectId = useStore((state) => state.selectedObjectId);
+  const modoEdicionObjeto = useStore((state) => state.modoEdicionObjeto);
+  const setModoEdicionObjeto = useStore((state) => state.setModoEdicionObjeto);
+  const dragSeleccionRef = useRef<string | null>(null);
+  const prevIsDraggingRef = useRef(false);
 
   // Top-level state
   const { moveTarget, setMoveTarget, teleportTarget, setTeleportTarget, showAvatarModal, setShowAvatarModal, showEmoteWheel, setShowEmoteWheel, showGamificacion, setShowGamificacion, cargoUsuario, incomingNudge, setIncomingNudge, incomingInvite, setIncomingInvite, mobileInputRef, isMobile, cardScreenPosRef, realtimePositionsRef, grantXP, handleAcceptInvite } = s;
@@ -73,10 +93,319 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   const { selectedRemoteUser, setSelectedRemoteUser, followTargetId, setFollowTargetId, followTargetIdRef, handleClickRemoteAvatar, avatarInteractionsMemo, handleWaveUser, handleInviteUser, handleFollowUser } = s.interactions;
 
   // Objetos persistentes (escritorios reclamables)
-  const { objetos: espacioObjetos, reclamarObjeto, liberarObjeto, spawnPersonal, miEscritorio } = useEspacioObjetos(
+  const { objetos: espacioObjetos, crearObjetoDesdeCatalogo, reclamarObjeto, liberarObjeto, actualizarTransformacionObjeto, moverObjeto, rotarObjeto, eliminarObjeto, restaurarObjeto, spawnPersonal, miEscritorio } = useEspacioObjetos(
     activeWorkspace?.id || null,
     session?.user?.id || null
   );
+  const objetoSeleccionado = React.useMemo(
+    () => espacioObjetos.find((obj) => obj.id === selectedObjectId) || null,
+    [espacioObjetos, selectedObjectId]
+  );
+  const { registrarCreacion, registrarEliminacion, registrarTransformacion, registrarInicioArrastre, registrarFinArrastre, canUndo, canRedo, deshacer, rehacer } = useHistorialEdicion({
+    objetos: espacioObjetos,
+    isEditMode,
+    selectedObjectId,
+    setSelectedObjectId,
+    actualizarTransformacionObjeto,
+    eliminarObjeto,
+    restaurarObjeto,
+    onNotificar: setEditToastMessage,
+  });
+  const {
+    ocupacionesPorObjetoId: ocupacionesAsientosPorObjetoId,
+    ocuparAsiento,
+    liberarAsiento,
+    refrescarOcupacion,
+  } = useOcupacionAsientos(
+    activeWorkspace?.id || null,
+    session?.user?.id || null
+  );
+
+  const handleOcuparAsiento = useCallback(async (asiento: AsientoRuntime3D) => {
+    if (!asiento.objetoId) return true;
+
+    const resultado = await ocuparAsiento(asiento.objetoId, asiento.claveAsiento || 'principal');
+    if (!resultado.ok) {
+      if (resultado.motivo === 'asiento_ocupado') {
+        addNotification('Ese asiento ya está ocupado por otro usuario.', 'info');
+      } else {
+        addNotification('No se pudo reservar el asiento.', 'info');
+      }
+      return false;
+    }
+
+    return true;
+  }, [addNotification, ocuparAsiento]);
+
+  const handleLiberarAsiento = useCallback(async (asiento: AsientoRuntime3D | null) => {
+    if (!asiento?.objetoId) return true;
+    return liberarAsiento(asiento.objetoId, asiento.claveAsiento || 'principal');
+  }, [liberarAsiento]);
+
+  const handleRefrescarAsiento = useCallback(async (asiento: AsientoRuntime3D) => {
+    if (!asiento.objetoId) return true;
+    return refrescarOcupacion(asiento.objetoId, asiento.claveAsiento || 'principal');
+  }, [refrescarOcupacion]);
+
+  const ejecutarDestinoVisual = useCallback((config: DisplayRuntimeNormalizado3D, fallbackMensaje?: string | null) => {
+    let ejecutoAccion = false;
+
+    if (config.subtab) {
+      setActiveSubTab(config.subtab);
+      ejecutoAccion = true;
+    }
+
+    if (config.modal === 'avatar') {
+      setShowAvatarModal(true);
+      ejecutoAccion = true;
+    }
+
+    if (config.modal === 'gamificacion') {
+      setShowGamificacion(true);
+      ejecutoAccion = true;
+    }
+
+    if (config.overlay === 'chat') {
+      setShowChat(true);
+      setShowEmojis(false);
+      setShowStatusPicker(false);
+      ejecutoAccion = true;
+    }
+
+    if (config.overlay === 'emotes') {
+      setShowEmoteWheel(true);
+      setShowChat(false);
+      setShowStatusPicker(false);
+      ejecutoAccion = true;
+    }
+
+    const mensaje = config.notificacionMensaje || fallbackMensaje;
+    if (mensaje) {
+      addNotification(mensaje, config.notificacionTipo || 'info');
+      ejecutoAccion = true;
+    }
+
+    return ejecutoAccion;
+  }, [addNotification, setActiveSubTab, setShowAvatarModal, setShowChat, setShowEmojis, setShowEmoteWheel, setShowGamificacion, setShowStatusPicker]);
+
+  const ejecutarTeleportObjeto = useCallback((objeto: EspacioObjeto) => {
+    const config = normalizarInteraccionConfigObjeto(objeto.interaccion_config);
+    const destino = resolverDestinoTeleportObjeto(objeto, config);
+    const playerX = (currentUserEcs?.x || 400) / 16;
+    const playerZ = (currentUserEcs?.y || 400) / 16;
+    const dx = destino.x - playerX;
+    const dz = destino.z - playerZ;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+
+    if (destino.modo === 'teleport') {
+      setMoveTarget(null);
+      setTeleportTarget({ x: destino.x, z: destino.z });
+    } else if (destino.modo === 'caminar') {
+      setTeleportTarget(null);
+      setMoveTarget({ x: destino.x, z: destino.z });
+    } else if (dist > TELEPORT_DISTANCE) {
+      setMoveTarget(null);
+      setTeleportTarget({ x: destino.x, z: destino.z });
+    } else {
+      setTeleportTarget(null);
+      setMoveTarget({ x: destino.x, z: destino.z });
+    }
+
+    hapticFeedback('medium');
+  }, [currentUserEcs, setMoveTarget, setTeleportTarget]);
+
+  const handleInteraccionObjeto = useCallback((objeto: EspacioObjeto, asiento: AsientoRuntime3D | null) => {
+    const tipoInteraccion = (objeto.interaccion_tipo || '').trim().toLowerCase();
+    const config = normalizarInteraccionConfigObjeto(objeto.interaccion_config);
+
+    if (tipoInteraccion === 'sit' && asiento) {
+      if (asiento.objetoId) {
+        const ocupacion = ocupacionesAsientosPorObjetoId.get(asiento.objetoId);
+        if (ocupacion && ocupacion.usuario_id !== session?.user?.id) {
+          addNotification('Ese asiento está ocupado actualmente.', 'info');
+          return;
+        }
+      }
+
+      const destinoX = asiento.posicion.x;
+      const destinoZ = asiento.posicion.z;
+      const playerX = (currentUserEcs?.x || 400) / 16;
+      const playerZ = (currentUserEcs?.y || 400) / 16;
+      const dx = destinoX - playerX;
+      const dz = destinoZ - playerZ;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+
+      if (dist > TELEPORT_DISTANCE) {
+        setMoveTarget(null);
+        setTeleportTarget({ x: destinoX, z: destinoZ });
+      } else {
+        setTeleportTarget(null);
+        setMoveTarget({ x: destinoX, z: destinoZ });
+      }
+      hapticFeedback('light');
+      return;
+    }
+
+    if (tipoInteraccion === 'teleport') {
+      ejecutarTeleportObjeto(objeto);
+      return;
+    }
+
+    if (tipoInteraccion === 'display') {
+      const displayConfig = resolverDisplayObjeto(config);
+      const ejecuto = ejecutarDestinoVisual(
+        displayConfig,
+        objeto.interaccion_label || (objeto.nombre ? `Mostrando ${objeto.nombre}.` : null)
+      );
+      if (!ejecuto) {
+        addNotification(objeto.interaccion_label || 'Interacción visual configurada sin destino válido.', 'info');
+      }
+      hapticFeedback('light');
+      return;
+    }
+
+    if (tipoInteraccion === 'use') {
+      const useConfig = resolverUseObjeto(config);
+      let ejecuto = ejecutarDestinoVisual(
+        useConfig,
+        objeto.interaccion_label || (objeto.nombre ? `Usaste ${objeto.nombre}.` : null)
+      );
+
+      if (useConfig.xpAccion && useConfig.xpAccion in XP_POR_ACCION) {
+        grantXP(useConfig.xpAccion as keyof typeof XP_POR_ACCION, useConfig.cooldownMs || 10000);
+        ejecuto = true;
+      }
+
+      if (!ejecuto) {
+        addNotification(objeto.interaccion_label || 'Interacción de uso configurada sin acción válida.', 'info');
+      }
+
+      hapticFeedback('medium');
+      return;
+    }
+
+    if (tipoInteraccion) {
+      addNotification(objeto.interaccion_label || `Interacción ${tipoInteraccion} aún no soportada por el dispatcher.`, 'info');
+      return;
+    }
+  }, [addNotification, currentUserEcs, ejecutarDestinoVisual, ejecutarTeleportObjeto, grantXP, ocupacionesAsientosPorObjetoId, session?.user?.id, setMoveTarget, setTeleportTarget]);
+
+  const handlePrepararObjeto = useCallback((catalogo: CatalogoObjeto3D) => {
+    const baseX = (currentUserEcs?.x || 400) / 16;
+    const baseZ = (currentUserEcs?.y || 400) / 16;
+    const alto = Number(catalogo.alto) || 1;
+
+    setIsEditMode(false);
+    setObjetoEnColocacion({
+      ...catalogo,
+      posicion_x: baseX + 1.5,
+      posicion_y: Math.max(alto / 2, 0.02),
+      posicion_z: baseZ + 1.5,
+      rotacion_y: 0,
+    });
+  }, [currentUserEcs?.x, currentUserEcs?.y, setIsEditMode]);
+
+  const handleCancelarColocacion = useCallback(() => {
+    setObjetoEnColocacion(null);
+  }, []);
+
+  const handleActualizarObjetoEnColocacion = useCallback((x: number, y: number, z: number) => {
+    setObjetoEnColocacion((prev) => prev ? { ...prev, posicion_x: x, posicion_y: y, posicion_z: z } : prev);
+  }, []);
+
+  const handleConfirmarObjetoEnColocacion = useCallback(async () => {
+    if (!objetoEnColocacion) return;
+
+    const creado = await crearObjetoDesdeCatalogo(
+      objetoEnColocacion,
+      {
+        x: objetoEnColocacion.posicion_x,
+        y: objetoEnColocacion.posicion_y,
+        z: objetoEnColocacion.posicion_z,
+      },
+      objetoEnColocacion.rotacion_y || 0
+    );
+
+    if (!creado) return;
+
+    registrarCreacion(creado);
+    setPlacementToastName(objetoEnColocacion.nombre);
+    setEditToastMessage(`Objeto ${objetoEnColocacion.nombre} listo para edición`);
+    setUltimoObjetoColocadoId(creado.id);
+    setObjetoEnColocacion(null);
+    setIsEditMode(true);
+    setSelectedObjectId(creado.id);
+  }, [crearObjetoDesdeCatalogo, objetoEnColocacion, registrarCreacion, setIsEditMode, setSelectedObjectId]);
+
+  const handleRotarObjeto = useCallback(async (id: string, rotationY: number) => {
+    const objetoAntes = espacioObjetos.find((obj) => obj.id === id);
+    if (!objetoAntes) return false;
+
+    const snapshotAntes = JSON.parse(JSON.stringify(objetoAntes)) as EspacioObjeto;
+    const snapshotDespues = {
+      ...snapshotAntes,
+      rotacion_y: ((snapshotAntes.rotacion_y || rotationY || 0) + Math.PI / 2) % (Math.PI * 2),
+    };
+
+    const ok = await rotarObjeto(id, rotationY);
+    if (ok) {
+      registrarTransformacion(snapshotAntes, snapshotDespues);
+      setEditToastMessage('Objeto rotado');
+    }
+    return ok;
+  }, [espacioObjetos, registrarTransformacion, rotarObjeto]);
+
+  const handleEliminarObjeto = useCallback(async (id: string) => {
+    const objetoAntes = espacioObjetos.find((obj) => obj.id === id);
+    if (!objetoAntes) return false;
+
+    const snapshotAntes = JSON.parse(JSON.stringify(objetoAntes)) as EspacioObjeto;
+    const ok = await eliminarObjeto(id);
+    if (ok) {
+      registrarEliminacion(snapshotAntes);
+      setEditToastMessage('Objeto eliminado');
+    }
+    return ok;
+  }, [eliminarObjeto, espacioObjetos, registrarEliminacion]);
+
+  const handleTransformarObjeto = useCallback(async (id: string, cambios: TransformacionObjetoInput) => {
+    const objetoAntes = espacioObjetos.find((obj) => obj.id === id);
+    if (!objetoAntes) return false;
+    return actualizarTransformacionObjeto(id, cambios);
+  }, [actualizarTransformacionObjeto, espacioObjetos]);
+
+  useEffect(() => {
+    if (isDragging && !prevIsDraggingRef.current && selectedObjectId) {
+      registrarInicioArrastre(selectedObjectId);
+      dragSeleccionRef.current = selectedObjectId;
+    }
+
+    if (!isDragging && prevIsDraggingRef.current && dragSeleccionRef.current) {
+      registrarFinArrastre(dragSeleccionRef.current);
+      dragSeleccionRef.current = null;
+    }
+
+    prevIsDraggingRef.current = isDragging;
+  }, [isDragging, registrarFinArrastre, registrarInicioArrastre, selectedObjectId]);
+
+  useEffect(() => {
+    if (!objetoEnColocacion) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setObjetoEnColocacion(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [objetoEnColocacion]);
+
+  useEffect(() => {
+    if (!ultimoObjetoColocadoId) return;
+    const timeout = window.setTimeout(() => setUltimoObjetoColocadoId(null), 900);
+    return () => window.clearTimeout(timeout);
+  }, [ultimoObjetoColocadoId]);
 
   // Teleport/correr al escritorio propio
   const handleIrAMiEscritorio = useCallback(() => {
@@ -124,8 +453,28 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     setShowStatusPicker(false);
   }, []);
 
+  // Drag & Drop de objetos desde el panel de personalización
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    try {
+      const rawData = e.dataTransfer.getData('application/json');
+      if (!rawData) return;
+      const catalogData: CatalogoObjeto3D = JSON.parse(rawData);
+      if (catalogData && catalogData.id && catalogData.nombre) {
+        handlePrepararObjeto(catalogData);
+      }
+    } catch (err) {
+      console.error('[DnD] Error procesando drop de objeto:', err);
+    }
+  }, [handlePrepararObjeto]);
+
   return (
-    <div className="w-full h-full relative bg-black" onClick={handleCanvasClick}>
+    <div className="w-full h-full relative bg-black" onClick={handleCanvasClick} onDragOver={handleDragOver} onDrop={handleDrop}>
       {USAR_LIVEKIT && (
         <SpatialAudio
           tracks={remoteAudioTracks}
@@ -222,6 +571,19 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
             espacioObjetos={espacioObjetos}
             onReclamarObjeto={reclamarObjeto}
             onLiberarObjeto={liberarObjeto}
+            ocupacionesAsientosPorObjetoId={ocupacionesAsientosPorObjetoId}
+            onInteractuarObjeto={handleInteraccionObjeto}
+            onOcuparAsiento={handleOcuparAsiento}
+            onLiberarAsiento={handleLiberarAsiento}
+            onRefrescarAsiento={handleRefrescarAsiento}
+            onMoverObjeto={moverObjeto}
+            onRotarObjeto={handleRotarObjeto}
+            onTransformarObjeto={handleTransformarObjeto}
+            onEliminarObjeto={handleEliminarObjeto}
+            objetoEnColocacion={objetoEnColocacion}
+            onActualizarObjetoEnColocacion={handleActualizarObjetoEnColocacion}
+            onConfirmarObjetoEnColocacion={handleConfirmarObjetoEnColocacion}
+            ultimoObjetoColocadoId={ultimoObjetoColocadoId}
             onTapFloor={isMobile ? (point) => {
               // Mobile: single tap = walk/teleport (misma lógica que double-click en desktop)
               const playerX = (currentUserEcs.x || 400) / 16;
@@ -766,48 +1128,84 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       
       {/* GameHub ahora se controla desde la barra superior en WorkspaceLayout */}
 
-      {/* Modal de Avatar/Perfil (estilo Gather - glassmorphism) */}
+      {/* Modal de Avatar/Perfil - Glassmorphism 2.0 */}
       {showAvatarModal && (
         <div 
-          className="fixed inset-0 z-[300] flex items-center justify-center"
+          className="fixed inset-0 z-[300] flex items-center justify-center p-3 sm:p-2"
           onClick={(e) => { e.stopPropagation(); if (e.target === e.currentTarget) setShowAvatarModal(false); }}
           onKeyDown={(e) => { if (e.key === 'Escape') setShowAvatarModal(false); }}
         >
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowAvatarModal(false)} />
+          {/* Backdrop con blur profundo */}
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => setShowAvatarModal(false)} />
           
-          {/* Modal */}
-          <div className="relative w-[95vw] max-w-[900px] h-[85vh] max-h-[680px] bg-zinc-900/95 backdrop-blur-xl rounded-3xl border border-white/10 shadow-2xl shadow-black/50 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+          {/* Modal - responsivo y con Glassmorphism */}
+          <div className="relative w-full max-w-[960px] h-[90vh] max-h-[720px] sm:max-h-[95vh] bg-[#0a0a14]/95 backdrop-blur-2xl rounded-3xl sm:rounded-2xl border border-white/[0.08] shadow-2xl shadow-violet-900/20 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            {/* Neon glow aura */}
+            <div className="absolute -inset-px rounded-3xl sm:rounded-2xl bg-gradient-to-r from-violet-600/10 via-fuchsia-600/5 to-cyan-500/10 pointer-events-none" />
+            
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-indigo-600/20 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="relative flex items-center justify-between px-5 py-3 border-b border-white/[0.06] flex-shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600/30 to-fuchsia-600/20 flex items-center justify-center border border-violet-500/20">
+                  <svg className="w-3.5 h-3.5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-white">Mi Perfil y Avatar</h2>
-                  <p className="text-[10px] text-white/40">Personaliza tu apariencia en el espacio</p>
+                  <h2 className="text-xs font-black text-white tracking-wide">Mi Perfil y Avatar</h2>
+                  <p className="text-[9px] text-white/30">Personaliza tu apariencia en el espacio</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowAvatarModal(false)}
-                className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors group"
+                className="w-7 h-7 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] flex items-center justify-center transition-all group border border-white/[0.06] hover:border-violet-500/20"
               >
-                <svg className="w-4 h-4 text-white/40 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5 text-white/30 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
             {/* Body - AvatarCustomizer3D */}
-            <div className="flex-1 overflow-hidden">
-              <AvatarCustomizer3D compact={false} onClose={() => setShowAvatarModal(false)} />
+            <div className="relative flex-1 overflow-hidden">
+               <AvatarCustomizer3D 
+                onClose={() => setShowAvatarModal(false)}
+                onPrepararObjeto={handlePrepararObjeto}
+                modoColocacionActivo={Boolean(objetoEnColocacion)}
+              />
             </div>
           </div>
         </div>
       )}
+
+      {objetoEnColocacion && (
+        <PlacementHUD
+          objectName={objetoEnColocacion.nombre}
+          objectCategory={objetoEnColocacion.categoria}
+          onCancel={handleCancelarColocacion}
+        />
+      )}
+
+      {/* Se eliminó el PlacementToast a petición del usuario debido a problemas de renderizado */}
+
+      {/* --- Hito 8: Edit Mode UI --- */}
+      {isEditMode && (
+        <EditModeHUD
+          onCancel={() => setIsEditMode(false)}
+          onUndo={() => { void deshacer(); }}
+          onRedo={() => { void rehacer(); }}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          modoActual={modoEdicionObjeto}
+          onCambiarModo={setModoEdicionObjeto}
+        />
+      )}
+
+      {isEditMode && (
+        <InspectorEdicionObjeto objeto={objetoSeleccionado} modoActual={modoEdicionObjeto} />
+      )}
+
+      {/* Se eliminó el EditModeToast a petición del usuario debido a problemas de renderizado */}
     </div>
   );
 };

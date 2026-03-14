@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "typecheck": "tsc -p ./tsconfig.app.json --noEmit",
+    "validar": "npm run typecheck && npm run build",
     "preview": "vite preview"
   },
   "dependencies": {

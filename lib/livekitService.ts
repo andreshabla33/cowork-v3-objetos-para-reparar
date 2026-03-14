@@ -1,6 +1,8 @@
 import { detectBestRegion, getCachedRegion } from './regionDetector';
 
-const SUPABASE_URL = 'https://lcryrsdyrzotjqdxcwtp.supabase.co';
+import { CONFIG_PUBLICA_APP } from './env';
+
+const SUPABASE_URL = CONFIG_PUBLICA_APP.urlSupabase;
 
 interface LivekitTokenResponse {
   token: string;

@@ -245,9 +245,16 @@ CARGOS_RESTRINGIDOS_MEMBER = [
 1. ✅ ~~Testing completo del flujo de onboarding~~
 2. ✅ ~~Seguridad de roles en selección de cargo~~
 3. ✅ ~~Dashboard UI 2026 gaming style~~
-4. [ ] **Implementación de analytics** básicos
-5. [ ] **Preparación para beta testing** con usuarios reales
-6. [ ] **Selector de cargo en invitación** - Admin elige cargo al invitar
+4. ✅ **Hito 8: Modo Edición (Edit Mode)**
+   - Implementado HUD de edición con feedbacks y Toasts.
+   - Selección de objetos 3D con resaltado visual.
+   - Rotación de objetos (90°) con persistencia en Supabase.
+   - Eliminación de objetos con persistencia.
+   - Drag & Drop de objetos 3D (Escritorios) sobre el terreno.
+   - Sistema de bloqueo de cámara (OrbitControls) durante el arrastre.
+5. [ ] **Implementación de analytics** básicos
+6. [ ] **Preparación para beta testing** con usuarios reales
+7. [ ] **Selector de cargo en invitación** - Admin elige cargo al invitar
 
 ---
 
@@ -263,6 +270,8 @@ CARGOS_RESTRINGIDOS_MEMBER = [
 | `0c2c244` | Asignar departamento "General" automáticamente al creador |
 | `d81373a` | Guardar transcripción en Supabase, eliminar descarga local video |
 | `c96e795` | Dashboard muestra Transcripciones con nombre de reunión |
+| `edit-mode` | Hito 8: Implementación completa de Modo Edición 3D (Drag, Rotate, Delete) |
+| `avatar-fix`| Mejora de orientación de avatar y eliminación de jitter en nametags |
 
 ---
 

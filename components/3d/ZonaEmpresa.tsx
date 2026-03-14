@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Text, useTexture, useGLTF } from '@react-three/drei';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Text, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 
 interface ZonaEmpresaProps {
@@ -57,13 +57,63 @@ export const ZonaEmpresa: React.FC<ZonaEmpresaProps> = ({
   esZonaComun = false,
   variante = 'propia',
 }) => {
-  const logoFallback =
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8Xw8AAmMB9WMIZn0AAAAASUVORK5CYII=';
-  const logoTexture = useTexture(logoUrl || logoFallback);
+  const [logoTexture, setLogoTexture] = useState<THREE.Texture | null>(null);
+
+  useEffect(() => {
+    setLogoTexture((prev) => {
+      if (prev) prev.dispose();
+      return null;
+    });
+
+    if (!logoUrl || modeloUrl) return;
+
+    let cancelled = false;
+    let textureCargada: THREE.Texture | null = null;
+    const loader = new THREE.TextureLoader();
+    loader.setCrossOrigin('anonymous');
+
+    loader.load(
+      logoUrl,
+      (texture) => {
+        const image = texture.image as {
+          naturalWidth?: number;
+          naturalHeight?: number;
+          videoWidth?: number;
+          videoHeight?: number;
+          width?: number;
+          height?: number;
+        } | undefined;
+        const width = Number(image?.naturalWidth ?? image?.videoWidth ?? image?.width ?? 0);
+        const height = Number(image?.naturalHeight ?? image?.videoHeight ?? image?.height ?? 0);
+
+        if (cancelled || width <= 0 || height <= 0) {
+          texture.dispose();
+          return;
+        }
+
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.wrapS = THREE.ClampToEdgeWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+        texture.needsUpdate = true;
+        textureCargada = texture;
+        setLogoTexture(texture);
+      },
+      undefined,
+      () => {
+        if (cancelled) return;
+        setLogoTexture(null);
+      }
+    );
+
+    return () => {
+      cancelled = true;
+      if (textureCargada) textureCargada.dispose();
+    };
+  }, [logoUrl, modeloUrl]);
 
   const mostrarLogo = useMemo(() => {
-    return !!logoUrl && logoTexture && (logoTexture as THREE.Texture).image;
-  }, [logoUrl, logoTexture]);
+    return !modeloUrl && !!logoUrl && !!logoTexture?.image;
+  }, [logoTexture, logoUrl, modeloUrl]);
 
   const estiloEtiqueta = useMemo(() => {
     if (variante === 'ajena') return '#fca5a5';
@@ -104,7 +154,7 @@ export const ZonaEmpresa: React.FC<ZonaEmpresaProps> = ({
       {mostrarLogo && !modeloUrl && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[posicion[0] - ancho * 0.32, posicion[1] + 0.02, posicion[2] - alto * 0.32]}>
           <planeGeometry args={[Math.min(ancho, alto) * 0.28, Math.min(ancho, alto) * 0.28]} />
-          <meshBasicMaterial map={logoTexture as THREE.Texture} transparent opacity={0.9} />
+          <meshBasicMaterial map={logoTexture} transparent opacity={0.9} />
         </mesh>
       )}
 

@@ -1,22 +1,27 @@
-﻿'use client';
+'use client';
 import React, { useRef, useEffect, useMemo, Suspense, useState, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { OrthographicCamera, PerspectiveCamera, Grid, Text, CameraControls, Html, PerformanceMonitor, useGLTF } from '@react-three/drei';
+import { OrthographicCamera, PerspectiveCamera, Grid, Text, OrbitControls, CameraControls, Html, PerformanceMonitor, useGLTF } from '@react-three/drei';
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { User, PresenceStatus, ZonaEmpresa } from '@/types';
-import { GLTFAvatar, useAvatarControls, AnimationState } from '../Avatar3DGLTF';
+import { GLTFAvatar } from '../avatar3d/GLTFAvatar';
+import { useAvatarControls } from '../avatar3d/useAvatarControls';
+import type { AnimationState } from '../avatar3d/shared';
 import { VideoWithBackground } from '../VideoWithBackground';
 import { GhostAvatar } from '../3d/GhostAvatar';
 import { ZonaEmpresa as ZonaEmpresa3D } from '../3d/ZonaEmpresa';
 import { Escritorio3D } from '../3d/Escritorio3D';
-import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
+import { FantasmaColocacion3D, ObjetoEscena3D } from '../3d/ObjetoEscena3D';
+import type { EspacioObjeto, TransformacionObjetoInput } from '@/hooks/space3d/useEspacioObjetos';
+import type { OcupacionAsientoReal } from '@/hooks/space3d/useOcupacionAsientos';
+import type { ObjetoPreview3D } from '@/types/objetos3d';
 import { DayNightCycle } from '../3d/DayNightCycle';
 import { ObjetosInteractivos } from '../3d/ObjetosInteractivos';
 import { ParticulasClima } from '../3d/ParticulasClima';
 import { EmoteSync, useSyncEffects } from '../3d/EmoteSync';
 import { hapticFeedback, isMobileDevice } from '@/lib/mobileDetect';
-import { useStore } from '@/store/useStore';
+import { useStore, type ModoEdicionObjeto } from '@/store/useStore';
 import { type CameraSettings } from '../CameraSettingsMenu';
 import { obtenerEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
 import { type JoystickInput } from '../3d/MobileJoystick';
@@ -26,10 +31,14 @@ import {
   MOVE_SPEED, RUN_SPEED, WORLD_SIZE, TELEPORT_DISTANCE,
   CHAIR_SIT_RADIUS, CHAIR_POSITIONS_3D, LOD_NEAR_DISTANCE, LOD_MID_DISTANCE,
   USAR_LIVEKIT, playTeleportSound, IconPrivacy, IconExpand,
+  FACTOR_ESCALA_OBJETOS_ESCENA,
 } from './shared';
+import { crearAsientosDemo3D, crearAsientosObjetos3D, type AsientoRuntime3D } from './asientosRuntime';
+import { crearObstaculoObjetoPersistente, crearObstaculosMesaDemo, crearObstaculosObjetosPersistentes, crearObstaculosSillasDemo } from './colisionesRuntime';
+import { obtenerDimensionesObjetoRuntime } from './objetosRuntime';
 import { statusColors, STATUS_LABELS, type VirtualSpace3DProps } from './spaceTypes';
 import { Player, type PlayerProps } from './Player3D';
-import { RemoteUsers, CameraFollow, TeleportEffect, type AvatarProps } from './Avatar3DScene';
+import { RemoteUsers, TeleportEffect, CameraFollow, type AvatarProps } from './Avatar3DScene';
 
 // --- Scene ---
 export interface SceneProps {
@@ -77,10 +86,25 @@ export interface SceneProps {
   espacioObjetos?: EspacioObjeto[];
   onReclamarObjeto?: (id: string) => void;
   onLiberarObjeto?: (id: string) => void;
+  ocupacionesAsientosPorObjetoId?: Map<string, OcupacionAsientoReal>;
+  onInteractuarObjeto?: (objeto: EspacioObjeto, asiento: AsientoRuntime3D | null) => void;
+  onOcuparAsiento?: (asiento: AsientoRuntime3D) => Promise<boolean>;
+  onLiberarAsiento?: (asiento: AsientoRuntime3D | null) => Promise<boolean>;
+  onRefrescarAsiento?: (asiento: AsientoRuntime3D) => Promise<boolean>;
+  onMoverObjeto?: (id: string, x: number, y: number, z: number) => Promise<boolean>;
+  onRotarObjeto?: (id: string, rotationY: number) => Promise<boolean>;
+  onTransformarObjeto?: (id: string, cambios: TransformacionObjetoInput) => Promise<boolean>;
+  onEliminarObjeto?: (id: string) => Promise<boolean>;
   objetoOwnerNames?: Map<string, string>;
+  objetoEnColocacion?: ObjetoPreview3D | null;
+  onActualizarObjetoEnColocacion?: (x: number, y: number, z: number) => void;
+  onConfirmarObjetoEnColocacion?: () => void;
+  ultimoObjetoColocadoId?: string | null;
 }
 
-export const Scene: React.FC<SceneProps> = ({ currentUser, onlineUsers, setPosition, theme, orbitControlsRef, stream, remoteStreams, showVideoBubbles = true, localMessage, remoteMessages, localReactions, remoteReaction, onClickAvatar, moveTarget, onReachTarget, onDoubleClickFloor, onTapFloor, teleportTarget, onTeleportDone, showFloorGrid = false, showNamesAboveAvatars = true, cameraSensitivity = 5, invertYAxis = false, cameraMode = 'free', realtimePositionsRef, interpolacionWorkerRef, posicionesInterpoladasRef, ecsStateRef, broadcastMovement, moveSpeed, runSpeed, zonasEmpresa = [], onZoneCollision, usersInCallIds, usersInAudioRangeIds, empresasAutorizadas = [], mobileInputRef, enableDayNightCycle = false, onXPEvent, onClickRemoteAvatar, avatarInteractions, espacioObjetos = [], onReclamarObjeto, onLiberarObjeto, objetoOwnerNames }) => {
+const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) * paso;
+
+ export const Scene: React.FC<SceneProps> = ({ currentUser, onlineUsers, setPosition, theme, orbitControlsRef, stream, remoteStreams, showVideoBubbles = true, localMessage, remoteMessages, localReactions, remoteReaction, onClickAvatar, moveTarget, onReachTarget, onDoubleClickFloor, onTapFloor, teleportTarget, onTeleportDone, showFloorGrid = false, showNamesAboveAvatars = true, cameraSensitivity = 5, invertYAxis = false, cameraMode = 'free', realtimePositionsRef, interpolacionWorkerRef, posicionesInterpoladasRef, ecsStateRef, broadcastMovement, moveSpeed, runSpeed, zonasEmpresa = [], onZoneCollision, usersInCallIds, usersInAudioRangeIds, empresasAutorizadas = [], mobileInputRef, enableDayNightCycle = false, onXPEvent, onClickRemoteAvatar, avatarInteractions, espacioObjetos = [], onReclamarObjeto, onLiberarObjeto, ocupacionesAsientosPorObjetoId = new Map(), onInteractuarObjeto, onOcuparAsiento, onLiberarAsiento, onRefrescarAsiento, onMoverObjeto, onRotarObjeto, onTransformarObjeto, onEliminarObjeto, objetoOwnerNames, objetoEnColocacion, onActualizarObjetoEnColocacion, onConfirmarObjetoEnColocacion, ultimoObjetoColocadoId }) => {
   const gridColor = theme === 'arcade' ? '#00ff41' : '#6366f1';
   const { camera } = useThree();
   const frustumRef = useRef(new THREE.Frustum());
@@ -90,20 +114,83 @@ export const Scene: React.FC<SceneProps> = ({ currentUser, onlineUsers, setPosit
   const playerColliderRef = useRef<any>(null);
   const playerColliderPositionRef = useRef({ x: (currentUser.x || 400) / 16, z: (currentUser.y || 400) / 16 });
   const zonaColisionRef = useRef<string | null>(null);
-  
+
   // Cargar el modelo del terreno exportado desde Blender
   const { scene: terrainScene } = useGLTF('/models/terrain.glb');
+  const asientosDemo = useMemo(() => crearAsientosDemo3D(), []);
+  const asientosPersistentes = useMemo(() => crearAsientosObjetos3D(espacioObjetos), [espacioObjetos]);
+  const asientosRuntime = useMemo(() => [...asientosDemo, ...asientosPersistentes], [asientosDemo, asientosPersistentes]);
+  const asientosPorObjetoId = useMemo(() => {
+    return new Map(
+      asientosPersistentes
+        .filter((asiento) => !!asiento.objetoId)
+        .map((asiento) => [asiento.objetoId as string, asiento])
+    );
+  }, [asientosPersistentes]);
   const chairPositions = useMemo(
-    () => [
-      [8, 0.35, 8],
-      [12, 0.35, 8],
-      [8, 0.35, 12],
-      [12, 0.35, 12],
-      [8, 0.35, 10],
-      [12, 0.35, 10],
-    ],
-    []
+    () => asientosDemo.map((asiento) => [asiento.posicion.x, asiento.posicion.y, asiento.posicion.z, asiento.rotacion] as const),
+    [asientosDemo]
   );
+  const obstaculosMundo = useMemo(
+    () => [
+      ...crearObstaculosMesaDemo(),
+      ...crearObstaculosSillasDemo(asientosDemo),
+      ...crearObstaculosObjetosPersistentes(espacioObjetos),
+    ],
+    [asientosDemo, espacioObjetos]
+  );
+  // --- Hito 8: Edit Mode dragging ---
+  const isDragging = useStore((s) => s.isDragging);
+  const selectedObjectId = useStore((s) => s.selectedObjectId);
+  const modoEdicionObjeto = useStore((s) => s.modoEdicionObjeto) as ModoEdicionObjeto;
+  const objetoSeleccionado = useMemo(
+    () => espacioObjetos.find((obj) => obj.id === selectedObjectId) || null,
+    [espacioObjetos, selectedObjectId]
+  );
+
+  const handlePointerMove = useCallback((e: any) => {
+    const point = e.point;
+    const x = ajustarAGrilla(point.x);
+    const z = ajustarAGrilla(point.z);
+
+    if (objetoEnColocacion && onActualizarObjetoEnColocacion) {
+      onActualizarObjetoEnColocacion(x, objetoEnColocacion.posicion_y, z);
+      return;
+    }
+
+    if (!isDragging || !selectedObjectId || !objetoSeleccionado) {
+      return;
+    }
+
+    if (modoEdicionObjeto === 'mover' && onMoverObjeto) {
+      onMoverObjeto(selectedObjectId, x, objetoSeleccionado.posicion_y ?? 0.4, z);
+      return;
+    }
+
+    if (modoEdicionObjeto === 'rotar' && onTransformarObjeto) {
+      const deltaX = x - objetoSeleccionado.posicion_x;
+      const deltaZ = z - objetoSeleccionado.posicion_z;
+      if (Math.abs(deltaX) < 0.05 && Math.abs(deltaZ) < 0.05) {
+        return;
+      }
+      const angulo = Math.atan2(deltaX, deltaZ);
+      onTransformarObjeto(selectedObjectId, { rotacion_y: angulo });
+      return;
+    }
+
+    if (modoEdicionObjeto === 'escalar' && onTransformarObjeto) {
+      const deltaX = x - objetoSeleccionado.posicion_x;
+      const deltaZ = z - objetoSeleccionado.posicion_z;
+      const distancia = Math.sqrt(deltaX * deltaX + deltaZ * deltaZ);
+      const baseEscala = Math.max(Number(objetoSeleccionado.catalogo?.ancho) || 1, Number(objetoSeleccionado.catalogo?.profundidad) || 1, 0.75);
+      const siguienteEscala = THREE.MathUtils.clamp(Number((distancia / baseEscala).toFixed(2)), 0.35, 4);
+      onTransformarObjeto(selectedObjectId, {
+        escala_x: siguienteEscala,
+        escala_y: siguienteEscala,
+        escala_z: siguienteEscala,
+      });
+    }
+  }, [isDragging, selectedObjectId, onMoverObjeto, objetoSeleccionado, objetoEnColocacion, onActualizarObjetoEnColocacion, modoEdicionObjeto, onTransformarObjeto]);
 
   useFrame(() => {
     projectionRef.current.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
@@ -141,6 +228,7 @@ export const Scene: React.FC<SceneProps> = ({ currentUser, onlineUsers, setPosit
     if (!chairMeshRef.current) return;
     chairPositions.forEach((pos, idx) => {
       chairDummy.position.set(pos[0], pos[1], pos[2]);
+      chairDummy.rotation.set(0, pos[3], 0);
       chairDummy.updateMatrix();
       chairMeshRef.current?.setMatrixAt(idx, chairDummy.matrix);
     });
@@ -158,26 +246,25 @@ export const Scene: React.FC<SceneProps> = ({ currentUser, onlineUsers, setPosit
           <directionalLight position={[10, 20, 10]} intensity={1.2} castShadow />
         </>
       )}
-      
-      {/* CameraControls (drei) — basado en camera-controls de yomotsu.
-          Reemplaza OrbitControls + CameraFollow manual.
-          - smoothTime controla damping (menor = más rápido)
-          - No usa props declarativos de position/target (evita reset en re-renders)
-          - CameraFollow maneja el seguimiento del jugador via setTarget/setPosition */}
-      <CameraControls
+
+      {/* OrbitControls (drei) — Restaurado de la v2.2!
+          - OrbitControls NO retrasa la cámara, muta la posición síncronamente en el render pass.
+          - Se soluciona el lag root que causaba CameraControls de yomotsu. */}
+      <OrbitControls
         ref={orbitControlsRef}
         makeDefault
         minDistance={5}
         maxDistance={50}
         maxPolarAngle={Math.PI / 2 - 0.1}
         minPolarAngle={Math.PI / 6}
-        truckSpeed={cameraMode === 'free' ? 0.5 : 0}
-        azimuthRotateSpeed={cameraMode !== 'fixed' ? cameraSensitivity / 10 : 0}
-        polarRotateSpeed={cameraMode !== 'fixed' ? cameraSensitivity / 10 : 0}
-        dollySpeed={0.8}
-        smoothTime={0.15}
+        enablePan={cameraMode === 'free'}
+        enableRotate={cameraMode !== 'fixed'}
+        rotateSpeed={cameraSensitivity / 10}
+        zoomSpeed={0.8}
+        enableDamping={true}
+        dampingFactor={0.05}
       />
-      
+
       {showFloorGrid && (
         <Grid
           args={[WORLD_SIZE * 2, WORLD_SIZE * 2]}
@@ -193,12 +280,12 @@ export const Scene: React.FC<SceneProps> = ({ currentUser, onlineUsers, setPosit
           followCamera={false}
         />
       )}
-      
+
       {/* Piso importado desde Blender (Estilo Riot Games: Malla estática pura con texturas) */}
       <group position={[-25, -0.02, 75]}>
-        <primitive 
-          object={terrainScene} 
-          receiveShadow 
+        <primitive
+          object={terrainScene}
+          receiveShadow
         />
       </group>
 
@@ -206,12 +293,20 @@ export const Scene: React.FC<SceneProps> = ({ currentUser, onlineUsers, setPosit
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}
         onClick={(e) => {
           e.stopPropagation();
+          if (objetoEnColocacion && onConfirmarObjetoEnColocacion) {
+            onConfirmarObjetoEnColocacion();
+            return;
+          }
           if (onTapFloor) onTapFloor(e.point);
         }}
         onDoubleClick={(e) => {
           e.stopPropagation();
+          if (objetoEnColocacion) {
+            return;
+          }
           if (onDoubleClickFloor) onDoubleClickFloor(e.point);
         }}
+        onPointerMove={handlePointerMove}
         visible={false}
       >
         <planeGeometry args={[1000, 1000]} />
@@ -272,34 +367,55 @@ export const Scene: React.FC<SceneProps> = ({ currentUser, onlineUsers, setPosit
             </RigidBody>
           );
         })}
-      </Physics>
-      
-      {/* Marcador visual del destino (estilo Gather) */}
-      {moveTarget && (
-        <group position={[moveTarget.x, 0.05, moveTarget.z]}>
-          <mesh rotation={[-Math.PI / 2, 0, 0]}>
-            <ringGeometry args={[0.3, 0.5, 32]} />
-            <meshBasicMaterial color="#6366f1" transparent opacity={0.6} />
-          </mesh>
-          <mesh rotation={[-Math.PI / 2, 0, 0]}>
-            <circleGeometry args={[0.2, 32]} />
-            <meshBasicMaterial color="#6366f1" transparent opacity={0.3} />
-          </mesh>
-        </group>
-      )}
 
-      {/* Escritorios persistentes desde BD */}
-      {espacioObjetos.map((obj) => (
-        <Escritorio3D
-          key={obj.id}
-          objeto={obj}
-          playerPosition={playerColliderPositionRef.current}
-          currentUserId={currentUser.id || null}
-          onReclamar={onReclamarObjeto || (() => {})}
-          onLiberar={onLiberarObjeto || (() => {})}
-          ownerName={objetoOwnerNames?.get(obj.owner_id || '') || null}
-        />
-      ))}
+        {/* Objetos persistentes DENTRO de Physics para habilitar colisiones precisas */}
+        {espacioObjetos.map((obj) => {
+          const obstaculo = crearObstaculoObjetoPersistente(obj);
+
+          return (
+            <RigidBody
+              key={`${obj.id}-${obj.rotacion_y}-${obj.actualizado_en}`}
+              type="fixed"
+              colliders={false}
+            >
+              {/* Collider físico explícito exacto alineado con el modelo visual */}
+              <CuboidCollider 
+                position={[
+                  obstaculo.posicion.x,
+                  obstaculo.posicion.y,
+                  obstaculo.posicion.z,
+                ]} 
+                rotation={[0, obstaculo.rotacion, 0]}
+                args={[obstaculo.semiextensiones.x, obstaculo.semiextensiones.y, obstaculo.semiextensiones.z]} 
+              />
+              
+              {obj.catalogo_id ? (
+                <ObjetoEscena3D
+                  objeto={obj}
+                  playerPosition={playerColliderPositionRef.current}
+                  onInteractuar={() => onInteractuarObjeto?.(obj, asientosPorObjetoId.get(obj.id) || null)}
+                  onMover={onMoverObjeto}
+                  onRotar={onRotarObjeto}
+                  onEliminar={onEliminarObjeto}
+                  animarEntrada={ultimoObjetoColocadoId === obj.id}
+                />
+              ) : (
+                <Escritorio3D
+                  objeto={obj}
+                  playerPosition={playerColliderPositionRef.current}
+                  currentUserId={currentUser.id || null}
+                  onReclamar={onReclamarObjeto || (() => { })}
+                  onLiberar={onLiberarObjeto || (() => { })}
+                  onMover={onMoverObjeto}
+                  onRotar={onRotarObjeto}
+                  onEliminar={onEliminarObjeto}
+                  ownerName={objetoOwnerNames?.get(obj.owner_id || '') || null}
+                />
+              )}
+            </RigidBody>
+          );
+        })}
+      </Physics>
 
       {/* Mesas y objetos (Demo) */}
       <mesh position={[10, 0.5, 10]} castShadow receiveShadow>
@@ -314,7 +430,7 @@ export const Scene: React.FC<SceneProps> = ({ currentUser, onlineUsers, setPosit
         <boxGeometry args={[1, 0.6, 1]} />
         <meshStandardMaterial color="#0f172a" />
       </instancedMesh>
-      
+
       <mesh position={[25, 0.02, 10]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[6, 6]} />
         <meshBasicMaterial color="#3b82f6" opacity={0.15} transparent />
@@ -322,14 +438,14 @@ export const Scene: React.FC<SceneProps> = ({ currentUser, onlineUsers, setPosit
       <Text position={[25, 0.1, 13.5]} fontSize={0.3} color="#3b82f6" anchorX="center">
         Sala 2
       </Text>
-      
+
       {/* Jugador actual */}
-      <Player 
-        currentUser={currentUser} 
-        setPosition={setPosition} 
-        stream={stream} 
+      <Player
+        currentUser={currentUser}
+        setPosition={setPosition}
+        stream={stream}
         showVideoBubble={showVideoBubbles && !usersInCallIds?.size} // Bug 1 Fix: Ocultar bubble local si hay llamada activa (HUD visible)
-        message={localMessage} 
+        message={localMessage}
         reactions={localReactions}
         onClickAvatar={onClickAvatar}
         moveTarget={moveTarget}
@@ -346,11 +462,16 @@ export const Scene: React.FC<SceneProps> = ({ currentUser, onlineUsers, setPosit
         usersInCallIds={usersInCallIds}
         mobileInputRef={mobileInputRef}
         onXPEvent={onXPEvent}
+        espacioObjetos={espacioObjetos}
+        asientos={asientosRuntime}
+        ocupacionesAsientosPorObjetoId={ocupacionesAsientosPorObjetoId}
+        onOcuparAsiento={onOcuparAsiento}
+        onLiberarAsiento={onLiberarAsiento}
+        onRefrescarAsiento={onRefrescarAsiento}
+        obstaculos={obstaculosMundo}
       />
-      
-      {/* Cámara que sigue al jugador — DEBE montarse DESPUÉS de Player para que useFrame lea posición actualizada */}
       <CameraFollow controlsRef={orbitControlsRef} />
-      
+
       {/* Usuarios remotos */}
       <RemoteUsers users={onlineUsers} remoteStreams={remoteStreams} showVideoBubble={showVideoBubbles} usersInCallIds={usersInCallIds} usersInAudioRangeIds={usersInAudioRangeIds} remoteMessages={remoteMessages} remoteReaction={remoteReaction} realtimePositionsRef={realtimePositionsRef} interpolacionWorkerRef={interpolacionWorkerRef} posicionesInterpoladasRef={posicionesInterpoladasRef} ecsStateRef={ecsStateRef} frustumRef={frustumRef} onClickRemoteAvatar={onClickRemoteAvatar} avatarInteractions={avatarInteractions} />
 

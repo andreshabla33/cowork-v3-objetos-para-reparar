@@ -6,7 +6,9 @@
  * reduciendo queries directas a la base de datos.
  */
 
-const SUPABASE_URL = 'https://lcryrsdyrzotjqdxcwtp.supabase.co';
+import { CONFIG_PUBLICA_APP } from './env';
+
+const SUPABASE_URL = CONFIG_PUBLICA_APP.urlSupabase;
 const EDGE_PROXY_URL = `${SUPABASE_URL}/functions/v1/edge-proxy-posiciones`;
 
 export interface ZonaProxy {

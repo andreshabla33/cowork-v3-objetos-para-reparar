@@ -11,6 +11,7 @@ import type { JoystickInput } from '@/components/3d/MobileJoystick';
 import type { EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
 import type { RealtimeChunkManager, EventoRealtime } from '@/lib/realtimeChunkManager';
 import type { GpuInfo } from '@/lib/gpuCapabilities';
+import { ICE_SERVERS as ICE_SERVERS_COMPARTIDOS } from '@/lib/rtcConfig';
 import type { Room, LocalAudioTrack, LocalVideoTrack } from 'livekit-client';
 
 // ========== Constantes globales ==========
@@ -31,33 +32,7 @@ export const USAR_LIVEKIT = true;
 export const PROXIMITY_COORD_THRESHOLD = 8;
 
 // ICE Servers para WebRTC
-export const ICE_SERVERS: RTCIceServer[] = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun2.l.google.com:19302' },
-  { urls: 'stun:stun3.l.google.com:19302' },
-  { urls: 'stun:stun4.l.google.com:19302' },
-  { 
-    urls: 'turn:a.relay.metered.ca:80', 
-    username: 'e8dd65c92c8d8d9e5c5f5c8a', 
-    credential: 'kxLzJPjQ5+Oy5G6/' 
-  },
-  { 
-    urls: 'turn:a.relay.metered.ca:80?transport=tcp', 
-    username: 'e8dd65c92c8d8d9e5c5f5c8a', 
-    credential: 'kxLzJPjQ5+Oy5G6/' 
-  },
-  { 
-    urls: 'turn:a.relay.metered.ca:443', 
-    username: 'e8dd65c92c8d8d9e5c5f5c8a', 
-    credential: 'kxLzJPjQ5+Oy5G6/' 
-  },
-  { 
-    urls: 'turns:a.relay.metered.ca:443?transport=tcp', 
-    username: 'e8dd65c92c8d8d9e5c5f5c8a', 
-    credential: 'kxLzJPjQ5+Oy5G6/' 
-  },
-];
+export const ICE_SERVERS: RTCIceServer[] = ICE_SERVERS_COMPARTIDOS;
 
 // ========== Tipos auxiliares ==========
 

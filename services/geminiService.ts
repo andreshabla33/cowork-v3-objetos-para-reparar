@@ -3,8 +3,10 @@
  * La Edge Function llama a OpenAI (sin CORS, key segura server-side)
  */
 
-const SUPABASE_URL = 'https://lcryrsdyrzotjqdxcwtp.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxjcnlyc2R5cnpvdGpxZHhjd3RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc2NDg0MTgsImV4cCI6MjA4MzIyNDQxOH0.8fsqkKHHOVCZMi8tAb85HN_It2QCSWP0delcFn56vd4';
+import { CONFIG_PUBLICA_APP } from '../lib/env';
+
+const SUPABASE_URL = CONFIG_PUBLICA_APP.urlSupabase;
+const SUPABASE_ANON_KEY = CONFIG_PUBLICA_APP.claveAnonSupabase;
 const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/monica-ai-proxy`;
 
 const SYSTEM_PROMPT = (context: any) => `Eres Mónica, la asistente de IA del espacio de trabajo virtual "Cowork".

@@ -27,6 +27,39 @@ export const MOVEMENT_BROADCAST_MS = 100;
 export const USAR_LIVEKIT = true;
 export const PROXIMITY_COORD_THRESHOLD = 12;
 
+// ========== Escala Métrica (1 Unidad = 1 Metro, estándar industria) ==========
+// Ref: Roblox R15, Fortnite/UE5 (1cm→1u), LoL (hitbox-units).
+// Todos los modelos 3D deben exportarse en metros desde Blender/Maya.
+// Si un modelo no cumple, usar escala_normalizacion en la DB para corregir.
+export const FACTOR_ESCALA_OBJETOS_ESCENA = 1.0;
+export const ALTURA_AVATAR_ESTANDAR = 1.75; // metros — altura de referencia del avatar humano
+export const ALTURA_CADERA_AVATAR_SENTADO = 0.55; // metros — altura del hueso Hips sobre el asiento
+export const ANIMATION_SIT_DOWN_DURATION = 800; // ms
+export const STAND_UP_GRACE_PERIOD = 2000; // ms para ignorar colisiones al levantarse
+export const RADIO_COLISION_AVATAR = 0.42;
+
+export const obtenerDireccionDesdeVector = (
+  deltaX: number,
+  deltaZ: number,
+  fallback: DireccionAvatar = 'front'
+): DireccionAvatar => {
+  if (Math.abs(deltaX) < 0.0001 && Math.abs(deltaZ) < 0.0001) {
+    return fallback;
+  }
+
+  const pi = Math.PI;
+  const angle = Math.atan2(deltaX, deltaZ);
+
+  if (angle > -pi / 8 && angle <= pi / 8) return 'front';
+  if (angle > pi / 8 && angle <= (3 * pi) / 8) return 'front-right';
+  if (angle > (3 * pi) / 8 && angle <= (5 * pi) / 8) return 'right';
+  if (angle > (5 * pi) / 8 && angle <= (7 * pi) / 8) return 'up-right';
+  if (angle > (7 * pi) / 8 || angle <= (-7 * pi) / 8) return 'up';
+  if (angle > (-7 * pi) / 8 && angle <= (-5 * pi) / 8) return 'up-left';
+  if (angle > (-5 * pi) / 8 && angle <= (-3 * pi) / 8) return 'left';
+  return 'front-left';
+};
+
 export const statusColors: Record<string, string> = {
   available: '#22c55e',
   busy: '#ef4444',

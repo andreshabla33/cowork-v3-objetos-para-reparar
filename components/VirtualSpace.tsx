@@ -2,8 +2,11 @@
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import Phaser from 'phaser';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { User, Role, PresenceStatus } from '../types';
 import { supabase } from '../lib/supabase';
+import { ICE_SERVERS } from '../lib/rtcConfig';
+import { seleccionarEspacioVirtual2D } from '../store/selectores';
 
 const MOVE_SPEED = 240; 
 const INITIAL_ZOOM = 1.3;
@@ -312,34 +315,11 @@ export const VirtualSpace: React.FC = () => {
   const activeScreenRef = useRef<MediaStream | null>(null);
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const webrtcChannelRef = useRef<any>(null);
-
-  const ICE_SERVERS = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun4.l.google.com:19302' },
-    { 
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    }
-  ];
   
   const { 
     currentUser, users, activeWorkspace, setPosition, 
     toggleMic, toggleCamera, toggleScreenShare, togglePrivacy, setPrivacy, theme, addNotification, session, onlineUsers
-  } = useStore();
+  } = useStore(useShallow(seleccionarEspacioVirtual2D));
 
   const currentUserRef = useRef(currentUser);
   useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);

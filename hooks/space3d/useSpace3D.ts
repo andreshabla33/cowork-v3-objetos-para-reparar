@@ -7,11 +7,13 @@
 
 import { useRef, useState, useMemo, useEffect, useCallback } from 'react';
 import { useStore } from '@/store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { User } from '@/types';
 import { isTouchDevice, hapticFeedback } from '@/lib/mobileDetect';
 import { registrarLoginDiario, otorgarXP, XP_POR_ACCION } from '@/lib/gamificacion';
 import { supabase } from '@/lib/supabase';
 import type { JoystickInput } from '@/components/3d/MobileJoystick';
+import { seleccionarSpace3DBase } from '@/store/selectores';
 import { USAR_LIVEKIT } from './types';
 import { useUserSettings } from './useUserSettings';
 import { useRecording } from './useRecording';
@@ -37,10 +39,11 @@ export function useSpace3D(props: {
   // ========== Store ==========
   const {
     currentUser, onlineUsers, setPosition, activeWorkspace,
-    toggleMic, toggleCamera, toggleScreenShare, togglePrivacy, setPrivacy,
+    toggleMic, toggleCamera, toggleScreenShare, togglePrivacy, setPrivacy, updateAvatar,
     session, setActiveSubTab, setActiveChatGroupId, activeSubTab,
     empresasAutorizadas, setEmpresasAutorizadas,
-  } = useStore();
+    isEditMode, setIsEditMode, isDragging, setIsDragging,
+  } = useStore(useShallow(seleccionarSpace3DBase));
 
   // ========== Top-level state ==========
   const [moveTarget, setMoveTarget] = useState<{ x: number; z: number } | null>(null);
@@ -128,6 +131,7 @@ export function useSpace3D(props: {
   const hasActiveCallComputed = useRef(false);
   const usersInCallRef = useRef<User[]>([]);
   const usersInAudioRangeRef = useRef<User[]>([]);
+  const conversacionesBloqueadasRemotoRef = useRef<Map<string, string[]>>(new Map());
 
   const livekit = useLiveKit({
     activeWorkspace,
@@ -145,7 +149,7 @@ export function useSpace3D(props: {
     hasActiveCall: hasActiveCallComputed.current,
     usersInCall: usersInCallRef.current,
     usersInAudioRange: usersInAudioRangeRef.current,
-    conversacionesBloqueadasRemoto: new Map(), // Se sincroniza abajo
+    conversacionesBloqueadasRemoto: conversacionesBloqueadasRemotoRef.current,
   });
 
   // Patch livekitRoomRef en settings
@@ -175,6 +179,7 @@ export function useSpace3D(props: {
   hasActiveCallRef.current = proximity.hasActiveCall;
   usersInCallRef.current = proximity.usersInCall;
   usersInAudioRangeRef.current = proximity.usersInAudioRange;
+  conversacionesBloqueadasRemotoRef.current = proximity.conversacionesBloqueadasRemoto;
 
   // ========== 8. Broadcast ==========
   const broadcast = useBroadcast({
@@ -272,9 +277,11 @@ export function useSpace3D(props: {
   return {
     // Store
     currentUser, onlineUsers, setPosition, activeWorkspace,
-    toggleMic, toggleCamera, toggleScreenShare, togglePrivacy, setPrivacy,
+    toggleMic, toggleCamera, toggleScreenShare, togglePrivacy, setPrivacy, updateAvatar,
     session, setActiveSubTab, setActiveChatGroupId, activeSubTab,
     empresasAutorizadas, setEmpresasAutorizadas,
+    isEditMode, setIsEditMode, isDragging, setIsDragging,
+
 
     // Top-level state
     theme, isGameHubOpen, isPlayingGame, showroomMode, showroomDuracionMin, showroomNombreVisitante,

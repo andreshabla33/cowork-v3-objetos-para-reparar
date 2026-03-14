@@ -118,7 +118,7 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
   onIrAMiEscritorio,
   tieneMiEscritorio = false,
 }) => {
-  const { currentUser, updateStatus } = useStore();
+  const { currentUser, updateStatus, isEditMode, setIsEditMode } = useStore();
   const emojis = ['👍', '🔥', '❤️', '👏', '😂', '😮', '🚀', '✨'];
   
   const currentStatus = currentUser.status || PresenceStatus.AVAILABLE;
@@ -683,6 +683,15 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
           />
         )}
 
+        <ControlButton 
+          onClick={() => setIsEditMode(!isEditMode)} 
+          isActive={isEditMode} 
+          activeColor="bg-amber-500 text-white" 
+          inactiveColor="bg-transparent text-white/70 hover:bg-white/10 hover:text-white"
+          icon={<IconEditMode on={isEditMode} />}
+          tooltip={isEditMode ? 'Salir de edición' : 'Modo edición'}
+        />
+
         {/* Mini Juegos - Ocultar si ya estamos en un juego */}
         {onOpenGameHub && !isGameActive && (
           <ControlButton 
@@ -820,6 +829,16 @@ const IconChat = () => (
 const IconDesk = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 6v4h16V6M6 10v8M18 10v8M4 14h16" />
+  </svg>
+);
+
+const IconEditMode = ({ on }: { on: boolean }) => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    {on ? (
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z" />
+    ) : (
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5M15 3l6 6M10 14L21 3" />
+    )}
   </svg>
 );
 
