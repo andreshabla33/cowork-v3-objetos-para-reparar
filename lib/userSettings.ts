@@ -218,13 +218,34 @@ const defaultSettings: UserSettings = {
   }
 };
 
+// Deep merge: combina defaults con valores guardados preservando nuevas keys en subsecciones
+function deepMergeSettings<T extends Record<string, any>>(defaults: T, overrides: Record<string, any>): T {
+  const result = { ...defaults };
+  for (const key of Object.keys(defaults)) {
+    if (key in overrides) {
+      const defaultVal = defaults[key];
+      const overrideVal = overrides[key];
+      if (
+        defaultVal !== null && overrideVal !== null &&
+        typeof defaultVal === 'object' && typeof overrideVal === 'object' &&
+        !Array.isArray(defaultVal) && !Array.isArray(overrideVal)
+      ) {
+        (result as any)[key] = deepMergeSettings(defaultVal, overrideVal);
+      } else {
+        (result as any)[key] = overrideVal;
+      }
+    }
+  }
+  return result;
+}
+
 // Leer todos los settings
 export function getUserSettings(): UserSettings {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      return { ...defaultSettings, ...parsed };
+      return deepMergeSettings(defaultSettings, parsed);
     }
   } catch (e) {
     console.error('Error loading user settings:', e);

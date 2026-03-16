@@ -211,6 +211,8 @@ export function useEspacioObjetos(
   const [spawnPersonal, setSpawnPersonal] = useState<SpawnPersonal>({ spawn_x: null, spawn_z: null });
   const subscriptionRef = useRef<any>(null);
   const catalogoIndiceRef = useRef<ReturnType<typeof crearIndiceCatalogo>>(crearIndiceCatalogo([]));
+  const objetosRef = useRef<EspacioObjeto[]>(objetos);
+  objetosRef.current = objetos;
 
   // Fetch objetos del espacio
   useEffect(() => {
@@ -370,7 +372,7 @@ export function useEspacioObjetos(
     if (!userId) { console.warn('[useEspacioObjetos] userId es null'); return false; }
 
     // Si ya tiene un escritorio, liberarlo primero
-    const escritorioActual = objetos.find((o) => o.owner_id === userId);
+    const escritorioActual = objetosRef.current.find((o) => o.owner_id === userId);
     if (escritorioActual && escritorioActual.id !== objetoId) {
       console.log('[useEspacioObjetos] Liberando escritorio anterior:', escritorioActual.id);
       await supabase
@@ -400,13 +402,13 @@ export function useEspacioObjetos(
     }
 
     // Guardar spawn personal en la posición del escritorio reclamado
-    const objeto = objetos.find((o) => o.id === objetoId);
+    const objeto = objetosRef.current.find((o) => o.id === objetoId);
     if (objeto) {
       await guardarSpawnPersonal(objeto.posicion_x, objeto.posicion_z);
     }
 
     return true;
-  }, [userId, objetos, espacioId]);
+  }, [userId, espacioId]);
 
   // Liberar un objeto (quitar owner_id)
   const liberarObjeto = useCallback(async (objetoId: string): Promise<boolean> => {
@@ -441,7 +443,7 @@ export function useEspacioObjetos(
   }, [userId, espacioId]);
 
   const actualizarTransformacionObjeto = useCallback(async (objetoId: string, cambios: TransformacionObjetoInput): Promise<boolean> => {
-    const objetoPrevio = objetos.find((obj) => obj.id === objetoId);
+    const objetoPrevio = objetosRef.current.find((obj) => obj.id === objetoId);
     if (!objetoPrevio) {
       console.warn('[useEspacioObjetos] Objeto no encontrado para transformar:', objetoId);
       return false;
@@ -474,7 +476,7 @@ export function useEspacioObjetos(
     }
 
     return true;
-  }, [objetos]);
+  }, []);
 
   // Mover un objeto (actualizar posición)
   const moverObjeto = useCallback(async (objetoId: string, x: number, y: number, z: number): Promise<boolean> => {
@@ -493,8 +495,8 @@ export function useEspacioObjetos(
 
   // Eliminar un objeto (solo si el usuario tiene permisos o es el owner)
   const eliminarObjeto = useCallback(async (objetoId: string): Promise<boolean> => {
-    const indicePrevio = objetos.findIndex((obj) => obj.id === objetoId);
-    const objetoPrevio = indicePrevio >= 0 ? objetos[indicePrevio] : null;
+    const indicePrevio = objetosRef.current.findIndex((obj) => obj.id === objetoId);
+    const objetoPrevio = indicePrevio >= 0 ? objetosRef.current[indicePrevio] : null;
 
     setObjetos((prev) => prev.filter((obj) => obj.id !== objetoId));
 
@@ -516,10 +518,10 @@ export function useEspacioObjetos(
       return false;
     }
     return true;
-  }, [objetos]);
+  }, []);
 
   const restaurarObjeto = useCallback(async (objeto: EspacioObjeto): Promise<EspacioObjeto | null> => {
-    const snapshotPrevio = objetos;
+    const snapshotPrevio = [...objetosRef.current];
     const objetoBase = {
       id: objeto.id,
       espacio_id: objeto.espacio_id,
@@ -572,7 +574,7 @@ export function useEspacioObjetos(
     });
 
     return restaurado;
-  }, [objetos]);
+  }, []);
 
   // Guardar spawn personal
   const guardarSpawnPersonal = useCallback(async (x: number, z: number): Promise<boolean> => {

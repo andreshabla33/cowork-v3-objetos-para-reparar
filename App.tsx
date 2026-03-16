@@ -221,14 +221,6 @@ const InvitationProcessor: React.FC = () => {
 
   const token = new URLSearchParams(window.location.search).get('token');
 
-  useEffect(() => {
-    if (token) {
-      verificarInvitacion();
-    } else {
-      setEstado('error');
-    }
-  }, [token]);
-
   const verificarInvitacion = async () => {
     try {
       // Hashear token en el cliente para buscar por hash (no se envía el plaintext a la BD)
@@ -284,6 +276,15 @@ const InvitationProcessor: React.FC = () => {
       setEstado('error');
     }
   };
+
+  useEffect(() => {
+    if (token) {
+      verificarInvitacion();
+    } else {
+      setEstado('error');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const aceptarInvitacion = async () => {
     if (!token || !invitacion) return;
@@ -482,10 +483,6 @@ const OnboardingCargoView: React.FC = () => {
   });
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    verificarMiembro();
-  }, [session]);
-
   const verificarMiembro = async () => {
     if (!session?.user?.id) {
       setState(prev => ({ ...prev, isLoading: false, error: 'No hay sesión activa' }));
@@ -568,6 +565,11 @@ const OnboardingCargoView: React.FC = () => {
       setState(prev => ({ ...prev, isLoading: false, error: 'Error al cargar datos' }));
     }
   };
+
+  useEffect(() => {
+    verificarMiembro();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
 
   const handleSelectCargo = async (cargo: CargoLaboral) => {
     // Si no hay departamentos, guardar cargo directamente y completar onboarding

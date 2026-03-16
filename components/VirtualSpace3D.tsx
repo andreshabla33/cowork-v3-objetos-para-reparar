@@ -432,18 +432,16 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   // Ref para OrbitControls (usado en JSX/Scene)
   const orbitControlsRef = useRef<any>(null);
 
-  // Función para resetear la vista de la cámara (CameraControls API)
+  // Función para resetear la vista de la cámara (OrbitControls API)
   const handleResetView = useCallback(() => {
-    if (orbitControlsRef.current) {
-      const playerX = (currentUser.x || 400) / 16;
-      const playerZ = (currentUser.y || 400) / 16;
-      // setLookAt(camX, camY, camZ, targetX, targetY, targetZ, enableTransition)
-      orbitControlsRef.current.setLookAt(
-        playerX, 15, playerZ + 15,  // posición cámara
-        playerX, 0, playerZ,         // target (jugador)
-        true                          // transición suave
-      );
-    }
+    const controls = orbitControlsRef.current;
+    if (!controls) return;
+    const playerX = (currentUser.x || 400) / 16;
+    const playerZ = (currentUser.y || 400) / 16;
+    // OrbitControls: mover target al jugador y reposicionar la cámara
+    controls.target.set(playerX, 0, playerZ);
+    controls.object.position.set(playerX, 15, playerZ + 15);
+    controls.update();
   }, [currentUser.x, currentUser.y]);
 
   // Cerrar chat, emojis y status picker al hacer clic en el canvas
@@ -638,7 +636,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       {/* Botón de resetear vista */}
       <button
         onClick={handleResetView}
-        className="absolute bottom-4 left-4 bg-gray-800/80 hover:bg-gray-700 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm backdrop-blur-sm transition-colors z-10"
+        className="absolute bottom-[180px] left-6 bg-gray-800/80 hover:bg-gray-700 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm backdrop-blur-sm transition-colors z-10 hidden md:flex"
         title="Resetear vista (centrar cámara en tu avatar)"
         data-tour-step="avatar-area"
       >
@@ -876,7 +874,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
 
       {/* Notificación de Nudge entrante */}
       {incomingNudge && (
-        <div className="fixed top-16 right-4 z-[201] animate-slide-in">
+        <div className="fixed top-32 right-4 z-[201] animate-slide-in">
           <div className="backdrop-blur-xl rounded-2xl border shadow-2xl overflow-hidden bg-slate-950/80 border-slate-600/40">
             <div className="flex items-center gap-2 px-3.5 py-2">
               <div className="w-7 h-7 rounded-lg bg-pink-500/15 flex items-center justify-center flex-shrink-0">
@@ -899,7 +897,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
 
       {/* Notificación de Invite entrante */}
       {incomingInvite && (
-        <div className="fixed top-16 right-4 z-[201] animate-slide-in">
+        <div className="fixed top-48 right-4 z-[201] animate-slide-in">
           <div className="backdrop-blur-xl rounded-2xl border shadow-2xl overflow-hidden bg-slate-950/80 border-slate-600/40">
             <div className="flex items-center gap-2 px-3.5 py-2">
               <div className="w-7 h-7 rounded-lg bg-indigo-500/15 flex items-center justify-center flex-shrink-0">
@@ -1202,7 +1200,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       )}
 
       {isEditMode && (
-        <InspectorEdicionObjeto objeto={objetoSeleccionado} modoActual={modoEdicionObjeto} />
+        <InspectorEdicionObjeto objeto={objetoSeleccionado} modoActual={modoEdicionObjeto} onTransformar={handleTransformarObjeto} />
       )}
 
       {/* Se eliminó el EditModeToast a petición del usuario debido a problemas de renderizado */}

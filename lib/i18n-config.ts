@@ -25,7 +25,7 @@ i18n
     supportedLngs: supportedLanguages,
     
     // Debug en desarrollo
-    debug: process.env.NODE_ENV === 'development',
+    debug: import.meta.env.DEV,
     
     // Namespace por defecto
     defaultNS: 'translation',

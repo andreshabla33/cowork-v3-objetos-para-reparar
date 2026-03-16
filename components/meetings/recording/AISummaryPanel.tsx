@@ -48,7 +48,7 @@ export const AISummaryPanel: React.FC<AISummaryPanelProps> = ({
     navigator.clipboard.writeText(text);
   };
 
-  const tabs: { id: TabType; label: string; icon: JSX.Element }[] = [
+  const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
     {
       id: 'resumen',
       label: 'Resumen',

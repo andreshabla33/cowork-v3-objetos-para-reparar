@@ -490,15 +490,15 @@ export const ObjetoEscena3D: React.FC<ObjetoEscena3DProps> = ({
 
       {isSelected && isEditMode && (
         <Html position={[0, 0.1, 0]} center>
-          <div className="rounded-2xl border border-white/15 bg-black/70 p-2 backdrop-blur-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <div className="mb-2 text-center text-[9px] font-black uppercase tracking-[0.2em] text-indigo-200/70">
+          <div className="rounded-2xl border border-white/15 bg-black/75 p-3.5 backdrop-blur-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="mb-3 text-center text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200/70">
               Gizmo Snap {PASO_GRILLA}m
             </div>
-            <div className="grid grid-cols-3 gap-1">
+            <div className="grid grid-cols-3 gap-3">
               <div />
               <button
                 onClick={() => moverPorPaso(0, -PASO_GRILLA)}
-                className="h-9 w-9 rounded-xl border border-white/15 bg-white/10 text-white transition-colors hover:bg-indigo-500/60"
+                className="h-9 w-9 rounded-xl border border-white/15 bg-white/10 text-white transition-all hover:bg-indigo-500/60 hover:scale-105 active:scale-95"
                 title="Mover arriba"
               >
                 ↑
@@ -506,21 +506,15 @@ export const ObjetoEscena3D: React.FC<ObjetoEscena3DProps> = ({
               <div />
               <button
                 onClick={() => moverPorPaso(-PASO_GRILLA, 0)}
-                className="h-9 w-9 rounded-xl border border-white/15 bg-white/10 text-white transition-colors hover:bg-indigo-500/60"
+                className="h-9 w-9 rounded-xl border border-white/15 bg-white/10 text-white transition-all hover:bg-indigo-500/60 hover:scale-105 active:scale-95"
                 title="Mover izquierda"
               >
                 ←
               </button>
-              <button
-                onClick={handleRotate}
-                className="h-9 w-9 rounded-xl border border-amber-400/25 bg-amber-500/15 text-amber-200 transition-colors hover:bg-amber-500/30"
-                title="Rotar 90°"
-              >
-                ↻
-              </button>
+              <div />
               <button
                 onClick={() => moverPorPaso(PASO_GRILLA, 0)}
-                className="h-9 w-9 rounded-xl border border-white/15 bg-white/10 text-white transition-colors hover:bg-indigo-500/60"
+                className="h-9 w-9 rounded-xl border border-white/15 bg-white/10 text-white transition-all hover:bg-indigo-500/60 hover:scale-105 active:scale-95"
                 title="Mover derecha"
               >
                 →
@@ -528,24 +522,26 @@ export const ObjetoEscena3D: React.FC<ObjetoEscena3DProps> = ({
               <div />
               <button
                 onClick={() => moverPorPaso(0, PASO_GRILLA)}
-                className="h-9 w-9 rounded-xl border border-white/15 bg-white/10 text-white transition-colors hover:bg-indigo-500/60"
+                className="h-9 w-9 rounded-xl border border-white/15 bg-white/10 text-white transition-all hover:bg-indigo-500/60 hover:scale-105 active:scale-95"
                 title="Mover abajo"
               >
                 ↓
               </button>
               <div />
             </div>
+            <div className="mt-3 pt-3 border-t border-white/10 flex justify-center">
+              <button
+                onClick={handleRotate}
+                className="h-9 px-4 rounded-xl border border-amber-400/25 bg-amber-500/15 text-amber-200 text-[11px] font-semibold transition-all hover:bg-amber-500/30 hover:scale-105 active:scale-95 flex items-center gap-1.5"
+                title="Rotar 90°"
+              >
+                <span className="text-[14px]">↻</span> Rotar
+              </button>
+            </div>
           </div>
         </Html>
       )}
 
-      {cercano && !isEditMode && (
-        <Html position={[0, Math.max(escala[1], 1) + 0.35, 0]} center style={{ pointerEvents: 'none' }}>
-          <div className="bg-black/85 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10 whitespace-nowrap shadow-xl">
-            <span className="text-[11px] text-white/90 font-medium">{emojiInteraccion} {etiquetaInteraccion}</span>
-          </div>
-        </Html>
-      )}
     </group>
   );
 };

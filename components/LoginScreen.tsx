@@ -56,12 +56,19 @@ export const LoginScreen: React.FC = () => {
 
   const handleGuestLogin = () => {
     const mockSession = {
+      access_token: '',
+      refresh_token: '',
+      expires_in: 0,
+      token_type: 'bearer',
       user: {
         id: 'guest-' + Math.random().toString(36).substr(2, 9),
         email: 'invitado@cowork.app',
-        user_metadata: { full_name: 'Invitado' }
+        user_metadata: { full_name: 'Invitado' },
+        aud: 'authenticated',
+        app_metadata: {},
+        created_at: new Date().toISOString(),
       }
-    };
+    } as any;
     setSession(mockSession);
   };
 

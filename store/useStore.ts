@@ -1,6 +1,7 @@
 
 import { create } from 'zustand';
-import { User, Role, Task, TaskStatus, ChatMessage, ThemeType, Workspace, SpaceItem, AvatarConfig, Departamento, PresenceStatus } from '../types';
+import type { Session } from '@supabase/supabase-js';
+import { User, Role, Task, TaskStatus, ChatMessage, ThemeType, Workspace, SpaceItem, AvatarConfig, PresenceStatus } from '../types';
 import type { Avatar3DConfig } from '../components/avatar3d/shared';
 import { supabase } from '../lib/supabase';
 import { getSettingsSection } from '../lib/userSettings';
@@ -24,7 +25,7 @@ export interface AppState {
   workspaces: Workspace[];
   activeWorkspace: Workspace | null;
   userRoleInActiveWorkspace: Role | null;
-  session: any | null;
+  session: Session | null;
   authFeedback: { type: 'success' | 'error', message: string } | null;
   initialized: boolean;
   isInitializing: boolean;
@@ -38,7 +39,7 @@ export interface AppState {
   setActiveChatGroupId: (id: string | null) => void;
   setEmpresasAutorizadas: (empresas: string[]) => void;
   
-  setSession: (session: any) => void;
+  setSession: (session: Session | null) => void;
   setTheme: (theme: ThemeType) => void;
   setView: (view: AppState['view']) => void;
   setActiveSubTab: (tab: AppState['activeSubTab']) => void;
@@ -107,7 +108,6 @@ export const useStore = create<AppState>((set, get) => ({
   workspaces: [],
   activeWorkspace: null,
   userRoleInActiveWorkspace: null,
-  departamentos: [],
   initialized: false,
   isMiniMode: false,
   isInitializing: false,
@@ -391,7 +391,7 @@ export const useStore = create<AppState>((set, get) => ({
         currentUser: {
           ...get().currentUser,
           id: user.id,
-          name: user.user_metadata?.full_name || user.email.split('@')[0],
+          name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
         }
       });
       // NO llamar fetchWorkspaces aquí — initialize() se encarga de eso.

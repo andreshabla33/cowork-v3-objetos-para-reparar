@@ -300,12 +300,17 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
   }, [contextualAnim, isSitting, seatRuntime]);
 
   // Fase 2: Sit contextual — sentarse automáticamente al estar idle cerca de una silla
+  // Nota: usamos ref para contextualAnim dentro del interval para evitar que el
+  // effect se re-ejecute al cambiar contextualAnim y mate el seatTransitionTimer.
+  const contextualAnimRef = useRef<AnimationState | null>(null);
+  useEffect(() => { contextualAnimRef.current = contextualAnim; }, [contextualAnim]);
+
   const sitCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
     if (sitCheckRef.current) clearInterval(sitCheckRef.current);
     sitCheckRef.current = setInterval(() => {
       void (async () => {
-        if (animationStateRef.current !== 'idle' || contextualAnim) return;
+        if (animationStateRef.current !== 'idle' || contextualAnimRef.current) return;
         const px = positionRef.current?.x;
         const pz = positionRef.current?.z;
         if (px == null || pz == null) return;
@@ -379,12 +384,12 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     }, 1000);
     return () => {
       if (sitCheckRef.current) clearInterval(sitCheckRef.current);
-      if (seatTransitionTimerRef.current) clearTimeout(seatTransitionTimerRef.current);
     };
-  }, [asientoOcupadoPorOtroUsuario, contextualAnim, reservarAsientoPersistente]);
+  }, [asientoOcupadoPorOtroUsuario, reservarAsientoPersistente]);
 
   useEffect(() => {
     return () => {
+      if (seatTransitionTimerRef.current) clearTimeout(seatTransitionTimerRef.current);
       if (seatRuntimeRef.current) {
         void onLiberarAsiento?.(seatRuntimeRef.current);
       }
@@ -392,7 +397,7 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
   }, [onLiberarAsiento]);
 
   // Fase 3: Reacciones desde chat — detectar emojis en mensajes y disparar animación
-  const prevMessageRef = useRef<string | undefined>();
+  const prevMessageRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (!message || message === prevMessageRef.current) return;
     prevMessageRef.current = message;
@@ -785,6 +790,22 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
       const targetY = sentadoActivo && currentSeatRuntime
         ? obtenerOffsetVerticalSentado(currentSeatRuntime)
         : 0;
+      if (sentadoActivo && currentSeatRuntime && sitDownStartTimeRef.current === 0) {
+        sitDownStartTimeRef.current = Date.now();
+      }
+      if (sentadoActivo && currentSeatRuntime && (Date.now() - sitDownStartTimeRef.current) < 3000 && (Date.now() - sitDownStartTimeRef.current) % 500 < 20) {
+        console.log('[SIT_Y_DEBUG]', {
+          seatPosY: +currentSeatRuntime.posicion.y.toFixed(4),
+          targetY: +targetY.toFixed(4),
+          currentGroupY: +groupRef.current.position.y.toFixed(4),
+          avatarHeight: +avatarHeightRef.current.toFixed(4),
+          avatarHipHeight: +avatarHipHeightRef.current.toFixed(4),
+          avatarSitHipHeight: avatarSitHipHeightRef.current != null ? +avatarSitHipHeightRef.current.toFixed(4) : null,
+          pelvisEstimada: +(THREE.MathUtils.clamp(avatarHeightRef.current || 1.75, 1.2, 2.4) * 0.30).toFixed(4),
+          effectiveAnim: effectiveAnimState,
+        });
+      }
+      if (!sentadoActivo) sitDownStartTimeRef.current = 0;
       const verticalFollow = 1 - Math.pow(1 - 0.3, delta * 60);
       groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetY, verticalFollow);
 

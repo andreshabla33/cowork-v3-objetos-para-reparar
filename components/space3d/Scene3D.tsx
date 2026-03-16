@@ -422,12 +422,12 @@ const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) *
         <boxGeometry args={[4, 1, 2]} />
         <meshStandardMaterial color="#1e293b" />
       </mesh>
-      <Text position={[10, 1.5, 10]} fontSize={0.5} color="white" anchorX="center" anchorY="middle">
+      <Text position={[10, 1.5, 10]} fontSize={0.25} color="white" anchorX="center" anchorY="middle" fillOpacity={0.5}>
         Mesa de Reunión
       </Text>
 
       <instancedMesh ref={chairMeshRef} args={[undefined, undefined, chairPositions.length]} castShadow receiveShadow>
-        <boxGeometry args={[1, 0.6, 1]} />
+        <boxGeometry args={[1.35, 0.8, 1.15]} />
         <meshStandardMaterial color="#0f172a" />
       </instancedMesh>
 
@@ -435,7 +435,7 @@ const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) *
         <planeGeometry args={[6, 6]} />
         <meshBasicMaterial color="#3b82f6" opacity={0.15} transparent />
       </mesh>
-      <Text position={[25, 0.1, 13.5]} fontSize={0.3} color="#3b82f6" anchorX="center">
+      <Text position={[25, 0.1, 13.5]} fontSize={0.2} color="#3b82f6" anchorX="center" fillOpacity={0.4}>
         Sala 2
       </Text>
 

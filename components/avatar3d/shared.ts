@@ -22,7 +22,7 @@ export type AnimationState = 'idle' | 'walk' | 'run' | 'cheer' | 'dance' | 'sit'
 export const STORAGE_BASE = 'https://lcryrsdyrzotjqdxcwtp.supabase.co/storage/v1/object/public/avatars';
 export const DEFAULT_MODEL_URL = `${STORAGE_BASE}/Monica_Idle.glb`;
 
-export const LOOP_ANIMATIONS: AnimationState[] = ['idle', 'walk', 'run', 'dance'];
+export const LOOP_ANIMATIONS: AnimationState[] = ['idle', 'walk', 'run', 'dance', 'sit'];
 
 export const EMBEDDED_NAME_MAP: Record<string, AnimationState> = {
   'idle': 'idle', 'breathing idle': 'idle', 'happy idle': 'idle',

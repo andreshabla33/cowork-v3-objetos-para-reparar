@@ -1,6 +1,6 @@
 import type { AnimationState } from '../avatar3d/shared';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
-import { obtenerDimensionesObjetoRuntime, obtenerRadioInteraccionObjeto, normalizarNumeroRuntime3D, rotarOffsetXZ } from './objetosRuntime';
+import { obtenerDimensionesObjetoRuntime, obtenerFactoresEscalaObjetoRuntime, obtenerRadioInteraccionObjeto, normalizarNumeroRuntime3D, rotarOffsetXZ } from './objetosRuntime';
 import { CHAIR_POSITIONS_3D, CHAIR_SIT_RADIUS, RADIO_COLISION_AVATAR } from './shared';
 
 export interface PerfilAsiento3D {
@@ -138,6 +138,8 @@ export const crearAsientosObjetos3D = (objetos: EspacioObjeto[]): AsientoRuntime
     .filter((objeto) => !!objeto.es_sentable)
     .map((objeto) => {
       const dimensiones = obtenerDimensionesObjetoRuntime(objeto);
+      const escala = obtenerFactoresEscalaObjetoRuntime(objeto);
+      const escalaHorizontal = Math.max(escala.x, escala.z);
       const perfil = resolverPerfilAsientoObjeto(objeto, dimensiones.profundidad);
       const radioActivacion = obtenerRadioInteraccionObjeto(
         objeto,
@@ -149,22 +151,34 @@ export const crearAsientosObjetos3D = (objetos: EspacioObjeto[]): AsientoRuntime
         Math.max(0.72, Math.min(1.15, profundidadAcceso + RADIO_COLISION_AVATAR + 0.18))
       );
       const retrocesoPelvis = Math.min(
-        perfil.retrocesoMax,
-        Math.max(perfil.retrocesoMin, dimensiones.profundidad * perfil.profundidadFactor)
+        perfil.retrocesoMax * escalaHorizontal,
+        Math.max(perfil.retrocesoMin * escalaHorizontal, dimensiones.profundidad * perfil.profundidadFactor)
       );
-      const offsetZBruto = normalizarNumeroRuntime3D(objeto.sit_offset_z, 0);
-      const offsetZLimitado = Math.min(offsetZBruto, Math.min(perfil.adelantoMaximo, dimensiones.profundidad * 0.08));
+      const offsetXBruto = normalizarNumeroRuntime3D(objeto.sit_offset_x, 0) * escala.x;
+      const offsetZBruto = normalizarNumeroRuntime3D(objeto.sit_offset_z, 0) * escala.z;
+      const offsetZLimitado = Math.min(offsetZBruto, Math.min(perfil.adelantoMaximo * escalaHorizontal, dimensiones.profundidad * 0.08));
       const offsetRotado = rotarOffsetXZ(
-        normalizarNumeroRuntime3D(objeto.sit_offset_x, 0),
-        offsetZLimitado - retrocesoPelvis + perfil.correccionFrontal,
+        offsetXBruto,
+        offsetZLimitado - retrocesoPelvis + perfil.correccionFrontal * escalaHorizontal,
         objeto.rotacion_y || 0
       );
+
+      // posicion_y del objeto es su CENTRO (se coloca con posicion_y = alto/2).
+      // La superficie del asiento está a ~45% de la altura desde la BASE del objeto.
+      // Base visual = posicion_y - dimensiones.alto / 2
+      // seatY = base + fraccion * alto = posicion_y - alto/2 + fraccion * alto
+      const FRACCION_ASIENTO_DESDE_BASE = 0.45;
+      const sitOffsetYRaw = normalizarNumeroRuntime3D(objeto.sit_offset_y, 0);
+      const baseVisual = objeto.posicion_y - dimensiones.alto / 2;
+      const seatY = sitOffsetYRaw !== 0
+        ? objeto.posicion_y + sitOffsetYRaw * escala.y
+        : baseVisual + dimensiones.alto * FRACCION_ASIENTO_DESDE_BASE;
 
       return {
         id: `asiento_objeto_${objeto.id}`,
         posicion: {
           x: objeto.posicion_x + offsetRotado.x,
-          y: objeto.posicion_y + normalizarNumeroRuntime3D(objeto.sit_offset_y, dimensiones.alto * 0.4),
+          y: seatY,
           z: objeto.posicion_z + offsetRotado.z,
         },
         rotacion: (objeto.rotacion_y || 0) + normalizarNumeroRuntime3D(objeto.sit_rotation_y, 0),

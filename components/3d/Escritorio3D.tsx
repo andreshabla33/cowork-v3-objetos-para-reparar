@@ -72,13 +72,6 @@ export const Escritorio3D: React.FC<Escritorio3DProps> = ({
   const setIsDragging = useStore((s) => s.setIsDragging);
   const isSelected = selectedObjectId === objeto.id;
 
-  // Label según estado
-  const label = esPropio
-    ? '🪑 Tu escritorio (clic para liberar)'
-    : esLibre
-      ? '🪑 Escritorio libre (clic para reclamar)'
-      : `🪑 Escritorio de ${ownerName || 'otro usuario'}`;
-
   const handleClick = (e: any) => {
     e.stopPropagation();
 
@@ -232,14 +225,6 @@ export const Escritorio3D: React.FC<Escritorio3DProps> = ({
         </Html>
       )}
 
-      {/* Tooltip HTML (solo cuando cerca y NO en modo edición o SI en modo edición pero no seleccionado) */}
-      {cercano && (!isEditMode || (isEditMode && !isSelected)) && (
-        <Html position={[0, 1.2, 0]} center style={{ pointerEvents: 'none' }}>
-          <div className="bg-black/85 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10 whitespace-nowrap shadow-xl">
-            <span className="text-[11px] text-white/90 font-medium">{isEditMode ? '🪑 Haz clic para editar' : label}</span>
-          </div>
-        </Html>
-      )}
 
       {/* Glow de proximidad (solo si no está seleccionado) */}
       {cercano && !isSelected && (

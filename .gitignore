@@ -25,3 +25,12 @@ dist-ssr
 
 .vercel
 .env*.local
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+/tests/.auth/user.json
+/tests/.env.test

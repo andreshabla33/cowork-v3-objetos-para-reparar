@@ -1,6 +1,6 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
+
 import * as THREE from 'three';
 
 interface ObjetoInteractivoProps {
@@ -21,6 +21,7 @@ interface ObjetoInteractivoProps {
 const ObjetoInteractivo: React.FC<ObjetoInteractivoProps> = ({ position, tipo, onInteract, playerPosition }) => {
   const meshRef = useRef<THREE.Mesh>(null);
   const [cercano, setCercano] = useState(false);
+  const cercanoRef = useRef(false);
   const [hover, setHover] = useState(false);
 
   useFrame(() => {
@@ -28,7 +29,11 @@ const ObjetoInteractivo: React.FC<ObjetoInteractivoProps> = ({ position, tipo, o
     const dx = playerPosition.x - position[0];
     const dz = playerPosition.z - position[2];
     const dist = Math.sqrt(dx * dx + dz * dz);
-    setCercano(dist < 3);
+    const ahora = dist < 3;
+    if (ahora !== cercanoRef.current) {
+      cercanoRef.current = ahora;
+      setCercano(ahora);
+    }
 
     // Animación sutil de flotación para planta
     if (tipo === 'planta') {
@@ -61,15 +66,6 @@ const ObjetoInteractivo: React.FC<ObjetoInteractivoProps> = ({ position, tipo, o
         />
       </mesh>
 
-      {/* Indicador de interacción */}
-      {cercano && (
-        <Html position={[0, cfg.yOffset + 0.8, 0]} center style={{ pointerEvents: 'none' }}>
-          <div className="bg-black/80 backdrop-blur-sm px-2 py-1 rounded-lg border border-indigo-500/30 whitespace-nowrap">
-            <span className="text-xs mr-1">{cfg.emoji}</span>
-            <span className="text-[10px] text-white/80">{cfg.label}</span>
-          </div>
-        </Html>
-      )}
 
       {/* Glow de proximidad */}
       {cercano && (

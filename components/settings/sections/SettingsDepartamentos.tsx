@@ -18,7 +18,7 @@ const ICONOS_DEPT = [
   'help-circle', 'palette', 'briefcase', 'rocket', 'target',
 ];
 
-const ICON_MAP_DEPT: Record<string, React.ComponentType<{ className?: string }>> = {
+const ICON_MAP_DEPT: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
   users: Users, 'trending-up': TrendingUp, code: Code, megaphone: Megaphone,
   settings: SettingsIcon, 'help-circle': HelpCircle, palette: Palette,
 };
