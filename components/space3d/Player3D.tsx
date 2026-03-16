@@ -349,9 +349,9 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
         if (!reservado) return;
 
         seatApproachDurationMsRef.current = THREE.MathUtils.clamp(
-          Math.round(Math.max(ANIMATION_SIT_DOWN_DURATION, distanciaAlAsiento * 650)),
+          Math.round(Math.max(ANIMATION_SIT_DOWN_DURATION, distanciaAlAsiento * 850)),
           ANIMATION_SIT_DOWN_DURATION,
-          1600
+          2000
         );
 
         logSitDebug('captura_iniciada', {
@@ -620,13 +620,22 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
       seatTransitionTimerRef.current = setTimeout(() => {
         setContextualAnim(null);
         setSeatRuntime(null);
-      }, 350);
+      }, 500);
     }
 
     if (seatImmobilized && currentSeatRuntime) {
       if (effectiveAnimState === 'sit_down' && seatApproachOriginRef.current && seatApproachStartedAtRef.current !== null) {
-        positionRef.current.x = currentSeatRuntime.posicion.x;
-        positionRef.current.z = currentSeatRuntime.posicion.z;
+        const elapsed = performance.now() - seatApproachStartedAtRef.current;
+        const duration = seatApproachDurationMsRef.current;
+        const rawT = THREE.MathUtils.clamp(elapsed / duration, 0, 1);
+        // easeInOutCubic for fluid approach
+        const t = rawT < 0.5
+          ? 4 * rawT * rawT * rawT
+          : 1 - Math.pow(-2 * rawT + 2, 3) / 2;
+        const ox = seatApproachOriginRef.current.x;
+        const oz = seatApproachOriginRef.current.z;
+        positionRef.current.x = ox + (currentSeatRuntime.posicion.x - ox) * t;
+        positionRef.current.z = oz + (currentSeatRuntime.posicion.z - oz) * t;
       } else {
         const seatFollow = 1 - Math.pow(1 - 0.22, delta * 60);
         positionRef.current.x = THREE.MathUtils.lerp(positionRef.current.x, currentSeatRuntime.posicion.x, seatFollow);
@@ -806,12 +815,39 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
         });
       }
       if (!sentadoActivo) sitDownStartTimeRef.current = 0;
-      const verticalFollow = 1 - Math.pow(1 - 0.3, delta * 60);
-      groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetY, verticalFollow);
 
-      const targetRot = sentadoActivo ? currentSeatRuntime.rotacion : 0;
-      const rotationFollow = 1 - Math.pow(1 - 0.2, delta * 60);
-      groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot, rotationFollow);
+      // During sit_down approach, sync Y and rotation with the same eased curve as XZ
+      const isSitDownApproach = effectiveAnimState === 'sit_down' && seatApproachStartedAtRef.current !== null;
+      if (isSitDownApproach) {
+        const elapsed = performance.now() - seatApproachStartedAtRef.current!;
+        const duration = seatApproachDurationMsRef.current;
+        const rawT = THREE.MathUtils.clamp(elapsed / duration, 0, 1);
+        // easeInOutQuart — slower start, smooth middle, gentle landing
+        const tY = rawT < 0.5
+          ? 8 * rawT * rawT * rawT * rawT
+          : 1 - Math.pow(-2 * rawT + 2, 4) / 2;
+        const originY = groupRef.current.position.y === 0 ? 0 : groupRef.current.position.y;
+        // Only start descending after 30% of approach (walk first, then lower)
+        const tYDelayed = THREE.MathUtils.clamp((rawT - 0.3) / 0.7, 0, 1);
+        const tYEased = tYDelayed < 0.5
+          ? 2 * tYDelayed * tYDelayed
+          : 1 - Math.pow(-2 * tYDelayed + 2, 2) / 2;
+        groupRef.current.position.y = THREE.MathUtils.lerp(0, targetY, tYEased);
+
+        // Rotation: smooth slerp-like transition synced with approach
+        const targetRot = currentSeatRuntime!.rotacion;
+        const tRot = rawT < 0.5
+          ? 2 * rawT * rawT
+          : 1 - Math.pow(-2 * rawT + 2, 2) / 2;
+        groupRef.current.rotation.y = THREE.MathUtils.lerp(0, targetRot, tRot);
+      } else {
+        const verticalFollow = 1 - Math.pow(1 - 0.35, delta * 60);
+        groupRef.current.position.y = THREE.MathUtils.lerp(groupRef.current.position.y, targetY, verticalFollow);
+
+        const targetRot = sentadoActivo ? currentSeatRuntime!.rotacion : 0;
+        const rotationFollow = 1 - Math.pow(1 - 0.25, delta * 60);
+        groupRef.current.rotation.y = THREE.MathUtils.lerp(groupRef.current.rotation.y, targetRot, rotationFollow);
+      }
     }
 
     (camera as any).userData.playerPosition = { x: positionRef.current.x, z: positionRef.current.z };

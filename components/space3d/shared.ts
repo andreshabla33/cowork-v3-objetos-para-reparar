@@ -34,7 +34,7 @@ export const PROXIMITY_COORD_THRESHOLD = 12;
 export const FACTOR_ESCALA_OBJETOS_ESCENA = 1.0;
 export const ALTURA_AVATAR_ESTANDAR = 1.75; // metros — altura de referencia del avatar humano
 export const ALTURA_CADERA_AVATAR_SENTADO = 0.55; // metros — altura del hueso Hips sobre el asiento
-export const ANIMATION_SIT_DOWN_DURATION = 800; // ms
+export const ANIMATION_SIT_DOWN_DURATION = 1000; // ms — base mínima para la transición sit_down
 export const STAND_UP_GRACE_PERIOD = 2000; // ms para ignorar colisiones al levantarse
 export const RADIO_COLISION_AVATAR = 0.42;
 

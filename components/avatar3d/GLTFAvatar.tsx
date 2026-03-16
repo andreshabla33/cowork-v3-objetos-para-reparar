@@ -468,6 +468,9 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
     const resolvedAnim = resolveAnim(targetAnim) as AnimationState;
     const CROSSFADE_FAST = 0.15;
     const CROSSFADE_SMOOTH = 0.3;
+    const CROSSFADE_SIT_DOWN = 0.5;
+    const CROSSFADE_STAND_UP = 0.4;
+    const CROSSFADE_SIT_SETTLE = 0.6;
     const IDLE_DEBOUNCE_MS = 100;
 
     const applyTransition = (fadeDuration: number) => {
@@ -501,7 +504,19 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
       };
     } else {
       const isStartingMovement = (targetAnim === 'walk' || targetAnim === 'run') && currentAnimation === 'idle';
-      applyTransition(isStartingMovement ? CROSSFADE_FAST : CROSSFADE_SMOOTH);
+      const isSitDown = targetAnim === 'sit_down';
+      const isSettlingIntoSit = targetAnim === 'sit' && currentAnimation === 'sit_down';
+      const isStandingUp = targetAnim === 'stand_up';
+      const fadeDuration = isSitDown
+        ? CROSSFADE_SIT_DOWN
+        : isSettlingIntoSit
+          ? CROSSFADE_SIT_SETTLE
+          : isStandingUp
+            ? CROSSFADE_STAND_UP
+            : isStartingMovement
+              ? CROSSFADE_FAST
+              : CROSSFADE_SMOOTH;
+      applyTransition(fadeDuration);
     }
 
     return () => {
@@ -588,10 +603,11 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
-    const targetAngle = rotationMap[direction] ?? 0;
+    // When sitting, the parent group handles rotation — keep avatar facing forward (0)
+    const targetAngle = isSitting ? 0 : (rotationMap[direction] ?? 0);
     targetQuaternion.current.setFromAxisAngle(yAxis, targetAngle);
     
-    const lerpFactor = 1 - Math.pow(1 - 0.25, delta * 60);
+    const lerpFactor = 1 - Math.pow(1 - (isSitting ? 0.4 : 0.25), delta * 60);
     groupRef.current.quaternion.slerp(targetQuaternion.current, lerpFactor);
   });
 
