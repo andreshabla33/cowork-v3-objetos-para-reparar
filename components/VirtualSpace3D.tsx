@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useRef, useEffect, Suspense, useCallback } from 'react';
+import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
-import { Grid, PerformanceMonitor } from '@react-three/drei';
+import { Grid, PerformanceMonitor, Loader } from '@react-three/drei';
 import { Room, Track } from 'livekit-client';
-import { User, PresenceStatus } from '@/types';
+import { User, PresenceStatus, Role, ZonaEmpresa } from '@/types';
 import { RecordingManager } from './meetings/recording/RecordingManager';
 import { ConsentimientoPendiente } from './meetings/recording/ConsentimientoPendiente';
 import { BottomControlBar } from './BottomControlBar';
@@ -26,12 +27,13 @@ import { setBroadcastSoundFunctions } from '@/hooks/space3d/useBroadcast';
 import { XP_POR_ACCION } from '@/lib/gamificacion';
 import { useStore } from '@/store/useStore';
 // GameHub ahora se importa en WorkspaceLayout
-import { EditModeHUD, EditModeToast, InspectorEdicionObjeto, PlacementHUD, PlacementToast } from './3d/PlacementHUD';
+import { EditModeHUD, EditModeToast, InspectorEdicionObjeto, PlacementHUD, PlacementToast, ToastContainer, toastEmitter } from './3d/PlacementHUD';
+import { AdminZoneHUD } from './3d/AdminZoneHUD';
 import type { CatalogoObjeto3D, ObjetoPreview3D } from '@/types/objetos3d';
 import type { AsientoRuntime3D } from './space3d/asientosRuntime';
 import { normalizarInteraccionConfigObjeto, resolverDestinoTeleportObjeto, resolverDisplayObjeto, resolverUseObjeto, type DisplayRuntimeNormalizado3D } from './space3d/interaccionesObjetosRuntime';
 
-import { themeColors, TELEPORT_DISTANCE, USAR_LIVEKIT, playWaveSound, playNudgeSound, playInviteSound } from './space3d/shared';
+import { themeColors, TELEPORT_DISTANCE, USAR_LIVEKIT, playWaveSound, playNudgeSound, playInviteSound, playObjectInteractionSound } from './space3d/shared';
 
 
 import { Minimap, StableVideo, Avatar, RemoteAvatarInterpolated, RemoteUsers, CameraFollow, AvatarScreenProjector, TeleportEffect, Player, Scene, AdaptiveFrameloop, VideoHUD, ScreenSpaceProfileCard, statusColors, type VirtualSpace3DProps } from './space3d/InternalComponents';
@@ -42,21 +44,31 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   const addNotification = useStore((state) => state.addNotification);
 
   // Store
+  const userRoleInActiveWorkspace = useStore((state) => state.userRoleInActiveWorkspace);
   const { currentUser, onlineUsers, setPosition, activeWorkspace, toggleMic, toggleCamera, toggleScreenShare, togglePrivacy, setPrivacy, session, setActiveSubTab, setActiveChatGroupId, activeSubTab, empresasAutorizadas, setEmpresasAutorizadas, isEditMode, setIsEditMode, isDragging, setIsDragging } = s;
 
-  const [editToastMessage, setEditToastMessage] = React.useState<string | null>(null);
   const [objetoEnColocacion, setObjetoEnColocacion] = React.useState<ObjetoPreview3D | null>(null);
   const [placementToastName, setPlacementToastName] = React.useState<string | null>(null);
   const [ultimoObjetoColocadoId, setUltimoObjetoColocadoId] = React.useState<string | null>(null);
   const setSelectedObjectId = useStore((state) => state.setSelectedObjectId);
   const selectedObjectId = useStore((state) => state.selectedObjectId);
+  const selectedObjectIds = useStore((state) => state.selectedObjectIds);
+  const setSelectedObjectIds = useStore((state) => state.setSelectedObjectIds);
+  const copiedObjects = useStore((state) => state.copiedObjects);
+  const setCopiedObjects = useStore((state) => state.setCopiedObjects);
   const modoEdicionObjeto = useStore((state) => state.modoEdicionObjeto);
   const setModoEdicionObjeto = useStore((state) => state.setModoEdicionObjeto);
+  const clearObjectSelection = useStore((state) => state.clearObjectSelection);
   const dragSeleccionRef = useRef<string | null>(null);
   const prevIsDraggingRef = useRef(false);
 
   // Top-level state
   const { moveTarget, setMoveTarget, teleportTarget, setTeleportTarget, showAvatarModal, setShowAvatarModal, showEmoteWheel, setShowEmoteWheel, showGamificacion, setShowGamificacion, cargoUsuario, incomingNudge, setIncomingNudge, incomingInvite, setIncomingInvite, mobileInputRef, isMobile, cardScreenPosRef, realtimePositionsRef, grantXP, handleAcceptInvite } = s;
+
+  // Zona state (Admin)
+  const [nuevaZonaTemp, setNuevaZonaTemp] = React.useState<{ancho: number, alto: number, x: number, z: number} | null>(null);
+  const [zonaAEditar, setZonaAEditar] = React.useState<ZonaEmpresa | null>(null);
+  const setIsDrawingZone = useStore((s) => s.setIsDrawingZone);
 
   // Settings
   const { gpuRenderConfig, gpuInfo, userMoveSpeed, userRunSpeed, userProximityRadius, maxDpr, minDpr, adaptiveDpr, setAdaptiveDpr, enableDayNightCycle, cameraSettings, setCameraSettings, audioSettings, setAudioSettings } = s.settings;
@@ -70,7 +82,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   const { isRecording, setIsRecording, recordingDuration, setRecordingDuration, consentimientoAceptado, setConsentimientoAceptado, tipoGrabacionActual, setTipoGrabacionActual, recordingTrigger, setRecordingTrigger, handleToggleRecording } = s.recording;
 
   // Notifications
-  const { notificacionAutorizacion, setNotificacionAutorizacion, zonasEmpresa, zonaAccesoProxima, handleSolicitarAccesoZona, solicitandoAcceso, setZonaColisionadaId } = s.notifications;
+  const { notificacionAutorizacion, setNotificacionAutorizacion, zonasEmpresa, zonaAccesoProxima, handleSolicitarAccesoZona, solicitandoAcceso, setZonaColisionadaId, refrescarZonasEmpresa } = s.notifications;
 
   // Media
   const { stream, setStream, processedStream, setProcessedStream, screenStream, setScreenStream, activeStreamRef, activeScreenRef, effectiveStream, effectiveStreamRef, handleToggleScreenShare, crearAudioProcesado, limpiarAudioProcesado } = s.media;
@@ -93,7 +105,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   const { selectedRemoteUser, setSelectedRemoteUser, followTargetId, setFollowTargetId, followTargetIdRef, handleClickRemoteAvatar, avatarInteractionsMemo, handleWaveUser, handleInviteUser, handleFollowUser } = s.interactions;
 
   // Objetos persistentes (escritorios reclamables)
-  const { objetos: espacioObjetos, crearObjetoDesdeCatalogo, reclamarObjeto, liberarObjeto, actualizarTransformacionObjeto, moverObjeto, rotarObjeto, eliminarObjeto, restaurarObjeto, spawnPersonal, miEscritorio } = useEspacioObjetos(
+  const { objetos: espacioObjetos, crearObjetoDesdeCatalogo, reclamarObjeto, liberarObjeto, actualizarTransformacionObjeto, moverObjeto, rotarObjeto, eliminarObjeto, duplicarObjetos, restaurarObjeto, spawnPersonal, miEscritorio, guardarSpawnPersonal } = useEspacioObjetos(
     activeWorkspace?.id || null,
     session?.user?.id || null
   );
@@ -109,7 +121,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     actualizarTransformacionObjeto,
     eliminarObjeto,
     restaurarObjeto,
-    onNotificar: setEditToastMessage,
+    onNotificar: (msg: string) => toastEmitter.emit({ message: msg, variant: 'info' }),
   });
   const {
     ocupacionesPorObjetoId: ocupacionesAsientosPorObjetoId,
@@ -197,6 +209,8 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     const dz = destino.z - playerZ;
     const dist = Math.sqrt(dx * dx + dz * dz);
 
+    playObjectInteractionSound();
+
     if (destino.modo === 'teleport') {
       setMoveTarget(null);
       setTeleportTarget({ x: destino.x, z: destino.z });
@@ -235,6 +249,8 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       const dz = destinoZ - playerZ;
       const dist = Math.sqrt(dx * dx + dz * dz);
 
+      playObjectInteractionSound();
+
       if (dist > TELEPORT_DISTANCE) {
         setMoveTarget(null);
         setTeleportTarget({ x: destinoX, z: destinoZ });
@@ -252,6 +268,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     }
 
     if (tipoInteraccion === 'display') {
+      playObjectInteractionSound();
       const displayConfig = resolverDisplayObjeto(config);
       const ejecuto = ejecutarDestinoVisual(
         displayConfig,
@@ -265,6 +282,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     }
 
     if (tipoInteraccion === 'use') {
+      playObjectInteractionSound();
       const useConfig = resolverUseObjeto(config);
       let ejecuto = ejecutarDestinoVisual(
         useConfig,
@@ -330,7 +348,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
 
     registrarCreacion(creado);
     setPlacementToastName(objetoEnColocacion.nombre);
-    setEditToastMessage(`Objeto ${objetoEnColocacion.nombre} listo para edición`);
+    toastEmitter.emit({ message: `📦 ${objetoEnColocacion.nombre} — listo para editar`, variant: 'success' });
     setUltimoObjetoColocadoId(creado.id);
     setObjetoEnColocacion(null);
     setIsEditMode(true);
@@ -350,7 +368,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     const ok = await rotarObjeto(id, rotationY);
     if (ok) {
       registrarTransformacion(snapshotAntes, snapshotDespues);
-      setEditToastMessage('Objeto rotado');
+      toastEmitter.emit({ message: '↻ Objeto rotado', variant: 'success' });
     }
     return ok;
   }, [espacioObjetos, registrarTransformacion, rotarObjeto]);
@@ -363,7 +381,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     const ok = await eliminarObjeto(id);
     if (ok) {
       registrarEliminacion(snapshotAntes);
-      setEditToastMessage('Objeto eliminado');
+      toastEmitter.emit({ message: '🗑 Objeto eliminado', variant: 'warning' });
     }
     return ok;
   }, [eliminarObjeto, espacioObjetos, registrarEliminacion]);
@@ -407,6 +425,43 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     return () => window.clearTimeout(timeout);
   }, [ultimoObjetoColocadoId]);
 
+  useEffect(() => {
+    if (!isEditMode) return;
+
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      // Ignore if typing in an input
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const modifier = isMac ? e.metaKey : e.ctrlKey;
+
+      if (modifier && e.key.toLowerCase() === 'c') {
+        if (selectedObjectIds.length > 0) {
+          const objsToCopy = espacioObjetos.filter(obj => selectedObjectIds.includes(obj.id));
+          setCopiedObjects(objsToCopy);
+          toastEmitter.emit({ message: `📋 ${objsToCopy.length} objeto(s) copiado(s)`, variant: 'info' });
+        }
+      }
+
+      if (modifier && e.key.toLowerCase() === 'v') {
+        if (copiedObjects && copiedObjects.length > 0) {
+          try {
+            const result = await duplicarObjetos(copiedObjects);
+            if (result && result.length > 0) {
+              setSelectedObjectIds(result.map(o => o.id));
+              toastEmitter.emit({ message: `✨ ${result.length} objeto(s) pegado(s)`, variant: 'success' });
+            }
+          } catch (e) {
+            console.error('Error pasting objects', e);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isEditMode, selectedObjectIds, copiedObjects, espacioObjetos, duplicarObjetos, setCopiedObjects, setSelectedObjectIds]);
+
   // Teleport/correr al escritorio propio
   const handleIrAMiEscritorio = useCallback(() => {
     if (!miEscritorio) return;
@@ -431,18 +486,56 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
 
   // Ref para OrbitControls (usado en JSX/Scene)
   const orbitControlsRef = useRef<any>(null);
+  const cameraResetAnimationRef = useRef<number | null>(null);
 
   // Función para resetear la vista de la cámara (OrbitControls API)
   const handleResetView = useCallback(() => {
     const controls = orbitControlsRef.current;
-    if (!controls) return;
-    const playerX = (currentUser.x || 400) / 16;
-    const playerZ = (currentUser.y || 400) / 16;
-    // OrbitControls: mover target al jugador y reposicionar la cámara
-    controls.target.set(playerX, 0, playerZ);
-    controls.object.position.set(playerX, 15, playerZ + 15);
-    controls.update();
-  }, [currentUser.x, currentUser.y]);
+    const camera = controls?.object;
+    if (!controls?.target || !camera?.position) return;
+
+    const playerX = (currentUserEcs.x || 400) / 16;
+    const playerZ = (currentUserEcs.y || 400) / 16;
+    const fromPosition = camera.position.clone();
+    const fromTarget = controls.target.clone();
+    const toPosition = new THREE.Vector3(playerX, 6.5, playerZ + 8);
+    const toTarget = new THREE.Vector3(playerX, 1.35, playerZ);
+    const startedAt = performance.now();
+    const durationMs = 350;
+
+    if (cameraResetAnimationRef.current !== null) {
+      cancelAnimationFrame(cameraResetAnimationRef.current);
+      cameraResetAnimationRef.current = null;
+    }
+
+    const animate = (now: number) => {
+      const progress = Math.min((now - startedAt) / durationMs, 1);
+      const easedProgress = progress < 0.5
+        ? 4 * progress * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+      camera.position.lerpVectors(fromPosition, toPosition, easedProgress);
+      controls.target.lerpVectors(fromTarget, toTarget, easedProgress);
+      controls.update();
+
+      if (progress < 1) {
+        cameraResetAnimationRef.current = requestAnimationFrame(animate);
+        return;
+      }
+
+      cameraResetAnimationRef.current = null;
+    };
+
+    cameraResetAnimationRef.current = requestAnimationFrame(animate);
+  }, [currentUserEcs.x, currentUserEcs.y]);
+
+  useEffect(() => {
+    return () => {
+      if (cameraResetAnimationRef.current !== null) {
+        cancelAnimationFrame(cameraResetAnimationRef.current);
+      }
+    };
+  }, []);
 
   // Cerrar chat, emojis y status picker al hacer clic en el canvas
   const handleCanvasClick = useCallback(() => {
@@ -497,6 +590,9 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
           if (gpuRenderConfig) {
             gl.toneMappingExposure = gpuRenderConfig.toneMappingExposure;
           }
+        }}
+        onPointerMissed={() => {
+          if (isEditMode) clearObjectSelection();
         }}
       >
         <AdaptiveFrameloop />
@@ -557,6 +653,8 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
             moveSpeed={userMoveSpeed}
             runSpeed={userRunSpeed}
             zonasEmpresa={zonasEmpresa}
+            spawnPersonal={spawnPersonal}
+            onGuardarPosicionPersistente={guardarSpawnPersonal}
             onZoneCollision={setZonaColisionadaId}
             usersInCallIds={usersInCallIds}
             usersInAudioRangeIds={usersInAudioRangeIds}
@@ -577,11 +675,21 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
             onMoverObjeto={moverObjeto}
             onRotarObjeto={handleRotarObjeto}
             onTransformarObjeto={handleTransformarObjeto}
-            onEliminarObjeto={handleEliminarObjeto}
+            onEliminarObjeto={eliminarObjeto}
+            objetoOwnerNames={new Map()}
+            onClickZona={((['admin', 'super_admin', 'owner', 'creador'].includes(currentUser.role?.toLowerCase() || '') || ['admin', 'super_admin', 'owner', 'creador'].includes(userRoleInActiveWorkspace?.toLowerCase() || '')) && isEditMode)
+              ? (zona) => {
+                  setZonaAEditar(zona);
+                }
+              : undefined}
             objetoEnColocacion={objetoEnColocacion}
             onActualizarObjetoEnColocacion={handleActualizarObjetoEnColocacion}
             onConfirmarObjetoEnColocacion={handleConfirmarObjetoEnColocacion}
             ultimoObjetoColocadoId={ultimoObjetoColocadoId}
+            onDrawZoneEnd={(zona) => {
+              setNuevaZonaTemp(zona);
+              setIsDrawingZone(false); // Sale del modo dibujo
+            }}
             onTapFloor={isMobile ? (point) => {
               // Mobile: single tap = walk/teleport (misma lógica que double-click en desktop)
               const playerX = (currentUserEcs.x || 400) / 16;
@@ -619,6 +727,13 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
           />
         </Suspense>
       </Canvas>
+      <Loader
+        containerStyles={{ background: '#000000', zIndex: 100 }}
+        innerStyles={{ width: '300px', height: '8px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '4px', overflow: 'hidden' }}
+        barStyles={{ background: '#6366f1', height: '10px' }}
+        dataInterpolation={(p) => `Cargando Espacio Virtual... ${p.toFixed(0)}%`}
+        dataStyles={{ color: '#818cf8', fontSize: '12px', fontWeight: 'bold', fontFamily: 'monospace', letterSpacing: '0.05em' }}
+      />
       
       {/* Indicador discreto de grabación para otros usuarios (no el grabador) */}
       {isRecording && (tipoGrabacionActual === null || !['rrhh_entrevista', 'rrhh_one_to_one'].includes(tipoGrabacionActual) || consentimientoAceptado) && (
@@ -682,6 +797,22 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
             <p className="text-white/60 text-[10px]">Exploración del espacio virtual ({showroomDuracionMin} min)</p>
           </div>
         </div>
+      )}
+
+      {/* Admin HUD (Dibujar Zonas Gathering) */}
+      {(['admin', 'super_admin', 'owner', 'creador'].includes(currentUser.role?.toLowerCase() || '') || ['admin', 'super_admin', 'owner', 'creador'].includes(userRoleInActiveWorkspace?.toLowerCase() || '')) && activeWorkspace && !showroomMode && (
+        <AdminZoneHUD 
+          workspaceId={activeWorkspace.id} 
+          nuevaZona={nuevaZonaTemp}
+          zonaAEditar={zonaAEditar}
+          onLimpiarNuevaZona={() => {
+            setNuevaZonaTemp(null);
+            setZonaAEditar(null);
+          }}
+          onZonaCreada={() => {
+            void refrescarZonasEmpresa();
+          }}
+        />
       )}
 
       {/* Banner de proximidad: solo notificación de conversación bloqueada por otro usuario */}
@@ -1186,7 +1317,6 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
 
       {/* Se eliminó el PlacementToast a petición del usuario debido a problemas de renderizado */}
 
-      {/* --- Hito 8: Edit Mode UI --- */}
       {isEditMode && (
         <EditModeHUD
           onCancel={() => setIsEditMode(false)}
@@ -1199,11 +1329,8 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
         />
       )}
 
-      {isEditMode && (
-        <InspectorEdicionObjeto objeto={objetoSeleccionado} modoActual={modoEdicionObjeto} onTransformar={handleTransformarObjeto} />
-      )}
-
-      {/* Se eliminó el EditModeToast a petición del usuario debido a problemas de renderizado */}
+      {/* Toast stack — screen-space overlay, immune to camera zoom */}
+      <ToastContainer />
     </div>
   );
 };

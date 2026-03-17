@@ -10,6 +10,7 @@ import { MeetingRooms } from './MeetingRooms';
 import { UserAvatar } from './UserAvatar';
 import { PresenceStatus } from '../types';
 import { getSettingsSection } from '../lib/userSettings';
+import { audioManager } from '../services/audioManager';
 
 // Helper para obtener color del estado
 const getStatusColor = (status?: PresenceStatus) => {
@@ -67,19 +68,11 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({ sidebarOnly = false, chatO
 
   // Inicializar sonido de notificación
   useEffect(() => {
-    notificationSoundRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-    const audioS = getSettingsSection('audio');
-    notificationSoundRef.current.volume = (audioS.sfxVolume / 100) * 0.5; // sfxVolume escala 0-100
+    notificationSoundRef.current = null;
   }, []);
 
   const playNotificationSound = () => {
-    const audioS = getSettingsSection('audio');
-    if (!audioS.chatSounds) return; // Respetar setting de sonidos de chat
-    if (notificationSoundRef.current) {
-      notificationSoundRef.current.volume = (audioS.sfxVolume / 100) * 0.5;
-      notificationSoundRef.current.currentTime = 0;
-      notificationSoundRef.current.play().catch(() => {});
-    }
+    audioManager.playChatNotification().catch(() => {});
   };
 
   const refetchGrupos = async () => {

@@ -1,3 +1,5 @@
+import type { ConfiguracionGeometricaObjeto } from '@/src/core/domain/entities/objetosArquitectonicos';
+
 export type InteraccionSubTab3D = 'space' | 'tasks' | 'miembros' | 'settings' | 'builder' | 'chat' | 'avatar' | 'calendar' | 'grabaciones' | 'metricas';
 export type InteraccionModal3D = 'avatar' | 'gamificacion';
 export type InteraccionOverlay3D = 'chat' | 'emotes';
@@ -57,6 +59,7 @@ export interface CatalogoObjeto3D {
   interaccion_emoji?: string | null;
   interaccion_label?: string | null;
   interaccion_config?: InteraccionConfigObjeto3D | null;
+  configuracion_geometria?: ConfiguracionGeometricaObjeto | null;
   es_reclamable?: boolean;
   premium: boolean;
   escala_normalizacion?: number | null;

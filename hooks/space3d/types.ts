@@ -105,6 +105,7 @@ export interface UseNotificationsReturn {
   zonaAccesoProxima: { zona: ZonaEmpresa; distancia: number; pendiente: boolean } | null;
   handleSolicitarAccesoZona: () => Promise<void>;
   cargarAutorizaciones: () => Promise<void>;
+  refrescarZonasEmpresa: () => Promise<void>;
   setZonaColisionadaId: React.Dispatch<React.SetStateAction<string | null>>;
 }
 

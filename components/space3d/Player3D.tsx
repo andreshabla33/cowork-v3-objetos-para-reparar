@@ -1,7 +1,7 @@
 'use client';
 import React, { useRef, useEffect, useMemo, Suspense, useState, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { OrthographicCamera, PerspectiveCamera, Grid, Text, CameraControls, Html, PerformanceMonitor, useGLTF } from '@react-three/drei';
+import { OrthographicCamera, PerspectiveCamera, Grid, Text, Html, PerformanceMonitor, useGLTF } from '@react-three/drei';
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { User, PresenceStatus, ZonaEmpresa } from '@/types';
@@ -12,7 +12,7 @@ import { VideoWithBackground } from '../VideoWithBackground';
 import { GhostAvatar } from '../3d/GhostAvatar';
 import { ZonaEmpresa as ZonaEmpresa3D } from '../3d/ZonaEmpresa';
 import { Escritorio3D } from '../3d/Escritorio3D';
-import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
+import type { EspacioObjeto, SpawnPersonal } from '@/hooks/space3d/useEspacioObjetos';
 import { DayNightCycle } from '../3d/DayNightCycle';
 import { ObjetosInteractivos } from '../3d/ObjetosInteractivos';
 import { ParticulasClima } from '../3d/ParticulasClima';
@@ -58,6 +58,8 @@ export interface PlayerProps {
   ecsStateRef?: React.MutableRefObject<EstadoEcsEspacio>;
   onPositionUpdate?: (x: number, z: number) => void;
   zonasEmpresa?: ZonaEmpresa[];
+  spawnPersonal?: SpawnPersonal;
+  onGuardarPosicionPersistente?: (x: number, z: number) => Promise<boolean>;
   empresasAutorizadas?: string[];
   usersInCallIds?: Set<string>;
   mobileInputRef?: React.MutableRefObject<JoystickInput>;
@@ -71,8 +73,9 @@ export interface PlayerProps {
   obstaculos?: ObstaculoColision3D[];
 }
 
-export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream, showVideoBubble = true, message, reactions = [], onClickAvatar, moveTarget, onReachTarget, teleportTarget, onTeleportDone, broadcastMovement, moveSpeed, runSpeed, ecsStateRef, onPositionUpdate, zonasEmpresa = [], empresasAutorizadas = [], usersInCallIds, mobileInputRef, onXPEvent, espacioObjetos = [], asientos = [], ocupacionesAsientosPorObjetoId = new Map(), onOcuparAsiento, onLiberarAsiento, onRefrescarAsiento, obstaculos = [] }) => {
+export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream, showVideoBubble = true, message, reactions = [], onClickAvatar, moveTarget, onReachTarget, teleportTarget, onTeleportDone, broadcastMovement, moveSpeed, runSpeed, ecsStateRef, onPositionUpdate, zonasEmpresa = [], spawnPersonal = { spawn_x: null, spawn_z: null }, onGuardarPosicionPersistente, empresasAutorizadas = [], usersInCallIds, mobileInputRef, onXPEvent, espacioObjetos = [], asientos = [], ocupacionesAsientosPorObjetoId = new Map(), onOcuparAsiento, onLiberarAsiento, onRefrescarAsiento, obstaculos = [] }) => {
   const groupRef = useRef<THREE.Group>(null);
+  const { camera } = useThree();
   // Refs para acceso seguro dentro de useFrame
   const zonasRef = useRef(zonasEmpresa);
   const empresasAuthRef = useRef(empresasAutorizadas);
@@ -89,28 +92,82 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
   useEffect(() => { ocupacionesAsientosRef.current = ocupacionesAsientosPorObjetoId; }, [ocupacionesAsientosPorObjetoId]);
   useEffect(() => { obstaculosRef.current = obstaculos; }, [obstaculos]);
 
-  const initialPosition = useMemo(() => {
-    // 1. Persistencia ECS (prioridad si es reciente - < 2s)
-    const ecsData = ecsStateRef?.current ? obtenerEstadoUsuarioEcs(ecsStateRef.current, currentUser.id) : null;
-    if (ecsData && Date.now() - (ecsData.timestamp ?? 0) <= 2000) {
-      return { x: ecsData.x, z: ecsData.z };
+  const obtenerZonaPropiaActiva = useCallback(() => {
+    if (!currentUser.empresa_id) return null;
+    return zonasEmpresa.find((zona) => zona.empresa_id === currentUser.empresa_id && zona.estado === 'activa') || null;
+  }, [currentUser.empresa_id, zonasEmpresa]);
+
+  const limitarPosicionAZonaPropia = useCallback((x: number, z: number) => {
+    const zonaPropia = obtenerZonaPropiaActiva();
+    if (!zonaPropia) {
+      return { x, z };
     }
 
-    // 2. Spawn Point de Empresa (Gemelo Digital)
-    if (currentUser.empresa_id && zonasEmpresa.length > 0) {
-      // Buscar zona activa de mi empresa
-      const miZona = zonasEmpresa.find(z => z.empresa_id === currentUser.empresa_id && z.estado === 'activa');
-      // Si tiene spawn definido (y no es 0,0 que es el default si no se ha configurado)
-      if (miZona && (Number(miZona.spawn_x) !== 0 || Number(miZona.spawn_y) !== 0)) {
-        return {
-          x: Number(miZona.spawn_x) / 16,
-          z: Number(miZona.spawn_y) / 16
-        };
+    const centroX = Number(zonaPropia.posicion_x) / 16;
+    const centroZ = Number(zonaPropia.posicion_y) / 16;
+    const halfW = Math.max((Number(zonaPropia.ancho) / 16) / 2, 0.35);
+    const halfH = Math.max((Number(zonaPropia.alto) / 16) / 2, 0.35);
+    const padding = 0.35;
+    const minX = centroX - Math.max(halfW - padding, 0.1);
+    const maxX = centroX + Math.max(halfW - padding, 0.1);
+    const minZ = centroZ - Math.max(halfH - padding, 0.1);
+    const maxZ = centroZ + Math.max(halfH - padding, 0.1);
+
+    return {
+      x: THREE.MathUtils.clamp(x, minX, maxX),
+      z: THREE.MathUtils.clamp(z, minZ, maxZ),
+    };
+  }, [obtenerZonaPropiaActiva]);
+
+  const obtenerPosicionSpawnEmpresa = useCallback(() => {
+    const zonaPropia = obtenerZonaPropiaActiva();
+    if (!zonaPropia) return null;
+
+    if (Number(zonaPropia.spawn_x) !== 0 || Number(zonaPropia.spawn_y) !== 0) {
+      return limitarPosicionAZonaPropia(Number(zonaPropia.spawn_x) / 16, Number(zonaPropia.spawn_y) / 16);
+    }
+
+    return limitarPosicionAZonaPropia(Number(zonaPropia.posicion_x) / 16, Number(zonaPropia.posicion_y) / 16);
+  }, [limitarPosicionAZonaPropia, obtenerZonaPropiaActiva]);
+
+  const resolverAsientoPersistido = useCallback((x: number, z: number) => {
+    let mejorAsiento: AsientoRuntime3D | null = null;
+    let mejorDistancia = Number.POSITIVE_INFINITY;
+
+    for (const asiento of asientos) {
+      const ocupacion = asiento.objetoId ? ocupacionesAsientosPorObjetoId.get(asiento.objetoId) : null;
+      if (ocupacion && ocupacion.usuario_id !== currentUser.id) {
+        continue;
+      }
+
+      const distancia = Math.hypot(asiento.posicion.x - x, asiento.posicion.z - z);
+      const radioRestauracion = Math.max(0.12, Math.min(asiento.radioCaptura, 0.3));
+      if (distancia <= radioRestauracion && distancia < mejorDistancia) {
+        mejorAsiento = asiento;
+        mejorDistancia = distancia;
       }
     }
 
-    return { x: (currentUser.x || 400) / 16, z: (currentUser.y || 400) / 16 };
-  }, [currentUser.id, currentUser.x, currentUser.y, currentUser.empresa_id, ecsStateRef, zonasEmpresa]);
+    return mejorAsiento;
+  }, [asientos, currentUser.id, ocupacionesAsientosPorObjetoId]);
+
+  const initialPosition = useMemo(() => {
+    const ecsData = ecsStateRef?.current ? obtenerEstadoUsuarioEcs(ecsStateRef.current, currentUser.id) : null;
+    if (ecsData && Date.now() - (ecsData.timestamp ?? 0) <= 2000) {
+      return limitarPosicionAZonaPropia(ecsData.x, ecsData.z);
+    }
+
+    if (spawnPersonal.spawn_x != null && spawnPersonal.spawn_z != null) {
+      return limitarPosicionAZonaPropia(spawnPersonal.spawn_x, spawnPersonal.spawn_z);
+    }
+
+    const spawnEmpresa = obtenerPosicionSpawnEmpresa();
+    if (spawnEmpresa) {
+      return spawnEmpresa;
+    }
+
+    return limitarPosicionAZonaPropia((currentUser.x || 400) / 16, (currentUser.y || 400) / 16);
+  }, [currentUser.id, currentUser.x, currentUser.y, ecsStateRef, limitarPosicionAZonaPropia, obtenerPosicionSpawnEmpresa, spawnPersonal.spawn_x, spawnPersonal.spawn_z]);
   const initialDirection = useMemo(() => {
     const ecsData = ecsStateRef?.current ? obtenerEstadoUsuarioEcs(ecsStateRef.current, currentUser.id) : null;
     if (ecsData && Date.now() - (ecsData.timestamp ?? 0) <= 2000) {
@@ -118,7 +175,15 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     }
     return currentUser.direction ?? 'front';
   }, [currentUser.direction, currentUser.id, ecsStateRef]);
-  const positionRef = useRef({ ...initialPosition });
+  const asientoInicialPersistido = useMemo(() => {
+    return resolverAsientoPersistido(initialPosition.x, initialPosition.z);
+  }, [initialPosition.x, initialPosition.z, resolverAsientoPersistido]);
+  const positionRef = useRef(asientoInicialPersistido
+    ? { x: asientoInicialPersistido.posicion.x, z: asientoInicialPersistido.posicion.z }
+    : { ...initialPosition });
+  const posicionInicialFallbackRef = useRef(asientoInicialPersistido
+    ? { x: asientoInicialPersistido.posicion.x, z: asientoInicialPersistido.posicion.z }
+    : { ...initialPosition });
   const [animationState, setAnimationState] = useState<AnimationState>('idle');
   const animationStateRef = useRef<AnimationState>('idle');
   const baseAnimationStateRef = useRef<AnimationState>('idle');
@@ -127,10 +192,10 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
   const directionRef = useRef<string>(initialDirection);
   const [isRunning, setIsRunning] = useState(false);
   
-  const [isSitting, setIsSitting] = useState(false);
+  const [isSitting, setIsSitting] = useState(!!asientoInicialPersistido);
 
   // === SISTEMA DE ANIMACIONES CONTEXTUALES ===
-  const [contextualAnim, setContextualAnim] = useState<AnimationState | null>(null);
+  const [contextualAnim, setContextualAnim] = useState<AnimationState | null>(asientoInicialPersistido ? 'sit' : null);
   const contextualTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seatTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seatApproachStartedAtRef = useRef<number | null>(null);
@@ -141,10 +206,71 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
   const lastSitDebugKeyRef = useRef<string>('');
   const previousUsersInCallRef = useRef<Set<string>>(new Set());
   const wavedToUsersRef = useRef<Set<string>>(new Set());
-  const [seatRuntime, setSeatRuntime] = useState<AsientoRuntime3D | null>(null);
+  const [seatRuntime, setSeatRuntime] = useState<AsientoRuntime3D | null>(asientoInicialPersistido);
   const avatarHeightRef = useRef<number>(ALTURA_AVATAR_ESTANDAR);
   const avatarHipHeightRef = useRef<number>(ALTURA_AVATAR_ESTANDAR * 0.53);
   const avatarSitHipHeightRef = useRef<number | null>(null);
+  const ultimaPosicionPersistidaRef = useRef<{ x: number; z: number } | null>(null);
+  const ultimoGuardadoPosicionRef = useRef(0);
+
+  const persistirPosicion = useCallback((x: number, z: number, forzar = false) => {
+    if (!onGuardarPosicionPersistente) return;
+
+    const posicionLimitada = limitarPosicionAZonaPropia(x, z);
+    const ultima = ultimaPosicionPersistidaRef.current;
+    const ahora = Date.now();
+    const cambioSuficiente = !ultima
+      || Math.abs(ultima.x - posicionLimitada.x) > 0.35
+      || Math.abs(ultima.z - posicionLimitada.z) > 0.35;
+    const cooldownCumplido = ahora - ultimoGuardadoPosicionRef.current >= 2500;
+
+    if (!forzar && (!cambioSuficiente || !cooldownCumplido)) {
+      return;
+    }
+
+    ultimaPosicionPersistidaRef.current = posicionLimitada;
+    ultimoGuardadoPosicionRef.current = ahora;
+    void onGuardarPosicionPersistente(posicionLimitada.x, posicionLimitada.z);
+  }, [limitarPosicionAZonaPropia, onGuardarPosicionPersistente]);
+
+  useEffect(() => {
+    if (spawnPersonal.spawn_x == null || spawnPersonal.spawn_z == null) return;
+
+    const posicionPersistida = limitarPosicionAZonaPropia(spawnPersonal.spawn_x, spawnPersonal.spawn_z);
+    ultimaPosicionPersistidaRef.current = posicionPersistida;
+    const asientoPersistido = resolverAsientoPersistido(posicionPersistida.x, posicionPersistida.z);
+
+    const posicionInicialFallback = posicionInicialFallbackRef.current;
+    const sigueEnFallback = Math.abs(positionRef.current.x - posicionInicialFallback.x) < 0.01
+      && Math.abs(positionRef.current.z - posicionInicialFallback.z) < 0.01;
+
+    if (!sigueEnFallback) return;
+
+    if (Math.abs(positionRef.current.x - posicionPersistida.x) < 0.01 && Math.abs(positionRef.current.z - posicionPersistida.z) < 0.01) {
+      if (asientoPersistido) {
+        setSeatRuntime((prev) => prev?.id === asientoPersistido.id ? prev : asientoPersistido);
+        setContextualAnim('sit');
+        setIsSitting(true);
+      }
+      return;
+    }
+
+    positionRef.current.x = asientoPersistido ? asientoPersistido.posicion.x : posicionPersistida.x;
+    positionRef.current.z = asientoPersistido ? asientoPersistido.posicion.z : posicionPersistida.z;
+
+    if (groupRef.current) {
+      groupRef.current.position.x = positionRef.current.x;
+      groupRef.current.position.z = positionRef.current.z;
+    }
+
+    setSeatRuntime(asientoPersistido);
+    setContextualAnim(asientoPersistido ? 'sit' : null);
+    setIsSitting(!!asientoPersistido);
+
+    (camera as any).userData.playerPosition = { x: positionRef.current.x, z: positionRef.current.z };
+    onPositionUpdate?.(positionRef.current.x, positionRef.current.z);
+    setPosition(positionRef.current.x * 16, positionRef.current.z * 16, directionRef.current, !!asientoPersistido, false);
+  }, [camera, limitarPosicionAZonaPropia, onPositionUpdate, resolverAsientoPersistido, setPosition, spawnPersonal.spawn_x, spawnPersonal.spawn_z]);
 
   useEffect(() => {
     seatRuntimeRef.current = seatRuntime;
@@ -390,11 +516,12 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
   useEffect(() => {
     return () => {
       if (seatTransitionTimerRef.current) clearTimeout(seatTransitionTimerRef.current);
+      persistirPosicion(positionRef.current.x, positionRef.current.z, true);
       if (seatRuntimeRef.current) {
         void onLiberarAsiento?.(seatRuntimeRef.current);
       }
     };
-  }, [onLiberarAsiento]);
+  }, [onLiberarAsiento, persistirPosicion]);
 
   // Fase 3: Reacciones desde chat — detectar emojis en mensajes y disparar animación
   const prevMessageRef = useRef<string | undefined>(undefined);
@@ -454,8 +581,8 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
   const lastSyncTime = useRef(0);
   const lastBroadcastTime = useRef(0);
   const autoMoveTimeRef = useRef(0);
+  const estabaMoviendoseRef = useRef(false);
   const lastBroadcastRef = useRef<{ x: number; y: number; direction: string; isMoving: boolean; animState?: string } | null>(null);
-  const { camera } = useThree();
 
   // Teletransportación
   const [teleportPhase, setTeleportPhase] = useState<'none' | 'out' | 'in'>('none');
@@ -474,7 +601,11 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     setTeleportOrigin(originPos);
     setTeleportDest(destPos);
     setTeleportPhase('out');
-    playTeleportSound();
+    playTeleportSound({
+      sourceId: currentUser.id,
+      position: { x: originPos[0], z: originPos[2] },
+      listenerPosition: { x: originPos[0], z: originPos[2] },
+    });
 
     // Fase 2: Mover al destino después de 300ms
     teleportTimerRef.current = setTimeout(() => {
@@ -487,6 +618,7 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
       // Sincronizar posición inmediatamente
       setPosition(teleportTarget.x * 16, teleportTarget.z * 16, 'front', false, false);
       (camera as any).userData.playerPosition = { x: teleportTarget.x, z: teleportTarget.z };
+      persistirPosicion(teleportTarget.x, teleportTarget.z, true);
 
       setTeleportPhase('in');
 
@@ -504,7 +636,7 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     return () => {
       if (teleportTimerRef.current) clearTimeout(teleportTimerRef.current);
     };
-  }, [teleportTarget]);
+  }, [persistirPosicion, teleportTarget]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -783,9 +915,15 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
 
     if (huboMovimientoReal) {
       newDirection = obtenerDireccionDesdeVector(deltaMovimientoX, deltaMovimientoZ, direccionActual as DireccionAvatar);
+      persistirPosicion(positionRef.current.x, positionRef.current.z);
     }
 
     const moving = !seatImmobilized && (movedThisFrame || huboMovimientoReal);
+    if (estabaMoviendoseRef.current && !moving) {
+      persistirPosicion(positionRef.current.x, positionRef.current.z, true);
+    }
+    estabaMoviendoseRef.current = moving;
+
     if (!moving && (baseAnimationStateRef.current === 'walk' || baseAnimationStateRef.current === 'run')) {
       actualizarAnimationStateBase('idle');
     }

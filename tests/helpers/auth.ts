@@ -82,3 +82,24 @@ export async function assertAuthenticated(page: Page) {
 export async function assertNotAuthenticated(page: Page) {
   await page.waitForSelector('input[name="email"]', { timeout: 15_000 });
 }
+
+/**
+ * Navegar a la pantalla de recuperación de contraseña
+ * Simula el click en "¿Olvidaste tu contraseña?" desde el login
+ */
+export async function navigateToForgotPassword(page: Page) {
+  await page.goto('/');
+  await page.waitForSelector('#forgot-password-link', { timeout: 15_000 });
+  await page.click('#forgot-password-link');
+  await page.waitForSelector('#forgot-email-input', { timeout: 5_000 });
+}
+
+/**
+ * Navegar a la pantalla de reset de contraseña con token inválido
+ * Útil para validar que el sistema rechaza tokens no válidos (QA seguridad)
+ */
+export async function navigateToResetPasswordWithInvalidToken(page: Page) {
+  await page.goto('/#access_token=INVALID_TOKEN_QA&type=recovery&refresh_token=INVALID');
+  // Esperar a que el componente procese el hash
+  await page.waitForTimeout(4_000);
+}

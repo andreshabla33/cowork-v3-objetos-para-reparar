@@ -13,6 +13,7 @@ import { obtenerChunk, obtenerChunksVecinos } from '../lib/chunkSystem';
 import { MiniModeOverlay } from './MiniModeOverlay';
 import { ProductTour } from './onboarding/ProductTour';
 import { useIdleDetection } from '../hooks/useIdleDetection';
+import { useLogoutUser } from '../hooks/app/useLogoutUser';
 
 const VirtualSpace3D = lazy(() => import('./VirtualSpace3D'));
 const TaskBoard = lazy(() => import('./TaskBoard').then(module => ({ default: module.TaskBoard })));
@@ -97,6 +98,9 @@ export const WorkspaceLayout: React.FC = () => {
 
   const onVibenToggle = () => setShowViben(prev => !prev);
   const isAdmin = userRoleInActiveWorkspace === 'super_admin' || userRoleInActiveWorkspace === 'admin';
+
+  // UC: LogoutUser — Caso de uso de cierre de sesión (Clean Architecture)
+  const { logout, isLoggingOut } = useLogoutUser();
 
   // Detección de inactividad: después de 5 min sin actividad → estado 'away'
   useIdleDetection();
@@ -590,6 +594,31 @@ export const WorkspaceLayout: React.FC = () => {
             status={currentUser.status}
             onClick={() => setActiveSubTab('avatar')}
           />
+
+          {/* Botón Logout — UC: LogoutUser */}
+          <button
+            id="sidebar-logout-btn"
+            onClick={logout}
+            disabled={isLoggingOut}
+            title="Cerrar sesión"
+            className={`p-2.5 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+              theme === 'arcade'
+                ? 'text-red-400/70 hover:text-red-400 hover:bg-red-400/10'
+                : 'text-white/30 hover:text-red-400 hover:bg-red-500/10'
+            }`}
+          >
+            {isLoggingOut ? (
+              <svg className="w-[18px] h-[18px] animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : (
+              <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            )}
+          </button>
         </div>
       </aside>
 
@@ -765,9 +794,20 @@ export const WorkspaceLayout: React.FC = () => {
                       <button className={`px-6 md:px-10 py-3 md:py-4 rounded-2xl md:rounded-3xl text-[11px] font-black uppercase tracking-widest transition-all ${s.btn}`}>{t('button.customize', currentLang)}</button>
                     </div>
                     <div className="pt-6 md:pt-10">
-                      <button onClick={() => setActiveWorkspace(null)} className="text-red-500 text-[11px] font-black uppercase tracking-[0.2em] hover:text-red-400 flex items-center gap-3 transition-colors">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                        {t('button.logout', currentLang)}
+                      <button
+                        onClick={logout}
+                        disabled={isLoggingOut}
+                        className="text-red-500 text-[11px] font-black uppercase tracking-[0.2em] hover:text-red-400 flex items-center gap-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isLoggingOut ? (
+                          <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        )}
+                        {isLoggingOut ? 'Cerrando sesión...' : t('button.logout', currentLang)}
                       </button>
                     </div>
                   </div>

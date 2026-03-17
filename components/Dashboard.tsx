@@ -1,41 +1,11 @@
-
-import React, { useState } from 'react';
+import React from 'react';
 import { useStore } from '../store/useStore';
-import { supabase } from '../lib/supabase';
 import { Role } from '../types';
 
 export const Dashboard: React.FC = () => {
-  const { workspaces, setActiveWorkspace, currentUser, signOut, setAuthFeedback, authFeedback, fetchWorkspaces } = useStore();
-  const [showCreate, setShowCreate] = useState(false);
-  const [newSpaceName, setNewSpaceName] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { workspaces, setActiveWorkspace, currentUser, signOut, setAuthFeedback, authFeedback } = useStore();
 
-  const handleCreate = async () => {
-    if (!newSpaceName.trim()) return;
-    setLoading(true);
-    setAuthFeedback(null);
-    
-    try {
-      const { data, error } = await supabase.rpc('crear_espacio_trabajo', {
-        p_nombre: newSpaceName,
-        p_descripcion: 'Espacio creado desde Dashboard'
-      });
-      
-      if (error) throw error;
-      
-      setAuthFeedback({ type: 'success', message: '¡Espacio creado con éxito!' });
-      
-      await fetchWorkspaces();
-      setShowCreate(false);
-      setNewSpaceName('');
-    } catch (e: any) {
-      const msg = e?.message || e?.error_description || (typeof e === 'string' ? e : 'Error al crear el espacio');
-      console.error("Create Workspace Error:", e);
-      setAuthFeedback({ type: 'error', message: msg });
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-[#050508]">
@@ -70,21 +40,6 @@ export const Dashboard: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-2.5">
-            {/* Botón Nuevo Espacio con gradiente neon */}
-            <button 
-              onClick={() => setShowCreate(true)} 
-              className="group relative px-5 py-2.5 rounded-xl font-black uppercase tracking-wider text-[10px] overflow-hidden transition-all duration-300 hover:scale-105"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500 opacity-100" />
-              <div className="absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <span className="relative text-white flex items-center gap-2">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                </svg>
-                Nuevo Espacio
-              </span>
-            </button>
-            
             {/* Botón Salir */}
             <button 
               onClick={signOut} 
@@ -169,93 +124,23 @@ export const Dashboard: React.FC = () => {
           </div>
         ))}
 
-        {workspaces.length === 0 && !authFeedback && !loading && (
+        {workspaces.length === 0 && !authFeedback && (
           <div className="col-span-full py-20 lg:py-16 border border-dashed border-violet-500/20 rounded-2xl flex flex-col items-center justify-center gap-4 text-center bg-gradient-to-b from-violet-600/5 to-transparent">
-            {/* Icono con glow */}
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-full blur-xl opacity-30" />
               <div className="relative w-14 h-14 lg:w-12 lg:h-12 bg-gradient-to-br from-violet-600/20 to-fuchsia-600/20 border border-violet-500/30 rounded-full flex items-center justify-center text-2xl">
-                🏢
+                🔑
               </div>
             </div>
             <div className="space-y-1">
-              <p className="text-white font-bold text-base lg:text-sm">No tienes espacios de trabajo</p>
-              <p className="text-zinc-500 text-xs lg:text-[10px]">Comienza creando tu propia sede virtual</p>
+              <p className="text-white font-bold text-base lg:text-sm">Sin acceso a espacios</p>
+              <p className="text-zinc-500 text-xs lg:text-[10px]">Contacta a tu administrador para recibir una invitación</p>
             </div>
-            <button 
-              onClick={() => setShowCreate(true)} 
-              className="mt-1 group relative px-6 py-3 rounded-xl font-black uppercase tracking-wider text-[10px] overflow-hidden transition-all duration-300 hover:scale-105"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500" />
-              <div className="absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-              <span className="relative text-white">Crea tu primer espacio</span>
-            </button>
           </div>
         )}
       </div>
 
-      {showCreate && (
-        <div className="fixed inset-0 z-[600] flex items-center justify-center bg-black/90 backdrop-blur-xl p-6">
-          <div className="max-w-sm lg:max-w-xs w-full relative">
-            {/* Glow de fondo del modal */}
-            <div className="absolute -inset-2 bg-gradient-to-r from-violet-600/20 via-fuchsia-600/20 to-cyan-600/20 rounded-[32px] blur-xl" />
-            
-            <div className="relative backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-[28px] lg:rounded-2xl p-7 lg:p-5 shadow-2xl">
-              {/* Header con icono */}
-              <div className="flex items-center gap-3 mb-6 lg:mb-4">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-xl blur-md opacity-60" />
-                  <div className="relative w-10 h-10 lg:w-9 lg:h-9 bg-gradient-to-br from-violet-600 to-fuchsia-600 rounded-xl flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                  </div>
-                </div>
-                <div>
-                  <h2 className="text-lg lg:text-base font-black text-white">Lanzar Sede</h2>
-                  <p className="text-zinc-500 text-[10px] lg:text-[9px]">Crea tu espacio de trabajo virtual</p>
-                </div>
-              </div>
 
-              <div className="space-y-4 lg:space-y-3">
-                <div>
-                  <label className="text-[10px] lg:text-[9px] uppercase font-black tracking-widest text-zinc-500 mb-1.5 block">
-                    Nombre de la Compañía
-                  </label>
-                  <input 
-                    type="text" 
-                    autoFocus
-                    placeholder="Ej. Cyberdyne Systems"
-                    value={newSpaceName}
-                    onChange={e => setNewSpaceName(e.target.value)}
-                    className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 lg:py-2.5 text-sm lg:text-xs focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 outline-none text-white placeholder:text-zinc-700 transition-all"
-                  />
-                </div>
-                
-                <div className="flex gap-2.5 pt-2">
-                  <button 
-                    onClick={() => setShowCreate(false)} 
-                    className="flex-1 py-3 lg:py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest text-zinc-400 bg-white/[0.03] border border-white/[0.08] hover:bg-white/[0.06] transition-all"
-                  >
-                    Cancelar
-                  </button>
-                  <button 
-                    onClick={handleCreate}
-                    disabled={loading || !newSpaceName.trim()}
-                    className="flex-1 group relative py-3 lg:py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest overflow-hidden disabled:opacity-50 transition-all"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500" />
-                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <span className="relative text-white">
-                      {loading ? 'Preparando...' : 'Crear Sede'}
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       </div>
     </div>
   );

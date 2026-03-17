@@ -19,6 +19,7 @@ import {
   aplicarLayoutMasivo,
 } from '@/lib/autorizacionesEmpresa';
 import { generarLayoutZonas, detectarOverlaps, type EmpresaParaLayout, type ZonaGenerada, type LayoutConfig } from '@/lib/zonaLayoutEngine';
+import { FloorType, FLOOR_TYPE_LABELS, normalizarTipoSuelo } from '@/src/core/domain/entities';
 
 interface EmpresaBasica {
   id: string;
@@ -30,9 +31,10 @@ interface EmpresaBasica {
 interface SettingsZonaProps {
   workspaceId: string;
   isAdmin: boolean;
+  onCloseModal?: () => void;
 }
 
-export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin }) => {
+export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin, onCloseModal }) => {
   const { setActiveChatGroupId, setActiveSubTab } = useStore();
   const [zonas, setZonas] = useState<ZonaEmpresa[]>([]);
   const [empresas, setEmpresas] = useState<EmpresaBasica[]>([]);
@@ -69,6 +71,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
     color: '#64748b',
     estado: 'activa',
     es_comun: false,
+    tipo_suelo: FloorType.CONCRETE_SMOOTH,
   });
 
   const mostrarMensaje = (tipo: 'error' | 'exito', texto: string) => {
@@ -246,6 +249,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
       color: '#64748b',
       estado: 'activa',
       es_comun: false,
+      tipo_suelo: FloorType.CONCRETE_SMOOTH,
     });
     setEditandoId(null);
     setMostrarFormulario(false);
@@ -262,6 +266,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
       color: zona.color || '#64748b',
       estado: zona.estado || 'activa',
       es_comun: zona.es_comun ?? false,
+      tipo_suelo: normalizarTipoSuelo(zona.tipo_suelo),
     });
     setEditandoId(zona.id);
     setMostrarFormulario(true);
@@ -286,6 +291,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
       alto: Number(formData.alto || 0),
       color: formData.color,
       estado: formData.estado,
+      tipoSuelo: normalizarTipoSuelo(formData.tipo_suelo),
       usuarioId,
     });
 
@@ -415,6 +421,15 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
               className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl text-sm font-medium transition-all shadow-lg shadow-orange-500/20"
             >
               <Sparkles className="w-4 h-4" /> Auto-generar
+            </button>
+            <button
+              onClick={() => {
+                if (onCloseModal) onCloseModal();
+                useStore.getState().setIsDrawingZone(true);
+              }}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition-all"
+            >
+              <LayoutGrid className="w-4 h-4" /> Dibujar 3D
             </button>
             <button
               onClick={() => {
@@ -755,6 +770,25 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
               >
                 <option value="activa">Activa</option>
                 <option value="inactiva">Inactiva</option>
+              </select>
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-zinc-400 mb-1">Tipo de suelo</label>
+              <select
+                value={formData.tipo_suelo}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    tipo_suelo: normalizarTipoSuelo(e.target.value),
+                  }))
+                }
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+              >
+                {Object.entries(FLOOR_TYPE_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

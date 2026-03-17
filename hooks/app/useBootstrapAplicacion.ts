@@ -7,7 +7,7 @@ import { useStore } from '@/store/useStore';
 interface ParametrosBootstrapAplicacion {
   initialize: () => Promise<unknown>;
   setSession: (session: Session | null) => void;
-  setView: (view: 'dashboard' | 'workspace' | 'invitation' | 'loading' | 'onboarding' | 'onboarding_creador') => void;
+  setView: (view: 'dashboard' | 'workspace' | 'invitation' | 'loading' | 'onboarding' | 'onboarding_creador' | 'reset_password') => void;
   setAuthFeedback: (feedback: { type: 'success' | 'error'; message: string } | null) => void;
 }
 
@@ -42,10 +42,28 @@ export function useBootstrapAplicacion({ initialize, setSession, setView, setAut
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth Event:', event);
+
+      // ─── PASSWORD_RECOVERY: NO inicializar, NO redirigir al dashboard ────────
+      // Este evento llega cuando el usuario hace clic en el link del correo de
+      // recuperación. Guardamos la sesión temporal y seteamos la vista especial.
+      // NO llamamos initialize() porque eso buscaría workspaces y redirigiría.
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('Auth Event PASSWORD_RECOVERY: Activando pantalla de reset');
+        setSession(session);
+        setView('reset_password');
+        return; // ← Salir SIN llamar initialize()
+      }
+
       setSession(session);
 
       if (event === 'SIGNED_IN') {
         const state = useStore.getState();
+        // Si ya estamos en el flujo de reset, ignorar el SIGNED_IN que Supabase
+        // dispara junto con PASSWORD_RECOVERY para no sobreescribir la vista
+        if (state.view === 'reset_password') {
+          console.log('Auth Event SIGNED_IN ignorado: estamos en flujo reset_password');
+          return;
+        }
         if (state.initialized && state.activeWorkspace) {
           console.log('Auth Event SIGNED_IN: Already initialized with workspace, skipping re-init');
           return;
@@ -59,3 +77,4 @@ export function useBootstrapAplicacion({ initialize, setSession, setView, setAut
     return () => subscription.unsubscribe();
   }, [initialize, setAuthFeedback, setSession, setView]);
 }
+

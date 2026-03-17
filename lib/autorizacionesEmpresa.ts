@@ -1,5 +1,7 @@
 import { supabase } from './supabase';
 import type { AutorizacionEmpresa, ZonaEmpresa } from '../types';
+import type { ConfiguracionZonaEmpresa } from '../src/core/domain/entities/cerramientosZona';
+import { normalizarTipoSuelo } from '../src/core/domain/entities';
 
 const registrarActividad = async (payload: {
   usuario_id: string | null;
@@ -30,7 +32,7 @@ const registrarActividad = async (payload: {
 export const cargarZonasEmpresa = async (espacioId: string): Promise<ZonaEmpresa[]> => {
   const { data, error } = await supabase
     .from('zonas_empresa')
-    .select('id, empresa_id, espacio_id, nombre_zona, posicion_x, posicion_y, ancho, alto, color, estado, es_comun, spawn_x, spawn_y, modelo_url, empresa:empresas(nombre, logo_url)')
+    .select('id, empresa_id, espacio_id, nombre_zona, posicion_x, posicion_y, ancho, alto, color, estado, es_comun, spawn_x, spawn_y, modelo_url, tipo_suelo, configuracion, empresa:empresas(nombre, logo_url)')
     .eq('espacio_id', espacioId)
     .order('creado_en', { ascending: true });
 
@@ -39,7 +41,10 @@ export const cargarZonasEmpresa = async (espacioId: string): Promise<ZonaEmpresa
     return [];
   }
 
-  return (data || []) as ZonaEmpresa[];
+  return ((data || []) as ZonaEmpresa[]).map((zona) => ({
+    ...zona,
+    tipo_suelo: normalizarTipoSuelo(zona.tipo_suelo),
+  }));
 };
 
 export const cargarZonaEmpresaActual = async (
@@ -48,7 +53,7 @@ export const cargarZonaEmpresaActual = async (
 ): Promise<ZonaEmpresa | null> => {
   const { data, error } = await supabase
     .from('zonas_empresa')
-    .select('id, empresa_id, espacio_id, nombre_zona, posicion_x, posicion_y, ancho, alto, color, estado, spawn_x, spawn_y, modelo_url')
+    .select('id, empresa_id, espacio_id, nombre_zona, posicion_x, posicion_y, ancho, alto, color, estado, spawn_x, spawn_y, modelo_url, tipo_suelo, configuracion')
     .eq('espacio_id', espacioId)
     .eq('empresa_id', empresaId)
     .maybeSingle();
@@ -58,7 +63,14 @@ export const cargarZonaEmpresaActual = async (
     return null;
   }
 
-  return (data as ZonaEmpresa) || null;
+  if (!data) {
+    return null;
+  }
+
+  return {
+    ...(data as ZonaEmpresa),
+    tipo_suelo: normalizarTipoSuelo((data as ZonaEmpresa).tipo_suelo),
+  };
 };
 
 export const actualizarEstadoZonaEmpresa = async (payload: {
@@ -96,6 +108,35 @@ export const actualizarEstadoZonaEmpresa = async (payload: {
   return true;
 };
 
+export const eliminarZonaEmpresa = async (payload: {
+  zonaId: string;
+  espacioId: string;
+  usuarioId?: string | null;
+  empresaId?: string | null;
+}): Promise<boolean> => {
+  const { error } = await supabase
+    .from('zonas_empresa')
+    .delete()
+    .eq('id', payload.zonaId);
+
+  if (error) {
+    console.warn('Error eliminando zona:', error.message);
+    return false;
+  }
+
+  await registrarActividad({
+    usuario_id: payload.usuarioId ?? null,
+    empresa_id: payload.empresaId ?? null,
+    espacio_id: payload.espacioId,
+    accion: 'zona_empresa_eliminada',
+    entidad: 'zonas_empresa',
+    entidad_id: payload.zonaId,
+    descripcion: 'Zona de empresa eliminada',
+  });
+
+  return true;
+};
+
 export const guardarZonaEmpresa = async (payload: {
   zonaId?: string | null;
   espacioId: string;
@@ -112,7 +153,18 @@ export const guardarZonaEmpresa = async (payload: {
   spawnX?: number;
   spawnY?: number;
   modeloUrl?: string | null;
+  tipoSuelo?: string | null;
+  configuracion?: ConfiguracionZonaEmpresa | null;
 }): Promise<ZonaEmpresa | null> => {
+  if (!(payload.esComun ?? false) && !payload.empresaId) {
+    console.warn('Error guardando zona: una zona privada requiere empresa_id');
+    return null;
+  }
+
+  const tipoSueloNormalizado = payload.tipoSuelo == null
+    ? undefined
+    : normalizarTipoSuelo(payload.tipoSuelo);
+
   const { data, error } = await supabase
     .from('zonas_empresa')
     .upsert({
@@ -130,9 +182,11 @@ export const guardarZonaEmpresa = async (payload: {
       spawn_x: payload.spawnX ?? 0,
       spawn_y: payload.spawnY ?? 0,
       modelo_url: payload.modeloUrl ?? null,
+      configuracion: payload.configuracion ?? undefined,
+      ...(tipoSueloNormalizado ? { tipo_suelo: tipoSueloNormalizado } : {}),
       actualizado_en: new Date().toISOString(),
     })
-    .select('id, empresa_id, espacio_id, nombre_zona, posicion_x, posicion_y, ancho, alto, color, estado, es_comun, spawn_x, spawn_y, modelo_url')
+    .select('id, empresa_id, espacio_id, nombre_zona, posicion_x, posicion_y, ancho, alto, color, estado, es_comun, spawn_x, spawn_y, modelo_url, tipo_suelo, configuracion')
     .single();
 
   if (error) {
@@ -157,7 +211,14 @@ export const guardarZonaEmpresa = async (payload: {
     },
   });
 
-  return (data as ZonaEmpresa) || null;
+  if (!data) {
+    return null;
+  }
+
+  return {
+    ...(data as ZonaEmpresa),
+    tipo_suelo: normalizarTipoSuelo((data as ZonaEmpresa).tipo_suelo),
+  };
 };
 
 export const aplicarLayoutMasivo = async (payload: {

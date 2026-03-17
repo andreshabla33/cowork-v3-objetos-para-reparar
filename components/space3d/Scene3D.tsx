@@ -1,7 +1,7 @@
 'use client';
 import React, { useRef, useEffect, useMemo, Suspense, useState, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { OrthographicCamera, PerspectiveCamera, Grid, Text, OrbitControls, CameraControls, Html, PerformanceMonitor, useGLTF } from '@react-three/drei';
+import { OrthographicCamera, PerspectiveCamera, Grid, Text, OrbitControls, Html, PerformanceMonitor, useGLTF } from '@react-three/drei';
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { User, PresenceStatus, ZonaEmpresa } from '@/types';
@@ -10,10 +10,11 @@ import { useAvatarControls } from '../avatar3d/useAvatarControls';
 import type { AnimationState } from '../avatar3d/shared';
 import { VideoWithBackground } from '../VideoWithBackground';
 import { GhostAvatar } from '../3d/GhostAvatar';
+import { CerramientoZona3D } from '../3d/CerramientoZona3D';
 import { ZonaEmpresa as ZonaEmpresa3D } from '../3d/ZonaEmpresa';
 import { Escritorio3D } from '../3d/Escritorio3D';
 import { FantasmaColocacion3D, ObjetoEscena3D } from '../3d/ObjetoEscena3D';
-import type { EspacioObjeto, TransformacionObjetoInput } from '@/hooks/space3d/useEspacioObjetos';
+import type { EspacioObjeto, SpawnPersonal, TransformacionObjetoInput } from '@/hooks/space3d/useEspacioObjetos';
 import type { OcupacionAsientoReal } from '@/hooks/space3d/useOcupacionAsientos';
 import type { ObjetoPreview3D } from '@/types/objetos3d';
 import { DayNightCycle } from '../3d/DayNightCycle';
@@ -33,8 +34,9 @@ import {
   USAR_LIVEKIT, playTeleportSound, IconPrivacy, IconExpand,
   FACTOR_ESCALA_OBJETOS_ESCENA,
 } from './shared';
-import { crearAsientosDemo3D, crearAsientosObjetos3D, type AsientoRuntime3D } from './asientosRuntime';
-import { crearObstaculoObjetoPersistente, crearObstaculosMesaDemo, crearObstaculosObjetosPersistentes, crearObstaculosSillasDemo } from './colisionesRuntime';
+import { crearAsientosObjetos3D, type AsientoRuntime3D } from './asientosRuntime';
+import { crearParedesCerramientosZonas } from './cerramientosZonaRuntime';
+import { crearObstaculosFisicosObjetoPersistente, crearObstaculosObjetosPersistentes } from './colisionesRuntime';
 import { obtenerDimensionesObjetoRuntime } from './objetosRuntime';
 import { statusColors, STATUS_LABELS, type VirtualSpace3DProps } from './spaceTypes';
 import { Player, type PlayerProps } from './Player3D';
@@ -74,6 +76,8 @@ export interface SceneProps {
   moveSpeed?: number;
   runSpeed?: number;
   zonasEmpresa?: ZonaEmpresa[];
+  spawnPersonal?: SpawnPersonal;
+  onGuardarPosicionPersistente?: (x: number, z: number) => Promise<boolean>;
   onZoneCollision?: (zonaId: string | null) => void;
   usersInCallIds?: Set<string>;
   usersInAudioRangeIds?: Set<string>;
@@ -96,15 +100,80 @@ export interface SceneProps {
   onTransformarObjeto?: (id: string, cambios: TransformacionObjetoInput) => Promise<boolean>;
   onEliminarObjeto?: (id: string) => Promise<boolean>;
   objetoOwnerNames?: Map<string, string>;
+  onClickZona?: (zona: ZonaEmpresa) => void;
   objetoEnColocacion?: ObjetoPreview3D | null;
   onActualizarObjetoEnColocacion?: (x: number, y: number, z: number) => void;
   onConfirmarObjetoEnColocacion?: () => void;
   ultimoObjetoColocadoId?: string | null;
+  onDrawZoneEnd?: (zona: { ancho: number, alto: number, x: number, z: number }) => void;
 }
 
 const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) * paso;
 
- export const Scene: React.FC<SceneProps> = ({ currentUser, onlineUsers, setPosition, theme, orbitControlsRef, stream, remoteStreams, showVideoBubbles = true, localMessage, remoteMessages, localReactions, remoteReaction, onClickAvatar, moveTarget, onReachTarget, onDoubleClickFloor, onTapFloor, teleportTarget, onTeleportDone, showFloorGrid = false, showNamesAboveAvatars = true, cameraSensitivity = 5, invertYAxis = false, cameraMode = 'free', realtimePositionsRef, interpolacionWorkerRef, posicionesInterpoladasRef, ecsStateRef, broadcastMovement, moveSpeed, runSpeed, zonasEmpresa = [], onZoneCollision, usersInCallIds, usersInAudioRangeIds, empresasAutorizadas = [], mobileInputRef, enableDayNightCycle = false, onXPEvent, onClickRemoteAvatar, avatarInteractions, espacioObjetos = [], onReclamarObjeto, onLiberarObjeto, ocupacionesAsientosPorObjetoId = new Map(), onInteractuarObjeto, onOcuparAsiento, onLiberarAsiento, onRefrescarAsiento, onMoverObjeto, onRotarObjeto, onTransformarObjeto, onEliminarObjeto, objetoOwnerNames, objetoEnColocacion, onActualizarObjetoEnColocacion, onConfirmarObjetoEnColocacion, ultimoObjetoColocadoId }) => {
+export const Scene: React.FC<SceneProps> = ({
+  currentUser,
+  onlineUsers,
+  setPosition,
+  theme,
+  orbitControlsRef,
+  stream,
+  remoteStreams,
+  showVideoBubbles = true,
+  localMessage,
+  remoteMessages,
+  localReactions,
+  remoteReaction,
+  onClickAvatar,
+  moveTarget,
+  onReachTarget,
+  onDoubleClickFloor,
+  onTapFloor,
+  teleportTarget,
+  onTeleportDone,
+  showFloorGrid = false,
+  showNamesAboveAvatars = true,
+  cameraSensitivity = 5,
+  invertYAxis = false,
+  cameraMode = 'free',
+  realtimePositionsRef,
+  interpolacionWorkerRef,
+  posicionesInterpoladasRef,
+  ecsStateRef,
+  broadcastMovement,
+  moveSpeed,
+  runSpeed,
+  zonasEmpresa = [],
+  spawnPersonal = { spawn_x: null, spawn_z: null },
+  onGuardarPosicionPersistente,
+  onZoneCollision,
+  usersInCallIds,
+  usersInAudioRangeIds,
+  empresasAutorizadas = [],
+  mobileInputRef,
+  enableDayNightCycle = false,
+  onXPEvent,
+  onClickRemoteAvatar,
+  avatarInteractions,
+  espacioObjetos = [],
+  onReclamarObjeto,
+  onLiberarObjeto,
+  ocupacionesAsientosPorObjetoId = new Map(),
+  onInteractuarObjeto,
+  onOcuparAsiento,
+  onLiberarAsiento,
+  onRefrescarAsiento,
+  onMoverObjeto,
+  onRotarObjeto,
+  onTransformarObjeto,
+  onEliminarObjeto,
+  objetoOwnerNames,
+  onClickZona,
+  objetoEnColocacion,
+  onActualizarObjetoEnColocacion,
+  onConfirmarObjetoEnColocacion,
+  ultimoObjetoColocadoId,
+  onDrawZoneEnd,
+}) => {
   const gridColor = theme === 'arcade' ? '#00ff41' : '#6366f1';
   const { camera } = useThree();
   const frustumRef = useRef(new THREE.Frustum());
@@ -117,9 +186,8 @@ const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) *
 
   // Cargar el modelo del terreno exportado desde Blender
   const { scene: terrainScene } = useGLTF('/models/terrain.glb');
-  const asientosDemo = useMemo(() => crearAsientosDemo3D(), []);
   const asientosPersistentes = useMemo(() => crearAsientosObjetos3D(espacioObjetos), [espacioObjetos]);
-  const asientosRuntime = useMemo(() => [...asientosDemo, ...asientosPersistentes], [asientosDemo, asientosPersistentes]);
+  const asientosRuntime = useMemo(() => [...asientosPersistentes], [asientosPersistentes]);
   const asientosPorObjetoId = useMemo(() => {
     return new Map(
       asientosPersistentes
@@ -127,31 +195,52 @@ const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) *
         .map((asiento) => [asiento.objetoId as string, asiento])
     );
   }, [asientosPersistentes]);
-  const chairPositions = useMemo(
-    () => asientosDemo.map((asiento) => [asiento.posicion.x, asiento.posicion.y, asiento.posicion.z, asiento.rotacion] as const),
-    [asientosDemo]
-  );
+  const cerramientosZona = useMemo(() => crearParedesCerramientosZonas(zonasEmpresa), [zonasEmpresa]);
   const obstaculosMundo = useMemo(
     () => [
-      ...crearObstaculosMesaDemo(),
-      ...crearObstaculosSillasDemo(asientosDemo),
       ...crearObstaculosObjetosPersistentes(espacioObjetos),
+      ...crearObstaculosObjetosPersistentes(cerramientosZona),
     ],
-    [asientosDemo, espacioObjetos]
+    [cerramientosZona, espacioObjetos]
   );
   // --- Hito 8: Edit Mode dragging ---
   const isDragging = useStore((s) => s.isDragging);
+  const isDrawingZone = useStore((s) => s.isDrawingZone);
   const selectedObjectId = useStore((s) => s.selectedObjectId);
+  const [previewZonaStart, setPreviewZonaStart] = useState<{ x: number, z: number } | null>(null);
+  const [previewZonaCurrent, setPreviewZonaCurrent] = useState<{ x: number, z: number } | null>(null);
   const modoEdicionObjeto = useStore((s) => s.modoEdicionObjeto) as ModoEdicionObjeto;
   const objetoSeleccionado = useMemo(
     () => espacioObjetos.find((obj) => obj.id === selectedObjectId) || null,
     [espacioObjetos, selectedObjectId]
   );
+  const previewZonaRect = useMemo(() => {
+    if (!previewZonaStart || !previewZonaCurrent) return null;
+
+    const minX = Math.min(previewZonaStart.x, previewZonaCurrent.x);
+    const maxX = Math.max(previewZonaStart.x, previewZonaCurrent.x);
+    const minZ = Math.min(previewZonaStart.z, previewZonaCurrent.z);
+    const maxZ = Math.max(previewZonaStart.z, previewZonaCurrent.z);
+    const ancho = Math.abs(maxX - minX);
+    const alto = Math.abs(maxZ - minZ);
+
+    return {
+      ancho,
+      alto,
+      centroX: minX + ancho / 2,
+      centroZ: minZ + alto / 2,
+    };
+  }, [previewZonaStart, previewZonaCurrent]);
 
   const handlePointerMove = useCallback((e: any) => {
     const point = e.point;
     const x = ajustarAGrilla(point.x);
     const z = ajustarAGrilla(point.z);
+
+    if (isDrawingZone && previewZonaStart) {
+      setPreviewZonaCurrent({ x, z });
+      return;
+    }
 
     if (objetoEnColocacion && onActualizarObjetoEnColocacion) {
       onActualizarObjetoEnColocacion(x, objetoEnColocacion.posicion_y, z);
@@ -225,15 +314,8 @@ const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) *
   }, [onZoneCollision]);
 
   useEffect(() => {
-    if (!chairMeshRef.current) return;
-    chairPositions.forEach((pos, idx) => {
-      chairDummy.position.set(pos[0], pos[1], pos[2]);
-      chairDummy.rotation.set(0, pos[3], 0);
-      chairDummy.updateMatrix();
-      chairMeshRef.current?.setMatrixAt(idx, chairDummy.matrix);
-    });
-    chairMeshRef.current.instanceMatrix.needsUpdate = true;
-  }, [chairPositions, chairDummy]);
+    // Si necesitas lógica para mallas instanciadas basadas en asientos dinámicos, agragarla aquí.
+  }, []);
 
   return (
     <>
@@ -258,7 +340,7 @@ const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) *
         maxPolarAngle={Math.PI / 2 - 0.1}
         minPolarAngle={Math.PI / 6}
         enablePan={cameraMode === 'free'}
-        enableRotate={cameraMode !== 'fixed'}
+        enableRotate={cameraMode !== 'fixed' && !isDrawingZone}
         rotateSpeed={cameraSensitivity / 10}
         zoomSpeed={0.8}
         enableDamping={true}
@@ -293,6 +375,7 @@ const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) *
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}
         onClick={(e) => {
           e.stopPropagation();
+          if (isDrawingZone) return; // Deshabilitar click para que no interrumpa el dibujo
           if (objetoEnColocacion && onConfirmarObjetoEnColocacion) {
             onConfirmarObjetoEnColocacion();
             return;
@@ -301,10 +384,41 @@ const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) *
         }}
         onDoubleClick={(e) => {
           e.stopPropagation();
+          if (isDrawingZone) return;
           if (objetoEnColocacion) {
             return;
           }
           if (onDoubleClickFloor) onDoubleClickFloor(e.point);
+        }}
+        onPointerDown={(e) => {
+          if (isDrawingZone) {
+            e.stopPropagation();
+            const x = ajustarAGrilla(e.point.x);
+            const z = ajustarAGrilla(e.point.z);
+            setPreviewZonaStart({ x, z });
+            setPreviewZonaCurrent({ x, z });
+          }
+        }}
+        onPointerUp={(e) => {
+          if (isDrawingZone && previewZonaStart) {
+            e.stopPropagation();
+            const endX = ajustarAGrilla(e.point.x);
+            const endZ = ajustarAGrilla(e.point.z);
+            const minX = Math.min(previewZonaStart.x, endX);
+            const maxX = Math.max(previewZonaStart.x, endX);
+            const minZ = Math.min(previewZonaStart.z, endZ);
+            const maxZ = Math.max(previewZonaStart.z, endZ);
+            const ancho = Math.abs(maxX - minX);
+            const alto = Math.abs(maxZ - minZ);
+            
+            if (ancho > 1.5 && alto > 1.5) {
+              const cx = minX + ancho / 2;
+              const cz = minZ + alto / 2;
+              onDrawZoneEnd?.({ ancho, alto, x: cx, z: cz });
+            }
+            setPreviewZonaStart(null);
+            setPreviewZonaCurrent(null);
+          }
         }}
         onPointerMove={handlePointerMove}
         visible={false}
@@ -338,9 +452,55 @@ const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) *
             esZonaComun={esZonaComun}
             variante={variante}
             opacidad={opacidad}
+            tipoSuelo={zona.tipo_suelo}
+            onClick={(e) => {
+              if (onClickZona) {
+                onClickZona(zona);
+                return;
+              }
+
+              if (onTapFloor) {
+                onTapFloor(e.point);
+              }
+            }}
           />
         );
       })}
+
+      {cerramientosZona.map((objeto) => (
+        <CerramientoZona3D key={objeto.id} objeto={objeto} />
+      ))}
+
+      {/* Renderizado temporal de la zona siendo dibujada */}
+      {isDrawingZone && previewZonaRect && (
+        <>
+          <mesh
+            position={[previewZonaRect.centroX, 0.02, previewZonaRect.centroZ]}
+            rotation={[-Math.PI / 2, 0, 0]}
+          >
+            <planeGeometry args={[previewZonaRect.ancho, previewZonaRect.alto]} />
+            <meshBasicMaterial color="#f59e0b" opacity={0.28} transparent side={THREE.DoubleSide} />
+          </mesh>
+          <mesh
+            position={[previewZonaRect.centroX, 0.026, previewZonaRect.centroZ]}
+            rotation={[-Math.PI / 2, 0, 0]}
+          >
+            <planeGeometry args={[previewZonaRect.ancho, previewZonaRect.alto]} />
+            <meshBasicMaterial color="#fde68a" opacity={0.18} transparent wireframe side={THREE.DoubleSide} />
+          </mesh>
+          {previewZonaRect.ancho > 0 && previewZonaRect.alto > 0 && (
+            <Text
+              position={[previewZonaRect.centroX, 0.18, previewZonaRect.centroZ]}
+              fontSize={0.24}
+              color="#fef3c7"
+              anchorX="center"
+              anchorY="middle"
+            >
+              {`${previewZonaRect.ancho.toFixed(1)}m × ${previewZonaRect.alto.toFixed(1)}m`}
+            </Text>
+          )}
+        </>
+      )}
 
       <Physics gravity={[0, 0, 0]}>
         <RigidBody
@@ -368,9 +528,34 @@ const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) *
           );
         })}
 
+        {cerramientosZona.map((obj) => {
+          const obstaculosObjeto = crearObstaculosFisicosObjetoPersistente(obj);
+
+          return (
+            <RigidBody
+              key={`cerramiento-zona-${obj.id}`}
+              type="fixed"
+              colliders={false}
+            >
+              {obstaculosObjeto.map((obstaculo) => (
+                <CuboidCollider
+                  key={obstaculo.id}
+                  position={[
+                    obstaculo.posicion.x,
+                    obstaculo.posicion.y,
+                    obstaculo.posicion.z,
+                  ]}
+                  rotation={[0, obstaculo.rotacion, 0]}
+                  args={[obstaculo.semiextensiones.x, obstaculo.semiextensiones.y, obstaculo.semiextensiones.z]}
+                />
+              ))}
+            </RigidBody>
+          );
+        })}
+
         {/* Objetos persistentes DENTRO de Physics para habilitar colisiones precisas */}
         {espacioObjetos.map((obj) => {
-          const obstaculo = crearObstaculoObjetoPersistente(obj);
+          const obstaculosObjeto = crearObstaculosFisicosObjetoPersistente(obj);
 
           return (
             <RigidBody
@@ -379,15 +564,18 @@ const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) *
               colliders={false}
             >
               {/* Collider físico explícito exacto alineado con el modelo visual */}
-              <CuboidCollider 
-                position={[
-                  obstaculo.posicion.x,
-                  obstaculo.posicion.y,
-                  obstaculo.posicion.z,
-                ]} 
-                rotation={[0, obstaculo.rotacion, 0]}
-                args={[obstaculo.semiextensiones.x, obstaculo.semiextensiones.y, obstaculo.semiextensiones.z]} 
-              />
+              {obstaculosObjeto.map((obstaculo) => (
+                <CuboidCollider 
+                  key={obstaculo.id}
+                  position={[
+                    obstaculo.posicion.x,
+                    obstaculo.posicion.y,
+                    obstaculo.posicion.z,
+                  ]} 
+                  rotation={[0, obstaculo.rotacion, 0]}
+                  args={[obstaculo.semiextensiones.x, obstaculo.semiextensiones.y, obstaculo.semiextensiones.z]} 
+                />
+              ))}
               
               {obj.catalogo_id ? (
                 <ObjetoEscena3D
@@ -417,27 +605,7 @@ const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) *
         })}
       </Physics>
 
-      {/* Mesas y objetos (Demo) */}
-      <mesh position={[10, 0.5, 10]} castShadow receiveShadow>
-        <boxGeometry args={[4, 1, 2]} />
-        <meshStandardMaterial color="#1e293b" />
-      </mesh>
-      <Text position={[10, 1.5, 10]} fontSize={0.25} color="white" anchorX="center" anchorY="middle" fillOpacity={0.5}>
-        Mesa de Reunión
-      </Text>
-
-      <instancedMesh ref={chairMeshRef} args={[undefined, undefined, chairPositions.length]} castShadow receiveShadow>
-        <boxGeometry args={[1.35, 0.8, 1.15]} />
-        <meshStandardMaterial color="#0f172a" />
-      </instancedMesh>
-
-      <mesh position={[25, 0.02, 10]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[6, 6]} />
-        <meshBasicMaterial color="#3b82f6" opacity={0.15} transparent />
-      </mesh>
-      <Text position={[25, 0.1, 13.5]} fontSize={0.2} color="#3b82f6" anchorX="center" fillOpacity={0.4}>
-        Sala 2
-      </Text>
+      {/* Objetos Dinámicos y Zonas se renderizan antes de aquí */}
 
       {/* Jugador actual */}
       <Player
@@ -458,6 +626,8 @@ const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) *
         ecsStateRef={ecsStateRef}
         onPositionUpdate={handlePlayerPositionUpdate}
         zonasEmpresa={zonasEmpresa}
+        spawnPersonal={spawnPersonal}
+        onGuardarPosicionPersistente={onGuardarPosicionPersistente}
         empresasAutorizadas={empresasAutorizadas}
         usersInCallIds={usersInCallIds}
         mobileInputRef={mobileInputRef}

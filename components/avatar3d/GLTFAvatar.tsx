@@ -620,12 +620,7 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
         <primitive object={clone} />
       </group>
       {/* Sombra proyectada */}
-      {!isSitting && (
-        <mesh position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <circleGeometry args={[0.5, 32]} />
-          <meshBasicMaterial color="#000000" transparent opacity={0.3} />
-        </mesh>
-      )}
+      {!isSitting && null}
     </group>
   );
 };

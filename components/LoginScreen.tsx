@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
+import { ForgotPasswordScreen } from './ForgotPasswordScreen';
 
 interface InvitacionBanner {
   email: string;
@@ -18,6 +19,7 @@ export const LoginScreen: React.FC = () => {
   const [isRegister, setIsRegister] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
   const [invitacionBanner, setInvitacionBanner] = useState<InvitacionBanner | null>(null);
   
   const { setSession, authFeedback, setAuthFeedback } = useStore();
@@ -138,6 +140,11 @@ export const LoginScreen: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Mostrar pantalla de recuperación de contraseña
+  if (showForgot) {
+    return <ForgotPasswordScreen onBack={() => setShowForgot(false)} />;
+  }
 
   return (
     <div className="fixed inset-0 z-[500] flex items-center justify-center bg-[#050508] p-4 lg:p-3 overflow-y-auto">
@@ -282,6 +289,20 @@ export const LoginScreen: React.FC = () => {
               className="w-full bg-black/40 border border-white/5 rounded-xl pl-11 lg:pl-9 pr-4 lg:pr-3 py-3.5 lg:py-3 text-sm lg:text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all placeholder:text-zinc-700 text-white" 
             />
           </div>
+
+          {/* Enlace ¿Olvidaste tu contraseña? — solo en modo login */}
+          {!isRegister && (
+            <div className="flex justify-end">
+              <button
+                id="forgot-password-link"
+                type="button"
+                onClick={() => setShowForgot(true)}
+                className="text-[9px] lg:text-[8px] text-violet-400 hover:text-violet-300 font-bold uppercase tracking-widest transition-colors underline decoration-violet-400/40 underline-offset-4"
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
+          )}
 
           <button 
             type="submit" 

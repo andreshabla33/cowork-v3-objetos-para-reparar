@@ -94,44 +94,13 @@ export interface AsientoRuntime3D {
   rotacion: number;
   radioActivacion: number;
   radioCaptura: number;
-  tipo: 'silla_demo' | 'objeto_persistente';
+  tipo: 'objeto_persistente';
   objetoId?: string | null;
   claveAsiento?: string;
   obstaculoId?: string | null;
   perfil: PerfilAsiento3D;
 }
 
-const CENTRO_ASIENTOS_DEMO = CHAIR_POSITIONS_3D.reduce(
-  (acc, [x, z]) => ({ x: acc.x + x, z: acc.z + z }),
-  { x: 0, z: 0 }
-);
-
-CENTRO_ASIENTOS_DEMO.x /= CHAIR_POSITIONS_3D.length || 1;
-CENTRO_ASIENTOS_DEMO.z /= CHAIR_POSITIONS_3D.length || 1;
-
-export const crearAsientosDemo3D = (): AsientoRuntime3D[] => {
-  return CHAIR_POSITIONS_3D.map(([x, z], indice) => {
-    const haciaCentroX = CENTRO_ASIENTOS_DEMO.x - x;
-    const haciaCentroZ = CENTRO_ASIENTOS_DEMO.z - z;
-
-    return {
-      id: `asiento_demo_${indice + 1}`,
-      posicion: {
-        x,
-        y: 0.35,
-        z,
-      },
-      rotacion: Math.atan2(haciaCentroX, haciaCentroZ),
-      radioActivacion: CHAIR_SIT_RADIUS,
-      radioCaptura: 0.7,
-      tipo: 'silla_demo',
-      objetoId: null,
-      claveAsiento: 'principal',
-      obstaculoId: `obstaculo_asiento_demo_${indice + 1}`,
-      perfil: PERFILES_ASIENTO.silla,
-    };
-  });
-};
 
 export const crearAsientosObjetos3D = (objetos: EspacioObjeto[]): AsientoRuntime3D[] => {
   return objetos
@@ -195,7 +164,7 @@ export const crearAsientosObjetos3D = (objetos: EspacioObjeto[]): AsientoRuntime
 
 export const buscarAsientoCercano = (
   posicionUsuario: Posicion3DPlano,
-  asientos: AsientoRuntime3D[] = crearAsientosDemo3D()
+  asientos: AsientoRuntime3D[] = []
 ): AsientoRuntime3D | null => {
   let asientoCercano: AsientoRuntime3D | null = null;
   let distanciaMinima = Number.POSITIVE_INFINITY;
@@ -217,7 +186,7 @@ export const buscarAsientoCercano = (
 export const resolverAsientoUsuario = (
   posicionUsuario: Posicion3DPlano,
   animacion?: AnimationState | null,
-  asientos: AsientoRuntime3D[] = crearAsientosDemo3D()
+  asientos: AsientoRuntime3D[] = []
 ): AsientoRuntime3D | null => {
   if (animacion && !esAnimacionAsiento(animacion)) {
     return null;

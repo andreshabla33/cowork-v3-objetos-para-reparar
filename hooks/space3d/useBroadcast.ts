@@ -9,6 +9,7 @@ import type { User } from '@/types';
 import { obtenerChunk } from '@/lib/chunkSystem';
 import { actualizarEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
 import { getSettingsSection, sendDesktopNotification } from '@/lib/userSettings';
+import { audioManager } from '@/services/audioManager';
 import { ChatService } from '@/services/chatService';
 import { USAR_LIVEKIT, MOVEMENT_BROADCAST_MS, type UseBroadcastReturn } from './types';
 import { RoomEvent } from 'livekit-client';
@@ -109,7 +110,10 @@ export function useBroadcast(params: {
       if (mensaje.payload.from === session.user.id) return;
       setRemoteMessages(prev => new Map(prev).set(mensaje.payload.from, mensaje.payload.message));
       const ns = getSettingsSection('notifications');
-      if (ns.newMessageSound) sendDesktopNotification(`💬 ${mensaje.payload.fromName}`, mensaje.payload.message);
+      if (ns.newMessageSound) {
+        audioManager.playChatNotification().catch(() => {});
+      }
+      if (ns.desktopNotifications) sendDesktopNotification(`💬 ${mensaje.payload.fromName}`, mensaje.payload.message);
       if (ns.mentionNotifications && mensaje.payload.message?.includes(`@${currentUser.name}`)) {
         sendDesktopNotification(`📢 Mención de ${mensaje.payload.fromName}`, mensaje.payload.message);
       }

@@ -1,7 +1,7 @@
 'use client';
 import React, { useRef, useEffect, useMemo, Suspense, useState, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { OrthographicCamera, PerspectiveCamera, Grid, Text, CameraControls, Html, PerformanceMonitor, useGLTF, Billboard } from '@react-three/drei';
+import { OrthographicCamera, PerspectiveCamera, Grid, Text, Html, PerformanceMonitor, useGLTF, Billboard } from '@react-three/drei';
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { User, PresenceStatus, ZonaEmpresa } from '@/types';
@@ -458,7 +458,19 @@ export const RemoteAvatarInterpolated: React.FC<{
     }
   }, [ecsStateRef, user.x, user.y, user.id]);
 
-  const enviarEstadoWorker = (payload: { x: number; z: number; direction?: string; isMoving?: boolean; teleport?: boolean }) => {
+  const updateState = useCallback((partial: Partial<typeof remoteStateRef.current>) => {
+    remoteStateRef.current = { ...remoteStateRef.current, ...partial };
+  }, []);
+
+  const { camera } = useThree();
+
+  const enviarEstadoWorker = (payload: {
+    x: number;
+    z: number;
+    direction?: string;
+    isMoving?: boolean;
+    teleport?: boolean
+  }) => {
     if (!interpolacionWorkerRef?.current) return;
     interpolacionWorkerRef.current.postMessage({
       type: 'upsert',
@@ -490,9 +502,15 @@ export const RemoteAvatarInterpolated: React.FC<{
       // Salto grande detectado → teleport visual
       const origin: [number, number, number] = [currentPos.current.x, 0, currentPos.current.z];
       const dest: [number, number, number] = [newX, 0, newZ];
+      const listenerPosition = (camera as any).userData.playerPosition || { x: camera.position.x, z: camera.position.z };
 
       setRemoteTeleport({ phase: 'out', origin, dest });
-      playTeleportSound();
+      playTeleportSound({
+        sourceId: user.id,
+        position: { x: newX, z: newZ },
+        listenerPosition: { x: listenerPosition.x, z: listenerPosition.z },
+        debounceMs: 700,
+      });
       enviarEstadoWorker({ x: newX, z: newZ, direction, isMoving: remoteMoving, teleport: true });
 
       setTimeout(() => {
@@ -750,13 +768,22 @@ export const CameraFollow: React.FC<{ controlsRef: React.MutableRefObject<any> }
   const { camera } = useThree();
   const lastPlayerPos = useRef<{ x: number; z: number } | null>(null);
   const initialized = useRef(false);
+  const introStartedAtRef = useRef<number | null>(null);
   const isDragging = useStore((s) => s.isDragging);
+
+  const CAMERA_INTRO_DURATION_MS = 1200;
+  const CAMERA_INTRO_HEIGHT = 11;
+  const CAMERA_INTRO_DISTANCE = 12;
+  const CAMERA_INTRO_TARGET_HEIGHT = 0.8;
+  const CAMERA_DEFAULT_HEIGHT = 6.5;
+  const CAMERA_DEFAULT_DISTANCE = 8;
+  const CAMERA_DEFAULT_TARGET_HEIGHT = 1.35;
 
   // Prioridad -1: CameraFollow ejecuta DESPUÉS del Player (-2) pero ANTES del Render.
   useFrame(() => {
     const playerPos = (camera as any).userData?.playerPosition;
     const controls = controlsRef.current;
-    if (!playerPos || !controls) return;
+    if (!playerPos || !controls || !controls.target) return;
 
     // Deshabilitar controles si se está arrastrando un objeto
     controls.enabled = !isDragging;
@@ -767,12 +794,37 @@ export const CameraFollow: React.FC<{ controlsRef: React.MutableRefObject<any> }
       Math.abs(playerPos.z - lastPlayerPos.current.z) > 0.001;
 
     if (!initialized.current) {
-      if (controls.target) {
-        controls.target.set(playerPos.x, 0, playerPos.z);
-        camera.position.set(playerPos.x, 15, playerPos.z + 15);
-        controls.update();
-        lastPlayerPos.current = { x: playerPos.x, z: playerPos.z };
-        initialized.current = true;
+      controls.target.set(playerPos.x, CAMERA_INTRO_TARGET_HEIGHT, playerPos.z);
+      camera.position.set(playerPos.x, CAMERA_INTRO_HEIGHT, playerPos.z + CAMERA_INTRO_DISTANCE);
+      controls.update();
+      lastPlayerPos.current = { x: playerPos.x, z: playerPos.z };
+      initialized.current = true;
+      introStartedAtRef.current = performance.now();
+      return;
+    }
+
+    if (introStartedAtRef.current !== null) {
+      const elapsed = performance.now() - introStartedAtRef.current;
+      const progress = Math.min(elapsed / CAMERA_INTRO_DURATION_MS, 1);
+      const easedProgress = progress < 0.5
+        ? 4 * progress * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+      controls.target.set(
+        playerPos.x,
+        THREE.MathUtils.lerp(CAMERA_INTRO_TARGET_HEIGHT, CAMERA_DEFAULT_TARGET_HEIGHT, easedProgress),
+        playerPos.z,
+      );
+      camera.position.set(
+        playerPos.x,
+        THREE.MathUtils.lerp(CAMERA_INTRO_HEIGHT, CAMERA_DEFAULT_HEIGHT, easedProgress),
+        playerPos.z + THREE.MathUtils.lerp(CAMERA_INTRO_DISTANCE, CAMERA_DEFAULT_DISTANCE, easedProgress),
+      );
+      controls.update();
+      lastPlayerPos.current = { x: playerPos.x, z: playerPos.z };
+
+      if (progress >= 1) {
+        introStartedAtRef.current = null;
       }
       return;
     }

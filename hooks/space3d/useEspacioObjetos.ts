@@ -7,6 +7,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { CatalogoObjeto3D, InteraccionConfigObjeto3D } from '@/types/objetos3d';
+import type { ConfiguracionGeometricaObjeto } from '@/src/core/domain/entities/objetosArquitectonicos';
 
 // Tipos para objetos 3D persistentes
 export interface EspacioObjeto {
@@ -25,7 +26,10 @@ export interface EspacioObjeto {
   escala_x: number;
   escala_y: number;
   escala_z: number;
+  empresa_id?: string | null;
+  es_de_plantilla?: boolean;
   owner_id: string | null;
+  plantilla_origen?: string | null;
   creado_en: string;
   actualizado_en: string;
   interactuable?: boolean;
@@ -45,6 +49,7 @@ export interface EspacioObjeto {
   interaccion_emoji?: string | null;
   interaccion_label?: string | null;
   interaccion_config?: InteraccionConfigObjeto3D | null;
+  configuracion_geometria?: ConfiguracionGeometricaObjeto | null;
   es_reclamable?: boolean;
   premium?: boolean;
   escala_normalizacion?: number | null;
@@ -86,6 +91,7 @@ export interface UseEspacioObjetosReturn {
   moverObjeto: (objetoId: string, x: number, y: number, z: number) => Promise<boolean>;
   rotarObjeto: (objetoId: string, currentRotationY: number) => Promise<boolean>;
   eliminarObjeto: (objetoId: string) => Promise<boolean>;
+  duplicarObjetos: (objetosList: EspacioObjeto[]) => Promise<EspacioObjeto[]>;
   restaurarObjeto: (objeto: EspacioObjeto) => Promise<EspacioObjeto | null>;
   guardarSpawnPersonal: (x: number, z: number) => Promise<boolean>;
 }
@@ -111,6 +117,7 @@ type CatalogoObjeto3DRuntime = Pick<
   | 'interaccion_emoji'
   | 'interaccion_label'
   | 'interaccion_config'
+  | 'configuracion_geometria'
   | 'es_reclamable'
   | 'premium'
   | 'escala_normalizacion'
@@ -186,6 +193,7 @@ const enriquecerObjetoEspacio = (
     interaccion_emoji: metadata.interaccion_emoji,
     interaccion_label: metadata.interaccion_label,
     interaccion_config: metadata.interaccion_config,
+    configuracion_geometria: objeto.configuracion_geometria ?? metadata.configuracion_geometria ?? null,
     es_reclamable: metadata.es_reclamable,
     premium: metadata.premium,
     escala_normalizacion: usarEscalaMetadata
@@ -231,7 +239,7 @@ export function useEspacioObjetos(
           .eq('espacio_id', espacioId),
         supabase
           .from('catalogo_objetos_3d')
-          .select('id, tipo, modelo_url, built_in_geometry, built_in_color, ancho, alto, profundidad, es_sentable, sit_offset_x, sit_offset_y, sit_offset_z, sit_rotation_y, es_interactuable, interaccion_tipo, interaccion_radio, interaccion_emoji, interaccion_label, interaccion_config, es_reclamable, premium, escala_normalizacion'),
+          .select('id, tipo, modelo_url, built_in_geometry, built_in_color, ancho, alto, profundidad, es_sentable, sit_offset_x, sit_offset_y, sit_offset_z, sit_rotation_y, es_interactuable, interaccion_tipo, interaccion_radio, interaccion_emoji, interaccion_label, interaccion_config, configuracion_geometria, es_reclamable, premium, escala_normalizacion'),
       ]);
 
       if (!catalogoError && catalogoData) {
@@ -345,6 +353,7 @@ export function useEspacioObjetos(
         owner_id: userId,
         catalogo_id: catalogo.id,
         interactuable: Boolean(catalogo.es_interactuable || catalogo.es_sentable),
+        configuracion_geometria: catalogo.configuracion_geometria ?? null,
         escala_normalizacion: null,
       })
       .select()
@@ -520,6 +529,57 @@ export function useEspacioObjetos(
     return true;
   }, []);
 
+  const duplicarObjetos = useCallback(async (objetosList: EspacioObjeto[]): Promise<EspacioObjeto[]> => {
+    if (!espacioId || !userId || objetosList.length === 0) return [];
+
+    const nuevasEntradas = objetosList.map(obj => ({
+      espacio_id: espacioId,
+      empresa_id: obj.empresa_id ?? null,
+      es_de_plantilla: obj.es_de_plantilla ?? false,
+      modelo_url: obj.modelo_url,
+      tipo: obj.tipo,
+      nombre: obj.nombre,
+      posicion_x: obj.posicion_x + 1, // Offset para que no se superpongan exactamente
+      posicion_y: obj.posicion_y,
+      posicion_z: obj.posicion_z + 1,
+      rotacion_x: obj.rotacion_x,
+      rotacion_y: obj.rotacion_y,
+      rotacion_z: obj.rotacion_z,
+      escala_x: obj.escala_x,
+      escala_y: obj.escala_y,
+      escala_z: obj.escala_z,
+      owner_id: userId,
+      catalogo_id: obj.catalogo_id,
+      interactuable: Boolean(obj.interactuable ?? obj.es_interactuable ?? false),
+      plantilla_origen: obj.plantilla_origen ?? null,
+      escala_normalizacion: obj.escala_normalizacion,
+    }));
+
+    const { data, error } = await supabase
+      .from('espacio_objetos')
+      .insert(nuevasEntradas)
+      .select();
+
+    if (error) {
+      console.error('[useEspacioObjetos] Error duplicando objetos:', error);
+      return [];
+    }
+
+    const nuevosObjetos = (data as EspacioObjeto[]).map(obj => enriquecerObjetoEspacio(obj, catalogoIndiceRef.current));
+    
+    setObjetos((prev) => {
+      const next = [...prev];
+      nuevosObjetos.forEach(nuevo => {
+        if (!next.some(o => o.id === nuevo.id)) {
+          next.push(nuevo);
+        }
+      });
+      return next;
+    });
+
+    return nuevosObjetos;
+  }, [espacioId, userId]);
+
   const restaurarObjeto = useCallback(async (objeto: EspacioObjeto): Promise<EspacioObjeto | null> => {
     const snapshotPrevio = [...objetosRef.current];
     const objetoBase = {
@@ -538,7 +598,10 @@ export function useEspacioObjetos(
       escala_x: objeto.escala_x,
       escala_y: objeto.escala_y,
       escala_z: objeto.escala_z,
+      empresa_id: objeto.empresa_id ?? null,
+      es_de_plantilla: objeto.es_de_plantilla ?? false,
       owner_id: objeto.owner_id ?? null,
+      plantilla_origen: objeto.plantilla_origen ?? null,
       interactuable: Boolean(objeto.interactuable ?? objeto.es_interactuable ?? false),
     };
 
@@ -607,6 +670,7 @@ export function useEspacioObjetos(
     moverObjeto,
     rotarObjeto,
     eliminarObjeto,
+    duplicarObjetos,
     restaurarObjeto,
     guardarSpawnPersonal,
   };

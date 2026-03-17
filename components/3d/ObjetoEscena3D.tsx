@@ -8,7 +8,9 @@ import { useStore } from '@/store/useStore';
 import { hapticFeedback } from '@/lib/mobileDetect';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import type { ObjetoPreview3D } from '@/types/objetos3d';
+import { esObjetoArquitectonicoProcedural } from '@/src/core/domain/entities/objetosArquitectonicos';
 import { esObjetoInteractuable, obtenerDimensionesObjetoRuntime, obtenerEmojiInteraccionObjeto, obtenerEtiquetaInteraccionObjeto, obtenerRadioInteraccionObjeto } from '../space3d/objetosRuntime';
+import { GeometriaProceduralObjeto3D } from './GeometriaProceduralObjeto3D';
 
 interface ObjetoEscena3DProps {
   objeto: EspacioObjeto;
@@ -242,13 +244,26 @@ const ModeloGLTFObjeto: React.FC<{
 };
 
 const RepresentacionObjeto: React.FC<{
+  objeto: EspacioObjeto | ObjetoPreview3D;
   modeloUrl?: string | null;
   escala: [number, number, number];
   opacidad: number;
   transparente: boolean;
   resaltar: boolean;
-}> = ({ modeloUrl, escala, opacidad, transparente, resaltar }) => {
+}> = ({ objeto, modeloUrl, escala, opacidad, transparente, resaltar }) => {
   const configuracion = descomponerModelo(modeloUrl);
+
+  if (esObjetoArquitectonicoProcedural(objeto)) {
+    return (
+      <GeometriaProceduralObjeto3D
+        objeto={objeto}
+        dimensiones={escala}
+        opacidad={opacidad}
+        transparente={transparente}
+        resaltar={resaltar}
+      />
+    );
+  }
 
   if (!configuracion.incorporado && modeloUrl) {
     return <ModeloGLTFObjeto modeloUrl={modeloUrl} dimensiones={escala} opacidad={opacidad} transparente={transparente} />;
@@ -286,6 +301,7 @@ export const FantasmaColocacion3D: React.FC<FantasmaColocacion3DProps> = ({ obje
   return (
     <group ref={grupoRef} position={[objeto.posicion_x, objeto.posicion_y, objeto.posicion_z]} rotation={[0, objeto.rotacion_y || 0, 0]}>
       <RepresentacionObjeto
+        objeto={objeto}
         modeloUrl={objeto.modelo_url || (objeto.built_in_geometry ? `builtin:${objeto.built_in_geometry}:${(objeto.built_in_color || '#6366f1').replace('#', '')}` : null)}
         escala={escala}
         opacidad={0.5}
@@ -325,11 +341,17 @@ export const ObjetoEscena3D: React.FC<ObjetoEscena3DProps> = ({
   const grupoRef = useRef<THREE.Group>(null);
   const isEditMode = useStore((s) => s.isEditMode);
   const selectedObjectId = useStore((s) => s.selectedObjectId);
+  const selectedObjectIds = useStore((s) => s.selectedObjectIds);
+  const toggleObjectSelectionStore = useStore((s) => s.toggleObjectSelection);
+  const toggleObjectSelection = toggleObjectSelectionStore ?? NOOP;
   const setSelectedObjectIdStore = useStore((s) => s.setSelectedObjectId);
+  const clearObjectSelectionStore = useStore((s) => s.clearObjectSelection);
   const setIsDraggingStore = useStore((s) => s.setIsDragging);
   const setSelectedObjectId = setSelectedObjectIdStore ?? NOOP;
+  const clearObjectSelection = clearObjectSelectionStore ?? NOOP;
   const setIsDragging = setIsDraggingStore ?? NOOP;
-  const isSelected = selectedObjectId === objeto.id;
+  const isSelected = selectedObjectIds.includes(objeto.id);
+  const isPrimarySelected = selectedObjectId === objeto.id;
   const esInteractuable = esObjetoInteractuable(objeto);
   const radioInteraccion = esInteractuable ? obtenerRadioInteraccionObjeto(objeto, PROXIMIDAD_INTERACCION) : PROXIMIDAD_INTERACCION;
   const etiquetaInteraccion = esInteractuable
@@ -384,7 +406,7 @@ export const ObjetoEscena3D: React.FC<ObjetoEscena3DProps> = ({
       if (onEliminar) {
         const success = await onEliminar(objeto.id);
         if (success) {
-          setSelectedObjectId(null);
+          clearObjectSelection();
         }
       }
     }
@@ -408,7 +430,7 @@ export const ObjetoEscena3D: React.FC<ObjetoEscena3DProps> = ({
         onClick={(e) => {
           e.stopPropagation();
           if (isEditMode) {
-            setSelectedObjectId(objeto.id);
+            toggleObjectSelection(objeto.id, e.shiftKey);
             hapticFeedback('light');
             return;
           }
@@ -436,6 +458,7 @@ export const ObjetoEscena3D: React.FC<ObjetoEscena3DProps> = ({
         onPointerOut={() => setHover(false)}
       >
         <RepresentacionObjeto
+          objeto={objeto}
           modeloUrl={objeto.modelo_url}
           escala={escala}
           opacidad={1}
@@ -454,94 +477,149 @@ export const ObjetoEscena3D: React.FC<ObjetoEscena3DProps> = ({
         </>
       )}
 
-      {isSelected && isEditMode && (
-        <Html position={[0, Math.max(escala[1], 1) + 0.8, 0]} center>
-          <div className="flex gap-2 animate-in fade-in zoom-in-95 duration-200">
-            <button
-              onClick={handleRotate}
-              className="w-10 h-10 rounded-full bg-indigo-600/90 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-xl hover:bg-indigo-500 transition-colors group"
-              title="Rotar 90°"
-            >
-              <svg className="w-5 h-5 group-active:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-            <button
-              onClick={handleDelete}
-              className="w-10 h-10 rounded-full bg-red-600/90 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-xl hover:bg-red-500 transition-colors"
-              title="Eliminar"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-            <button
-              onClick={() => setSelectedObjectId(null)}
-              className="w-10 h-10 rounded-full bg-zinc-800/90 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-xl hover:bg-zinc-700 transition-colors"
-              title="Cerrar"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </Html>
-      )}
-
-      {isSelected && isEditMode && (
-        <Html position={[0, 0.1, 0]} center>
-          <div className="rounded-2xl border border-white/15 bg-black/75 p-3.5 backdrop-blur-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-            <div className="mb-3 text-center text-[10px] font-black uppercase tracking-[0.2em] text-indigo-200/70">
-              Gizmo Snap {PASO_GRILLA}m
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div />
-              <button
-                onClick={() => moverPorPaso(0, -PASO_GRILLA)}
-                className="h-9 w-9 rounded-xl border border-white/15 bg-white/10 text-white transition-all hover:bg-indigo-500/60 hover:scale-105 active:scale-95"
-                title="Mover arriba"
-              >
-                ↑
-              </button>
-              <div />
-              <button
-                onClick={() => moverPorPaso(-PASO_GRILLA, 0)}
-                className="h-9 w-9 rounded-xl border border-white/15 bg-white/10 text-white transition-all hover:bg-indigo-500/60 hover:scale-105 active:scale-95"
-                title="Mover izquierda"
-              >
-                ←
-              </button>
-              <div />
-              <button
-                onClick={() => moverPorPaso(PASO_GRILLA, 0)}
-                className="h-9 w-9 rounded-xl border border-white/15 bg-white/10 text-white transition-all hover:bg-indigo-500/60 hover:scale-105 active:scale-95"
-                title="Mover derecha"
-              >
-                →
-              </button>
-              <div />
-              <button
-                onClick={() => moverPorPaso(0, PASO_GRILLA)}
-                className="h-9 w-9 rounded-xl border border-white/15 bg-white/10 text-white transition-all hover:bg-indigo-500/60 hover:scale-105 active:scale-95"
-                title="Mover abajo"
-              >
-                ↓
-              </button>
-              <div />
-            </div>
-            <div className="mt-3 pt-3 border-t border-white/10 flex justify-center">
-              <button
-                onClick={handleRotate}
-                className="h-9 px-4 rounded-xl border border-amber-400/25 bg-amber-500/15 text-amber-200 text-[11px] font-semibold transition-all hover:bg-amber-500/30 hover:scale-105 active:scale-95 flex items-center gap-1.5"
-                title="Rotar 90°"
-              >
-                <span className="text-[14px]">↻</span> Rotar
-              </button>
-            </div>
-          </div>
+      {isPrimarySelected && isEditMode && (
+        <Html position={[0, Math.max(escala[1], 1) + 0.55, 0]} center zIndexRange={[100, 0]}>
+          <ObjectContextMenu
+            onRotate={handleRotate}
+            onDelete={handleDelete}
+            onClose={() => clearObjectSelection()}
+            objectName={objeto.nombre}
+          />
         </Html>
       )}
 
     </group>
   );
 };
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   ObjectContextMenu — Premium minimal gizmo, 2026 design
+   • Thin pill header: rotate · delete · close
+   • Compact 4-arrow snap pad below, always visible
+   • Auto-fades to 15% opacity after 3s of inactivity (restores on hover)
+   • Clean Architecture: only emits events, no direct store access
+───────────────────────────────────────────────────────────────────────────── */
+interface ObjectContextMenuProps {
+  onRotate: (e: React.MouseEvent) => void;
+  onDelete: (e: React.MouseEvent) => void;
+  onClose: () => void;
+  objectName?: string | null;
+}
+
+const ObjectContextMenu: React.FC<ObjectContextMenuProps> = ({
+  onRotate, onDelete, onClose, objectName,
+}) => {
+  const [idle, setIdle] = React.useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resetTimer = React.useCallback(() => {
+    setIdle(false);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setIdle(true), 3000);
+  }, []);
+
+  React.useEffect(() => {
+    resetTimer();
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [resetTimer]);
+
+  const handleDeleteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowDeleteConfirm(true);
+    resetTimer();
+  };
+
+  const handleConfirmDelete = (e: React.MouseEvent) => {
+    onDelete(e);
+    setShowDeleteConfirm(false);
+  };
+
+  const baseStyle: React.CSSProperties = {
+    transition: 'opacity 0.6s ease',
+    opacity: idle ? 0.15 : 1,
+    userSelect: 'none',
+  };
+
+  return (
+    <div
+      style={baseStyle}
+      onMouseEnter={resetTimer}
+      onMouseMove={resetTimer}
+      className="flex flex-col items-center gap-1.5 select-none"
+    >
+      {/* ── Pill header ── */}
+      <div
+        className="flex items-center gap-1 rounded-full px-2 py-1"
+        style={{
+          background: 'rgba(10,10,20,0.82)',
+          backdropFilter: 'blur(16px)',
+          border: '1px solid rgba(255,255,255,0.10)',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06)',
+        }}
+      >
+        {/* Rotate */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onRotate(e); resetTimer(); }}
+          title="Rotar 90°"
+          className="group w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150 hover:bg-indigo-500/30 active:scale-90"
+        >
+          <svg className="w-3.5 h-3.5 text-indigo-300 group-hover:text-indigo-100 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+
+        <span className="w-px h-3 bg-white/10" />
+
+        {/* Delete */}
+        {showDeleteConfirm ? (
+          <div className="flex items-center gap-1 pl-0.5">
+            <span className="text-[10px] text-red-300/80 font-medium">¿Eliminar?</span>
+            <button
+              onClick={handleConfirmDelete}
+              title="Confirmar"
+              className="w-6 h-6 rounded-full bg-red-500/80 flex items-center justify-center hover:bg-red-400 active:scale-90 transition-all"
+            >
+              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(false); resetTimer(); }}
+              title="Cancelar"
+              className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 active:scale-90 transition-all"
+            >
+              <svg className="w-3 h-3 text-white/70" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleDeleteClick}
+            title="Eliminar objeto"
+            className="group w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150 hover:bg-red-500/30 active:scale-90"
+          >
+            <svg className="w-3.5 h-3.5 text-red-400/80 group-hover:text-red-300 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        )}
+
+        <span className="w-px h-3 bg-white/10" />
+
+        {/* Close / deselect */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
+          title="Deseleccionar"
+          className="group w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150 hover:bg-white/10 active:scale-90"
+        >
+          <svg className="w-3.5 h-3.5 text-white/40 group-hover:text-white/80 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+};
+

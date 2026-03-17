@@ -402,6 +402,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <SettingsZona
                 workspaceId={workspaceId}
                 isAdmin={isAdmin}
+                onCloseModal={onClose}
               />
             )}
             {activeTab === 'terrenos' && isAdmin && (

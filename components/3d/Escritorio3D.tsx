@@ -5,7 +5,7 @@
  * y glow de proximidad. Soporta: reclamar, liberar y mover.
  */
 
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -68,15 +68,18 @@ export const Escritorio3D: React.FC<Escritorio3DProps> = ({
   // --- Hito 8: Edit Mode Integration ---
   const isEditMode = useStore((s) => s.isEditMode);
   const selectedObjectId = useStore((s) => s.selectedObjectId);
-  const setSelectedObjectId = useStore((s) => s.setSelectedObjectId);
+  const selectedObjectIds = useStore((s) => s.selectedObjectIds);
+  const toggleObjectSelection = useStore((s) => s.toggleObjectSelection);
+  const clearObjectSelection = useStore((s) => s.clearObjectSelection);
   const setIsDragging = useStore((s) => s.setIsDragging);
-  const isSelected = selectedObjectId === objeto.id;
+  const isSelected = selectedObjectIds.includes(objeto.id);
+  const isPrimarySelected = selectedObjectId === objeto.id;
 
   const handleClick = (e: any) => {
     e.stopPropagation();
 
     if (isEditMode) {
-      setSelectedObjectId(objeto.id);
+      toggleObjectSelection(objeto.id, e.shiftKey);
       hapticFeedback('light');
       return;
     }
@@ -107,7 +110,7 @@ export const Escritorio3D: React.FC<Escritorio3DProps> = ({
       if (onEliminar) {
         const success = await onEliminar(objeto.id);
         if (success) {
-          setSelectedObjectId(null);
+          clearObjectSelection();
         }
       }
     }
@@ -191,37 +194,13 @@ export const Escritorio3D: React.FC<Escritorio3DProps> = ({
       )}
 
       {/* Botones de Edición (UI Flotante) */}
-      {isSelected && isEditMode && (
-        <Html position={[0, 1.8, 0]} center>
-          <div className="flex gap-2 animate-in fade-in zoom-in-95 duration-200">
-            <button
-              onClick={handleRotate}
-              className="w-10 h-10 rounded-full bg-indigo-600/90 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-xl hover:bg-indigo-500 transition-colors group"
-              title="Rotar 90°"
-            >
-              <svg className="w-5 h-5 group-active:rotate-90 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </button>
-            <button
-              onClick={handleDelete}
-              className="w-10 h-10 rounded-full bg-red-600/90 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-xl hover:bg-red-500 transition-colors"
-              title="Eliminar"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-            <button
-              onClick={() => setSelectedObjectId(null)}
-              className="w-10 h-10 rounded-full bg-zinc-800/90 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-xl hover:bg-zinc-700 transition-colors"
-              title="Cerrar"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
+      {isPrimarySelected && isEditMode && (
+        <Html position={[0, 1.6, 0]} center zIndexRange={[100, 0]}>
+          <EscritorioContextMenu
+            onRotate={handleRotate}
+            onDelete={handleDelete}
+            onClose={() => clearObjectSelection()}
+          />
         </Html>
       )}
 
@@ -236,5 +215,108 @@ export const Escritorio3D: React.FC<Escritorio3DProps> = ({
         />
       )}
     </group>
+  );
+};
+
+/* ─── EscritorioContextMenu ───────────────────────────────────────────────────
+   Same pill + auto-hide pattern for desks (no snap arrows, just actions).
+─────────────────────────────────────────────────────────────────────────────── */
+interface EscritorioContextMenuProps {
+  onRotate: (e: React.MouseEvent) => void;
+  onDelete: (e: React.MouseEvent) => void;
+  onClose: () => void;
+}
+
+const EscritorioContextMenu: React.FC<EscritorioContextMenuProps> = ({ onRotate, onDelete, onClose }) => {
+  const [idle, setIdle] = React.useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resetTimer = React.useCallback(() => {
+    setIdle(false);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setIdle(true), 3000);
+  }, []);
+
+  React.useEffect(() => {
+    resetTimer();
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [resetTimer]);
+
+  return (
+    <div
+      style={{ transition: 'opacity 0.6s ease', opacity: idle ? 0.15 : 1, userSelect: 'none' }}
+      onMouseEnter={resetTimer}
+      onMouseMove={resetTimer}
+    >
+      <div
+        className="flex items-center gap-1 rounded-full px-2 py-1"
+        style={{
+          background: 'rgba(10,10,20,0.82)',
+          backdropFilter: 'blur(16px)',
+          border: '1px solid rgba(255,255,255,0.10)',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.06)',
+        }}
+      >
+        {/* Rotate */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onRotate(e); resetTimer(); }}
+          title="Rotar 90°"
+          className="group w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150 hover:bg-indigo-500/30 active:scale-90"
+        >
+          <svg className="w-3.5 h-3.5 text-indigo-300 group-hover:text-indigo-100 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+
+        <span className="w-px h-3 bg-white/10" />
+
+        {/* Delete with inline confirm */}
+        {showDeleteConfirm ? (
+          <div className="flex items-center gap-1 pl-0.5">
+            <span className="text-[10px] text-red-300/80 font-medium">¿Eliminar?</span>
+            <button
+              onClick={(e) => onDelete(e)}
+              className="w-6 h-6 rounded-full bg-red-500/80 flex items-center justify-center hover:bg-red-400 active:scale-90 transition-all"
+            >
+              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(false); resetTimer(); }}
+              className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 active:scale-90 transition-all"
+            >
+              <svg className="w-3 h-3 text-white/70" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true); resetTimer(); }}
+            title="Eliminar escritorio"
+            className="group w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150 hover:bg-red-500/30 active:scale-90"
+          >
+            <svg className="w-3.5 h-3.5 text-red-400/80 group-hover:text-red-300 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        )}
+
+        <span className="w-px h-3 bg-white/10" />
+
+        {/* Deselect */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onClose(); }}
+          title="Deseleccionar"
+          className="group w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150 hover:bg-white/10 active:scale-90"
+        >
+          <svg className="w-3.5 h-3.5 text-white/40 group-hover:text-white/80 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
   );
 };

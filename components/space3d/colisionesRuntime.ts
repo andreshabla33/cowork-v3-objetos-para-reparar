@@ -1,10 +1,14 @@
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import type { AsientoRuntime3D, Posicion3DPlano } from './asientosRuntime';
+import {
+  normalizarConfiguracionGeometricaObjeto,
+  type AberturaArquitectonica,
+} from '@/src/core/domain/entities/objetosArquitectonicos';
 import { esObjetoReclamable, normalizarNumeroRuntime3D, obtenerDimensionesObjetoRuntime } from './objetosRuntime';
 
 export interface ObstaculoColision3D {
   id: string;
-  tipo: 'escritorio' | 'objeto_persistente' | 'silla_demo' | 'mesa_demo';
+  tipo: 'escritorio' | 'objeto_persistente';
   posicion: {
     x: number;
     y: number;
@@ -22,6 +26,76 @@ export interface ObstaculoColision3D {
 const normalizarRotacion = (rotacion?: number | null) => {
   if (!Number.isFinite(rotacion)) return 0;
   return rotacion as number;
+};
+
+const clamp = (valor: number, minimo: number, maximo: number) => Math.max(minimo, Math.min(maximo, valor));
+
+const normalizarGeometriaLegacy = (valor?: string | null) => (valor || '').trim().toLowerCase();
+
+interface AberturaTransitableColision extends AberturaArquitectonica {
+  izquierda: number;
+  derecha: number;
+  inferior: number;
+  superior: number;
+}
+
+const normalizarAberturasTransitablesColision = (
+  aberturas: AberturaArquitectonica[],
+  ancho: number,
+  alto: number,
+): AberturaTransitableColision[] => {
+  const margen = 0.08;
+  return aberturas
+    .filter((abertura) => abertura.tipo === 'puerta')
+    .map((abertura) => {
+      const anchoAbertura = clamp(abertura.ancho, 0.2, Math.max(0.2, ancho - margen * 2));
+      const altoAbertura = clamp(abertura.alto, 0.2, Math.max(0.2, alto - margen * 2));
+      const izquierda = clamp(abertura.posicion_x - anchoAbertura / 2, -ancho / 2 + margen, ancho / 2 - margen - anchoAbertura);
+      const inferior = clamp(abertura.posicion_y - altoAbertura / 2, -alto / 2 + margen, alto / 2 - margen - altoAbertura);
+      return {
+        ...abertura,
+        ancho: anchoAbertura,
+        alto: altoAbertura,
+        izquierda,
+        derecha: izquierda + anchoAbertura,
+        inferior,
+        superior: inferior + altoAbertura,
+      };
+    });
+};
+
+const crearObstaculoSegmentado = (
+  id: string,
+  objeto: EspacioObjeto,
+  centroLocalX: number,
+  centroLocalY: number,
+  ancho: number,
+  alto: number,
+  profundidad: number,
+  padding: number,
+): ObstaculoColision3D => {
+  const rotacion = normalizarRotacion(objeto.rotacion_y);
+  const cos = Math.cos(rotacion);
+  const sin = Math.sin(rotacion);
+  const offsetX = centroLocalX * cos;
+  const offsetZ = centroLocalX * sin;
+
+  return {
+    id,
+    tipo: 'objeto_persistente',
+    posicion: {
+      x: objeto.posicion_x + offsetX,
+      y: objeto.posicion_y + centroLocalY,
+      z: objeto.posicion_z + offsetZ,
+    },
+    semiextensiones: {
+      x: Math.max(ancho / 2, 0.01),
+      y: Math.max(alto / 2, 0.01),
+      z: Math.max(profundidad / 2, 0.01),
+    },
+    rotacion,
+    padding,
+  };
 };
 
 export const crearObstaculoObjetoPersistente = (objeto: EspacioObjeto): ObstaculoColision3D => {
@@ -57,53 +131,86 @@ export const crearObstaculoObjetoPersistente = (objeto: EspacioObjeto): Obstacul
   };
 };
 
-export const crearObstaculosObjetosPersistentes = (objetos: EspacioObjeto[]): ObstaculoColision3D[] => {
-  return objetos.map((objeto) => crearObstaculoObjetoPersistente(objeto));
-};
-
-export const crearObstaculosSillasDemo = (asientos: AsientoRuntime3D[]): ObstaculoColision3D[] => {
-  return asientos.map((asiento) => {
-    const avanceX = Math.sin(asiento.rotacion);
-    const avanceZ = Math.cos(asiento.rotacion);
-
-    return {
-      id: `obstaculo_${asiento.id}`,
-      tipo: 'silla_demo',
-      posicion: {
-        x: asiento.posicion.x - avanceX * 0.34,
-        y: 0.36,
-        z: asiento.posicion.z - avanceZ * 0.34,
-      },
-      semiextensiones: {
-        x: 0.38,
-        y: 0.36,
-        z: 0.3,
-      },
-      rotacion: asiento.rotacion,
-      padding: 0.05,
-    };
+export const crearObstaculosFisicosObjetoPersistente = (objeto: EspacioObjeto): ObstaculoColision3D[] => {
+  const obstaculoBase = crearObstaculoObjetoPersistente(objeto);
+  const perfil = obtenerDimensionesObjetoRuntime(objeto);
+  const geometriaLegacy = normalizarGeometriaLegacy(objeto.built_in_geometry);
+  const configuracion = normalizarConfiguracionGeometricaObjeto({
+    tipo: objeto.tipo,
+    built_in_geometry: objeto.built_in_geometry,
+    built_in_color: objeto.built_in_color,
+    ancho: perfil.ancho,
+    alto: perfil.alto,
+    profundidad: perfil.profundidad,
+    configuracion_geometria: objeto.configuracion_geometria,
   });
+
+  if (!configuracion || configuracion.tipo_geometria !== 'pared') {
+    return [obstaculoBase];
+  }
+
+  const aberturasTransitables = normalizarAberturasTransitablesColision(configuracion.aberturas, perfil.ancho, perfil.alto)
+    .filter((abertura) => (
+      abertura.insertar_cerramiento === false
+      || abertura.forma === 'arco'
+      || ((geometriaLegacy === 'wall-door' || geometriaLegacy === 'wall-door-double') && abertura.tipo === 'puerta')
+    ));
+
+  if (aberturasTransitables.length !== 1) {
+    return [obstaculoBase];
+  }
+
+  const abertura = aberturasTransitables[0];
+  const paddingSegmento = Math.min(obstaculoBase.padding, 0.05);
+  const segmentos: ObstaculoColision3D[] = [];
+
+  const anchoIzquierdo = Math.max(0, abertura.izquierda - (-perfil.ancho / 2));
+  if (anchoIzquierdo > 0.02) {
+    segmentos.push(crearObstaculoSegmentado(
+      `${obstaculoBase.id}_izquierda`,
+      objeto,
+      (-perfil.ancho / 2) + (anchoIzquierdo / 2),
+      0,
+      anchoIzquierdo,
+      perfil.alto,
+      perfil.profundidad,
+      paddingSegmento,
+    ));
+  }
+
+  const anchoDerecho = Math.max(0, (perfil.ancho / 2) - abertura.derecha);
+  if (anchoDerecho > 0.02) {
+    segmentos.push(crearObstaculoSegmentado(
+      `${obstaculoBase.id}_derecha`,
+      objeto,
+      abertura.derecha + (anchoDerecho / 2),
+      0,
+      anchoDerecho,
+      perfil.alto,
+      perfil.profundidad,
+      paddingSegmento,
+    ));
+  }
+
+  const altoSuperior = Math.max(0, (perfil.alto / 2) - abertura.superior);
+  if (altoSuperior > 0.02) {
+    segmentos.push(crearObstaculoSegmentado(
+      `${obstaculoBase.id}_superior`,
+      objeto,
+      (abertura.izquierda + abertura.derecha) / 2,
+      abertura.superior + (altoSuperior / 2),
+      abertura.ancho,
+      altoSuperior,
+      perfil.profundidad,
+      paddingSegmento,
+    ));
+  }
+
+  return segmentos.length > 0 ? segmentos : [obstaculoBase];
 };
 
-export const crearObstaculosMesaDemo = (): ObstaculoColision3D[] => {
-  return [
-    {
-      id: 'obstaculo_mesa_demo_principal',
-      tipo: 'mesa_demo',
-      posicion: {
-        x: 10,
-        y: 0.5,
-        z: 10,
-      },
-      semiextensiones: {
-        x: 2,
-        y: 0.5,
-        z: 1,
-      },
-      rotacion: 0,
-      padding: 0.12,
-    },
-  ];
+export const crearObstaculosObjetosPersistentes = (objetos: EspacioObjeto[]): ObstaculoColision3D[] => {
+  return objetos.flatMap((objeto) => crearObstaculosFisicosObjetoPersistente(objeto));
 };
 
 const convertirAPosicionLocal = (posicion: Posicion3DPlano, obstaculo: ObstaculoColision3D) => {

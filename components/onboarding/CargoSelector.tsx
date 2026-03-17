@@ -144,6 +144,9 @@ interface CargoSelectorProps {
   isLoading?: boolean;
   rolUsuario?: string;
   cargosDB?: CargoDB[];
+  etiquetaPaso?: string;
+  titulo?: string;
+  descripcion?: string;
 }
 
 export const CargoSelector: React.FC<CargoSelectorProps> = ({
@@ -153,6 +156,9 @@ export const CargoSelector: React.FC<CargoSelectorProps> = ({
   isLoading = false,
   rolUsuario = 'member',
   cargosDB,
+  etiquetaPaso = 'Paso 3 de 4',
+  titulo,
+  descripcion,
 }) => {
   // Convertir cargos de BD a formato interno
   const cargosInfo = cargosDB ? cargosDBToCargoInfo(cargosDB) : [];
@@ -223,7 +229,7 @@ export const CargoSelector: React.FC<CargoSelectorProps> = ({
         {/* Header */}
         <div className="text-center mb-5 lg:mb-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-violet-600/20 to-fuchsia-600/20 border border-violet-500/30 rounded-full text-violet-400 text-[9px] lg:text-[8px] font-bold uppercase tracking-wider mb-3">
-            Paso 3 de 4
+            {etiquetaPaso}
           </div>
           <div className="relative group mx-auto w-12 h-12 lg:w-10 lg:h-10 mb-3">
             <div className="absolute -inset-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-xl blur-lg opacity-40" />
@@ -232,10 +238,10 @@ export const CargoSelector: React.FC<CargoSelectorProps> = ({
             </div>
           </div>
           <h1 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-1">
-            ¡Bienvenido a {espacioNombre}!
+            {titulo ?? `¡Bienvenido a ${espacioNombre}!`}
           </h1>
           <p className="text-zinc-500 text-xs lg:text-[10px]">
-            Cuéntanos cuál es tu cargo en el equipo
+            {descripcion ?? 'Cuéntanos cuál es tu cargo en el equipo'}
           </p>
         </div>
 

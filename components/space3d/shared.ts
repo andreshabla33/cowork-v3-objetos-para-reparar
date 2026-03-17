@@ -6,6 +6,7 @@
 
 import React from 'react';
 import type { User, PresenceStatus } from '@/types';
+import { audioManager, type OpcionesSonidoEspacial } from '@/services/audioManager';
 
 // ========== Types ==========
 export type AvatarLodLevel = 'high' | 'mid' | 'low';
@@ -114,146 +115,24 @@ if (typeof window !== 'undefined') {
 }
 
 // ========== Sonidos ==========
-export const playTeleportSound = () => {
-  try {
-    const ctx = getAudioCtx();
-    const now = ctx.currentTime;
-    const osc1 = ctx.createOscillator();
-    const gain1 = ctx.createGain();
-    osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(400, now);
-    osc1.frequency.exponentialRampToValueAtTime(1200, now + 0.25);
-    gain1.gain.setValueAtTime(0.2, now);
-    gain1.gain.linearRampToValueAtTime(0.3, now + 0.1);
-    gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
-    osc1.connect(gain1).connect(ctx.destination);
-    osc1.start(now);
-    osc1.stop(now + 0.35);
-    const osc1b = ctx.createOscillator();
-    const gain1b = ctx.createGain();
-    osc1b.type = 'sine';
-    osc1b.frequency.setValueAtTime(800, now);
-    osc1b.frequency.exponentialRampToValueAtTime(2400, now + 0.25);
-    gain1b.gain.setValueAtTime(0.08, now);
-    gain1b.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-    osc1b.connect(gain1b).connect(ctx.destination);
-    osc1b.start(now);
-    osc1b.stop(now + 0.3);
-    const bufferSize = ctx.sampleRate * 0.5;
-    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.1;
-    const noise = ctx.createBufferSource();
-    const noiseGain = ctx.createGain();
-    const noiseFilter = ctx.createBiquadFilter();
-    noiseFilter.type = 'bandpass';
-    noiseFilter.frequency.setValueAtTime(2000, now);
-    noiseFilter.Q.setValueAtTime(1.5, now);
-    noise.buffer = noiseBuffer;
-    noiseGain.gain.setValueAtTime(0.15, now);
-    noiseGain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-    noise.connect(noiseFilter).connect(noiseGain).connect(ctx.destination);
-    noise.start(now + 0.05);
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = 'triangle';
-    osc2.frequency.setValueAtTime(1500, now + 0.3);
-    osc2.frequency.exponentialRampToValueAtTime(500, now + 0.55);
-    gain2.gain.setValueAtTime(0.01, now + 0.3);
-    gain2.gain.linearRampToValueAtTime(0.2, now + 0.35);
-    gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
-    osc2.connect(gain2).connect(ctx.destination);
-    osc2.start(now + 0.3);
-    osc2.stop(now + 0.6);
-    const osc3 = ctx.createOscillator();
-    const gain3 = ctx.createGain();
-    osc3.type = 'sine';
-    osc3.frequency.setValueAtTime(250, now + 0.5);
-    osc3.frequency.exponentialRampToValueAtTime(150, now + 0.7);
-    gain3.gain.setValueAtTime(0.15, now + 0.5);
-    gain3.gain.exponentialRampToValueAtTime(0.01, now + 0.75);
-    osc3.connect(gain3).connect(ctx.destination);
-    osc3.start(now + 0.5);
-    osc3.stop(now + 0.75);
-  } catch (e) { /* Audio no disponible */ }
+export const playTeleportSound = (options?: OpcionesSonidoEspacial) => {
+  audioManager.playTeleport(options).catch(() => {});
 };
 
 export const playWaveSound = () => {
-  try {
-    const ctx = getAudioCtx();
-    const now = ctx.currentTime;
-    const osc1 = ctx.createOscillator();
-    const gain1 = ctx.createGain();
-    osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(740, now);
-    osc1.frequency.exponentialRampToValueAtTime(680, now + 0.12);
-    gain1.gain.setValueAtTime(0.15, now);
-    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-    osc1.connect(gain1).connect(ctx.destination);
-    osc1.start(now);
-    osc1.stop(now + 0.15);
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(880, now + 0.12);
-    osc2.frequency.exponentialRampToValueAtTime(830, now + 0.27);
-    gain2.gain.setValueAtTime(0, now);
-    gain2.gain.linearRampToValueAtTime(0.12, now + 0.13);
-    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-    osc2.connect(gain2).connect(ctx.destination);
-    osc2.start(now + 0.12);
-    osc2.stop(now + 0.3);
-  } catch (e) { /* Audio no disponible */ }
+  audioManager.playWave().catch(() => {});
 };
 
 export const playNudgeSound = () => {
-  try {
-    const ctx = getAudioCtx();
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(1046, now);
-    osc.frequency.exponentialRampToValueAtTime(988, now + 0.25);
-    gain.gain.setValueAtTime(0.18, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.3);
-    const sub = ctx.createOscillator();
-    const subGain = ctx.createGain();
-    sub.type = 'sine';
-    sub.frequency.setValueAtTime(523, now);
-    subGain.gain.setValueAtTime(0.06, now);
-    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-    sub.connect(subGain).connect(ctx.destination);
-    sub.start(now);
-    sub.stop(now + 0.2);
-  } catch (e) { /* Audio no disponible */ }
+  audioManager.playNudge().catch(() => {});
 };
 
 export const playInviteSound = () => {
-  try {
-    const ctx = getAudioCtx();
-    const now = ctx.currentTime;
-    const notes = [
-      { freq: 659, start: 0, dur: 0.18, vol: 0.1 },
-      { freq: 784, start: 0.1, dur: 0.18, vol: 0.12 },
-      { freq: 1047, start: 0.2, dur: 0.25, vol: 0.14 },
-    ];
-    notes.forEach(({ freq, start, dur, vol }) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, now + start);
-      gain.gain.setValueAtTime(0, now + start);
-      gain.gain.linearRampToValueAtTime(vol, now + start + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + start + dur);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(now + start);
-      osc.stop(now + start + dur);
-    });
-  } catch (e) { /* Audio no disponible */ }
+  audioManager.playInvite().catch(() => {});
+};
+
+export const playObjectInteractionSound = () => {
+  audioManager.playObjectInteraction().catch(() => {});
 };
 
 // ========== Iconos ==========

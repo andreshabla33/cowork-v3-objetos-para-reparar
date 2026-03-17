@@ -639,6 +639,7 @@ export type Database = {
           nit_rut: string | null
           nombre: string
           pais: string | null
+          plantilla_oficina: string | null
           sitio_web: string | null
           tamano: string | null
           telefono: string | null
@@ -658,6 +659,7 @@ export type Database = {
           nit_rut?: string | null
           nombre: string
           pais?: string | null
+          plantilla_oficina?: string | null
           sitio_web?: string | null
           tamano?: string | null
           telefono?: string | null
@@ -677,6 +679,7 @@ export type Database = {
           nit_rut?: string | null
           nombre?: string
           pais?: string | null
+          plantilla_oficina?: string | null
           sitio_web?: string | null
           tamano?: string | null
           telefono?: string | null
@@ -695,6 +698,8 @@ export type Database = {
         Row: {
           actualizado_en: string
           creado_en: string
+          empresa_id: string | null
+          es_de_plantilla: boolean
           escala_x: number
           escala_y: number
           escala_z: number
@@ -703,6 +708,7 @@ export type Database = {
           modelo_url: string
           nombre: string | null
           owner_id: string | null
+          plantilla_origen: string | null
           posicion_x: number
           posicion_y: number
           posicion_z: number
@@ -714,6 +720,8 @@ export type Database = {
         Insert: {
           actualizado_en?: string
           creado_en?: string
+          empresa_id?: string | null
+          es_de_plantilla?: boolean
           escala_x?: number
           escala_y?: number
           escala_z?: number
@@ -722,6 +730,7 @@ export type Database = {
           modelo_url: string
           nombre?: string | null
           owner_id?: string | null
+          plantilla_origen?: string | null
           posicion_x?: number
           posicion_y?: number
           posicion_z?: number
@@ -733,6 +742,8 @@ export type Database = {
         Update: {
           actualizado_en?: string
           creado_en?: string
+          empresa_id?: string | null
+          es_de_plantilla?: boolean
           escala_x?: number
           escala_y?: number
           escala_z?: number
@@ -741,6 +752,7 @@ export type Database = {
           modelo_url?: string
           nombre?: string | null
           owner_id?: string | null
+          plantilla_origen?: string | null
           posicion_x?: number
           posicion_y?: number
           posicion_z?: number
@@ -755,6 +767,13 @@ export type Database = {
             columns: ["espacio_id"]
             isOneToOne: false
             referencedRelation: "espacios_trabajo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "espacio_objetos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
         ]

@@ -1,4 +1,6 @@
 
+import type { ConfiguracionZonaEmpresa } from './src/core/domain/entities/cerramientosZona';
+
 export enum Role {
   SUPER_ADMIN = 'super_admin',
   ADMIN = 'admin',
@@ -92,6 +94,7 @@ export interface ZonaEmpresa {
   id: string;
   empresa_id?: string | null;
   espacio_id: string;
+  configuracion?: ConfiguracionZonaEmpresa | null;
   nombre_zona?: string | null;
   posicion_x: number;
   posicion_y: number;
@@ -103,10 +106,18 @@ export interface ZonaEmpresa {
   spawn_x?: number;
   spawn_y?: number;
   modelo_url?: string | null;
+  tipo_suelo?: string | null; // Corresponde a FloorType (PBR)
   empresa?: {
     nombre?: string | null;
     logo_url?: string | null;
   } | null;
+}
+
+export interface EmpresaResumen {
+  id: string;
+  nombre: string;
+  espacio_id: string;
+  plantilla_oficina?: string | null;
 }
 
 export interface TerrenoMarketplace {

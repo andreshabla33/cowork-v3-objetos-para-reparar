@@ -13,6 +13,8 @@ import { AvatarCard } from './AvatarCard';
 import { ObjectCard } from './ObjectCard';
 import { supabase } from '../lib/supabase';
 import { glass, colors, composites, typography, radius, animation } from '@/styles/design-tokens';
+import { GeometriaProceduralObjeto3D } from './3d/GeometriaProceduralObjeto3D';
+import { esObjetoArquitectonicoProcedural } from '@/src/core/domain/entities/objetosArquitectonicos';
 
 // Componente para capturar el thumbnail de avatares desde el canvas
 const SceneCapturer = ({ onCapture }: { onCapture: (blob: Blob) => void }) => {
@@ -50,14 +52,68 @@ const SceneCapturerObject = ({ onCapture }: { onCapture: (blob: Blob) => void })
   return null;
 };
 
- const ObjectPreviewFallback: React.FC<{ color?: string | null }> = ({ color }) => (
-   <group>
-     <mesh castShadow receiveShadow position={[0, 0.55, 0]}>
-       <boxGeometry args={[0.9, 0.9, 0.9]} />
-       <meshStandardMaterial color={color || '#c8aa6e'} roughness={0.45} metalness={0.08} />
-     </mesh>
-   </group>
- );
+const ObjectPreviewFallback: React.FC<{ color?: string | null }> = ({ color }) => (
+  <group>
+    <mesh castShadow receiveShadow position={[0, 0.55, 0]}>
+      <boxGeometry args={[0.9, 0.9, 0.9]} />
+      <meshStandardMaterial color={color || '#c8aa6e'} roughness={0.45} metalness={0.08} />
+    </mesh>
+  </group>
+);
+
+const BuiltInObjectPreview: React.FC<{ objeto: CatalogoObjeto3D }> = ({ objeto }) => {
+  const ancho = Number(objeto.ancho) || 1;
+  const alto = Number(objeto.alto) || 1;
+  const profundidad = Number(objeto.profundidad) || 0.15;
+  
+  const maxDim = Math.max(ancho, alto, profundidad);
+  const escala = 1.8 / maxDim;
+  const dimensiones: [number, number, number] = [ancho * escala, alto * escala, profundidad * escala];
+  
+  const esProcedural = esObjetoArquitectonicoProcedural({
+    built_in_geometry: objeto.built_in_geometry,
+    built_in_color: objeto.built_in_color,
+    tipo: objeto.tipo,
+    ancho,
+    alto,
+    profundidad,
+    configuracion_geometria: objeto.configuracion_geometria,
+  });
+  
+  if (esProcedural) {
+    return (
+      <group position={[0, (alto * escala) / 2, 0]}>
+        <GeometriaProceduralObjeto3D
+          objeto={{
+            built_in_geometry: objeto.built_in_geometry,
+            built_in_color: objeto.built_in_color,
+            ancho,
+            alto,
+            profundidad,
+            configuracion_geometria: objeto.configuracion_geometria,
+          }}
+          dimensiones={dimensiones}
+          opacidad={1}
+          transparente={false}
+          resaltar={false}
+        />
+      </group>
+    );
+  }
+  
+  return (
+    <group position={[0, (alto * escala) / 2, 0]}>
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={dimensiones} />
+        <meshStandardMaterial 
+          color={objeto.built_in_color || '#94a3b8'} 
+          roughness={0.6} 
+          metalness={0.05}
+        />
+      </mesh>
+    </group>
+  );
+};
 
  interface ObjectPreviewErrorBoundaryProps {
    children: React.ReactNode;
@@ -221,7 +277,7 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
             .order('orden', { ascending: true }),
           supabase
             .from('catalogo_objetos_3d')
-            .select('id, nombre, descripcion, categoria, tipo, modelo_url, thumbnail_url, built_in_geometry, built_in_color, ancho, profundidad, alto, es_sentable, es_interactuable, premium')
+            .select('id, nombre, descripcion, categoria, tipo, modelo_url, thumbnail_url, built_in_geometry, built_in_color, ancho, profundidad, alto, es_sentable, es_interactuable, premium, configuracion_geometria')
             .eq('activo', true)
             .order('orden', { ascending: true }),
           session?.user?.id
@@ -601,10 +657,26 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
                     />
                   </mesh>
                 </Canvas>
-              ) : selectedObject.built_in_color ? (
-                <div className="flex h-full w-full items-center justify-center" style={{ background: `radial-gradient(circle, ${selectedObject.built_in_color}33, transparent)` }}>
-                  <div className="w-24 h-24 rounded-2xl shadow-2xl" style={{ backgroundColor: selectedObject.built_in_color, boxShadow: `0 0 40px ${selectedObject.built_in_color}44` }} />
-                </div>
+              ) : selectedObject.built_in_geometry ? (
+                <Canvas 
+                  key={`builtin-preview-${selectedObject.id}`}
+                  shadows 
+                  camera={{ position: [0, 1.5, 4], fov: 35 }}
+                  gl={{ preserveDrawingBuffer: true }}
+                >
+                  <ambientLight intensity={1.2} />
+                  <hemisphereLight intensity={0.8} color="#f3f8ff" groundColor="#1a2333" />
+                  <directionalLight position={[3, 4, 5]} intensity={1.8} color="#ffffff" castShadow />
+                  <pointLight position={[-4, 3, -3]} intensity={0.8} color="#87ceeb" />
+                  <Suspense fallback={<ObjectPreviewFallback color={selectedObject.built_in_color} />}>
+                    <BuiltInObjectPreview objeto={selectedObject} />
+                  </Suspense>
+                  <OrbitControls enablePan={false} enableZoom={true} minDistance={1.5} maxDistance={8} target={[0, 0.8, 0]} />
+                  <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
+                    <circleGeometry args={[2, 64]} />
+                    <meshStandardMaterial color="#3d4452" roughness={0.5} transparent opacity={0.4} />
+                  </mesh>
+                </Canvas>
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-6xl text-[#0397ab]/20">
                    📦

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Building2, 
@@ -16,6 +16,11 @@ import { supabase } from '@/lib/supabase';
 import { useStore } from '@/store/useStore';
 import { CargoSelector } from './CargoSelector';
 import type { CargoLaboral, CargoDB } from './CargoSelector';
+import { SelectorPlantillaEspacio } from './SelectorPlantillaEspacio';
+import { recomendarPlantillaEspacio, type PlantillaEspacioId } from '@/src/core/domain/entities/plantillasEspacio';
+import { RegistrarEmpresaConPlantillaUseCase } from '@/src/core/application/usecases/RegistrarEmpresaConPlantillaUseCase';
+import { RepositorioRegistroEmpresaSupabase } from '@/src/core/infrastructure/RepositorioRegistroEmpresaSupabase';
+import { InyectorPlantillaEspacio } from '@/src/core/infrastructure/InyectorPlantillaEspacio';
 
 const INDUSTRIAS = [
   'Tecnología', 'Finanzas', 'Salud', 'Educación', 'Comercio',
@@ -38,12 +43,17 @@ interface OnboardingCreadorProps {
   onComplete: () => void;
 }
 
-type Paso = 'bienvenida' | 'empresa' | 'cargo' | 'invitar' | 'completado';
+type Paso = 'bienvenida' | 'empresa' | 'plantilla' | 'cargo' | 'invitar' | 'completado';
 
 const ESPACIO_GLOBAL = {
   id: '91887e81-1f26-448c-9d6d-9839e7d83b5d',
   nombre: 'kronos'
 };
+
+const registrarEmpresaConPlantillaUseCase = new RegistrarEmpresaConPlantillaUseCase(
+  new RepositorioRegistroEmpresaSupabase(),
+  new InyectorPlantillaEspacio(),
+);
 
 export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
   userId,
@@ -61,6 +71,8 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
   const [cargosDB, setCargosDB] = useState<CargoDB[]>([]);
   const [miembroId, setMiembroId] = useState<string | null>(null);
   const [empresaId, setEmpresaId] = useState<string | null>(null);
+  const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<PlantillaEspacioId>('startup');
+  const [plantillaPersonalizada, setPlantillaPersonalizada] = useState(false);
   const [empresaData, setEmpresaData] = useState({
     nombre: '',
     industria: '',
@@ -68,43 +80,40 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
     sitio_web: '',
   });
 
-  const handleSelectCargo = async (cargo: CargoLaboral) => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Resolver miembroId si no existe (fix: cargo se queda cargando cuando miembroId es null)
-      let targetMiembroId = miembroId;
-      if (!targetMiembroId && espacioCreado) {
-        const { data: miembroData } = await supabase
-          .from('miembros_espacio')
-          .select('id')
-          .eq('espacio_id', espacioCreado.id)
-          .eq('usuario_id', userId)
-          .maybeSingle();
-        if (miembroData?.id) {
-          targetMiembroId = miembroData.id;
-          setMiembroId(miembroData.id);
-        }
-      }
+  const plantillaRecomendadaId = useMemo(
+    () => recomendarPlantillaEspacio({
+      industria: empresaData.industria,
+      tamano: empresaData.tamano,
+    }).id,
+    [empresaData.industria, empresaData.tamano],
+  );
 
-      if (!targetMiembroId) {
-        throw new Error('No se encontró tu membresía. Intenta recargar la página.');
-      }
-
-      const { error: updateError } = await supabase
-        .from('miembros_espacio')
-        .update({ cargo_id: cargo })
-        .eq('id', targetMiembroId);
-      if (updateError) throw updateError;
-      await fetchWorkspaces();
-      setCargoSeleccionado(cargo);
-      setPaso('invitar');
-    } catch (err: any) {
-      console.error('Error guardando cargo:', err);
-      setError(err.message || 'Error al guardar cargo');
-    } finally {
-      setLoading(false);
+  const cargarCargosDisponibles = async () => {
+    if (!espacioCreado) {
+      throw new Error('Espacio global no disponible');
     }
+
+    const { data: cargosData, error: cargosError } = await supabase
+      .from('cargos')
+      .select('id, nombre, descripcion, categoria, icono, orden, activo, tiene_analisis_avanzado, analisis_disponibles, solo_admin')
+      .eq('espacio_id', espacioCreado.id)
+      .eq('activo', true)
+      .order('orden');
+
+    if (cargosError) {
+      throw cargosError;
+    }
+
+    setCargosDB((cargosData || []) as CargoDB[]);
+  };
+
+  const handleSelectCargo = (cargo: CargoLaboral) => {
+    setError(null);
+    setCargoSeleccionado(cargo);
+    if (!plantillaPersonalizada) {
+      setPlantillaSeleccionada(plantillaRecomendadaId);
+    }
+    setPaso('plantilla');
   };
 
   const completarOnboarding = async () => {
@@ -168,92 +177,58 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
   const handleGuardarEmpresa = async () => {
     setLoading(true);
     setError(null);
+
     try {
       if (!espacioCreado) {
         throw new Error('Espacio global no disponible');
       }
-      if (empresaData.nombre.trim()) {
-        const payload = {
-          nombre: empresaData.nombre.trim(),
-          industria: empresaData.industria || null,
-          tamano: empresaData.tamano,
-          sitio_web: empresaData.sitio_web.trim() || null,
-          actualizado_en: new Date().toISOString(),
-          espacio_id: espacioCreado.id,
-        };
 
-        let empresaActualId = empresaId;
-
-        if (empresaId) {
-          const { error: updateError } = await supabase
-            .from('empresas')
-            .update(payload)
-            .eq('id', empresaId);
-          if (updateError) throw updateError;
-        } else {
-          const { data: nuevaEmpresa, error: createError } = await supabase
-            .from('empresas')
-            .insert({
-              ...payload,
-              creado_por: userId,
-            })
-            .select()
-            .single();
-          if (createError) throw createError;
-          empresaActualId = nuevaEmpresa.id;
-          setEmpresaId(nuevaEmpresa.id);
-        }
-
-        const { data: miembroExistente, error: miembroExistenteError } = await supabase
-          .from('miembros_espacio')
-          .select('id, empresa_id')
-          .eq('espacio_id', espacioCreado.id)
-          .eq('usuario_id', userId)
-          .maybeSingle();
-
-        if (miembroExistenteError) throw miembroExistenteError;
-
-        if (miembroExistente) {
-          setMiembroId(miembroExistente.id);
-          if (empresaActualId && miembroExistente.empresa_id !== empresaActualId) {
-            const { error: updateMiembroError } = await supabase
-              .from('miembros_espacio')
-              .update({ empresa_id: empresaActualId })
-              .eq('id', miembroExistente.id);
-            if (updateMiembroError) throw updateMiembroError;
-          }
-        } else if (empresaActualId) {
-          const { data: miembroData, error: miembroError } = await supabase
-            .from('miembros_espacio')
-            .insert({
-              espacio_id: espacioCreado.id,
-              usuario_id: userId,
-              rol: 'super_admin',
-              aceptado: true,
-              onboarding_completado: false,
-              empresa_id: empresaActualId,
-            })
-            .select('id')
-            .single();
-
-          if (miembroError) throw miembroError;
-          setMiembroId(miembroData.id);
-        }
-
-        const { data: cargosData } = await supabase
-          .from('cargos')
-          .select('id, nombre, descripcion, categoria, icono, orden, activo, tiene_analisis_avanzado, analisis_disponibles, solo_admin')
-          .eq('espacio_id', espacioCreado.id)
-          .eq('activo', true)
-          .order('orden');
-
-        await fetchWorkspaces();
-        setCargosDB((cargosData || []) as CargoDB[]);
+      if (!empresaData.nombre.trim()) {
+        throw new Error('Ingresa el nombre de tu empresa para continuar');
       }
+
+      if (!plantillaPersonalizada) {
+        setPlantillaSeleccionada(plantillaRecomendadaId);
+      }
+
+      await cargarCargosDisponibles();
       setPaso('cargo');
     } catch (err: any) {
-      console.error('Error guardando empresa:', err);
-      setError(err.message || 'Error al guardar empresa');
+      setError(err.message || 'Error preparando los cargos disponibles');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGuardarPlantilla = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (!espacioCreado) {
+        throw new Error('Espacio global no disponible');
+      }
+
+      const resultado = await registrarEmpresaConPlantillaUseCase.execute({
+        empresaId,
+        userId,
+        espacioId: espacioCreado.id,
+        nombre: empresaData.nombre,
+        industria: empresaData.industria || null,
+        tamano: empresaData.tamano,
+        sitioWeb: empresaData.sitio_web.trim() || null,
+        cargoId: cargoSeleccionado,
+        plantillaId: plantillaSeleccionada,
+      });
+
+      setEmpresaId(resultado.empresaId);
+      setMiembroId(resultado.miembroId);
+
+      await fetchWorkspaces();
+      setPaso('invitar');
+    } catch (err: any) {
+      console.error('Error guardando plantilla de empresa:', err);
+      setError(err.message || 'Error al configurar la oficina inicial');
     } finally {
       setLoading(false);
     }
@@ -384,6 +359,12 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
                 <div className="w-8 h-8 lg:w-7 lg:h-7 bg-gradient-to-br from-violet-600/20 to-fuchsia-600/20 rounded-lg flex items-center justify-center border border-violet-500/20">
                   <span className="text-violet-400 font-black text-sm lg:text-xs">3</span>
                 </div>
+                <span className="text-zinc-300 font-medium text-sm lg:text-xs">Elige tu plantilla inicial</span>
+              </div>
+              <div className="flex items-center gap-3 lg:gap-2 p-3 lg:p-2.5 backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-xl lg:rounded-lg group hover:border-violet-500/30 transition-all">
+                <div className="w-8 h-8 lg:w-7 lg:h-7 bg-gradient-to-br from-violet-600/20 to-fuchsia-600/20 rounded-lg flex items-center justify-center border border-violet-500/20">
+                  <span className="text-violet-400 font-black text-sm lg:text-xs">4</span>
+                </div>
                 <span className="text-zinc-300 font-medium text-sm lg:text-xs">Invita a tu equipo</span>
               </div>
             </div>
@@ -414,7 +395,7 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
             <div className="relative backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-[36px] lg:rounded-[28px] p-6 lg:p-5">
               <div className="text-center mb-6 lg:mb-5">
                 <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-violet-600/20 to-fuchsia-600/20 border border-violet-500/30 rounded-full text-violet-400 text-[9px] lg:text-[8px] font-bold uppercase tracking-wider mb-3">
-                  Paso 1 de 3
+                  Paso 1 de 4
                 </div>
                 <div className="relative group mx-auto w-12 h-12 lg:w-10 lg:h-10 mb-3">
                   <div className="absolute -inset-2 bg-gradient-to-r from-fuchsia-500 to-violet-500 rounded-xl blur-lg opacity-40" />
@@ -422,7 +403,7 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
                     <Building2 className="w-6 h-6 lg:w-5 lg:h-5 text-white" />
                   </div>
                 </div>
-                <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-fuchsia-200 to-white mb-1">Datos de tu empresa</h2>
+                <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-1">Datos de tu empresa</h2>
                 <p className="text-zinc-500 text-xs lg:text-[10px]">
                   Vincula tu organización a <span className="text-violet-400 font-medium">{espacioCreado?.nombre}</span>
                 </p>
@@ -488,7 +469,7 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
                 <button
                   onClick={handleGuardarEmpresa}
                   disabled={loading || !empresaData.nombre.trim()}
-                  className="relative w-full group overflow-hidden bg-gradient-to-r from-fuchsia-500 via-violet-600 to-cyan-500 text-white py-3.5 lg:py-3 rounded-xl font-black text-xs lg:text-[10px] uppercase tracking-[0.15em] transition-all shadow-2xl shadow-violet-600/30 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="relative w-full group overflow-hidden bg-gradient-to-r from-fuchsia-500 via-violet-600 to-cyan-500 text-white py-3.5 lg:py-3 rounded-xl font-black text-xs lg:text-[10px] uppercase tracking-[0.15em] transition-all shadow-2xl shadow-violet-600/30 active:scale-[0.98] disabled:opacity-50"
                 >
                   <span className="absolute inset-0 bg-gradient-to-r from-fuchsia-400 via-violet-500 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <span className="relative flex items-center justify-center gap-2">
@@ -500,6 +481,82 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
                     ) : (
                       <>
                         Continuar
+                        <ArrowRight className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
+                      </>
+                    )}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* PASO: Selección de Plantilla */}
+        {paso === 'plantilla' && (
+          <motion.div
+            key="plantilla"
+            initial={{ opacity: 0, x: 100 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -100 }}
+            className="w-full max-w-3xl relative z-10"
+          >
+            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/20 via-violet-600/20 to-fuchsia-500/20 rounded-[40px] lg:rounded-[32px] blur-xl opacity-60" />
+            <div className="relative backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-[36px] lg:rounded-[28px] p-6 lg:p-5">
+              <div className="text-center mb-6 lg:mb-5">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-cyan-500/20 to-violet-600/20 border border-cyan-400/30 rounded-full text-cyan-300 text-[9px] lg:text-[8px] font-bold uppercase tracking-wider mb-3">
+                  Paso 3 de 4
+                </div>
+                <div className="relative group mx-auto w-12 h-12 lg:w-10 lg:h-10 mb-3">
+                  <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500 to-violet-500 rounded-xl blur-lg opacity-40" />
+                  <div className="relative w-12 h-12 lg:w-10 lg:h-10 bg-gradient-to-br from-cyan-500 to-violet-600 rounded-xl flex items-center justify-center">
+                    <Sparkles className="w-6 h-6 lg:w-5 lg:h-5 text-white" />
+                  </div>
+                </div>
+                <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-200 to-white mb-1">Selecciona tu plantilla</h2>
+                <p className="text-zinc-500 text-xs lg:text-[10px]">
+                  Te sugerimos una distribución base para <span className="text-cyan-300 font-medium">{espacioCreado?.nombre}</span> según el perfil de tu empresa
+                </p>
+              </div>
+
+              <SelectorPlantillaEspacio
+                value={plantillaSeleccionada}
+                onChange={(valor) => {
+                  setPlantillaPersonalizada(true);
+                  setPlantillaSeleccionada(valor);
+                }}
+                disabled={loading}
+                recomendadaId={plantillaRecomendadaId}
+              />
+
+              {error && (
+                <div className="mt-4 mb-3 p-2.5 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-[10px] font-bold">
+                  {error}
+                </div>
+              )}
+
+              <div className="mt-5 grid grid-cols-2 gap-2.5">
+                <button
+                  onClick={() => setPaso('cargo')}
+                  disabled={loading}
+                  className="w-full py-3 lg:py-2.5 rounded-xl border border-white/[0.08] bg-black/30 text-zinc-300 hover:text-white hover:border-white/15 transition-all text-xs lg:text-[10px] font-bold uppercase tracking-[0.15em] disabled:opacity-50"
+                >
+                  Volver
+                </button>
+                <button
+                  onClick={handleGuardarPlantilla}
+                  disabled={loading}
+                  className="relative w-full group overflow-hidden bg-gradient-to-r from-cyan-500 via-violet-600 to-fuchsia-500 text-white py-3 lg:py-2.5 rounded-xl font-black text-xs lg:text-[10px] uppercase tracking-[0.15em] transition-all shadow-2xl shadow-violet-600/30 active:scale-[0.98] disabled:opacity-50"
+                >
+                  <span className="absolute inset-0 bg-gradient-to-r from-cyan-400 via-violet-500 to-fuchsia-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <span className="relative flex items-center justify-center gap-2">
+                    {loading ? (
+                      <>
+                        <div className="w-4 h-4 lg:w-3.5 lg:h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Configurando...
+                      </>
+                    ) : (
+                      <>
+                        Crear oficina inicial
                         <ArrowRight className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
                       </>
                     )}
@@ -525,6 +582,9 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
               isLoading={loading}
               rolUsuario="super_admin"
               cargosDB={cargosDB}
+              etiquetaPaso="Paso 2 de 4"
+              titulo="¿Cuál es tu cargo principal?"
+              descripcion="Usaremos este dato para terminar de personalizar tu oficina inicial"
             />
           </motion.div>
         )}
@@ -542,7 +602,7 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
             <div className="relative backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-[36px] lg:rounded-[28px] p-6 lg:p-5">
               <div className="text-center mb-6 lg:mb-5">
                 <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-violet-600/20 to-fuchsia-600/20 border border-violet-500/30 rounded-full text-violet-400 text-[9px] lg:text-[8px] font-bold uppercase tracking-wider mb-3">
-                  Paso 3 de 3
+                  Paso 4 de 4
                 </div>
                 <div className="relative group mx-auto w-12 h-12 lg:w-10 lg:h-10 mb-3">
                   <div className="absolute -inset-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-xl blur-lg opacity-40" />

@@ -16,17 +16,19 @@ export function useNotifications(params: UseNotificationsParams): UseNotificatio
   // ========== Zonas de empresa ==========
   const [zonasEmpresa, setZonasEmpresa] = useState<ZonaEmpresa[]>([]);
 
-  useEffect(() => {
-    const cargarZonas = async () => {
-      if (!activeWorkspace?.id) {
-        setZonasEmpresa([]);
-        return;
-      }
-      const zonas = await cargarZonasEmpresa(activeWorkspace.id);
-      setZonasEmpresa(zonas);
-    };
-    cargarZonas();
+  const refrescarZonasEmpresa = useCallback(async () => {
+    if (!activeWorkspace?.id) {
+      setZonasEmpresa([]);
+      return;
+    }
+
+    const zonas = await cargarZonasEmpresa(activeWorkspace.id);
+    setZonasEmpresa(zonas);
   }, [activeWorkspace?.id]);
+
+  useEffect(() => {
+    refrescarZonasEmpresa();
+  }, [refrescarZonasEmpresa]);
 
   // ========== Autorizaciones ==========
   const cargarAutorizaciones = useCallback(async () => {
@@ -70,6 +72,28 @@ export function useNotifications(params: UseNotificationsParams): UseNotificatio
   // ========== Notificación de autorización (toast) ==========
   const [notificacionAutorizacion, setNotificacionAutorizacion] = useState<UseNotificationsReturn['notificacionAutorizacion']>(null);
   const notificacionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Suscripción realtime a zonas de empresa
+  useEffect(() => {
+    if (!activeWorkspace?.id) return;
+
+    const channel = supabase
+      .channel(`zonas-cambios-${activeWorkspace.id}`)
+      .on('postgres_changes', {
+        event: '*', // INSERT, UPDATE, DELETE
+        schema: 'public',
+        table: 'zonas_empresa',
+        filter: `espacio_id=eq.${activeWorkspace.id}`
+      }, () => {
+        // Refrescar lista completa al detectar cambio
+        refrescarZonasEmpresa();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeWorkspace?.id, refrescarZonasEmpresa]);
 
   // Suscripción realtime a notificaciones
   useEffect(() => {
@@ -204,6 +228,7 @@ export function useNotifications(params: UseNotificationsParams): UseNotificatio
     zonaAccesoProxima,
     handleSolicitarAccesoZona,
     cargarAutorizaciones,
+    refrescarZonasEmpresa,
     setZonaColisionadaId,
   };
 }

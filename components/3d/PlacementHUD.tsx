@@ -402,7 +402,6 @@ export const EditModeHUD: React.FC<EditModeHUDProps> = ({ onCancel, onUndo, onRe
   const modos: Array<{ modo: ModoEdicionObjeto; etiqueta: string; icono: string; desc: string }> = [
     { modo: 'mover', etiqueta: 'Mover', icono: '✥', desc: 'Arrastra objetos' },
     { modo: 'rotar', etiqueta: 'Rotar', icono: '⟳', desc: 'Gira objetos' },
-    { modo: 'escalar', etiqueta: 'Escalar', icono: '⬚', desc: 'Cambia tamaño' },
   ];
 
   return (
@@ -514,6 +513,10 @@ interface EditModeToastProps {
   onDone: () => void;
 }
 
+/**
+ * @deprecated Use ToastStack / useToastStack instead.
+ * Kept for backward-compat; just delegates to a single ToastItem.
+ */
 export const EditModeToast: React.FC<EditModeToastProps> = ({ message, icon = '✅', onDone }) => {
   const [phase, setPhase] = useState<'enter' | 'visible' | 'exit'>('enter');
 
@@ -525,19 +528,163 @@ export const EditModeToast: React.FC<EditModeToastProps> = ({ message, icon = '�
   }, [onDone]);
 
   const phaseClasses = {
-    enter: 'opacity-0 scale-90 -translate-y-3',
-    visible: 'opacity-100 scale-100 translate-y-0',
-    exit: 'opacity-0 scale-95 -translate-y-2',
+    enter: 'opacity-0 translate-y-3',
+    visible: 'opacity-100 translate-y-0',
+    exit: 'opacity-0 translate-y-2',
   };
 
   return (
     <div
-      className={`fixed top-20 left-1/2 -translate-x-1/2 z-[500] transition-all duration-300 origin-top ${phaseClasses[phase]}`}
+      className={`fixed bottom-24 left-1/2 -translate-x-1/2 z-[500] transition-all duration-300 pointer-events-none ${phaseClasses[phase]}`}
     >
-      <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-black/20 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] whitespace-nowrap">
-        <span className="text-sm">{icon}</span>
-        <span className="text-white text-[13px] font-semibold">{message}</span>
+      <div
+        className="flex items-center gap-2.5 px-4 py-2.5 whitespace-nowrap"
+        style={{
+          background: 'rgba(8,8,20,0.88)',
+          backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(255,255,255,0.09)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03) inset',
+          borderRadius: '40px',
+        }}
+      >
+        <span className="text-base leading-none">{icon}</span>
+        <span className="text-white text-[13px] font-semibold tracking-tight">{message}</span>
       </div>
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   Toast Stack System — Gather.town style
+   ─ Screen-space only (fixed position, NEVER inside <Canvas>)
+   ─ Stacks up to 5 toasts, newest at bottom
+   ─ Each toast: pill glassmorphism bar, horizontal, bottom-center
+   ─ Auto-dismiss after 2.8s with slide + fade out
+   ─ Zero camera dependency: immune to Three.js zoom
+═══════════════════════════════════════════════════════════════════════════════ */
+
+export interface ToastItem {
+  id: string;
+  message: string;
+  icon?: string;
+  /** 'default' | 'success' | 'error' | 'info' | 'warning' */
+  variant?: 'default' | 'success' | 'error' | 'info' | 'warning';
+}
+
+// Minimal event-emitter for toasts — no extra lib, no React context overhead
+type ToastListener = (toast: ToastItem) => void;
+const _listeners: Set<ToastListener> = new Set();
+
+export const toastEmitter = {
+  emit: (toast: Omit<ToastItem, 'id'>) => {
+    const item: ToastItem = { ...toast, id: `t_${Date.now()}_${Math.random().toString(36).slice(2)}` };
+    _listeners.forEach((fn) => fn(item));
+  },
+  subscribe: (fn: ToastListener) => { _listeners.add(fn); return () => _listeners.delete(fn); },
+};
+
+/** Drop-in hook: const { toast } = useToastEmitter() */
+export const useToastEmitter = () => ({
+  toast: (message: string, opts?: Partial<Omit<ToastItem, 'id' | 'message'>>) =>
+    toastEmitter.emit({ message, ...opts }),
+});
+
+const VARIANT_STYLES: Record<NonNullable<ToastItem['variant']>, { accent: string; icon: string }> = {
+  default: { accent: 'rgba(99,102,241,0.5)',  icon: '💬' },
+  success: { accent: 'rgba(34,197,94,0.55)',  icon: '✦' },
+  error:   { accent: 'rgba(239,68,68,0.55)',  icon: '⚠' },
+  info:    { accent: 'rgba(56,189,248,0.5)',  icon: 'ℹ' },
+  warning: { accent: 'rgba(251,191,36,0.5)',  icon: '!' },
+};
+
+const SingleToast: React.FC<{ item: ToastItem; onRemove: (id: string) => void }> = ({ item, onRemove }) => {
+  const [phase, setPhase] = useState<'in' | 'on' | 'out'>('in');
+  const variant = item.variant ?? 'default';
+  const { accent, icon: fallbackIcon } = VARIANT_STYLES[variant];
+
+  useEffect(() => {
+    const t0 = setTimeout(() => setPhase('on'), 30);
+    const t1 = setTimeout(() => setPhase('out'), 2600);
+    const t2 = setTimeout(() => onRemove(item.id), 3000);
+    return () => { clearTimeout(t0); clearTimeout(t1); clearTimeout(t2); };
+  }, [item.id, onRemove]);
+
+  const transforms = {
+    in:  'opacity-0 translate-y-4 scale-95',
+    on:  'opacity-100 translate-y-0 scale-100',
+    out: 'opacity-0 translate-y-2 scale-97',
+  };
+
+  return (
+    <div
+      className={`flex items-center gap-2.5 px-4 py-2.5 transition-all duration-300 ease-out pointer-events-auto ${transforms[phase]}`}
+      style={{
+        background: 'rgba(7,7,18,0.90)',
+        backdropFilter: 'blur(22px)',
+        WebkitBackdropFilter: 'blur(22px)',
+        border: `1px solid ${accent}`,
+        boxShadow: `0 0 0 1px rgba(255,255,255,0.04) inset, 0 8px 32px rgba(0,0,0,0.55)`,
+        borderRadius: '40px',
+        cursor: 'default',
+        whiteSpace: 'nowrap',
+      }}
+      onClick={() => { setPhase('out'); setTimeout(() => onRemove(item.id), 300); }}
+    >
+      {/* Left accent dot */}
+      <span
+        className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+        style={{ background: accent, boxShadow: `0 0 6px ${accent}` }}
+      />
+      {/* Icon */}
+      <span className="text-sm leading-none select-none">{item.icon ?? fallbackIcon}</span>
+      {/* Text */}
+      <span className="text-white/90 text-[13px] font-semibold tracking-tight leading-none">
+        {item.message}
+      </span>
+    </div>
+  );
+};
+
+/**
+ * ToastContainer — Mount ONCE, outside the <Canvas>, as a sibling overlay.
+ *
+ * ```tsx
+ * // In VirtualSpace3D return:
+ * <div style={{ position: 'relative' }}>
+ *   <Canvas ... />
+ *   <ToastContainer />
+ * </div>
+ * ```
+ *
+ * Then anywhere in code: toastEmitter.emit({ message: 'Objeto rotado', variant: 'success' })
+ */
+export const ToastContainer: React.FC = () => {
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  useEffect(() => {
+    const unsub = toastEmitter.subscribe((item) =>
+      setToasts((prev) => [...prev.slice(-4), item]) // Keep max 5
+    );
+    return () => { unsub(); };
+  }, []);
+
+  const remove = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  if (toasts.length === 0) return null;
+
+  return (
+    /* Fully screen-space: position fixed, z above canvas, no pointer-events on wrapper */
+    <div
+      className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[600] flex flex-col items-center gap-1.5 pointer-events-none"
+      role="status"
+      aria-live="polite"
+      aria-atomic="false"
+    >
+      {toasts.map((t) => (
+        <SingleToast key={t.id} item={t} onRemove={remove} />
+      ))}
     </div>
   );
 };

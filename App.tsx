@@ -8,6 +8,7 @@ import { useRutasReunion } from './hooks/app/useRutasReunion';
 import { seleccionarBootstrapApp, seleccionarProcesadorInvitacion } from './store/selectores';
 import './lib/i18n-config'; // Inicializar i18next
 import { LoginScreen } from './components/LoginScreen';
+import { ResetPasswordScreen } from './components/ResetPasswordScreen';
 import { CargoSelector } from './components/onboarding/CargoSelector';
 import type { CargoLaboral, CargoDB } from './components/onboarding/CargoSelector';
 
@@ -47,6 +48,37 @@ const App: React.FC = () => {
   } = useRutasReunion();
 
   useBootstrapAplicacion({ initialize, setSession, setView, setAuthFeedback });
+  // ─── Ruta de recuperación de contraseña ──────────────────────────────────
+  //
+  // CASO 1 — Estado persistido en el store (camino principal)
+  // Cuando el usuario hace clic en el link válido, Supabase dispara PASSWORD_RECOVERY,
+  // el hook de bootstrap lo captura y setea view='reset_password' en el store.
+  // Esta es la fuente de verdad — no depende del hash que Supabase borra de la URL.
+  if (view === 'reset_password') {
+    return <ResetPasswordScreen />;
+  }
+
+  // CASO 2 — Hash de error de Supabase (camino de enlace expirado/inválido)
+  // Supabase a veces redirige con: /#error=access_denied&error_code=otp_expired
+  // En este caso NO hay PASSWORD_RECOVERY, NO hay sesión, solo el hash de error.
+  // Lo interceptamos aquí antes de caer en el guard de sesión.
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const isRecoveryError =
+    hashParams.get('error') === 'access_denied' &&
+    (hashParams.get('error_code') === 'otp_expired' ||
+     hashParams.get('error_code') === 'otp_disabled' ||
+     (hashParams.get('error_description')?.toLowerCase().includes('expired') ?? false) ||
+     (hashParams.get('error_description')?.toLowerCase().includes('invalid') ?? false));
+
+  if (isRecoveryError) {
+    return (
+      <ResetPasswordScreen
+        errorFromHash={true}
+        errorDescription={hashParams.get('error_description') ?? undefined}
+      />
+    );
+  }
+
 
   // Ruta pública: /explorar — Marketplace de terrenos virtuales (sin auth)
   if (window.location.pathname === '/explorar') {

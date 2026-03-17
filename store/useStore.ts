@@ -15,7 +15,7 @@ interface Notification {
 
 export interface AppState {
   theme: ThemeType;
-  view: 'dashboard' | 'workspace' | 'invitation' | 'loading' | 'onboarding' | 'onboarding_creador';
+  view: 'dashboard' | 'workspace' | 'invitation' | 'loading' | 'onboarding' | 'onboarding_creador' | 'reset_password';
   activeSubTab: 'space' | 'tasks' | 'miembros' | 'settings' | 'builder' | 'chat' | 'avatar' | 'calendar' | 'grabaciones' | 'metricas';
   currentUser: User;
   users: User[];
@@ -83,9 +83,17 @@ export interface AppState {
   modoEdicionObjeto: ModoEdicionObjeto;
   setModoEdicionObjeto: (modo: ModoEdicionObjeto) => void;
   selectedObjectId: string | null;
+  selectedObjectIds: string[];
   setSelectedObjectId: (id: string | null) => void;
+  setSelectedObjectIds: (ids: string[]) => void;
+  toggleObjectSelection: (id: string, multi: boolean) => void;
+  clearObjectSelection: () => void;
+  copiedObjects: any[];
+  setCopiedObjects: (objs: any[]) => void;
   isDragging: boolean;
   setIsDragging: (val: boolean) => void;
+  isDrawingZone: boolean;
+  setIsDrawingZone: (val: boolean) => void;
 }
 
 export type ModoEdicionObjeto = 'mover' | 'rotar' | 'escalar';
@@ -141,6 +149,8 @@ export const useStore = create<AppState>((set, get) => ({
   // --- Hito 8: Edit Mode Initial State ---
   isEditMode: false,
   selectedObjectId: null,
+  selectedObjectIds: [],
+  copiedObjects: [],
   isDragging: false,
   
   setOnlineUsers: (users) => set({ onlineUsers: users }),
@@ -334,49 +344,73 @@ export const useStore = create<AppState>((set, get) => ({
         const workspaces = await get().fetchWorkspaces();
         console.log("initialize: Workspaces loaded:", workspaces.length);
         
-        const savedId = localStorage.getItem(STORAGE_WS_KEY);
-        
-        // Verificar si hay token de invitación en la URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const invitationToken = urlParams.get('token');
-        
-        if (invitationToken) {
-          console.log("initialize: Invitation token found, going to invitation view");
-          set({ view: 'invitation' });
-          // No limpiar URL aquí - InvitationProcessor necesita el token para verificar
-        } else if (workspaces.length === 0) {
-          console.log("initialize: No workspaces, going to onboarding_creador");
-          set({ view: 'onboarding_creador' });
-        } else if (savedId) {
-          const found = workspaces.find(w => w.id === savedId);
-          if (found) {
-            console.log("initialize: Restoring workspace", found.name);
-            get().setActiveWorkspace(found, (found as any).userRole);
-            set({ view: 'workspace' });
-          } else {
-            console.log("initialize: Saved workspace not found, going to dashboard");
-            set({ view: 'dashboard' });
-          }
+        // ─── PROTECCIÓN CONTRA RACE CONDITION ──────────────────────────────
+        // Si el listener de auth ya detectó PASSWORD_RECOVERY y seteó la
+        // vista en reset_password, NO debemos sobrescribirla.
+        if (get().view === 'reset_password') {
+          console.log("initialize: Maintaining reset_password view");
         } else {
-          // Si skipWelcomeScreen está activado y hay workspaces, ir directo al primero
-          const generalSettings = getSettingsSection('general');
-          if (generalSettings.skipWelcomeScreen && workspaces.length > 0) {
-            console.log("initialize: Skipping welcome, going to first workspace");
-            get().setActiveWorkspace(workspaces[0], (workspaces[0] as any).userRole);
+          const savedId = localStorage.getItem(STORAGE_WS_KEY);
+          
+          // Verificar si hay token de invitación en la URL
+          const urlParams = new URLSearchParams(window.location.search);
+          const invitationToken = urlParams.get('token');
+          
+          if (invitationToken) {
+            console.log("initialize: Invitation token found, going to invitation view");
+            set({ view: 'invitation' });
+            // No limpiar URL aquí - InvitationProcessor necesita el token para verificar
+          } else if (workspaces.length === 0) {
+            // El usuario no tiene membresía en ningún espacio.
+            // Lo enviamos a onboarding_creador donde se vinculará al espacio global
+            // (el espacio global ya existe en BD, no se crea uno nuevo).
+            console.log("initialize: No workspaces, going to onboarding_creador to join global space");
+            set({ view: 'onboarding_creador' });
+          } else if (workspaces.length === 1) {
+            // Espacio único: seleccionarlo automáticamente sin pasar por Dashboard
+            const soloWorkspace = workspaces[0];
+            const restoredFromSave = savedId && soloWorkspace.id === savedId;
+            console.log("initialize: Single workspace found, auto-selecting", soloWorkspace.name, restoredFromSave ? '(from saved)' : '');
+            get().setActiveWorkspace(soloWorkspace, (soloWorkspace as any).userRole);
             set({ view: 'workspace' });
+          } else if (savedId) {
+            const found = workspaces.find(w => w.id === savedId);
+            if (found) {
+              console.log("initialize: Restoring workspace", found.name);
+              get().setActiveWorkspace(found, (found as any).userRole);
+              set({ view: 'workspace' });
+            } else {
+              console.log("initialize: Saved workspace not found, going to dashboard");
+              set({ view: 'dashboard' });
+            }
           } else {
-            console.log("initialize: Going to dashboard");
-            set({ view: 'dashboard' });
+            // Múltiples workspaces sin selección guardada: ir al Dashboard
+            const generalSettings = getSettingsSection('general');
+            if (generalSettings.skipWelcomeScreen && workspaces.length > 0) {
+              console.log("initialize: Skipping welcome, going to first workspace");
+              get().setActiveWorkspace(workspaces[0], (workspaces[0] as any).userRole);
+              set({ view: 'workspace' });
+            } else {
+              console.log("initialize: Multiple workspaces, going to dashboard");
+              set({ view: 'dashboard' });
+            }
           }
         }
       } else {
-        console.log("initialize: No session, going to dashboard");
-        set({ session: null, view: 'dashboard' });
+        if (get().view === 'reset_password') {
+          console.log("initialize: No session, but keeping reset_password view");
+          set({ session: null });
+        } else {
+          console.log("initialize: No session, going to dashboard");
+          set({ session: null, view: 'dashboard' });
+        }
       }
     } catch (error) {
       console.error("Initialization failed:", error);
       // En caso de error, ir al dashboard para no quedarse cargando
-      set({ view: 'dashboard' });
+      if (get().view !== 'reset_password') {
+        set({ view: 'dashboard' });
+      }
     } finally {
       set({ initialized: true, isInitializing: false });
       console.log("initialize: Complete");
@@ -586,10 +620,29 @@ export const useStore = create<AppState>((set, get) => ({
     isEditMode: val,
     // Resetear selección y arrastre al salir/entrar
     selectedObjectId: null,
+    selectedObjectIds: [],
     isDragging: false,
     modoEdicionObjeto: 'mover'
   }),
   setModoEdicionObjeto: (modo) => set({ modoEdicionObjeto: modo }),
-  setSelectedObjectId: (id) => set({ selectedObjectId: id }),
+  setSelectedObjectId: (id) => set({ selectedObjectId: id, selectedObjectIds: id ? [id] : [] }),
+  setSelectedObjectIds: (ids) => set({ selectedObjectIds: ids, selectedObjectId: ids.length > 0 ? ids[ids.length - 1] : null }),
+  toggleObjectSelection: (id, multi) => set((state) => {
+    if (multi) {
+      if (state.selectedObjectIds.includes(id)) {
+        const newIds = state.selectedObjectIds.filter(i => i !== id);
+        return { selectedObjectIds: newIds, selectedObjectId: newIds.length > 0 ? newIds[newIds.length - 1] : null };
+      } else {
+        const newIds = [...state.selectedObjectIds, id];
+        return { selectedObjectIds: newIds, selectedObjectId: id };
+      }
+    } else {
+      return { selectedObjectIds: [id], selectedObjectId: id };
+    }
+  }),
+  clearObjectSelection: () => set({ selectedObjectIds: [], selectedObjectId: null }),
+  setCopiedObjects: (objs) => set({ copiedObjects: objs }),
   setIsDragging: (val) => set({ isDragging: val }),
+  isDrawingZone: false,
+  setIsDrawingZone: (val: boolean) => set({ isDrawingZone: val }),
 }));
