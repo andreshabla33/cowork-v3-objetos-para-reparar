@@ -59,10 +59,12 @@ const BLUR_COMPOSITE_FRAGMENT = `
   }
   
   void main() {
-    // Get mask value — person regions are non-zero in category mask
+    // Get mask value — MediaPipe selfie segmenter mask:
+    // 0 = person (based on observed behavior), non-zero = background
     float maskVal = texture2D(u_mask, v_texCoord).r;
-    // Invert: 1.0 = person, 0.0 = background
-    float personAlpha = step(0.004, maskVal); // threshold ~1/255
+    // Invert mask: 1.0 = person, 0.0 = background
+    // MediaPipe returns 0 for person regions, so we invert
+    float personAlpha = 1.0 - step(0.004, maskVal); // invert mask
     
     vec4 originalColor = texture2D(u_image, v_texCoord);
     
