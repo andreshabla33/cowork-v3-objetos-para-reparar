@@ -6,11 +6,13 @@ import { GuidedOnboardingService } from '@/modules/realtime-room';
 
 interface MeetingGuidedOnboardingProps {
   userId: string;
+  isExternalGuest: boolean;
   showRecordingStep: boolean;
 }
 
 export const MeetingGuidedOnboarding: React.FC<MeetingGuidedOnboardingProps> = ({
   userId,
+  isExternalGuest,
   showRecordingStep,
 }) => {
   const guidedOnboardingService = React.useMemo(() => new GuidedOnboardingService(), []);
@@ -28,8 +30,8 @@ export const MeetingGuidedOnboarding: React.FC<MeetingGuidedOnboardingProps> = (
       setShouldStart(false);
       return;
     }
-    setShouldStart(guidedOnboardingService.shouldShowMeetingOnboarding(userId));
-  }, [guidedOnboardingService, steps.length, userId]);
+    setShouldStart(guidedOnboardingService.shouldShowMeetingOnboarding(userId, isExternalGuest));
+  }, [guidedOnboardingService, steps.length, userId, isExternalGuest]);
 
   React.useEffect(() => {
     if (!shouldStart || !userId || steps.length === 0 || tourStartedRef.current) {
@@ -65,13 +67,16 @@ export const MeetingGuidedOnboarding: React.FC<MeetingGuidedOnboardingProps> = (
 
       tourStartedRef.current = true;
       resolutionRef.current = null;
+      
+      // Incrementar contador de veces mostradas
+      guidedOnboardingService.incrementShownCount(userId, isExternalGuest);
 
       const markDismissed = () => {
         if (resolutionRef.current) {
           return;
         }
         resolutionRef.current = 'dismissed';
-        guidedOnboardingService.dismissMeetingOnboarding(userId);
+        guidedOnboardingService.dismissMeetingOnboarding(userId, isExternalGuest);
         setShouldStart(false);
       };
 
@@ -80,7 +85,7 @@ export const MeetingGuidedOnboarding: React.FC<MeetingGuidedOnboardingProps> = (
           return;
         }
         resolutionRef.current = 'completed';
-        guidedOnboardingService.completeMeetingOnboarding(userId);
+        guidedOnboardingService.completeMeetingOnboarding(userId, isExternalGuest);
         setShouldStart(false);
       };
 
@@ -142,7 +147,7 @@ export const MeetingGuidedOnboarding: React.FC<MeetingGuidedOnboardingProps> = (
         tourStartedRef.current = false;
       }
     };
-  }, [guidedOnboardingService, shouldStart, steps, userId]);
+  }, [guidedOnboardingService, shouldStart, steps, userId, isExternalGuest]);
 
   return null;
 };

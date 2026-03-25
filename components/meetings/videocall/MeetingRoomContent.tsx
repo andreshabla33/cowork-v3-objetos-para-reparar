@@ -233,12 +233,11 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
         </div>
       )}
 
-      {!isExternalGuest && (
-        <MeetingGuidedOnboarding
-          userId={userId}
-          showRecordingStep={Boolean(isHost || !isExternalGuest)}
-        />
-      )}
+      <MeetingGuidedOnboarding
+        userId={userId}
+        isExternalGuest={isExternalGuest}
+        showRecordingStep={Boolean(isHost || !isExternalGuest)}
+      />
 
       <MeetingAudioRenderer speakerDeviceId={audioSettings.selectedSpeakerId || undefined} />
 

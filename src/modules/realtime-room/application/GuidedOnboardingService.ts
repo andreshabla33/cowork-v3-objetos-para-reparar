@@ -11,6 +11,7 @@ export interface GuidedOnboardingStep {
 interface MeetingOnboardingStorage {
   completed: boolean;
   dismissed: boolean;
+  shownCount: number;
   updatedAt: string | null;
 }
 
@@ -98,23 +99,38 @@ export class GuidedOnboardingService {
     return steps;
   }
 
-  shouldShowMeetingOnboarding(userId: string): boolean {
-    const state = this.readMeetingState(userId);
-    return !state.completed && !state.dismissed;
+  shouldShowMeetingOnboarding(userId: string, isExternalGuest: boolean): boolean {
+    const state = this.readMeetingState(userId, isExternalGuest);
+    // Mostrar hasta 3 veces si no está completado ni descartado
+    const maxShows = 3;
+    return !state.completed && !state.dismissed && state.shownCount < maxShows;
   }
 
-  completeMeetingOnboarding(userId: string): void {
-    this.writeMeetingState(userId, {
+  completeMeetingOnboarding(userId: string, isExternalGuest: boolean): void {
+    const currentState = this.readMeetingState(userId, isExternalGuest);
+    this.writeMeetingState(userId, isExternalGuest, {
+      ...currentState,
       completed: true,
       dismissed: false,
       updatedAt: new Date().toISOString(),
     });
   }
 
-  dismissMeetingOnboarding(userId: string): void {
-    this.writeMeetingState(userId, {
+  dismissMeetingOnboarding(userId: string, isExternalGuest: boolean): void {
+    const currentState = this.readMeetingState(userId, isExternalGuest);
+    this.writeMeetingState(userId, isExternalGuest, {
+      ...currentState,
       completed: false,
       dismissed: true,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  incrementShownCount(userId: string, isExternalGuest: boolean): void {
+    const currentState = this.readMeetingState(userId, isExternalGuest);
+    this.writeMeetingState(userId, isExternalGuest, {
+      ...currentState,
+      shownCount: currentState.shownCount + 1,
       updatedAt: new Date().toISOString(),
     });
   }
@@ -123,14 +139,18 @@ export class GuidedOnboardingService {
     return `meeting-guided-onboarding:${this.version}:${userId}`;
   }
 
-  private readMeetingState(userId: string): MeetingOnboardingStorage {
+  private readMeetingState(userId: string, isExternalGuest: boolean): MeetingOnboardingStorage {
     if (typeof window === 'undefined') {
-      return { completed: false, dismissed: false, updatedAt: null };
+      return { completed: false, dismissed: false, shownCount: 0, updatedAt: null };
     }
 
-    const raw = window.localStorage.getItem(this.getMeetingStorageKey(userId));
+    const key = this.getMeetingStorageKey(userId);
+    // Usar sessionStorage para invitados externos (cada sesión es nueva)
+    const storage = isExternalGuest ? window.sessionStorage : window.localStorage;
+    const raw = storage.getItem(key);
+    
     if (!raw) {
-      return { completed: false, dismissed: false, updatedAt: null };
+      return { completed: false, dismissed: false, shownCount: 0, updatedAt: null };
     }
 
     try {
@@ -138,18 +158,22 @@ export class GuidedOnboardingService {
       return {
         completed: Boolean(parsed.completed),
         dismissed: Boolean(parsed.dismissed),
+        shownCount: Number(parsed.shownCount) || 0,
         updatedAt: parsed.updatedAt ?? null,
       };
     } catch {
-      return { completed: false, dismissed: false, updatedAt: null };
+      return { completed: false, dismissed: false, shownCount: 0, updatedAt: null };
     }
   }
 
-  private writeMeetingState(userId: string, state: MeetingOnboardingStorage): void {
+  private writeMeetingState(userId: string, isExternalGuest: boolean, state: MeetingOnboardingStorage): void {
     if (typeof window === 'undefined') {
       return;
     }
 
-    window.localStorage.setItem(this.getMeetingStorageKey(userId), JSON.stringify(state));
+    const key = this.getMeetingStorageKey(userId);
+    // Usar sessionStorage para invitados externos (cada sesión es nueva)
+    const storage = isExternalGuest ? window.sessionStorage : window.localStorage;
+    storage.setItem(key, JSON.stringify(state));
   }
 }
