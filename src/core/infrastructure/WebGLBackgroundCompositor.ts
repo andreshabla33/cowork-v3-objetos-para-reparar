@@ -15,7 +15,7 @@
 import type {
   IBackgroundCompositor,
   CompositorConfig,
-} from '../../domain/ports/IBackgroundCompositor';
+} from '../domain/ports/IBackgroundCompositor';
 
 // ─── Shader Sources ─────────────────────────────────────────────────────────
 

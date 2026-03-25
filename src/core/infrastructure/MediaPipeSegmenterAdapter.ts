@@ -12,7 +12,7 @@
  */
 
 import { ImageSegmenter, FilesetResolver } from '@mediapipe/tasks-vision';
-import type { IBackgroundSegmenter, SegmenterConfig, SegmentationMask } from '../../domain/ports/IBackgroundSegmenter';
+import type { IBackgroundSegmenter, SegmenterConfig, SegmentationMask } from '../domain/ports/IBackgroundSegmenter';
 
 const MEDIAPIPE_WASM_CDN = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.33/wasm';
 const SELFIE_MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite';
