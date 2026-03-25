@@ -62,9 +62,13 @@ const BLUR_COMPOSITE_FRAGMENT = `
     // Get mask value — MediaPipe selfie segmenter mask:
     // 0 = person (based on observed behavior), non-zero = background
     float maskVal = texture2D(u_mask, v_texCoord).r;
-    // Invert mask: 1.0 = person, 0.0 = background
-    // MediaPipe returns 0 for person regions, so we invert
-    float personAlpha = 1.0 - step(0.004, maskVal); // invert mask
+    
+    // Edge smoothing: use smoothstep instead of step for anti-aliased edges
+    // Creates a 4-pixel feather zone at the edges for smoother transitions
+    float edgeThreshold = 0.004; // Base threshold (~1/255)
+    float featherWidth = 0.02;   // Feather zone width for smooth edges
+    // Invert mask: 1.0 = person, 0.0 = background with smooth transition
+    float personAlpha = 1.0 - smoothstep(edgeThreshold, edgeThreshold + featherWidth, maskVal);
     
     vec4 originalColor = texture2D(u_image, v_texCoord);
     
@@ -80,6 +84,7 @@ const BLUR_COMPOSITE_FRAGMENT = `
     }
     
     // Composite: person (sharp) over background (blurred/replaced)
+    // smoothstep gives us soft anti-aliased edges instead of hard jagged edges
     gl_FragColor = mix(bgColor, originalColor, personAlpha);
   }
 `;
