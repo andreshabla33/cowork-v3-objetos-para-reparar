@@ -221,6 +221,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
       {backgroundEffectReady && mediaState.desiredCameraEnabled && mediaState.stream && mediaState.stream.getVideoTracks().length > 0 && cameraSettings.backgroundEffect !== 'none' && (
         <div className="absolute h-0 w-0 overflow-hidden opacity-0 pointer-events-none" aria-hidden="true">
           <VideoWithBackground
+            key={mediaState.stream.getVideoTracks()[0]?.id || 'video-bg'}
             stream={mediaState.stream}
             effectType={cameraSettings.backgroundEffect}
             backgroundImage={cameraSettings.backgroundImage}
