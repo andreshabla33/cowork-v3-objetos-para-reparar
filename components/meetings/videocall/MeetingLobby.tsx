@@ -436,6 +436,7 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
             <div className="relative aspect-[4/5] sm:aspect-video xl:aspect-auto min-h-[280px] sm:min-h-[360px] xl:min-h-[560px] bg-black/50">
               {cameraEnabled && !cameraSettings.hideSelfView && stream && stream.getVideoTracks().length > 0 && cameraSettings.backgroundEffect !== 'none' && (
                 <VideoWithBackground
+                  key={stream.getVideoTracks()[0]?.id || 'video-bg'}
                   stream={stream}
                   effectType={cameraSettings.backgroundEffect}
                   backgroundImage={cameraSettings.backgroundImage}
