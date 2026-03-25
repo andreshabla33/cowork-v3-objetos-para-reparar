@@ -157,8 +157,18 @@ export const VideoWithBackground = memo(({
 
   // ─── Initialize pipeline ───────────────────────────────────────────
   useEffect(() => {
-    console.log('[VideoWithBackground] useEffect triggered, streamSignature:', streamSignature?.substring(0, 50), 'effectType:', effectType);
+    console.log('[VideoWithBackground] COMPONENT MOUNTED');
+    
+    return () => {
+      console.log('[VideoWithBackground] COMPONENT UNMOUNTED');
+    };
+  }, []);
+
+  // ─── Initialize pipeline ───────────────────────────────────────────
+  useEffect(() => {
+    console.log('[VideoWithBackground] INIT useEffect triggered, streamSignature:', streamSignature?.substring(0, 50), 'effectType:', effectType);
     if (!stream || effectType === 'none') {
+      console.log('[VideoWithBackground] Early return - no stream or effectType is none');
       setShowCanvas(false);
       setIsInitialized(false);
       return;
