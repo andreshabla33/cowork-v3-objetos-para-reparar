@@ -83,7 +83,9 @@ export const VideoWithBackground = memo(({
     const trackIds = videoTracks
       .map(t => `${t.id}:${t.enabled}:${t.readyState}:${t.muted}`)
       .join('|');
-    return trackIds || 'no-video';
+    const signature = trackIds || 'no-video';
+    console.log('[VideoWithBackground] Stream signature:', signature.substring(0, 100));
+    return signature;
   }, [stream]);
 
   // Compose canvas ref for React rendering (we need a ref to get DOM element)
@@ -155,6 +157,7 @@ export const VideoWithBackground = memo(({
 
   // ─── Initialize pipeline ───────────────────────────────────────────
   useEffect(() => {
+    console.log('[VideoWithBackground] useEffect triggered, streamSignature:', streamSignature?.substring(0, 50), 'effectType:', effectType);
     if (!stream || effectType === 'none') {
       setShowCanvas(false);
       setIsInitialized(false);
