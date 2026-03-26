@@ -215,16 +215,20 @@ export const useMeetingMediaBridge = ({
     }
 
     if (partial.selectedCameraId !== undefined) {
-      coordinator.updateDevicePreferences({ selectedCameraId: nextSettings.selectedCameraId || null });
-      if (coordinator.getState().desiredCameraEnabled && nextSettings.selectedCameraId) {
-        // Only switch if the camera actually changed to avoid unnecessary track replacement
-        // (which would cause VideoWithBackground to remount and briefly show a black screen)
-        const activeVideoTrack = coordinator.getState().stream?.getVideoTracks()[0];
-        const activeDeviceId = activeVideoTrack?.getSettings().deviceId;
-        if (nextSettings.selectedCameraId !== activeDeviceId) {
+      // Compare BEFORE calling updateDevicePreferences to avoid an unnecessary
+      // notifyStateChange() that disrupts the LiveKit publish cycle.
+      const activeVideoTrack = coordinator.getState().stream?.getVideoTracks()[0];
+      const activeDeviceId = activeVideoTrack?.getSettings().deviceId;
+      const cameraActuallyChanged = nextSettings.selectedCameraId !== activeDeviceId;
+
+      if (cameraActuallyChanged) {
+        coordinator.updateDevicePreferences({ selectedCameraId: nextSettings.selectedCameraId || null });
+        if (coordinator.getState().desiredCameraEnabled && nextSettings.selectedCameraId) {
           return coordinator.switchCamera(nextSettings.selectedCameraId);
         }
       }
+      // If camera didn't change, skip updateDevicePreferences entirely to avoid
+      // notifyStateChange() during the critical track-publish window.
     }
 
     return true;
