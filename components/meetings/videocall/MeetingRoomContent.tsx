@@ -46,6 +46,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
   const [isConnectedPopoverOpen, setIsConnectedPopoverOpen] = React.useState(false);
   const [backgroundEffectReady, setBackgroundEffectReady] = React.useState(false);
   const connectedPopoverRef = React.useRef<HTMLDivElement | null>(null);
+  const prevVideoTrackIdRef = React.useRef<string | null>(null);
   const {
     room,
     localParticipant,
@@ -152,27 +153,40 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
   }, [effectiveViewMode]);
 
   React.useEffect(() => {
-    if (
-      !room
-      || room.state !== 'connected'
-      || !mediaState.desiredCameraEnabled
-      || !mediaState.stream
-      || mediaState.stream.getVideoTracks().length === 0
-      || cameraSettings.backgroundEffect === 'none'
-    ) {
+    // Check if video track actually changed (not just mic/audio)
+    const videoTrack = mediaState.stream?.getVideoTracks()[0];
+    const currentVideoTrackId = videoTrack?.id || null;
+    const hasVideoTrack = !!videoTrack;
+
+    // Only reset if video track actually changed or effect type changed
+    const videoTrackChanged = prevVideoTrackIdRef.current !== currentVideoTrackId;
+    const shouldBeReady = !!(
+      room
+      && room.state === 'connected'
+      && mediaState.desiredCameraEnabled
+      && hasVideoTrack
+      && cameraSettings.backgroundEffect !== 'none'
+    );
+
+    if (!shouldBeReady) {
       setBackgroundEffectReady(false);
+      prevVideoTrackIdRef.current = currentVideoTrackId;
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      setBackgroundEffectReady(true);
-    }, 1800);
+    // If video track changed or we're becoming ready, set a delay
+    if (videoTrackChanged || !backgroundEffectReady) {
+      const timer = window.setTimeout(() => {
+        setBackgroundEffectReady(true);
+        prevVideoTrackIdRef.current = currentVideoTrackId;
+      }, 1800);
 
-    return () => {
-      window.clearTimeout(timer);
-      setBackgroundEffectReady(false);
-    };
-  }, [cameraSettings.backgroundEffect, mediaState.desiredCameraEnabled, mediaState.stream, room]);
+      return () => {
+        window.clearTimeout(timer);
+        // Don't set ready to false here - let it stay ready until conditions truly fail
+      };
+    }
+  }, [cameraSettings.backgroundEffect, mediaState.desiredCameraEnabled, mediaState.stream, room, videoBackgroundKey]);
 
   React.useEffect(() => {
     if (!isConnectedPopoverOpen) {
