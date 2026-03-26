@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { Room, RoomEvent, Track } from 'livekit-client';
-import { loadCameraSettings, saveCameraSettings, loadAudioSettings, saveAudioSettings, type CameraSettings, type AudioSettings } from '@/modules/realtime-room';
+import { crearOpcionesPublicacionTrackLiveKit, loadCameraSettings, saveCameraSettings, loadAudioSettings, saveAudioSettings, type CameraSettings, type AudioSettings } from '@/modules/realtime-room';
 import { createProcessedAudioTrack, type ProcessedAudioTrackHandle } from '@/lib/audioProcessing';
 import { SpaceMediaCoordinator, type SpaceMediaCoordinatorState } from '@/modules/realtime-room';
 
@@ -215,10 +215,20 @@ export const useMeetingMediaBridge = ({
     }
 
     if (partial.selectedCameraId !== undefined) {
-      coordinator.updateDevicePreferences({ selectedCameraId: nextSettings.selectedCameraId || null });
-      if (coordinator.getState().desiredCameraEnabled && nextSettings.selectedCameraId) {
-        return coordinator.switchCamera(nextSettings.selectedCameraId);
+      // Compare BEFORE calling updateDevicePreferences to avoid an unnecessary
+      // notifyStateChange() that disrupts the LiveKit publish cycle.
+      const activeVideoTrack = coordinator.getState().stream?.getVideoTracks()[0];
+      const activeDeviceId = activeVideoTrack?.getSettings().deviceId;
+      const cameraActuallyChanged = nextSettings.selectedCameraId !== activeDeviceId;
+
+      if (cameraActuallyChanged) {
+        coordinator.updateDevicePreferences({ selectedCameraId: nextSettings.selectedCameraId || null });
+        if (coordinator.getState().desiredCameraEnabled && nextSettings.selectedCameraId) {
+          return coordinator.switchCamera(nextSettings.selectedCameraId);
+        }
       }
+      // If camera didn't change, skip updateDevicePreferences entirely to avoid
+      // notifyStateChange() during the critical track-publish window.
     }
 
     return true;
@@ -309,6 +319,7 @@ export const useMeetingMediaBridge = ({
       : null;
 
     const cameraPublication = getPublication(Track.Source.Camera);
+    const microphonePublication = getPublication(Track.Source.Microphone);
     if (effectiveVideoTrack) {
       if (cameraPublication?.track) {
         const localTrack = cameraPublication.track as unknown as MeetingMutableLocalTrack;
@@ -319,14 +330,7 @@ export const useMeetingMediaBridge = ({
           await localTrack.unmute();
         }
       } else {
-        await room.localParticipant.publishTrack(effectiveVideoTrack, {
-          source: Track.Source.Camera,
-          simulcast: true,
-          videoEncoding: {
-            maxBitrate: 1_700_000,
-            maxFramerate: 24,
-          },
-        } as any);
+        await room.localParticipant.publishTrack(effectiveVideoTrack, crearOpcionesPublicacionTrackLiveKit('camera'));
       }
     } else if (cameraPublication?.track) {
       const localTrack = cameraPublication.track as unknown as MeetingMutableLocalTrack;
@@ -335,7 +339,6 @@ export const useMeetingMediaBridge = ({
       }
     }
 
-    const microphonePublication = getPublication(Track.Source.Microphone);
     if (audioTrack) {
       if (microphonePublication?.track) {
         const localTrack = microphonePublication.track as unknown as MeetingMutableLocalTrack;
@@ -346,10 +349,7 @@ export const useMeetingMediaBridge = ({
           await localTrack.unmute();
         }
       } else {
-        await room.localParticipant.publishTrack(audioTrack, {
-          source: Track.Source.Microphone,
-          name: 'microphone',
-        } as any);
+        await room.localParticipant.publishTrack(audioTrack, crearOpcionesPublicacionTrackLiveKit('microphone'));
       }
     } else if (microphonePublication?.track) {
       const localTrack = microphonePublication.track as unknown as MeetingMutableLocalTrack;

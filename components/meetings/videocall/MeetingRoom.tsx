@@ -2,8 +2,8 @@
 
 import React from 'react';
 import { LiveKitRoom } from '@livekit/components-react';
-import { VideoPresets } from 'livekit-client';
 import '@livekit/components-styles';
+import { crearOpcionesSalaLiveKit } from '@/modules/realtime-room';
 import { getMeetingJoinDefaults } from '@/lib/userSettings';
 import { MeetingRoomContent } from './MeetingRoomContent';
 import { useMeetingAccess } from './hooks/useMeetingAccess';
@@ -130,22 +130,7 @@ export const MeetingRoom: React.FC<MeetingRoomProps> = ({
         connect={true}
         audio={false}
         video={false}
-        options={{
-          adaptiveStream: true,
-          dynacast: true,
-          publishDefaults: {
-            simulcast: true,
-            videoSimulcastLayers: [
-              VideoPresets.h180,
-              VideoPresets.h360,
-              VideoPresets.h540,
-            ],
-            videoEncoding: {
-              maxBitrate: 1_700_000,
-              maxFramerate: 24,
-            },
-          },
-        }}
+        options={crearOpcionesSalaLiveKit()}
         onConnected={handleRoomConnected}
         onDisconnected={handleRoomDisconnected}
         onError={handleLiveKitError}
