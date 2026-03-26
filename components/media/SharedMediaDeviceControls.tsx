@@ -540,20 +540,21 @@ export const SharedCameraDeviceControl: React.FC<CameraDeviceControlProps> = ({
     void onToggle();
   };
 
+  // Derive active camera device ID from the live stream for UI display.
+  // This avoids calling onSettingsChange during camera initialization which
+  // triggers notifyStateChange() and disrupts the LiveKit track publish.
+  const activeDeviceId = currentStream?.getVideoTracks()[0]?.getSettings().deviceId;
+  const effectiveSelectedCameraId = settings.selectedCameraId || activeDeviceId || '';
+
   React.useEffect(() => {
     const loadCameras = async () => {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = devices.filter((device) => device.kind === 'videoinput');
         setCameras(videoDevices);
-
-        if (!settings.selectedCameraId && videoDevices.length > 0) {
-          const currentTrack = currentStream?.getVideoTracks()[0];
-          const currentDeviceId = currentTrack?.getSettings().deviceId;
-          if (currentDeviceId) {
-            onSettingsChange({ selectedCameraId: currentDeviceId });
-          }
-        }
+        // NO auto-selection here. The effectiveSelectedCameraId derived from
+        // the active stream handles display. onSettingsChange is only called
+        // when the user explicitly picks a camera from the list.
       } catch (error) {
         console.error('Error loading cameras:', error);
       }
@@ -562,7 +563,7 @@ export const SharedCameraDeviceControl: React.FC<CameraDeviceControlProps> = ({
     if (isOpen) {
       void loadCameras();
     }
-  }, [currentStream, isOpen, onSettingsChange, settings.selectedCameraId]);
+  }, [currentStream, isOpen]);
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -642,11 +643,11 @@ export const SharedCameraDeviceControl: React.FC<CameraDeviceControlProps> = ({
                 key={camera.deviceId}
                 onClick={() => onSettingsChange({ selectedCameraId: camera.deviceId })}
                 className={`w-full text-left px-3 py-2 lg:py-1.5 rounded-lg text-sm lg:text-xs transition-colors flex items-center gap-2 ${
-                  settings.selectedCameraId === camera.deviceId ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'
+                  effectiveSelectedCameraId === camera.deviceId ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'
                 }`}
               >
-                {settings.selectedCameraId === camera.deviceId ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
-                <span className={settings.selectedCameraId !== camera.deviceId ? 'ml-2' : ''}>
+                {effectiveSelectedCameraId === camera.deviceId ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
+                <span className={effectiveSelectedCameraId !== camera.deviceId ? 'ml-2' : ''}>
                   {camera.label || `Cámara ${cameras.indexOf(camera) + 1}`}
                 </span>
               </button>
@@ -720,15 +721,20 @@ export const SharedCameraDeviceControl: React.FC<CameraDeviceControlProps> = ({
             </button>
           </div>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="hidden"
-          />
         </div>
       )}
+
+      {/* File input OUTSIDE the isOpen conditional so it persists when
+          the click-outside handler closes the menu while the native OS
+          file dialog is open. Without this, the input is destroyed and
+          the onChange never fires. */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleImageUpload}
+        className="hidden"
+      />
     </div>
   );
 };

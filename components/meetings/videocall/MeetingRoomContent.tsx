@@ -18,6 +18,59 @@ import { useMeetingMediaBridge } from './hooks/useMeetingMediaBridge';
 import { useMeetingRealtimeState } from './hooks/useMeetingRealtimeState';
 import type { MeetingRoomContentProps } from './meetingRoom.types';
 
+/**
+ * How long to wait (ms) after a new video track becomes available before mounting
+ * the background-effect pipeline. VideoWithBackground already retries internally
+ * until the track is truly playable, so this is just a small safety buffer.
+ */
+const BACKGROUND_EFFECT_INITIALIZATION_DELAY_MS = 500;
+
+const MeetingMediaStreamPreview: React.FC<{
+  stream: MediaStream | null;
+  mirror?: boolean;
+  muted?: boolean;
+  className?: string;
+}> = ({ stream, mirror = false, muted = true, className = '' }) => {
+  const videoRef = React.useRef<HTMLVideoElement | null>(null);
+
+  React.useEffect(() => {
+    const element = videoRef.current;
+    if (!element) {
+      return;
+    }
+
+    element.muted = muted;
+
+    if (!stream) {
+      element.pause();
+      element.srcObject = null;
+      return;
+    }
+
+    if (element.srcObject !== stream) {
+      element.srcObject = stream;
+    }
+
+    void element.play().catch(() => undefined);
+
+    return () => {
+      element.pause();
+      element.srcObject = null;
+    };
+  }, [muted, stream]);
+
+  return (
+    <video
+      ref={videoRef}
+      autoPlay
+      playsInline
+      muted={muted}
+      className={className}
+      style={mirror ? { transform: 'scaleX(-1)' } : undefined}
+    />
+  );
+};
+
 export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
   theme,
   isHost,
@@ -135,6 +188,36 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
 
     return validTracks.find((track) => track.participant?.identity === speakerBubbleParticipant.identity) ?? null;
   }, [speakerBubbleParticipant, validTracks]);
+  const localPreviewStream = React.useMemo(
+    () => mediaState.effectiveStream ?? mediaState.stream,
+    [mediaState.effectiveStream, mediaState.stream],
+  );
+  const remoteVideoTrackCount = React.useMemo(
+    () => videoTracks.filter((track) => track.participant?.identity && track.participant.identity !== localParticipant?.identity).length,
+    [localParticipant?.identity, videoTracks],
+  );
+  const shouldShowLocalSelfViewStage = Boolean(
+    !screenShareTrack
+    && remoteVideoTrackCount === 0
+    && mediaState.desiredCameraEnabled
+    && !cameraSettings.hideSelfView
+    && localPreviewStream?.getVideoTracks().some((track) => track.readyState === 'live')
+  );
+  const shouldRenderProcessedSelfViewStage = Boolean(
+    shouldShowLocalSelfViewStage
+    && backgroundEffectReady
+    && mediaState.stream
+    && mediaState.stream.getVideoTracks().length > 0
+    && cameraSettings.backgroundEffect !== 'none'
+  );
+  const shouldMountHiddenBackgroundPipeline = Boolean(
+    !shouldShowLocalSelfViewStage
+    && backgroundEffectReady
+    && mediaState.desiredCameraEnabled
+    && mediaState.stream
+    && mediaState.stream.getVideoTracks().length > 0
+    && cameraSettings.backgroundEffect !== 'none'
+  );
   const showRecoveryBanner = recoveryState && recoveryState.phase !== 'connected';
   const { layoutSnapshot } = useMeetingLayoutSnapshot({
     validTracks,
@@ -158,14 +241,14 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
     const currentVideoTrackId = videoTrack?.id || null;
     const hasVideoTrack = !!videoTrack;
 
-    // Only reset if video track actually changed or effect type changed
-    const videoTrackChanged = prevVideoTrackIdRef.current !== currentVideoTrackId;
+    // backgroundEffect is NOT in shouldBeReady — changing from 'none' to 'blur'
+    // should NOT unmount/remount VideoWithBackground. The component handles
+    // effectType changes internally via updateConfig() without pipeline restart.
     const shouldBeReady = !!(
       room
       && room.state === 'connected'
       && mediaState.desiredCameraEnabled
       && hasVideoTrack
-      && cameraSettings.backgroundEffect !== 'none'
     );
 
     if (!shouldBeReady) {
@@ -174,19 +257,19 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
       return;
     }
 
-    // If video track changed or we're becoming ready, set a delay
+    // Only delay when video track actually changed (camera switch)
+    const videoTrackChanged = prevVideoTrackIdRef.current !== currentVideoTrackId;
     if (videoTrackChanged || !backgroundEffectReady) {
       const timer = window.setTimeout(() => {
         setBackgroundEffectReady(true);
         prevVideoTrackIdRef.current = currentVideoTrackId;
-      }, 1800);
+      }, BACKGROUND_EFFECT_INITIALIZATION_DELAY_MS);
 
       return () => {
         window.clearTimeout(timer);
-        // Don't set ready to false here - let it stay ready until conditions truly fail
       };
     }
-  }, [cameraSettings.backgroundEffect, mediaState.desiredCameraEnabled, mediaState.stream, room, videoBackgroundKey]);
+  }, [mediaState.desiredCameraEnabled, mediaState.stream, room, videoBackgroundKey]);
 
   React.useEffect(() => {
     if (!isConnectedPopoverOpen) {
@@ -232,7 +315,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
         }
       `}</style>
 
-      {backgroundEffectReady && mediaState.desiredCameraEnabled && mediaState.stream && mediaState.stream.getVideoTracks().length > 0 && cameraSettings.backgroundEffect !== 'none' && (
+      {shouldMountHiddenBackgroundPipeline && (
         <div className="absolute h-0 w-0 overflow-hidden opacity-0 pointer-events-none" aria-hidden="true">
           <VideoWithBackground
             key={videoBackgroundKey}
@@ -344,7 +427,33 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
         </div>
       )}
 
-      <div data-tour-step="meeting-stage" className={`h-full w-full pb-24 transition-all duration-300 md:pb-20 ${showChat ? 'pr-0 md:pr-80' : ''}`}>
+      <div data-tour-step="meeting-stage" className={`relative h-full w-full pb-24 transition-all duration-300 md:pb-20 ${showChat ? 'pr-0 md:pr-80' : ''}`}>
+        {shouldShowLocalSelfViewStage && (
+          <div className="pointer-events-none absolute inset-0 z-[5] px-2 py-2 md:px-2 md:py-2">
+            <div className="relative h-full w-full overflow-hidden rounded-xl bg-zinc-900 md:rounded-2xl">
+              {shouldRenderProcessedSelfViewStage ? (
+                <VideoWithBackground
+                  key={videoBackgroundKey}
+                  stream={mediaState.stream}
+                  effectType={cameraSettings.backgroundEffect}
+                  backgroundImage={cameraSettings.backgroundImage}
+                  blurAmount={12}
+                  muted={true}
+                  className="h-full w-full object-cover"
+                  onProcessedStreamReady={setProcessedStream}
+                  mirrorVideo={cameraSettings.mirrorVideo}
+                />
+              ) : (
+                <MeetingMediaStreamPreview
+                  stream={localPreviewStream ?? null}
+                  muted={true}
+                  mirror={cameraSettings.mirrorVideo}
+                  className="h-full w-full object-cover"
+                />
+              )}
+            </div>
+          </div>
+        )}
         <VideoLayoutManager
           layoutModel={layoutSnapshot}
           optimizacion={optimizacion}

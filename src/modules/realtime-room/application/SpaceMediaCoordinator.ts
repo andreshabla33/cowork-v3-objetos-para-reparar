@@ -308,7 +308,11 @@ export class SpaceMediaCoordinator {
         await this.refreshDeviceAvailability();
         const videoTrack = videoStream.getVideoTracks()[0];
         if (videoTrack) {
-          this.stream.addTrack(videoTrack);
+          // Create a new MediaStream instead of mutating the existing one.
+          // Mutating via addTrack() keeps the same object reference, so React
+          // state comparisons see no change and syncPublishedTracks never runs
+          // to publish the newly-added video track (black screen on first enable).
+          this.stream = new MediaStream([...this.stream.getTracks(), videoTrack]);
           this.trackStates.set('video', {
             trackId: videoTrack.id,
             kind: 'video',
@@ -379,7 +383,10 @@ export class SpaceMediaCoordinator {
         await this.refreshDeviceAvailability();
         const audioTrack = audioStream.getAudioTracks()[0];
         if (audioTrack) {
-          this.stream.addTrack(audioTrack);
+          // Create a new MediaStream instead of mutating the existing one.
+          // Same rationale as toggleCamera: addTrack() mutates in place, keeping
+          // the same reference, so React does not re-run syncPublishedTracks.
+          this.stream = new MediaStream([...this.stream.getTracks(), audioTrack]);
           this.trackStates.set('audio', {
             trackId: audioTrack.id,
             kind: 'audio',
