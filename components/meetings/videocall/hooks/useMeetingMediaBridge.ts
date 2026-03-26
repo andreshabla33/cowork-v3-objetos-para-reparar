@@ -249,29 +249,63 @@ export const useMeetingMediaBridge = ({
       return false;
     }
 
-    coordinator.updateDevicePreferences({
-      selectedMicrophoneId: nextSettings.selectedMicrophoneId || null,
-      selectedSpeakerId: nextSettings.selectedSpeakerId || null,
-    });
-
     const selectedMicrophoneChanged = partial.selectedMicrophoneId !== undefined;
+    const selectedSpeakerChanged = partial.selectedSpeakerId !== undefined;
     const processingChanged = partial.noiseReduction !== undefined
       || partial.noiseReductionLevel !== undefined
       || partial.echoCancellation !== undefined
       || partial.autoGainControl !== undefined;
 
-    applyCoordinatorSettings(cameraSettings, nextSettings, processingChanged && !selectedMicrophoneChanged);
+    const activeAudioTrack = coordinator.getState().stream?.getAudioTracks()[0];
+    const activeMicrophoneId = activeAudioTrack?.getSettings().deviceId || null;
+    const microphoneActuallyChanged = selectedMicrophoneChanged
+      && (nextSettings.selectedMicrophoneId || null) !== activeMicrophoneId;
 
-    if (selectedMicrophoneChanged && coordinator.getState().desiredMicrophoneEnabled && nextSettings.selectedMicrophoneId) {
-      return coordinator.switchMicrophone(nextSettings.selectedMicrophoneId);
+    const currentSpeakerId = coordinator.getState().devicePreferences.selectedSpeakerId || null;
+    const speakerActuallyChanged = selectedSpeakerChanged
+      && (nextSettings.selectedSpeakerId || null) !== currentSpeakerId;
+
+    if (microphoneActuallyChanged || speakerActuallyChanged) {
+      coordinator.updateDevicePreferences({
+        selectedMicrophoneId: microphoneActuallyChanged ? (nextSettings.selectedMicrophoneId || null) : undefined,
+        selectedSpeakerId: speakerActuallyChanged ? (nextSettings.selectedSpeakerId || null) : undefined,
+      });
     }
 
     if (processingChanged) {
+      coordinator.updateAudioProcessingOptions({
+        noiseReduction: nextSettings.noiseReduction,
+        noiseReductionLevel: nextSettings.noiseReductionLevel === 'enhanced'
+          ? 'enhanced'
+          : nextSettings.noiseReductionLevel === 'off'
+            ? 'off'
+            : 'standard',
+        echoCancellation: nextSettings.echoCancellation,
+        autoGainControl: nextSettings.autoGainControl,
+      }, false);
+    }
+
+    if (microphoneActuallyChanged && coordinator.getState().desiredMicrophoneEnabled && nextSettings.selectedMicrophoneId) {
+      const changed = await coordinator.switchMicrophone(nextSettings.selectedMicrophoneId);
+      if (changed) {
+        await ensureProcessedAudioTrack();
+      }
+      return changed;
+    }
+
+    if (processingChanged) {
+      const currentMicrophoneId = nextSettings.selectedMicrophoneId || activeMicrophoneId;
+      if (coordinator.getState().desiredMicrophoneEnabled && currentMicrophoneId) {
+        const reapplied = await coordinator.switchMicrophone(currentMicrophoneId);
+        if (!reapplied) {
+          return false;
+        }
+      }
       await ensureProcessedAudioTrack();
     }
 
     return true;
-  }, [applyCoordinatorSettings, cameraSettings, ensureProcessedAudioTrack]);
+  }, [ensureProcessedAudioTrack]);
 
   const getPublication = useCallback((source: Track.Source) => {
     return room?.localParticipant.getTrackPublication(source) ?? null;

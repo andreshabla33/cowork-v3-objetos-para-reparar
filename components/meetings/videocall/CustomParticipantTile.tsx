@@ -27,7 +27,54 @@ interface CustomParticipantTileProps {
   className?: string;
   localMirrorVideo?: boolean;
   localVideoProcessed?: boolean;
+  localPreviewStream?: MediaStream | null;
 }
+
+const LocalPreviewRenderer: React.FC<{
+  stream: MediaStream | null;
+  muted?: boolean;
+  className?: string;
+  mirror?: boolean;
+}> = ({ stream, muted = true, className = '', mirror = false }) => {
+  const videoRef = React.useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const element = videoRef.current;
+    if (!element) {
+      return;
+    }
+
+    element.muted = muted;
+
+    if (!stream) {
+      element.pause();
+      element.srcObject = null;
+      return;
+    }
+
+    if (element.srcObject !== stream) {
+      element.srcObject = stream;
+    }
+
+    void element.play().catch(() => undefined);
+
+    return () => {
+      element.pause();
+      element.srcObject = null;
+    };
+  }, [muted, stream]);
+
+  return (
+    <video
+      ref={videoRef}
+      autoPlay
+      playsInline
+      muted={muted}
+      className={className}
+      style={mirror ? { transform: 'scaleX(-1)' } : undefined}
+    />
+  );
+};
 
 export const CustomParticipantTile: React.FC<CustomParticipantTileProps> = ({
   trackRef,
@@ -43,6 +90,7 @@ export const CustomParticipantTile: React.FC<CustomParticipantTileProps> = ({
   className = '',
   localMirrorVideo = true,
   localVideoProcessed = false,
+  localPreviewStream = null,
 }) => {
   const room = useRoomContext();
   const maybeTrackRef = useMaybeTrackRefContext();
@@ -102,6 +150,10 @@ export const CustomParticipantTile: React.FC<CustomParticipantTileProps> = ({
     && participant?.isCameraEnabled
     && !isVideoEnabled,
   );
+  const hasLocalPreviewVideo = Boolean(
+    isLocalParticipant
+    && localPreviewStream?.getVideoTracks().some((track) => track.readyState === 'live')
+  );
   const isAudioEnabled = participant?.isMicrophoneEnabled;
   const isSpeaking = participant?.isSpeaking;
   
@@ -141,7 +193,14 @@ export const CustomParticipantTile: React.FC<CustomParticipantTileProps> = ({
           onClick={handleClick}
         >
           {/* Video o Avatar */}
-          {isVideoEnabled && !disableVideo && publicationTrack ? (
+          {hasLocalPreviewVideo ? (
+            <LocalPreviewRenderer
+              stream={localPreviewStream}
+              muted={true}
+              className="w-full h-full object-cover bg-transparent"
+              mirror={localMirrorVideo && !localVideoProcessed}
+            />
+          ) : isVideoEnabled && !disableVideo && publicationTrack ? (
             <MeetingTrackRenderer
               track={publicationTrack}
               muted={isLocalParticipant}
