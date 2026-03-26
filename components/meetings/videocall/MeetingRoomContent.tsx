@@ -315,7 +315,6 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
       {shouldMountBackgroundPipeline && (
         <div className="absolute h-0 w-0 overflow-hidden opacity-0 pointer-events-none" aria-hidden="true">
           <VideoWithBackground
-            key={videoBackgroundKey}
             stream={mediaState.stream}
             effectType={cameraSettings.backgroundEffect}
             backgroundImage={cameraSettings.backgroundImage}
@@ -381,10 +380,11 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
                   trackRef={speakerBubbleTrack}
                   localMirrorVideo={cameraSettings.mirrorVideo}
                   localVideoProcessed={isLocalVideoProcessed}
+                  localPreviewStream={localPreviewStream}
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900 px-3 text-center text-sm font-semibold text-white/90">
-                  {speakerBubbleParticipant.name}
+                  Esperando video del participante activo
                 </div>
               )}
             </div>
@@ -445,13 +445,12 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
               trackRef={track}
               isPinned={track.participant?.identity === pinnedParticipantId}
               isHandRaised={Boolean(track.participant?.identity && raisedHandParticipantIds.has(track.participant.identity))}
-              onTogglePin={(participant) => {
-                void handleTogglePinnedParticipant(participant.identity);
-              }}
+              onTogglePin={(participant) => handleTogglePinnedParticipant(participant.identity ?? null)}
               onToggleRemoteMute={handleMuteRemoteParticipant}
               canModerateAudio={true}
               localMirrorVideo={cameraSettings.mirrorVideo}
               localVideoProcessed={isLocalVideoProcessed}
+              localPreviewStream={localPreviewStream}
             />
           )}
           renderScreenShare={(track) => (
