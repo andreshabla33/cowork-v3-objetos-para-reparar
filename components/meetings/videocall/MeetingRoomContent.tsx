@@ -1,5 +1,4 @@
 import React from 'react';
-import { Track } from 'livekit-client';
 import { ChatToast } from '@/components/ChatToast';
 import { VideoWithBackground } from '@/components/VideoWithBackground';
 import { RecordingDiagnosticsService, type RecordingDiagnosticsSnapshot } from '@/modules/realtime-room';
@@ -197,24 +196,27 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
     () => videoTracks.filter((track) => track.participant?.identity && track.participant.identity !== localParticipant?.identity).length,
     [localParticipant?.identity, videoTracks],
   );
-  const localCameraPublicationReady = React.useMemo(() => {
-    if (!localParticipant?.identity) {
-      return false;
-    }
-
-    return validTracks.some((track) => (
-      track.source === Track.Source.Camera
-      && track.participant?.identity === localParticipant.identity
-      && Boolean(track.publication?.track)
-    ));
-  }, [localParticipant?.identity, validTracks]);
-  const shouldShowLocalPreviewFallback = Boolean(
+  const shouldShowLocalSelfViewStage = Boolean(
     !screenShareTrack
     && remoteVideoTrackCount === 0
     && mediaState.desiredCameraEnabled
     && !cameraSettings.hideSelfView
     && localPreviewStream?.getVideoTracks().some((track) => track.readyState === 'live')
-    && !localCameraPublicationReady,
+  );
+  const shouldRenderProcessedSelfViewStage = Boolean(
+    shouldShowLocalSelfViewStage
+    && backgroundEffectReady
+    && mediaState.stream
+    && mediaState.stream.getVideoTracks().length > 0
+    && cameraSettings.backgroundEffect !== 'none'
+  );
+  const shouldMountHiddenBackgroundPipeline = Boolean(
+    !shouldShowLocalSelfViewStage
+    && backgroundEffectReady
+    && mediaState.desiredCameraEnabled
+    && mediaState.stream
+    && mediaState.stream.getVideoTracks().length > 0
+    && cameraSettings.backgroundEffect !== 'none'
   );
   const showRecoveryBanner = recoveryState && recoveryState.phase !== 'connected';
   const { layoutSnapshot } = useMeetingLayoutSnapshot({
@@ -313,7 +315,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
         }
       `}</style>
 
-      {backgroundEffectReady && mediaState.desiredCameraEnabled && mediaState.stream && mediaState.stream.getVideoTracks().length > 0 && cameraSettings.backgroundEffect !== 'none' && (
+      {shouldMountHiddenBackgroundPipeline && (
         <div className="absolute h-0 w-0 overflow-hidden opacity-0 pointer-events-none" aria-hidden="true">
           <VideoWithBackground
             key={videoBackgroundKey}
@@ -426,18 +428,29 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
       )}
 
       <div data-tour-step="meeting-stage" className={`relative h-full w-full pb-24 transition-all duration-300 md:pb-20 ${showChat ? 'pr-0 md:pr-80' : ''}`}>
-        {shouldShowLocalPreviewFallback && (
+        {shouldShowLocalSelfViewStage && (
           <div className="pointer-events-none absolute inset-0 z-[5] px-2 py-2 md:px-2 md:py-2">
             <div className="relative h-full w-full overflow-hidden rounded-xl bg-zinc-900 md:rounded-2xl">
-              <MeetingMediaStreamPreview
-                stream={localPreviewStream ?? null}
-                muted={true}
-                mirror={cameraSettings.mirrorVideo}
-                className="h-full w-full object-cover"
-              />
-              <div className="absolute bottom-3 right-3 rounded-full border border-white/10 bg-black/55 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-white/80 backdrop-blur-md md:bottom-4 md:right-4">
-                Preparando video
-              </div>
+              {shouldRenderProcessedSelfViewStage ? (
+                <VideoWithBackground
+                  key={videoBackgroundKey}
+                  stream={mediaState.stream}
+                  effectType={cameraSettings.backgroundEffect}
+                  backgroundImage={cameraSettings.backgroundImage}
+                  blurAmount={12}
+                  muted={true}
+                  className="h-full w-full object-cover"
+                  onProcessedStreamReady={setProcessedStream}
+                  mirrorVideo={cameraSettings.mirrorVideo}
+                />
+              ) : (
+                <MeetingMediaStreamPreview
+                  stream={localPreviewStream ?? null}
+                  muted={true}
+                  mirror={cameraSettings.mirrorVideo}
+                  className="h-full w-full object-cover"
+                />
+              )}
             </div>
           </div>
         )}
