@@ -1,4 +1,5 @@
 import React from 'react';
+import { Track } from 'livekit-client';
 import { ChatToast } from '@/components/ChatToast';
 import { VideoWithBackground } from '@/components/VideoWithBackground';
 import { RecordingDiagnosticsService, type RecordingDiagnosticsSnapshot } from '@/modules/realtime-room';
@@ -24,6 +25,52 @@ import type { MeetingRoomContentProps } from './meetingRoom.types';
  * until the track is truly playable, so this is just a small safety buffer.
  */
 const BACKGROUND_EFFECT_INITIALIZATION_DELAY_MS = 500;
+
+const MeetingMediaStreamPreview: React.FC<{
+  stream: MediaStream | null;
+  mirror?: boolean;
+  muted?: boolean;
+  className?: string;
+}> = ({ stream, mirror = false, muted = true, className = '' }) => {
+  const videoRef = React.useRef<HTMLVideoElement | null>(null);
+
+  React.useEffect(() => {
+    const element = videoRef.current;
+    if (!element) {
+      return;
+    }
+
+    element.muted = muted;
+
+    if (!stream) {
+      element.pause();
+      element.srcObject = null;
+      return;
+    }
+
+    if (element.srcObject !== stream) {
+      element.srcObject = stream;
+    }
+
+    void element.play().catch(() => undefined);
+
+    return () => {
+      element.pause();
+      element.srcObject = null;
+    };
+  }, [muted, stream]);
+
+  return (
+    <video
+      ref={videoRef}
+      autoPlay
+      playsInline
+      muted={muted}
+      className={className}
+      style={mirror ? { transform: 'scaleX(-1)' } : undefined}
+    />
+  );
+};
 
 export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
   theme,
@@ -142,6 +189,33 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
 
     return validTracks.find((track) => track.participant?.identity === speakerBubbleParticipant.identity) ?? null;
   }, [speakerBubbleParticipant, validTracks]);
+  const localPreviewStream = React.useMemo(
+    () => mediaState.effectiveStream ?? mediaState.stream,
+    [mediaState.effectiveStream, mediaState.stream],
+  );
+  const remoteVideoTrackCount = React.useMemo(
+    () => videoTracks.filter((track) => track.participant?.identity && track.participant.identity !== localParticipant?.identity).length,
+    [localParticipant?.identity, videoTracks],
+  );
+  const localCameraPublicationReady = React.useMemo(() => {
+    if (!localParticipant?.identity) {
+      return false;
+    }
+
+    return validTracks.some((track) => (
+      track.source === Track.Source.Camera
+      && track.participant?.identity === localParticipant.identity
+      && Boolean(track.publication?.track)
+    ));
+  }, [localParticipant?.identity, validTracks]);
+  const shouldShowLocalPreviewFallback = Boolean(
+    !screenShareTrack
+    && remoteVideoTrackCount === 0
+    && mediaState.desiredCameraEnabled
+    && !cameraSettings.hideSelfView
+    && localPreviewStream?.getVideoTracks().some((track) => track.readyState === 'live')
+    && !localCameraPublicationReady,
+  );
   const showRecoveryBanner = recoveryState && recoveryState.phase !== 'connected';
   const { layoutSnapshot } = useMeetingLayoutSnapshot({
     validTracks,
@@ -351,7 +425,22 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
         </div>
       )}
 
-      <div data-tour-step="meeting-stage" className={`h-full w-full pb-24 transition-all duration-300 md:pb-20 ${showChat ? 'pr-0 md:pr-80' : ''}`}>
+      <div data-tour-step="meeting-stage" className={`relative h-full w-full pb-24 transition-all duration-300 md:pb-20 ${showChat ? 'pr-0 md:pr-80' : ''}`}>
+        {shouldShowLocalPreviewFallback && (
+          <div className="pointer-events-none absolute inset-0 z-[5] px-2 py-2 md:px-2 md:py-2">
+            <div className="relative h-full w-full overflow-hidden rounded-xl bg-zinc-900 md:rounded-2xl">
+              <MeetingMediaStreamPreview
+                stream={localPreviewStream ?? null}
+                muted={true}
+                mirror={cameraSettings.mirrorVideo}
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute bottom-3 right-3 rounded-full border border-white/10 bg-black/55 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-white/80 backdrop-blur-md md:bottom-4 md:right-4">
+                Preparando video
+              </div>
+            </div>
+          </div>
+        )}
         <VideoLayoutManager
           layoutModel={layoutSnapshot}
           optimizacion={optimizacion}
