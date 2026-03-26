@@ -415,7 +415,12 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center">
+      <div className="fixed inset-0 flex items-center justify-center bg-[#050508] p-4">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-[-30%] left-[-20%] h-[70%] w-[70%] rounded-full bg-violet-600/15 blur-[180px] animate-pulse" />
+          <div className="absolute bottom-[-30%] right-[-20%] h-[70%] w-[70%] rounded-full bg-cyan-500/10 blur-[180px] animate-pulse" style={{ animationDelay: '1.5s' }} />
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
+        </div>
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-white/60">Cargando información de la reunión...</p>
@@ -426,8 +431,12 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
 
   if (error && !salaInfo) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 max-w-md text-center">
+      <div className="fixed inset-0 flex items-center justify-center bg-[#050508] p-4">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-[-30%] left-[-20%] h-[70%] w-[70%] rounded-full bg-violet-600/15 blur-[180px] animate-pulse" />
+          <div className="absolute bottom-[-30%] right-[-20%] h-[70%] w-[70%] rounded-full bg-cyan-500/10 blur-[180px] animate-pulse" style={{ animationDelay: '1.5s' }} />
+        </div>
+        <div className="relative max-w-md rounded-[36px] border border-white/[0.08] bg-white/[0.03] p-8 text-center shadow-2xl backdrop-blur-xl">
           <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-red-500/20 flex items-center justify-center">
             <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -449,13 +458,23 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
   const tipoInfo = getTipoInfo(salaInfo?.tipo || 'general');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 px-3 py-4 sm:px-4 sm:py-6 lg:px-6 lg:py-8">
-      <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-7xl items-center justify-center sm:min-h-[calc(100vh-3rem)] lg:min-h-[calc(100vh-4rem)]">
-        <div className="w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-xl sm:rounded-3xl">
-          <div className="grid min-h-[min(100%,780px)] grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_420px]">
+    <div className="fixed inset-0 z-[120] overflow-y-auto bg-[#050508] p-4 lg:p-3">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-30%] left-[-20%] h-[70%] w-[70%] rounded-full bg-violet-600/15 blur-[180px] animate-pulse" />
+        <div className="absolute bottom-[-30%] right-[-20%] h-[70%] w-[70%] rounded-full bg-cyan-500/10 blur-[180px] animate-pulse" style={{ animationDelay: '1.5s' }} />
+        <div className="absolute top-[40%] left-[50%] h-[40%] w-[40%] rounded-full bg-fuchsia-600/10 blur-[120px] animate-pulse" style={{ animationDelay: '3s' }} />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
+      </div>
+
+      <div className="relative z-10 mx-auto flex min-h-full w-full max-w-[1280px] items-center justify-center py-4">
+        <div className="relative w-full">
+          <div className="absolute -inset-1 rounded-[40px] bg-gradient-to-r from-violet-600/20 via-fuchsia-600/20 to-cyan-500/20 blur-xl opacity-60" />
+          <div className="relative overflow-visible rounded-[32px] border border-white/[0.08] bg-white/[0.03] shadow-2xl backdrop-blur-xl">
+            <div className="grid min-h-[640px] grid-cols-1 lg:h-[min(84vh,760px)] lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
             {/* Preview de cámara */}
-            <div className="relative flex min-h-[280px] flex-col bg-black/50 sm:min-h-[360px] lg:min-h-[620px]">
-              <div className="relative flex-1 overflow-hidden lg:min-h-0">
+            <div className="relative min-h-[320px] border-b border-white/5 lg:min-h-0 lg:border-b-0 lg:border-r lg:border-white/5">
+              <div className="absolute inset-0 overflow-hidden rounded-t-[32px] lg:rounded-l-[32px] lg:rounded-tr-none">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(124,58,237,0.12),_transparent_45%)]" />
               {cameraEnabled && !cameraSettings.hideSelfView && stream && stream.getVideoTracks().length > 0 && cameraSettings.backgroundEffect !== 'none' && (
                 <VideoWithBackground
                   stream={stream}
@@ -488,8 +507,8 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
               
               {(!cameraEnabled || cameraSettings.hideSelfView) && (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 sm:h-24 sm:w-24">
-                    <span className="text-3xl font-bold text-white sm:text-4xl">
+                  <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 via-fuchsia-600 to-cyan-500 shadow-2xl shadow-violet-600/30 sm:h-28 sm:w-28">
+                    <span className="text-3xl font-black text-white sm:text-4xl">
                       {nombre ? nombre.charAt(0).toUpperCase() : '?'}
                     </span>
                   </div>
@@ -497,8 +516,9 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
               )}
               </div>
 
-              <div className="border-t border-white/10 bg-slate-950/65 px-3 py-3 backdrop-blur-md sm:px-4">
-                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 lg:justify-start">
+              <div className="absolute inset-x-3 bottom-3 z-20 sm:inset-x-4 sm:bottom-4 lg:left-6 lg:right-6 lg:bottom-6">
+                <div className="rounded-2xl border border-white/10 bg-black/35 p-2 shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-2xl sm:p-2.5">
+                  <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 lg:justify-start">
                   <SharedAudioDeviceControl
                     isEnabled={micEnabled}
                     settings={audioSettings ?? defaultAudioSettings}
@@ -517,48 +537,51 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                     dataTourStep="lobby-camera-group"
                     showMenuToggle={true}
                   />
-                  <div className="min-w-[160px] text-center text-[11px] leading-relaxed text-white/55 sm:text-left">
-                    Ajusta cámara, micrófono y dispositivos antes de entrar.
+                  <div className="min-w-[180px] flex-1 text-center text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-400 sm:text-left">
+                    Ajusta tus dispositivos antes de entrar
+                  </div>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Formulario */}
-            <div className="flex flex-col justify-center p-5 sm:p-6 lg:p-8 xl:p-10">
+            <div className="flex flex-col justify-center bg-[rgba(23,23,42,0.55)] p-6 sm:p-7 lg:p-8 xl:p-10">
               {/* Info de la reunión */}
               <div className="mb-6 sm:mb-8">
-                <div className={`mb-4 inline-flex max-w-full items-center gap-2 rounded-full bg-gradient-to-r px-3 py-1.5 text-sm font-medium text-white ${tipoInfo.color}`}>
+                <div className={`mb-5 inline-flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-gradient-to-r px-4 py-2 text-sm font-black text-white shadow-lg ${tipoInfo.color}`}>
                   <span>{tipoInfo.icon}</span>
                   <span>{tipoInfo.label}</span>
                 </div>
-                <h1 className="mb-2 text-xl font-bold text-white sm:text-2xl lg:text-3xl">
+                <h1 className="mb-3 text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white lg:text-4xl xl:text-[2.6rem]">
                   {salaInfo?.nombre}
                 </h1>
-                <p className="text-sm text-white/60 sm:text-base">
-                  Organizado por <span className="text-white font-medium">{salaInfo?.organizador}</span>
+                <p className="text-base text-zinc-400 lg:text-lg">
+                  Organizado por <span className="font-black text-white">{salaInfo?.organizador}</span>
                 </p>
               </div>
 
               {/* Formulario de ingreso */}
-              <div className="space-y-4">
+              <div className="space-y-4 lg:space-y-5">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-white/60 mb-2">
+                  <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
                     Tu nombre *
                   </label>
-                  <input
-                    type="text"
-                    value={nombre}
-                    onChange={(e) => setNombre(e.target.value)}
-                    placeholder="Ingresa tu nombre"
-                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/30 transition-all focus:border-indigo-500/50 focus:outline-none"
-                    disabled={joining}
-                  />
+                  <div className="relative group">
+                    <input
+                      type="text"
+                      value={nombre}
+                      onChange={(e) => setNombre(e.target.value)}
+                      placeholder="Ingresa tu nombre"
+                      className="w-full rounded-xl border border-white/5 bg-black/40 px-4 py-3.5 text-sm text-white placeholder:text-zinc-700 transition-all focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
+                      disabled={joining}
+                    />
+                  </div>
                 </div>
 
                 {!tokenInvitacion && (
                   <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-white/60 mb-2">
+                    <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
                       Email (opcional)
                     </label>
                     <input
@@ -566,7 +589,7 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="tu@email.com"
-                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/30 transition-all focus:border-indigo-500/50 focus:outline-none"
+                      className="w-full rounded-xl border border-white/5 bg-black/40 px-4 py-3.5 text-sm text-white placeholder:text-zinc-700 transition-all focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                       disabled={joining}
                     />
                   </div>
@@ -609,20 +632,21 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                 <button
                   onClick={handleJoin}
                   disabled={joining || !nombre.trim()}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 py-4 font-bold text-white transition-all hover:from-indigo-500 hover:to-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500 px-5 py-4 text-xs font-black uppercase tracking-[0.15em] text-white shadow-2xl shadow-violet-600/30 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                 >
+                  <span className="absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400 opacity-0 transition-opacity duration-300 hover:opacity-100" />
                   {joining ? (
-                    <>
+                    <span className="relative flex items-center gap-2">
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       Conectando...
-                    </>
+                    </span>
                   ) : (
-                    <>
+                    <span className="relative flex items-center gap-2">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
                       {joinButtonLabel}
-                    </>
+                    </span>
                   )}
                 </button>
 
@@ -640,11 +664,12 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
               </div>
 
               {/* Footer */}
-              <p className="mt-6 text-center text-xs leading-relaxed text-white/40 sm:mt-8">
+              <p className="mt-6 text-center text-xs font-bold leading-relaxed text-zinc-500 sm:mt-8">
                 Al unirte aceptas compartir tu audio y video con los participantes
               </p>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>
