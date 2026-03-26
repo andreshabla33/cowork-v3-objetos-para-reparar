@@ -217,7 +217,13 @@ export const useMeetingMediaBridge = ({
     if (partial.selectedCameraId !== undefined) {
       coordinator.updateDevicePreferences({ selectedCameraId: nextSettings.selectedCameraId || null });
       if (coordinator.getState().desiredCameraEnabled && nextSettings.selectedCameraId) {
-        return coordinator.switchCamera(nextSettings.selectedCameraId);
+        // Only switch if the camera actually changed to avoid unnecessary track replacement
+        // (which would cause VideoWithBackground to remount and briefly show a black screen)
+        const activeVideoTrack = coordinator.getState().stream?.getVideoTracks()[0];
+        const activeDeviceId = activeVideoTrack?.getSettings().deviceId;
+        if (nextSettings.selectedCameraId !== activeDeviceId) {
+          return coordinator.switchCamera(nextSettings.selectedCameraId);
+        }
       }
     }
 

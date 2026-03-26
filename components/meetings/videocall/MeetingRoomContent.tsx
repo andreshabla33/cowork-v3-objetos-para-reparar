@@ -18,6 +18,13 @@ import { useMeetingMediaBridge } from './hooks/useMeetingMediaBridge';
 import { useMeetingRealtimeState } from './hooks/useMeetingRealtimeState';
 import type { MeetingRoomContentProps } from './meetingRoom.types';
 
+/**
+ * How long to wait (ms) after a new video track becomes available before mounting
+ * the background-effect pipeline. VideoWithBackground already retries internally
+ * until the track is truly playable, so this is just a small safety buffer.
+ */
+const BACKGROUND_EFFECT_INITIALIZATION_DELAY_MS = 500;
+
 export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
   theme,
   isHost,
@@ -179,7 +186,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
       const timer = window.setTimeout(() => {
         setBackgroundEffectReady(true);
         prevVideoTrackIdRef.current = currentVideoTrackId;
-      }, 1800);
+      }, BACKGROUND_EFFECT_INITIALIZATION_DELAY_MS);
 
       return () => {
         window.clearTimeout(timer);

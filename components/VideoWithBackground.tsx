@@ -15,6 +15,14 @@ export type BackgroundEffectType = 'none' | 'blur' | 'image';
 const TARGET_FPS = 15;
 const FRAME_INTERVAL_MS = 1000 / TARGET_FPS;
 
+/**
+ * Grace period (ms) between notifying the parent that the canvas stream is gone
+ * and actually stopping the canvas stream tracks.
+ * This gives LiveKit's replaceTrack() time to swap in the raw video track before
+ * the canvas-captured track ends, preventing a black-screen flash.
+ */
+const TRACK_REPLACEMENT_GRACE_PERIOD_MS = 500;
+
 interface VideoWithBackgroundProps {
   stream: MediaStream | null;
   effectType: BackgroundEffectType;
@@ -314,6 +322,13 @@ export const VideoWithBackground = memo(({
         timerRef.current = null;
       }
 
+      // Notify parent FIRST so it can start replacing the LiveKit track before
+      // the canvas stream tracks are stopped. This prevents the black screen that
+      // occurs when the canvas track ends before LiveKit's replaceTrack completes.
+      const streamToStop = processedStreamRef.current;
+      processedStreamRef.current = null;
+      onProcessedStreamReady?.(null);
+
       segmenterRef.current?.dispose();
       segmenterRef.current = null;
 
@@ -327,11 +342,14 @@ export const VideoWithBackground = memo(({
       }
       outputCanvasRef.current = null;
 
-      if (processedStreamRef.current) {
-        processedStreamRef.current.getTracks().forEach(t => t.stop());
-        processedStreamRef.current = null;
+      // Stop canvas stream tracks after a short delay to allow LiveKit's replaceTrack
+      // to complete. The canvas will show its last rendered frame during this window.
+      if (streamToStop) {
+        window.setTimeout(() => {
+          streamToStop.getTracks().forEach(t => t.stop());
+        }, TRACK_REPLACEMENT_GRACE_PERIOD_MS);
       }
-      onProcessedStreamReady?.(null);
+
       setIsInitialized(false);
     };
   }, [streamSignature, effectType]); // Only re-init when video tracks or effect type change
