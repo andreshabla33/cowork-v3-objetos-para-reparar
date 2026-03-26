@@ -178,18 +178,33 @@ export const VideoWithBackground = memo(({
 
     const init = async () => {
       const video = videoRef.current;
-      if (!video) return;
+      if (!video) {
+        console.log('[VideoWithBackground] No video element, retrying in 100ms...');
+        setTimeout(init, 100);
+        return;
+      }
 
-      // Wait for video dimensions
-      await new Promise<void>((resolve) => {
-        if (video.videoWidth > 0) {
-          resolve();
-        } else {
-          video.onloadedmetadata = () => resolve();
-        }
-      });
+      // Wait for video to have stream and be playing
+      if (!video.srcObject) {
+        console.log('[VideoWithBackground] Video has no srcObject, retrying in 100ms...');
+        setTimeout(init, 100);
+        return;
+      }
+
+      // Wait for video dimensions with timeout
+      let attempts = 0;
+      const maxAttempts = 50; // 5 seconds max
+      while (video.videoWidth === 0 && attempts < maxAttempts && mounted) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
 
       if (!mounted) return;
+
+      if (video.videoWidth === 0) {
+        console.error('[VideoWithBackground] Video dimensions not available after timeout');
+        return;
+      }
 
       const w = video.videoWidth || 1280;
       const h = video.videoHeight || 720;
@@ -288,12 +303,11 @@ export const VideoWithBackground = memo(({
       }
     };
 
-    // Small delay to ensure video is ready
-    const timeout = setTimeout(init, 300);
+    // Start initialization immediately
+    void init();
 
     return () => {
       mounted = false;
-      clearTimeout(timeout);
 
       if (timerRef.current) {
         clearInterval(timerRef.current);

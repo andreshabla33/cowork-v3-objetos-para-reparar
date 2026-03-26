@@ -444,6 +444,7 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                   blurAmount={12}
                   muted={true}
                   className="w-full h-full object-cover"
+                  onProcessedStreamReady={setProcessedStream}
                   mirrorVideo={cameraSettings.mirrorVideo}
                 />
               )}

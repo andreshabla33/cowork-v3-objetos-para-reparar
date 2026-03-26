@@ -228,6 +228,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
             blurAmount={12}
             muted={true}
             className="w-full h-full object-cover"
+            onProcessedStreamReady={setProcessedStream}
             mirrorVideo={cameraSettings.mirrorVideo}
           />
         </div>
