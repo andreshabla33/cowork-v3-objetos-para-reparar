@@ -46,6 +46,8 @@ export const SharedAudioSettingsPanel: React.FC<SharedAudioSettingsPanelProps> =
 }) => {
   const [microphones, setMicrophones] = React.useState<MediaDeviceInfo[]>([]);
   const [speakers, setSpeakers] = React.useState<MediaDeviceInfo[]>([]);
+  const activeMicrophoneId = currentStream?.getAudioTracks()[0]?.getSettings().deviceId;
+  const effectiveSelectedMicrophoneId = settings.selectedMicrophoneId || activeMicrophoneId || '';
 
   React.useEffect(() => {
     const loadAudioDevices = async () => {
@@ -55,14 +57,6 @@ export const SharedAudioSettingsPanel: React.FC<SharedAudioSettingsPanelProps> =
         const audioOutputs = devices.filter((device) => device.kind === 'audiooutput');
         setMicrophones(audioInputs);
         setSpeakers(audioOutputs);
-
-        if (!settings.selectedMicrophoneId && audioInputs.length > 0) {
-          const currentTrack = currentStream?.getAudioTracks()[0];
-          const currentDeviceId = currentTrack?.getSettings().deviceId;
-          if (currentDeviceId) {
-            onSettingsChange({ selectedMicrophoneId: currentDeviceId });
-          }
-        }
       } catch (error) {
         console.error('Error loading audio devices:', error);
       }
@@ -73,7 +67,7 @@ export const SharedAudioSettingsPanel: React.FC<SharedAudioSettingsPanelProps> =
     return () => {
       navigator.mediaDevices?.removeEventListener?.('devicechange', loadAudioDevices);
     };
-  }, [currentStream, onSettingsChange, settings.selectedMicrophoneId]);
+  }, [currentStream]);
 
   return (
     <div className="space-y-3">
@@ -84,11 +78,11 @@ export const SharedAudioSettingsPanel: React.FC<SharedAudioSettingsPanelProps> =
             key={mic.deviceId}
             onClick={() => onSettingsChange({ selectedMicrophoneId: mic.deviceId })}
             className={`w-full flex items-center gap-3 px-3 py-2 lg:py-1.5 rounded-lg text-sm lg:text-xs transition-colors ${
-              settings.selectedMicrophoneId === mic.deviceId ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5'
+              effectiveSelectedMicrophoneId === mic.deviceId ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5'
             }`}
           >
-            {settings.selectedMicrophoneId === mic.deviceId ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
-            <span className={`truncate ${settings.selectedMicrophoneId !== mic.deviceId ? 'ml-3' : ''}`}>
+            {effectiveSelectedMicrophoneId === mic.deviceId ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
+            <span className={`truncate ${effectiveSelectedMicrophoneId !== mic.deviceId ? 'ml-3' : ''}`}>
               {mic.label || `Micrófono ${mic.deviceId.slice(0, 8)}`}
             </span>
           </button>
@@ -176,6 +170,8 @@ export const SharedCameraSettingsPanel: React.FC<SharedCameraSettingsPanelProps>
 }) => {
   const [cameras, setCameras] = React.useState<MediaDeviceInfo[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const activeCameraId = currentStream?.getVideoTracks()[0]?.getSettings().deviceId;
+  const effectiveSelectedCameraId = settings.selectedCameraId || activeCameraId || '';
 
   React.useEffect(() => {
     const loadCameras = async () => {
@@ -183,14 +179,6 @@ export const SharedCameraSettingsPanel: React.FC<SharedCameraSettingsPanelProps>
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = devices.filter((device) => device.kind === 'videoinput');
         setCameras(videoDevices);
-
-        if (!settings.selectedCameraId && videoDevices.length > 0) {
-          const currentTrack = currentStream?.getVideoTracks()[0];
-          const currentDeviceId = currentTrack?.getSettings().deviceId;
-          if (currentDeviceId) {
-            onSettingsChange({ selectedCameraId: currentDeviceId });
-          }
-        }
       } catch (error) {
         console.error('Error loading cameras:', error);
       }
@@ -201,7 +189,7 @@ export const SharedCameraSettingsPanel: React.FC<SharedCameraSettingsPanelProps>
     return () => {
       navigator.mediaDevices?.removeEventListener?.('devicechange', loadCameras);
     };
-  }, [currentStream, onSettingsChange, settings.selectedCameraId]);
+  }, [currentStream]);
 
   const handleImageUpload = React.useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -228,11 +216,11 @@ export const SharedCameraSettingsPanel: React.FC<SharedCameraSettingsPanelProps>
             key={camera.deviceId}
             onClick={() => onSettingsChange({ selectedCameraId: camera.deviceId })}
             className={`w-full text-left px-3 py-2 lg:py-1.5 rounded-lg text-sm lg:text-xs transition-colors flex items-center gap-2 ${
-              settings.selectedCameraId === camera.deviceId ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'
+              effectiveSelectedCameraId === camera.deviceId ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'
             }`}
           >
-            {settings.selectedCameraId === camera.deviceId ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
-            <span className={settings.selectedCameraId !== camera.deviceId ? 'ml-2' : ''}>
+            {effectiveSelectedCameraId === camera.deviceId ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
+            <span className={effectiveSelectedCameraId !== camera.deviceId ? 'ml-2' : ''}>
               {camera.label || `Cámara ${cameras.indexOf(camera) + 1}`}
             </span>
           </button>
@@ -330,6 +318,8 @@ export const SharedAudioDeviceControl: React.FC<AudioDeviceControlProps> = ({
   const [microphones, setMicrophones] = React.useState<MediaDeviceInfo[]>([]);
   const [speakers, setSpeakers] = React.useState<MediaDeviceInfo[]>([]);
   const menuRef = React.useRef<HTMLDivElement | null>(null);
+  const activeMicrophoneId = currentStream?.getAudioTracks()[0]?.getSettings().deviceId;
+  const effectiveSelectedMicrophoneId = settings.selectedMicrophoneId || activeMicrophoneId || '';
 
   // Optimistic UI internal state para evitar percepción de lag al hacer clic
   const [optimisticEnabled, setOptimisticEnabled] = React.useState(isEnabled);
@@ -348,14 +338,6 @@ export const SharedAudioDeviceControl: React.FC<AudioDeviceControlProps> = ({
         const audioOutputs = devices.filter((device) => device.kind === 'audiooutput');
         setMicrophones(audioInputs);
         setSpeakers(audioOutputs);
-
-        if (!settings.selectedMicrophoneId && audioInputs.length > 0) {
-          const currentTrack = currentStream?.getAudioTracks()[0];
-          const currentDeviceId = currentTrack?.getSettings().deviceId;
-          if (currentDeviceId) {
-            onSettingsChange({ selectedMicrophoneId: currentDeviceId });
-          }
-        }
       } catch (error) {
         console.error('Error loading audio devices:', error);
       }
@@ -364,7 +346,7 @@ export const SharedAudioDeviceControl: React.FC<AudioDeviceControlProps> = ({
     if (isOpen) {
       void loadAudioDevices();
     }
-  }, [currentStream, isOpen, onSettingsChange, settings.selectedMicrophoneId]);
+  }, [currentStream, isOpen]);
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -429,11 +411,11 @@ export const SharedAudioDeviceControl: React.FC<AudioDeviceControlProps> = ({
                   key={mic.deviceId}
                   onClick={() => onSettingsChange({ selectedMicrophoneId: mic.deviceId })}
                   className={`w-full flex items-center gap-3 px-3 py-2 lg:py-1.5 rounded-lg text-sm lg:text-xs transition-colors ${
-                    settings.selectedMicrophoneId === mic.deviceId ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5'
+                    effectiveSelectedMicrophoneId === mic.deviceId ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5'
                   }`}
                 >
-                  {settings.selectedMicrophoneId === mic.deviceId ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
-                  <span className={`truncate ${settings.selectedMicrophoneId !== mic.deviceId ? 'ml-3' : ''}`}>
+                  {effectiveSelectedMicrophoneId === mic.deviceId ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
+                  <span className={`truncate ${effectiveSelectedMicrophoneId !== mic.deviceId ? 'ml-3' : ''}`}>
                     {mic.label || `Micrófono ${mic.deviceId.slice(0, 8)}`}
                   </span>
                 </button>

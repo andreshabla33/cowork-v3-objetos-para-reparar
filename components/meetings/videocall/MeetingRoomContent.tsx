@@ -188,9 +188,20 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
 
     return validTracks.find((track) => track.participant?.identity === speakerBubbleParticipant.identity) ?? null;
   }, [speakerBubbleParticipant, validTracks]);
+  const shouldMountBackgroundPipeline = Boolean(
+    backgroundEffectReady
+    && mediaState.desiredCameraEnabled
+    && mediaState.stream
+    && mediaState.stream.getVideoTracks().length > 0
+    && cameraSettings.backgroundEffect !== 'none'
+  );
   const localPreviewStream = React.useMemo(
-    () => mediaState.effectiveStream ?? mediaState.stream,
-    [mediaState.effectiveStream, mediaState.stream],
+    () => (shouldMountBackgroundPipeline ? mediaState.processedStream ?? mediaState.stream : mediaState.stream),
+    [mediaState.processedStream, mediaState.stream, shouldMountBackgroundPipeline],
+  );
+  const localPreviewMirror = React.useMemo(
+    () => cameraSettings.mirrorVideo && (!shouldMountBackgroundPipeline || !mediaState.processedStream),
+    [cameraSettings.mirrorVideo, mediaState.processedStream, shouldMountBackgroundPipeline],
   );
   const remoteVideoTrackCount = React.useMemo(
     () => videoTracks.filter((track) => track.participant?.identity && track.participant.identity !== localParticipant?.identity).length,
@@ -201,22 +212,8 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
     && remoteVideoTrackCount === 0
     && mediaState.desiredCameraEnabled
     && !cameraSettings.hideSelfView
-    && localPreviewStream?.getVideoTracks().some((track) => track.readyState === 'live')
-  );
-  const shouldRenderProcessedSelfViewStage = Boolean(
-    shouldShowLocalSelfViewStage
-    && backgroundEffectReady
     && mediaState.stream
     && mediaState.stream.getVideoTracks().length > 0
-    && cameraSettings.backgroundEffect !== 'none'
-  );
-  const shouldMountHiddenBackgroundPipeline = Boolean(
-    !shouldShowLocalSelfViewStage
-    && backgroundEffectReady
-    && mediaState.desiredCameraEnabled
-    && mediaState.stream
-    && mediaState.stream.getVideoTracks().length > 0
-    && cameraSettings.backgroundEffect !== 'none'
   );
   const showRecoveryBanner = recoveryState && recoveryState.phase !== 'connected';
   const { layoutSnapshot } = useMeetingLayoutSnapshot({
@@ -315,7 +312,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
         }
       `}</style>
 
-      {shouldMountHiddenBackgroundPipeline && (
+      {shouldMountBackgroundPipeline && (
         <div className="absolute h-0 w-0 overflow-hidden opacity-0 pointer-events-none" aria-hidden="true">
           <VideoWithBackground
             key={videoBackgroundKey}
@@ -431,26 +428,12 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
         {shouldShowLocalSelfViewStage && (
           <div className="pointer-events-none absolute inset-0 z-[5] px-2 py-2 md:px-2 md:py-2">
             <div className="relative h-full w-full overflow-hidden rounded-xl bg-zinc-900 md:rounded-2xl">
-              {shouldRenderProcessedSelfViewStage ? (
-                <VideoWithBackground
-                  key={videoBackgroundKey}
-                  stream={mediaState.stream}
-                  effectType={cameraSettings.backgroundEffect}
-                  backgroundImage={cameraSettings.backgroundImage}
-                  blurAmount={12}
-                  muted={true}
-                  className="h-full w-full object-cover"
-                  onProcessedStreamReady={setProcessedStream}
-                  mirrorVideo={cameraSettings.mirrorVideo}
-                />
-              ) : (
-                <MeetingMediaStreamPreview
-                  stream={localPreviewStream ?? null}
-                  muted={true}
-                  mirror={cameraSettings.mirrorVideo}
-                  className="h-full w-full object-cover"
-                />
-              )}
+              <MeetingMediaStreamPreview
+                stream={localPreviewStream ?? null}
+                muted={true}
+                mirror={localPreviewMirror}
+                className="h-full w-full object-cover"
+              />
             </div>
           </div>
         )}
