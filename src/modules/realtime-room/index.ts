@@ -57,6 +57,14 @@ export { ViewportFitPolicy } from './application/ViewportFitPolicy';
 export type { ViewportFitInput, VisualLayoutMode } from './application/ViewportFitPolicy';
 export { TrackPublicationCoordinator } from './application/TrackPublicationCoordinator';
 export type { TrackPublicationAction, TrackPublicationCoordinatorInput, TrackPublicationPlan, TrackPublicationPlanItem, TrackPublicationSource } from './application/TrackPublicationCoordinator';
+export {
+  CAPAS_SIMULCAST_VIDEO_LIVEKIT,
+  CODIFICACION_SCREEN_SHARE_LIVEKIT,
+  CODIFICACION_VIDEO_CAMARA_LIVEKIT,
+  crearOpcionesPublicacionTrackLiveKit,
+  crearOpcionesSalaLiveKit,
+  obtenerSiguienteDelayReconexionLiveKitMs,
+} from './application/PoliticaTransporteLiveKit';
 export { RemoteTrackAttachmentPolicy } from './application/RemoteTrackAttachmentPolicy';
 export type { RemoteTrackAttachmentAction, RemoteTrackAttachmentDecision, RemoteTrackAttachmentSlot, RemoteTrackAttachmentState } from './application/RemoteTrackAttachmentPolicy';
 export { RemoteRenderLifecyclePolicy } from './application/RemoteRenderLifecyclePolicy';

@@ -3,7 +3,7 @@
  * Extracted from useLiveKit logic to provide clean separation of concerns
  */
 
-import { Room, RoomEvent, Track, TrackPublication, RemoteParticipant, LocalTrack, LocalTrackPublication, VideoPresets } from 'livekit-client';
+import { Room, RoomEvent, Track, TrackPublication, RemoteParticipant, LocalTrack, LocalTrackPublication } from 'livekit-client';
 import {
   PreflightError,
   DataPacketContract,
@@ -19,6 +19,7 @@ import {
   createRecordingStatusDataPacket,
 } from '../domain/types';
 import { RealtimeEventBus } from './RealtimeEventBus';
+import { crearOpcionesPublicacionTrackLiveKit, crearOpcionesSalaLiveKit } from './PoliticaTransporteLiveKit';
 
 export interface SpaceRealtimeCoordinatorOptions {
   serverUrl: string;
@@ -72,30 +73,7 @@ export class SpaceRealtimeCoordinator {
         return true;
       }
 
-      // Create room with adaptive configuration
-      this.room = new Room({
-        dynacast: true,
-        reconnectPolicy: {
-          nextRetryDelayInMs: (ctx) => ctx.retryCount > 5 ? null : Math.min(1000 * Math.pow(2, ctx.retryCount), 16000),
-        },
-        publishDefaults: {
-          simulcast: true,
-          videoSimulcastLayers: [VideoPresets.h180, VideoPresets.h360, VideoPresets.h540],
-          screenShareSimulcastLayers: [],
-          videoEncoding: {
-            maxBitrate: 1_700_000,
-            maxFramerate: 24,
-          },
-          screenShareEncoding: {
-            maxBitrate: 2_000_000,
-            maxFramerate: 12,
-          },
-        },
-        adaptiveStream: { pixelDensity: 'screen' },
-        videoCaptureDefaults: {
-          resolution: VideoPresets.h720.resolution,
-        },
-      });
+      this.room = new Room(crearOpcionesSalaLiveKit());
 
       // Setup event handlers
       this.setupEventHandlers();
@@ -158,29 +136,7 @@ export class SpaceRealtimeCoordinator {
     }
 
     try {
-      const trackSource = source === 'camera' ? Track.Source.Camera
-        : source === 'microphone' ? Track.Source.Microphone
-        : Track.Source.ScreenShare;
-
-      const publishOptions: Record<string, unknown> = {
-        source: trackSource,
-        name: source,
-      };
-
-      if (source === 'camera') {
-        publishOptions.simulcast = true;
-        publishOptions.videoEncoding = {
-          maxBitrate: 1_700_000,
-          maxFramerate: 24,
-        };
-      } else if (source === 'screen_share') {
-        publishOptions.simulcast = false;
-        publishOptions.videoEncoding = {
-          maxBitrate: 2_000_000,
-          maxFramerate: 12,
-        };
-        publishOptions.scalabilityMode = 'L1T3';
-      }
+      const publishOptions = crearOpcionesPublicacionTrackLiveKit(source);
 
       const publication = await this.room.localParticipant.publishTrack(track, publishOptions);
 
