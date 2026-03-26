@@ -165,14 +165,14 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
     const currentVideoTrackId = videoTrack?.id || null;
     const hasVideoTrack = !!videoTrack;
 
-    // Only reset if video track actually changed or effect type changed
-    const videoTrackChanged = prevVideoTrackIdRef.current !== currentVideoTrackId;
+    // backgroundEffect is NOT in shouldBeReady — changing from 'none' to 'blur'
+    // should NOT unmount/remount VideoWithBackground. The component handles
+    // effectType changes internally via updateConfig() without pipeline restart.
     const shouldBeReady = !!(
       room
       && room.state === 'connected'
       && mediaState.desiredCameraEnabled
       && hasVideoTrack
-      && cameraSettings.backgroundEffect !== 'none'
     );
 
     if (!shouldBeReady) {
@@ -181,7 +181,8 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
       return;
     }
 
-    // If video track changed or we're becoming ready, set a delay
+    // Only delay when video track actually changed (camera switch)
+    const videoTrackChanged = prevVideoTrackIdRef.current !== currentVideoTrackId;
     if (videoTrackChanged || !backgroundEffectReady) {
       const timer = window.setTimeout(() => {
         setBackgroundEffectReady(true);
@@ -190,10 +191,9 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
 
       return () => {
         window.clearTimeout(timer);
-        // Don't set ready to false here - let it stay ready until conditions truly fail
       };
     }
-  }, [cameraSettings.backgroundEffect, mediaState.desiredCameraEnabled, mediaState.stream, room, videoBackgroundKey]);
+  }, [mediaState.desiredCameraEnabled, mediaState.stream, room, videoBackgroundKey]);
 
   React.useEffect(() => {
     if (!isConnectedPopoverOpen) {

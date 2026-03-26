@@ -48,8 +48,8 @@ function supportsWebGL(): boolean {
 }
 
 /**
- * VideoWithBackground — Clean Architecture Refactor
- * ═══════════════════════════════════════════════════
+ * VideoWithBackground — Clean Architecture Refactor v2
+ * ═══════════════════════════════════════════════════════
  * 
  * Architecture:
  *   [VideoWithBackground] → depends on → [IBackgroundSegmenter] (port)
@@ -59,9 +59,11 @@ function supportsWebGL(): boolean {
  *   - MediaPipeSegmenterAdapter (GPU-accelerated, 25% resolution inference)
  *   - WebGLBackgroundCompositor (single-pass shader blur) or Canvas2DBackgroundCompositor (fallback)
  * 
- * Performance Budget (per frame at 1280×720):
- *   Before: Segmentation ~70ms (CPU) + Blur ~25ms (Canvas2D) = ~95ms → 10 FPS max
- *   After:  Segmentation ~8ms (GPU@25%) + Blur ~2ms (WebGL) = ~10ms → 100 FPS headroom
+ * Bug fixes v2 (Mar 2026):
+ *   1. Pipeline NO se destruye al cambiar effectType → solo updateConfig()
+ *   2. onProcessedStreamReady se llama DESPUÉS del primer frame renderizado
+ *   3. effectType removido de las dependencias del useEffect de pipeline
+ *      para evitar destroy/recreate innecesario que causa pantalla negra
  */
 export const VideoWithBackground = memo(({
   stream,
@@ -79,15 +81,23 @@ export const VideoWithBackground = memo(({
   const compositorRef = useRef<IBackgroundCompositor | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const processingRef = useRef(false);
+  const firstFrameNotifiedRef = useRef(false);
+  const canvasStreamRef = useRef<MediaStream | null>(null);
+  const onProcessedStreamReadyRef = useRef(onProcessedStreamReady);
+  onProcessedStreamReadyRef.current = onProcessedStreamReady;
+  const effectTypeRef = useRef(effectType);
+  effectTypeRef.current = effectType;
+  const blurAmountRef = useRef(blurAmount);
+  blurAmountRef.current = blurAmount;
+  const mirrorVideoRef = useRef(mirrorVideo);
+  mirrorVideoRef.current = mirrorVideo;
   const [isInitialized, setIsInitialized] = useState(false);
   const [showCanvas, setShowCanvas] = useState(false);
 
   // ─── Stable stream signature — only video tracks matter for background effects ─
-  // Audio track changes (mic toggle) should NOT trigger reinitialization
   const streamSignature = useMemo(() => {
     if (!stream) return null;
     const videoTracks = stream.getVideoTracks();
-    // Only track video track IDs - audio changes shouldn't restart the pipeline
     const trackIds = videoTracks
       .map(t => `${t.id}:${t.enabled}:${t.readyState}:${t.muted}`)
       .join('|');
@@ -96,7 +106,6 @@ export const VideoWithBackground = memo(({
     return signature;
   }, [stream]);
 
-  // Compose canvas ref for React rendering (we need a ref to get DOM element)
   const outputCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -123,7 +132,7 @@ export const VideoWithBackground = memo(({
     img.src = backgroundImage;
   }, [backgroundImage, effectType]);
 
-  // ─── Update compositor config on prop changes ──────────────────────
+  // ─── Update compositor config on prop changes (NO pipeline restart) ─
   useEffect(() => {
     if (!compositorRef.current?.isReady) return;
     compositorRef.current.updateConfig({
@@ -131,31 +140,41 @@ export const VideoWithBackground = memo(({
       blurRadius: blurAmount,
       mirror: mirrorVideo,
     });
+    console.log('[BG-FX] Config updated (no pipeline restart):', { effectType, blurAmount, mirrorVideo });
   }, [effectType, blurAmount, mirrorVideo]);
 
-  // ─── Main pipeline ─────────────────────────────────────────────────
+  // ─── Main pipeline — processes one frame and defers stream notification ─
   const processFrame = useCallback(() => {
     if (processingRef.current) return;
     const video = videoRef.current;
     const segmenter = segmenterRef.current;
     const compositor = compositorRef.current;
     if (!video || !segmenter?.isReady || !compositor?.isReady) return;
-    if (video.readyState < 2) return; // Not enough data
+    if (video.readyState < 2) return;
 
     processingRef.current = true;
 
     try {
       const timestampMs = performance.now();
 
-      // Step 1: Segment (GPU-accelerated, downscaled to 25% resolution)
       const mask = segmenter.segment(video, timestampMs);
       if (!mask) {
         processingRef.current = false;
         return;
       }
 
-      // Step 2: Composite (WebGL single-pass shader or Canvas2D fallback)
       compositor.composite(video, mask.data, mask.width, mask.height);
+
+      // ─── Defer processed stream notification until first frame is rendered ─
+      // This prevents LiveKit from receiving an empty/black canvas track.
+      // Industry best practice: Google Meet / Zoom wait for the first composited
+      // frame before swapping the published track.
+      if (!firstFrameNotifiedRef.current && canvasStreamRef.current) {
+        firstFrameNotifiedRef.current = true;
+        processedStreamRef.current = canvasStreamRef.current;
+        onProcessedStreamReadyRef.current?.(canvasStreamRef.current);
+        console.log('[BG-FX] First frame rendered, notifying parent with processed stream');
+      }
     } catch {
       // Individual frame errors are expected during camera transitions
     }
@@ -163,20 +182,21 @@ export const VideoWithBackground = memo(({
     processingRef.current = false;
   }, []);
 
-  // ─── Initialize pipeline ───────────────────────────────────────────
+  // ─── Lifecycle logging ──────────────────────────────────────────────
   useEffect(() => {
     console.log('[VideoWithBackground] COMPONENT MOUNTED');
-    
     return () => {
       console.log('[VideoWithBackground] COMPONENT UNMOUNTED');
     };
   }, []);
 
-  // ─── Initialize pipeline ───────────────────────────────────────────
+  // ─── Initialize pipeline (depends ONLY on stream, NOT effectType) ──
+  // effectType changes are handled by updateConfig above without destroying
+  // the pipeline. This eliminates the black screen flash when switching effects.
   useEffect(() => {
-    console.log('[VideoWithBackground] INIT useEffect triggered, streamSignature:', streamSignature?.substring(0, 50), 'effectType:', effectType);
-    if (!stream || effectType === 'none') {
-      console.log('[VideoWithBackground] Early return - no stream or effectType is none');
+    console.log('[VideoWithBackground] INIT useEffect triggered, streamSignature:', streamSignature?.substring(0, 50));
+    if (!stream) {
+      console.log('[VideoWithBackground] Early return - no stream');
       setShowCanvas(false);
       setIsInitialized(false);
       return;
@@ -187,21 +207,19 @@ export const VideoWithBackground = memo(({
     const init = async () => {
       const video = videoRef.current;
       if (!video) {
-        console.log('[VideoWithBackground] No video element, retrying in 100ms...');
-        setTimeout(init, 100);
+        if (mounted) setTimeout(init, 100);
         return;
       }
 
-      // Wait for video to have stream and be playing
       if (!video.srcObject) {
         console.log('[VideoWithBackground] Video has no srcObject, retrying in 100ms...');
-        setTimeout(init, 100);
+        if (mounted) setTimeout(init, 100);
         return;
       }
 
       // Wait for video dimensions with timeout
       let attempts = 0;
-      const maxAttempts = 50; // 5 seconds max
+      const maxAttempts = 50;
       while (video.videoWidth === 0 && attempts < maxAttempts && mounted) {
         await new Promise(resolve => setTimeout(resolve, 100));
         attempts++;
@@ -218,11 +236,10 @@ export const VideoWithBackground = memo(({
       const h = video.videoHeight || 720;
 
       // ─── Inject Infrastructure (Dependency Injection) ───────────
-      // 1. Segmenter: MediaPipe with GPU + downscaling
       const segmenter = new MediaPipeSegmenterAdapter();
       await segmenter.initialize({
         preferGPU: true,
-        inferenceScale: 0.25, // Process ML at 25% resolution (320×180 for 1280×720)
+        inferenceScale: 0.25,
       });
 
       if (!mounted) {
@@ -231,7 +248,6 @@ export const VideoWithBackground = memo(({
       }
       segmenterRef.current = segmenter;
 
-      // 2. Compositor: WebGL (fast) or Canvas2D (fallback)
       let compositor: IBackgroundCompositor;
       if (supportsWebGL()) {
         compositor = new WebGLBackgroundCompositor();
@@ -240,12 +256,13 @@ export const VideoWithBackground = memo(({
         console.warn('[BG-FX] WebGL not available, using Canvas2D fallback');
       }
 
+      // Use current effectType ref (not stale closure) for initial config
       await compositor.initialize({
         width: w,
         height: h,
-        effectType: effectType as 'blur' | 'image',
-        blurRadius: blurAmount,
-        mirror: mirrorVideo,
+        effectType: effectTypeRef.current as 'blur' | 'image',
+        blurRadius: blurAmountRef.current,
+        mirror: mirrorVideoRef.current,
       });
 
       if (!mounted) {
@@ -255,7 +272,6 @@ export const VideoWithBackground = memo(({
       }
       compositorRef.current = compositor;
 
-      // Send background image if already loaded
       if (backgroundBitmapRef.current) {
         compositor.setBackgroundImage(backgroundBitmapRef.current);
       }
@@ -264,45 +280,33 @@ export const VideoWithBackground = memo(({
       const compositorCanvas = compositor.getCanvas() as HTMLCanvasElement;
       outputCanvasRef.current = compositorCanvas;
 
-      // Style the compositor canvas to match the container
       compositorCanvas.className = 'w-full h-full object-cover';
       compositorCanvas.style.display = 'block';
 
       if (containerRef.current) {
-        // Remove any previous canvas
         const existing = containerRef.current.querySelector('canvas.bg-fx-canvas');
         if (existing) existing.remove();
         compositorCanvas.classList.add('bg-fx-canvas');
         containerRef.current.appendChild(compositorCanvas);
       }
 
-      // ─── Create processed stream for LiveKit ───────────────────
-      if (onProcessedStreamReady) {
-        const canvasStream = compositorCanvas.captureStream(TARGET_FPS);
-        // Forward audio tracks from original stream
-        const audioTracks = stream.getAudioTracks();
-        audioTracks.forEach(track => canvasStream.addTrack(track.clone()));
-        processedStreamRef.current = canvasStream;
-        onProcessedStreamReady(canvasStream);
+      // ─── Create canvas stream but DON'T notify parent yet ───────
+      // The parent will be notified after the first frame is rendered
+      // in processFrame(). This prevents LiveKit from publishing an
+      // empty/black canvas track.
+      const newCanvasStream = compositorCanvas.captureStream(TARGET_FPS);
+      const audioTracks = stream.getAudioTracks();
+      audioTracks.forEach(track => newCanvasStream.addTrack(track.clone()));
+      canvasStreamRef.current = newCanvasStream;
+      firstFrameNotifiedRef.current = false;
 
-        // Notify that the video track is ready
-        const videoTrack = canvasStream.getVideoTracks()[0];
-        if (videoTrack) {
-          console.log('[BG-FX] Canvas stream video track ready, notifying parent');
-        }
-      }
-
-      // ─── Start processing loop (setInterval, NOT rAF) ──────────
-      // Using setInterval instead of requestAnimationFrame because:
-      // 1. rAF runs at 60fps but we only need 15fps → wastes cycles
-      // 2. rAF competes with Three.js render loop on main thread
-      // 3. setInterval is more predictable for fixed-rate processing
+      // ─── Start processing loop ──────────────────────────────────
       timerRef.current = setInterval(processFrame, FRAME_INTERVAL_MS);
 
       if (mounted) {
         setIsInitialized(true);
         setShowCanvas(true);
-        console.log('[BG-FX] Pipeline ready:', {
+        console.log('[BG-FX] Pipeline ready (waiting for first frame before notifying parent):', {
           segmenter: 'MediaPipe GPU @25%',
           compositor: supportsWebGL() ? 'WebGL shader' : 'Canvas2D fallback',
           fps: TARGET_FPS,
@@ -311,7 +315,6 @@ export const VideoWithBackground = memo(({
       }
     };
 
-    // Start initialization immediately
     void init();
 
     return () => {
@@ -322,12 +325,11 @@ export const VideoWithBackground = memo(({
         timerRef.current = null;
       }
 
-      // Notify parent FIRST so it can start replacing the LiveKit track before
-      // the canvas stream tracks are stopped. This prevents the black screen that
-      // occurs when the canvas track ends before LiveKit's replaceTrack completes.
-      const streamToStop = processedStreamRef.current;
+      const streamToStop = processedStreamRef.current || canvasStreamRef.current;
       processedStreamRef.current = null;
-      onProcessedStreamReady?.(null);
+      canvasStreamRef.current = null;
+      firstFrameNotifiedRef.current = false;
+      onProcessedStreamReadyRef.current?.(null);
 
       segmenterRef.current?.dispose();
       segmenterRef.current = null;
@@ -335,15 +337,12 @@ export const VideoWithBackground = memo(({
       compositorRef.current?.dispose();
       compositorRef.current = null;
 
-      // Clean up DOM canvas
       if (containerRef.current) {
         const canvas = containerRef.current.querySelector('canvas.bg-fx-canvas');
         if (canvas) canvas.remove();
       }
       outputCanvasRef.current = null;
 
-      // Stop canvas stream tracks after a short delay to allow LiveKit's replaceTrack
-      // to complete. The canvas will show its last rendered frame during this window.
       if (streamToStop) {
         window.setTimeout(() => {
           streamToStop.getTracks().forEach(t => t.stop());
@@ -352,7 +351,7 @@ export const VideoWithBackground = memo(({
 
       setIsInitialized(false);
     };
-  }, [streamSignature, effectType]); // Only re-init when video tracks or effect type change
+  }, [streamSignature]); // effectType removed — handled by updateConfig
 
   // ─── Update video source ───────────────────────────────────────────
   useEffect(() => {

@@ -720,15 +720,20 @@ export const SharedCameraDeviceControl: React.FC<CameraDeviceControlProps> = ({
             </button>
           </div>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="hidden"
-          />
         </div>
       )}
+
+      {/* File input OUTSIDE the isOpen conditional so it persists when
+          the click-outside handler closes the menu while the native OS
+          file dialog is open. Without this, the input is destroyed and
+          the onChange never fires. */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleImageUpload}
+        className="hidden"
+      />
     </div>
   );
 };
