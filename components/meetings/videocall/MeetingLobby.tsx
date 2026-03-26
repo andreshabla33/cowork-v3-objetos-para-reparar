@@ -2,10 +2,20 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { VideoWithBackground } from '@/components/VideoWithBackground';
+import {
+  SharedAudioDeviceControl,
+  SharedCameraDeviceControl,
+} from '@/components/media/SharedMediaDeviceControls';
 import { supabase } from '@/lib/supabase';
 import { getMeetingJoinDefaults } from '@/lib/userSettings';
 import type { PreferenciasIngresoReunion } from '@/hooks/app/useRutasReunion';
-import { Gatekeeper, PreflightSessionStore, getPreflightFeedback } from '@/modules/realtime-room';
+import {
+  Gatekeeper,
+  PreflightSessionStore,
+  defaultAudioSettings,
+  defaultCameraSettings,
+  getPreflightFeedback,
+} from '@/modules/realtime-room';
 import type { PreflightCheck } from '@/modules/realtime-room';
 import { useMeetingMediaBridge } from './hooks/useMeetingMediaBridge';
 
@@ -105,8 +115,11 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
   }
 
   const {
+    audioSettings,
     cameraSettings,
     mediaState,
+    updateAudioSettings,
+    updateCameraSettings,
     toggleCamera,
     toggleMicrophone,
     setProcessedStream,
@@ -337,6 +350,14 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
     void toggleMicrophone();
   };
 
+  const handleAudioSettingsChange = (partial: Partial<typeof defaultAudioSettings>) => {
+    void updateAudioSettings(partial);
+  };
+
+  const handleCameraSettingsChange = (partial: Partial<typeof defaultCameraSettings>) => {
+    void updateCameraSettings(partial);
+  };
+
   // Unirse a la reunión
   const handleJoin = async () => {
     if (!nombre.trim()) {
@@ -428,12 +449,13 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
   const tipoInfo = getTipoInfo(salaInfo?.tipo || 'general');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-3 sm:p-4 lg:p-6">
-      <div className="w-full max-w-6xl">
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl">
-          <div className="grid lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px]">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 px-3 py-4 sm:px-4 sm:py-6 lg:px-6 lg:py-8">
+      <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-7xl items-center justify-center sm:min-h-[calc(100vh-3rem)] lg:min-h-[calc(100vh-4rem)]">
+        <div className="w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-xl sm:rounded-3xl">
+          <div className="grid min-h-[min(100%,780px)] grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_420px]">
             {/* Preview de cámara */}
-            <div className="relative aspect-[4/5] sm:aspect-video xl:aspect-auto min-h-[280px] sm:min-h-[360px] xl:min-h-[560px] bg-black/50">
+            <div className="relative flex min-h-[280px] flex-col bg-black/50 sm:min-h-[360px] lg:min-h-[620px]">
+              <div className="relative flex-1 overflow-hidden lg:min-h-0">
               {cameraEnabled && !cameraSettings.hideSelfView && stream && stream.getVideoTracks().length > 0 && cameraSettings.backgroundEffect !== 'none' && (
                 <VideoWithBackground
                   stream={stream}
@@ -466,59 +488,54 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
               
               {(!cameraEnabled || cameraSettings.hideSelfView) && (
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                    <span className="text-4xl font-bold text-white">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 sm:h-24 sm:w-24">
+                    <span className="text-3xl font-bold text-white sm:text-4xl">
                       {nombre ? nombre.charAt(0).toUpperCase() : '?'}
                     </span>
                   </div>
                 </div>
               )}
+              </div>
 
-              {/* Controles de preview */}
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 sm:bottom-4">
-                <button
-                  onClick={handleToggleMic}
-                  className={`p-2.5 sm:p-3 rounded-full transition-all ${
-                    micEnabled ? 'bg-white/20 hover:bg-white/30' : 'bg-red-500 hover:bg-red-600'
-                  }`}
-                >
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    {micEnabled ? (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                    ) : (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                    )}
-                  </svg>
-                </button>
-                <button
-                  onClick={handleToggleCamera}
-                  className={`p-2.5 sm:p-3 rounded-full transition-all ${
-                    cameraEnabled ? 'bg-white/20 hover:bg-white/30' : 'bg-red-500 hover:bg-red-600'
-                  }`}
-                >
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    {cameraEnabled ? (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    ) : (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                    )}
-                  </svg>
-                </button>
+              <div className="border-t border-white/10 bg-slate-950/65 px-3 py-3 backdrop-blur-md sm:px-4">
+                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3 lg:justify-start">
+                  <SharedAudioDeviceControl
+                    isEnabled={micEnabled}
+                    settings={audioSettings ?? defaultAudioSettings}
+                    currentStream={stream}
+                    onToggle={handleToggleMic}
+                    onSettingsChange={handleAudioSettingsChange}
+                    dataTourStep="lobby-mic-group"
+                    showMenuToggle={true}
+                  />
+                  <SharedCameraDeviceControl
+                    isEnabled={cameraEnabled}
+                    settings={cameraSettings ?? defaultCameraSettings}
+                    currentStream={stream}
+                    onToggle={handleToggleCamera}
+                    onSettingsChange={handleCameraSettingsChange}
+                    dataTourStep="lobby-camera-group"
+                    showMenuToggle={true}
+                  />
+                  <div className="min-w-[160px] text-center text-[11px] leading-relaxed text-white/55 sm:text-left">
+                    Ajusta cámara, micrófono y dispositivos antes de entrar.
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Formulario */}
-            <div className="p-5 sm:p-6 lg:p-8">
+            <div className="flex flex-col justify-center p-5 sm:p-6 lg:p-8 xl:p-10">
               {/* Info de la reunión */}
               <div className="mb-6 sm:mb-8">
-                <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r ${tipoInfo.color} text-white text-sm font-medium mb-4`}>
+                <div className={`mb-4 inline-flex max-w-full items-center gap-2 rounded-full bg-gradient-to-r px-3 py-1.5 text-sm font-medium text-white ${tipoInfo.color}`}>
                   <span>{tipoInfo.icon}</span>
                   <span>{tipoInfo.label}</span>
                 </div>
-                <h1 className="text-xl sm:text-2xl font-bold text-white mb-2">
+                <h1 className="mb-2 text-xl font-bold text-white sm:text-2xl lg:text-3xl">
                   {salaInfo?.nombre}
                 </h1>
-                <p className="text-white/60">
+                <p className="text-sm text-white/60 sm:text-base">
                   Organizado por <span className="text-white font-medium">{salaInfo?.organizador}</span>
                 </p>
               </div>
@@ -534,7 +551,7 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                     value={nombre}
                     onChange={(e) => setNombre(e.target.value)}
                     placeholder="Ingresa tu nombre"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50 transition-all"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/30 transition-all focus:border-indigo-500/50 focus:outline-none"
                     disabled={joining}
                   />
                 </div>
@@ -549,7 +566,7 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="tu@email.com"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-indigo-500/50 transition-all"
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-white/30 transition-all focus:border-indigo-500/50 focus:outline-none"
                       disabled={joining}
                     />
                   </div>
@@ -592,7 +609,7 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                 <button
                   onClick={handleJoin}
                   disabled={joining || !nombre.trim()}
-                  className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-white font-bold transition-all flex items-center justify-center gap-2"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 py-4 font-bold text-white transition-all hover:from-indigo-500 hover:to-purple-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {joining ? (
                     <>
@@ -623,7 +640,7 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
               </div>
 
               {/* Footer */}
-              <p className="mt-6 text-center text-xs text-white/40">
+              <p className="mt-6 text-center text-xs leading-relaxed text-white/40 sm:mt-8">
                 Al unirte aceptas compartir tu audio y video con los participantes
               </p>
             </div>
