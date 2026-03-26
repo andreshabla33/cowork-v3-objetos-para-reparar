@@ -75,6 +75,43 @@ const getUnavailableMediaLabel = (
   return null;
 };
 
+const getJoinStatusTone = (options: {
+  hasError: boolean;
+  partialFallback: boolean;
+  noMediaFallback: boolean;
+  ready: boolean;
+}) => {
+  if (options.hasError) {
+    return {
+      pillClass: 'border-red-500/30 bg-red-500/12 text-red-200',
+      dotClass: 'bg-red-400',
+      label: 'Requiere atención',
+    };
+  }
+
+  if (options.partialFallback || options.noMediaFallback) {
+    return {
+      pillClass: 'border-amber-500/30 bg-amber-500/12 text-amber-200',
+      dotClass: 'bg-amber-400',
+      label: 'Listo con limitaciones',
+    };
+  }
+
+  if (options.ready) {
+    return {
+      pillClass: 'border-emerald-500/30 bg-emerald-500/12 text-emerald-200',
+      dotClass: 'bg-emerald-400',
+      label: 'Listo para entrar',
+    };
+  }
+
+  return {
+    pillClass: 'border-white/10 bg-white/5 text-zinc-200',
+    dotClass: 'bg-zinc-400',
+    label: 'Preparando dispositivos',
+  };
+};
+
 export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
   codigoSala,
   tokenInvitacion,
@@ -171,6 +208,32 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
     : joinWithoutMediaFallback
       ? 'Entrar sin cámara ni micrófono'
       : 'Unirse a la reunión';
+  const joinStatusTone = getJoinStatusTone({
+    hasError: Boolean(error),
+    partialFallback: partialJoinFallback,
+    noMediaFallback: joinWithoutMediaFallback,
+    ready: preflight.ready,
+  });
+  const tipoInfo = getTipoInfo(salaInfo?.tipo || 'general');
+  const previewStatusLabel = cameraEnabled && !cameraSettings.hideSelfView
+    ? cameraSettings.backgroundEffect === 'none'
+      ? 'Vista previa activa'
+      : 'Vista previa con efectos'
+    : 'Vista previa oculta';
+  const roomMeta = [
+    {
+      label: 'Formato',
+      value: tipoInfo.label,
+    },
+    {
+      label: 'Acceso',
+      value: salaInfo?.configuracion.sala_espera ? 'Sala de espera' : 'Ingreso directo',
+    },
+    {
+      label: 'Audio y video',
+      value: availableMediaLabel,
+    },
+  ];
 
   const syncPreflight = async (overrides?: { wantAudio?: boolean; wantVideo?: boolean }) => {
     const gatekeeper = gatekeeperRef.current;
@@ -402,7 +465,7 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
   };
 
   // Obtener icono y color según tipo de reunión
-  const getTipoInfo = (tipo: string) => {
+  function getTipoInfo(tipo: string) {
     switch (tipo) {
       case 'deal':
         return { icon: '💼', label: 'Reunión de Negocios', color: 'from-emerald-500 to-teal-600' };
@@ -411,7 +474,7 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
       default:
         return { icon: '🎥', label: 'Videollamada', color: 'from-indigo-500 to-purple-600' };
     }
-  };
+  }
 
   if (loading) {
     return (
@@ -454,9 +517,6 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
       </div>
     );
   }
-
-  const tipoInfo = getTipoInfo(salaInfo?.tipo || 'general');
-
   return (
     <div className="fixed inset-0 z-[120] overflow-y-auto bg-[#050508] p-4 lg:p-3">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -514,6 +574,27 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                   </div>
                 </div>
               )}
+
+              <div className="absolute left-3 right-3 top-3 z-20 sm:left-4 sm:right-4 sm:top-4 lg:left-6 lg:right-6 lg:top-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="max-w-[26rem] rounded-2xl border border-white/10 bg-black/30 px-4 py-3 backdrop-blur-xl">
+                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-400">
+                      Vista previa
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-white sm:text-base">
+                      Revisa cámara, micrófono y efectos antes de entrar
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-zinc-400 sm:text-sm">
+                      {previewStatusLabel}. Los cambios se aplican con los mismos controles de la reunión.
+                    </p>
+                  </div>
+
+                  <div className={`inline-flex items-center gap-2 self-start rounded-full border px-3 py-2 text-[11px] font-black uppercase tracking-[0.18em] shadow-lg backdrop-blur-xl ${joinStatusTone.pillClass}`}>
+                    <span className={`h-2.5 w-2.5 rounded-full ${joinStatusTone.dotClass}`} />
+                    {joinStatusTone.label}
+                  </div>
+                </div>
+              </div>
               </div>
 
               <div className="absolute inset-x-3 bottom-3 z-20 sm:inset-x-4 sm:bottom-4 lg:left-6 lg:right-6 lg:bottom-6">
@@ -561,48 +642,75 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                 </p>
               </div>
 
+              <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 lg:mb-8">
+                {roomMeta.map((item) => (
+                  <div key={item.label} className="rounded-2xl border border-white/8 bg-black/25 px-4 py-3 backdrop-blur-xl">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                      {item.label}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-white leading-snug">
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
               {/* Formulario de ingreso */}
-              <div className="space-y-4 lg:space-y-5">
+              <form className="space-y-4 lg:space-y-5" onSubmit={(event) => {
+                event.preventDefault();
+                void handleJoin();
+              }}>
                 <div>
-                  <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                  <label htmlFor="meeting-lobby-name" className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
                     Tu nombre *
                   </label>
                   <div className="relative group">
                     <input
+                      id="meeting-lobby-name"
                       type="text"
                       value={nombre}
                       onChange={(e) => setNombre(e.target.value)}
                       placeholder="Ingresa tu nombre"
+                      autoComplete="name"
+                      maxLength={80}
                       className="w-full rounded-xl border border-white/5 bg-black/40 px-4 py-3.5 text-sm text-white placeholder:text-zinc-700 transition-all focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                       disabled={joining}
                     />
                   </div>
+                  <p className="mt-2 text-xs text-zinc-500">
+                    Este nombre será visible para los demás participantes.
+                  </p>
                 </div>
 
                 {!tokenInvitacion && (
                   <div>
-                    <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                    <label htmlFor="meeting-lobby-email" className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
                       Email (opcional)
                     </label>
                     <input
+                      id="meeting-lobby-email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="tu@email.com"
+                      autoComplete="email"
                       className="w-full rounded-xl border border-white/5 bg-black/40 px-4 py-3.5 text-sm text-white placeholder:text-zinc-700 transition-all focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/50"
                       disabled={joining}
                     />
+                    <p className="mt-2 text-xs text-zinc-500">
+                      Lo usaremos solo para identificarte mejor si la sala lo necesita.
+                    </p>
                   </div>
                 )}
 
                 {error && (
-                  <div className="p-3 bg-red-500/20 border border-red-500/30 rounded-xl">
+                  <div aria-live="polite" className="rounded-xl border border-red-500/30 bg-red-500/20 p-3">
                     <p className="text-red-400 text-sm">{error}</p>
                   </div>
                 )}
 
                 {!error && effectivePreflightFeedback && (
-                  <div className={`p-4 rounded-xl border ${effectivePreflightFeedback.variant === 'error' ? 'bg-red-500/10 border-red-500/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
+                  <div aria-live="polite" className={`rounded-xl border p-4 ${effectivePreflightFeedback.variant === 'error' ? 'bg-red-500/10 border-red-500/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
                     <p className={`text-sm font-semibold mb-1 ${effectivePreflightFeedback.variant === 'error' ? 'text-red-300' : 'text-amber-300'}`}>{effectivePreflightFeedback.title}</p>
                     <p className={`text-sm ${effectivePreflightFeedback.variant === 'error' ? 'text-red-400' : 'text-amber-400'}`}>{effectivePreflightFeedback.message}</p>
                     {effectivePreflightFeedback.steps.length > 0 && (
@@ -629,8 +737,24 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                   </div>
                 )}
 
+                <div className="rounded-2xl border border-white/8 bg-black/25 p-4 backdrop-blur-xl">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/8 text-white">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-white">Qué pasará al entrar</p>
+                      <p className="mt-1 text-sm leading-relaxed text-zinc-400">
+                        Entrarás con {availableMediaLabel}. Luego podrás volver a cambiar dispositivos, efectos y permisos desde la reunión.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 <button
-                  onClick={handleJoin}
+                  type="submit"
                   disabled={joining || !nombre.trim()}
                   className="relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500 px-5 py-4 text-xs font-black uppercase tracking-[0.15em] text-white shadow-2xl shadow-violet-600/30 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -661,7 +785,7 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                     Puedes entrar ahora sin media y volver a intentar activar cámara o micrófono desde la sala.
                   </p>
                 )}
-              </div>
+              </form>
 
               {/* Footer */}
               <p className="mt-6 text-center text-xs font-bold leading-relaxed text-zinc-500 sm:mt-8">

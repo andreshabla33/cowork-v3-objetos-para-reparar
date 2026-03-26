@@ -33,6 +33,8 @@ export interface MeetingSubscriptionPolicyInput {
   participantIds: string[];
   visibleParticipantIds: Set<string>;
   speakerParticipantId?: string | null;
+  recentSpeakerParticipantIds?: Iterable<string>;
+  pageCapacity?: number;
   qualityMode: 'high' | 'medium' | 'low';
 }
 
@@ -92,23 +94,28 @@ export class SubscriptionPolicyService {
 
   buildMeetingSnapshot(input: MeetingSubscriptionPolicyInput): MeetingSubscriptionPolicySnapshot {
     const decisions = new Map<string, MeetingSubscriptionPolicyDecision>();
+    const recentSpeakerParticipantIds = new Set(input.recentSpeakerParticipantIds ?? []);
+    const visibleParticipantCount = input.visibleParticipantIds.size;
+    const pageCapacity = Math.max(1, input.pageCapacity ?? visibleParticipantCount ?? 1);
+    const pageDensity = visibleParticipantCount / pageCapacity;
+    const isDensePage = visibleParticipantCount >= 9 || pageDensity >= 0.8;
+    const isVeryDensePage = visibleParticipantCount >= 16 || pageDensity >= 0.92;
 
     input.participantIds.forEach((participantId) => {
       const isVisible = input.visibleParticipantIds.has(participantId);
       const isSpeaker = participantId === input.speakerParticipantId;
+      const isRecentSpeaker = recentSpeakerParticipantIds.has(participantId);
       const preferredVideoQuality = !isVisible
         ? null
-        : isSpeaker
-          ? input.qualityMode === 'low'
-            ? 'medium'
-            : 'high'
-          : input.qualityMode === 'low'
-            ? 'low'
-            : input.qualityMode === 'medium'
-              ? 'medium'
-              : input.participantIds.length > this.largeRoomThreshold
-                ? 'medium'
-                : 'high';
+        : this.resolveMeetingVideoQuality({
+            qualityMode: input.qualityMode,
+            isSpeaker,
+            isRecentSpeaker,
+            visibleParticipantCount,
+            isDensePage,
+            isVeryDensePage,
+            participantCount: input.participantIds.length,
+          });
 
       decisions.set(participantId, {
         participantId,
@@ -122,6 +129,50 @@ export class SubscriptionPolicyService {
       visibleParticipantIds: new Set(input.visibleParticipantIds),
       decisions,
     };
+  }
+
+  private resolveMeetingVideoQuality(input: {
+    qualityMode: 'high' | 'medium' | 'low';
+    isSpeaker: boolean;
+    isRecentSpeaker: boolean;
+    visibleParticipantCount: number;
+    isDensePage: boolean;
+    isVeryDensePage: boolean;
+    participantCount: number;
+  }): SubscriptionVideoQuality {
+    if (input.isSpeaker) {
+      if (input.qualityMode === 'low' || input.isVeryDensePage) {
+        return 'medium';
+      }
+
+      return 'high';
+    }
+
+    if (input.isRecentSpeaker) {
+      if (input.qualityMode === 'low' || input.isVeryDensePage) {
+        return 'low';
+      }
+
+      return 'medium';
+    }
+
+    if (input.qualityMode === 'low') {
+      return 'low';
+    }
+
+    if (input.isVeryDensePage) {
+      return 'low';
+    }
+
+    if (input.qualityMode === 'medium' || input.isDensePage) {
+      return 'medium';
+    }
+
+    if (input.visibleParticipantCount <= 4 && input.participantCount <= this.largeRoomThreshold) {
+      return 'high';
+    }
+
+    return 'medium';
   }
 
   buildDecision(input: {

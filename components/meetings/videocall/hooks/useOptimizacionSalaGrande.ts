@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { TrackReferenceOrPlaceholder } from '@livekit/components-react';
 import { RemoteParticipant, RemoteTrackPublication, Room, Track, VideoQuality } from 'livekit-client';
-import { ActiveSpeakerPolicy, GalleryPolicy, PinningPolicy, SubscriptionPolicyService, ViewportFitPolicy } from '@/modules/realtime-room';
+import { ActiveSpeakerPolicy, GalleryPolicy, GalleryViewportPolicy, PinningPolicy, SubscriptionPolicyService, ViewportFitPolicy } from '@/modules/realtime-room';
 import type { ViewMode } from '../ViewModeSelector';
 import type { MeetingQualityState } from '../meetingRoom.types';
 
@@ -21,6 +21,7 @@ interface UseOptimizacionSalaGrandeResult {
   featuredTrack?: TrackReferenceOrPlaceholder | null;
   esSalaGrande: boolean;
   pistasVisibles: TrackReferenceOrPlaceholder[];
+  galleryViewport: { width: number; height: number };
   paginaActual: number;
   totalPaginas: number;
   totalParticipantesVideo: number;
@@ -33,55 +34,8 @@ interface UseOptimizacionSalaGrandeResult {
 const UMBRAL_SALA_GRANDE = 12;
 const TAMANIO_PAGINA_STRIP = 10;
 const DEFAULT_GALLERY_VIEWPORT = { width: 1280, height: 720 };
-const GALLERY_TILE_ASPECT_RATIO = 4 / 3;
-const GALLERY_GAP_PX = 12;
-const GALLERY_HORIZONTAL_PADDING_PX = 40;
-const GALLERY_RESERVED_HEIGHT_PX = 180;
-
-const getGalleryMaxColumns = (width: number) => {
-  if (width >= 1800) return 5;
-  if (width >= 1280) return 4;
-  if (width >= 820) return 3;
-  if (width >= 520) return 2;
-  return 1;
-};
-
-const getMinimumGalleryTileWidth = (width: number) => {
-  if (width < 520) return 140;
-  if (width < 1024) return 180;
-  return 220;
-};
-
-const calculateGalleryPageSize = (participantCount: number, viewportWidth: number, viewportHeight: number) => {
-  if (participantCount <= 1) {
-    return 1;
-  }
-
-  const availableWidth = Math.max(280, viewportWidth - GALLERY_HORIZONTAL_PADDING_PX);
-  const availableHeight = Math.max(220, viewportHeight - GALLERY_RESERVED_HEIGHT_PX);
-  const minimumTileWidth = getMinimumGalleryTileWidth(viewportWidth);
-  const minimumTileHeight = minimumTileWidth / GALLERY_TILE_ASPECT_RATIO;
-  const maxColumns = Math.min(getGalleryMaxColumns(viewportWidth), participantCount);
-  let bestSlots = 1;
-
-  for (let columns = 1; columns <= maxColumns; columns += 1) {
-    const tileWidth = (availableWidth - GALLERY_GAP_PX * (columns - 1)) / columns;
-    const tileHeight = tileWidth / GALLERY_TILE_ASPECT_RATIO;
-
-    if (tileWidth < minimumTileWidth || tileHeight < minimumTileHeight) {
-      continue;
-    }
-
-    const rows = Math.max(1, Math.floor((availableHeight + GALLERY_GAP_PX) / (tileHeight + GALLERY_GAP_PX)));
-    bestSlots = Math.max(bestSlots, Math.min(participantCount, rows * columns));
-  }
-
-  if (bestSlots === 1 && participantCount > 1) {
-    return Math.min(participantCount, viewportWidth < 520 ? 2 : 4);
-  }
-
-  return bestSlots;
-};
+const RECENT_SPEAKER_TTL_MS = 15_000;
+const RECENT_SPEAKER_PRUNE_INTERVAL_MS = 5_000;
 
 const mapMeetingVideoQuality = (quality: 'high' | 'medium' | 'low' | null): VideoQuality | null => {
   if (quality === 'low') return VideoQuality.LOW;
@@ -101,11 +55,13 @@ export function useOptimizacionSalaGrande({
 }: UseOptimizacionSalaGrandeParams): UseOptimizacionSalaGrandeResult {
   const [paginaActual, setPaginaActual] = useState(0);
   const [galleryViewport, setGalleryViewport] = useState(DEFAULT_GALLERY_VIEWPORT);
+  const [recentSpeakerActivity, setRecentSpeakerActivity] = useState<Map<string, number>>(new Map());
   const appliedPublicationQualityRef = useRef<Map<string, VideoQuality>>(new Map());
   const viewportFitPolicyRef = useRef(new ViewportFitPolicy());
   const pinningPolicyRef = useRef(new PinningPolicy());
   const activeSpeakerPolicyRef = useRef(new ActiveSpeakerPolicy());
   const galleryPolicyRef = useRef(new GalleryPolicy());
+  const galleryViewportPolicyRef = useRef(new GalleryViewportPolicy());
   const subscriptionPolicyServiceRef = useRef(new SubscriptionPolicyService({ largeRoomThreshold: UMBRAL_SALA_GRANDE }));
 
   useEffect(() => {
@@ -131,6 +87,61 @@ export function useOptimizacionSalaGrande({
   const pistasCamara = useMemo(
     () => tracks.filter((track) => track.participant && track.source === Track.Source.Camera),
     [tracks],
+  );
+  const activeSpeakerIds = useMemo(
+    () => room?.activeSpeakers.map((participant) => participant.identity).filter(Boolean) ?? [],
+    [room?.activeSpeakers],
+  );
+
+  useEffect(() => {
+    const now = Date.now();
+
+    setRecentSpeakerActivity((prev) => {
+      const next = new Map(prev);
+
+      activeSpeakerIds.forEach((participantId) => {
+        next.set(participantId, now);
+      });
+
+      Array.from(next.entries()).forEach(([participantId, lastSpokeAt]) => {
+        if (now - lastSpokeAt > RECENT_SPEAKER_TTL_MS) {
+          next.delete(participantId);
+        }
+      });
+
+      return next;
+    });
+  }, [activeSpeakerIds]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const pruneExpiredRecentSpeakers = () => {
+      const now = Date.now();
+      setRecentSpeakerActivity((prev) => {
+        const next = new Map(prev);
+        Array.from(next.entries()).forEach(([participantId, lastSpokeAt]) => {
+          if (now - lastSpokeAt > RECENT_SPEAKER_TTL_MS) {
+            next.delete(participantId);
+          }
+        });
+        return next;
+      });
+    };
+
+    const intervalId = window.setInterval(pruneExpiredRecentSpeakers, RECENT_SPEAKER_PRUNE_INTERVAL_MS);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
+  const recentSpeakerIds = useMemo(
+    () => Array.from(recentSpeakerActivity.entries())
+      .sort((left, right) => right[1] - left[1])
+      .map(([participantId]) => participantId),
+    [recentSpeakerActivity],
   );
 
   const resolvedPinnedParticipantId = useMemo(
@@ -167,6 +178,8 @@ export function useOptimizacionSalaGrande({
       localParticipantId: room?.localParticipant?.identity ?? null,
       featuredParticipantId,
       activeSpeakerId: speakerIdentity ?? null,
+      activeSpeakerIds,
+      recentSpeakerIds,
       raisedHandParticipantIds,
     });
 
@@ -176,18 +189,26 @@ export function useOptimizacionSalaGrande({
       const bIndex = orderIndex.get(b.participant?.identity || '') ?? Number.MAX_SAFE_INTEGER;
       return aIndex - bIndex;
     });
-  }, [featuredParticipantId, pistasCamara, raisedHandParticipantIds, room?.localParticipant?.identity, speakerIdentity]);
+  }, [activeSpeakerIds, featuredParticipantId, pistasCamara, raisedHandParticipantIds, recentSpeakerIds, room?.localParticipant?.identity, speakerIdentity]);
 
-  const galleryPageSize = useMemo(
-    () => calculateGalleryPageSize(pistasOrdenadas.length, galleryViewport.width, galleryViewport.height),
+  const galleryCapacity = useMemo(
+    () => galleryViewportPolicyRef.current.resolveCapacity({
+      participantCount: pistasOrdenadas.length,
+      viewportWidth: galleryViewport.width,
+      viewportHeight: galleryViewport.height,
+    }),
     [galleryViewport.height, galleryViewport.width, pistasOrdenadas.length],
   );
+  const galleryPageSize = galleryCapacity.effectivePageSize;
+  const shouldPaginateGallery = effectiveViewMode === 'gallery' && pistasOrdenadas.length > galleryPageSize;
 
   const esSalaGrande = pistasOrdenadas.length > UMBRAL_SALA_GRANDE;
   const pageSize = effectiveViewMode === 'gallery' ? galleryPageSize : TAMANIO_PAGINA_STRIP;
   const totalPaginas = useMemo(() => {
     if (effectiveViewMode === 'gallery') {
-      return Math.max(1, Math.ceil(pistasOrdenadas.length / galleryPageSize));
+      return shouldPaginateGallery
+        ? Math.max(1, Math.ceil(pistasOrdenadas.length / galleryPageSize))
+        : 1;
     }
 
     if (effectiveViewMode === 'speaker' && featuredParticipantId) {
@@ -195,7 +216,7 @@ export function useOptimizacionSalaGrande({
     }
 
     return Math.max(1, Math.ceil(pistasOrdenadas.length / TAMANIO_PAGINA_STRIP));
-  }, [effectiveViewMode, featuredParticipantId, galleryPageSize, pistasOrdenadas.length]);
+  }, [effectiveViewMode, featuredParticipantId, galleryPageSize, pistasOrdenadas.length, shouldPaginateGallery]);
   const mostrarPaginacion = totalPaginas > 1;
 
   useEffect(() => {
@@ -207,6 +228,15 @@ export function useOptimizacionSalaGrande({
   }, [effectiveViewMode, featuredParticipantId, screenShareTrack?.participant?.identity]);
 
   const pistasVisibles = useMemo(() => {
+    if (effectiveViewMode === 'gallery') {
+      if (!shouldPaginateGallery) {
+        return pistasOrdenadas;
+      }
+
+      const inicio = paginaActual * pageSize;
+      return pistasOrdenadas.slice(inicio, inicio + pageSize);
+    }
+
     if (!esSalaGrande) {
       return pistasOrdenadas;
     }
@@ -221,7 +251,7 @@ export function useOptimizacionSalaGrande({
 
     const inicio = paginaActual * pageSize;
     return pistasOrdenadas.slice(inicio, inicio + pageSize);
-  }, [effectiveViewMode, esSalaGrande, featuredParticipantId, pageSize, paginaActual, pistasOrdenadas]);
+  }, [effectiveViewMode, esSalaGrande, featuredParticipantId, pageSize, paginaActual, pistasOrdenadas, shouldPaginateGallery]);
 
   const featuredTrack = useMemo(
     () => featuredParticipantId
@@ -269,9 +299,11 @@ export function useOptimizacionSalaGrande({
       participantIds: room ? Array.from(room.remoteParticipants.keys()) : [],
       visibleParticipantIds: participantesVisibles,
       speakerParticipantId: effectiveViewMode === 'speaker' ? featuredParticipantId ?? null : null,
+      recentSpeakerParticipantIds: recentSpeakerIds,
+      pageCapacity: pageSize,
       qualityMode: qualityState.mode,
     }),
-    [effectiveViewMode, featuredParticipantId, participantesVisibles, qualityState.mode, room],
+    [effectiveViewMode, featuredParticipantId, pageSize, participantesVisibles, qualityState.mode, recentSpeakerIds, room],
   );
 
   useEffect(() => {
@@ -330,6 +362,7 @@ export function useOptimizacionSalaGrande({
     featuredTrack,
     esSalaGrande,
     pistasVisibles,
+    galleryViewport,
     paginaActual,
     totalPaginas,
     totalParticipantesVideo: pistasOrdenadas.length,

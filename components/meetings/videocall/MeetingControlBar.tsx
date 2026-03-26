@@ -14,9 +14,8 @@ import {
 import { Track, RoomEvent } from 'livekit-client';
 import {
   SharedAudioDeviceControl,
-  SharedAudioSettingsPanel,
   SharedCameraDeviceControl,
-  SharedCameraSettingsPanel,
+  SharedMediaSettingsSheet,
 } from '@/components/media/SharedMediaDeviceControls';
 import { defaultAudioSettings, defaultCameraSettings, type CameraSettings, type AudioSettings, type PermissionState, type RecordingDiagnostics } from '@/modules/realtime-room';
 
@@ -110,6 +109,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [controlFeedback, setControlFeedback] = useState<string | null>(null);
   const [shareScreenWithAudio, setShareScreenWithAudio] = useState(true);
+  const [isCompactLayout, setIsCompactLayout] = useState(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
   const [isMobileLayout, setIsMobileLayout] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
   const [showMobileOverflowMenu, setShowMobileOverflowMenu] = useState(false);
   const [showMobileSettingsMenu, setShowMobileSettingsMenu] = useState(false);
@@ -133,11 +133,15 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
 
   useEffect(() => {
     const syncMobileLayout = () => {
+      const nextIsCompact = window.innerWidth < 1024;
       const nextIsMobile = window.innerWidth < 768;
+      setIsCompactLayout(nextIsCompact);
       setIsMobileLayout(nextIsMobile);
+      if (!nextIsCompact) {
+        setShowMobileSettingsMenu(false);
+      }
       if (!nextIsMobile) {
         setShowMobileOverflowMenu(false);
-        setShowMobileSettingsMenu(false);
       }
     };
 
@@ -288,11 +292,12 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
 
   const tipoConfig = TIPO_REUNION_CONFIG[tipoReunion];
   const mobileMenuButtonClass = 'w-full flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm font-medium text-white transition-colors hover:bg-white/10';
+  const iconButtonClass = isMobileLayout ? 'h-11 w-11 rounded-2xl touch-manipulation' : 'h-10 w-10 rounded-xl';
 
   return (
     <>
       {/* Barra de controles - Glassmorphism 2026 */}
-      <div className="absolute inset-x-0 bottom-3 z-[200] flex flex-col items-center gap-2 px-2 md:inset-x-auto md:bottom-6 md:left-1/2 md:-translate-x-1/2 md:px-0">
+      <div className="absolute inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[200] flex flex-col items-center gap-2 px-2 md:inset-x-auto md:bottom-6 md:left-1/2 md:-translate-x-1/2 md:px-0">
         {recordingDiagnostics?.visible && (
           <div className={`max-w-[calc(100vw-2rem)] rounded-xl border px-3 py-2 text-center text-xs shadow-lg backdrop-blur-xl ${
             recordingDiagnostics.severity === 'error'
@@ -315,7 +320,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
         )}
 
         {/* Barra Principal */}
-        <div className={`flex w-full max-w-[calc(100vw-1rem)] items-center overflow-visible rounded-2xl border border-white/10 bg-black/20 p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl transition-all duration-300 hover:bg-black/30 hover:border-white/20 md:w-auto md:max-w-[95vw] md:flex-nowrap ${isMobileLayout ? 'justify-between gap-2 rounded-3xl px-2 py-2' : 'flex-wrap justify-center gap-1.5'}`}>
+        <div className={`flex w-full max-w-[calc(100vw-1rem)] items-center overflow-visible rounded-2xl border border-white/10 bg-black/20 p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl transition-all duration-300 hover:bg-black/30 hover:border-white/20 md:w-auto md:max-w-[95vw] md:flex-nowrap ${isCompactLayout ? 'justify-between gap-2 rounded-3xl px-2 py-2' : 'flex-wrap justify-center gap-1.5'}`}>
           <div className={`hidden shrink-0 items-center gap-1.5 rounded-xl bg-gradient-to-r ${tipoConfig.color} px-2.5 py-2 text-[11px] font-medium text-white shadow-lg lg:flex`}>
             <span>{tipoConfig.icon}</span>
             <span>{tipoConfig.label}</span>
@@ -331,7 +336,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
             onToggle={toggleMic}
             onSettingsChange={handleAudioSettingChange}
             dataTourStep="meeting-mic-group"
-            showMenuToggle={!isMobileLayout}
+            showMenuToggle={!isCompactLayout}
           />
 
           <SharedCameraDeviceControl
@@ -341,16 +346,32 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
             onToggle={toggleCamera}
             onSettingsChange={handleCameraSettingChange}
             dataTourStep="meeting-camera-group"
-            showMenuToggle={!isMobileLayout}
+            showMenuToggle={!isCompactLayout}
           />
 
-          {!isMobileLayout && <div className="w-px h-6 shrink-0 bg-white/10 mx-0.5"></div>}
+          {isCompactLayout && (
+            <button
+              onClick={() => {
+                setShowMobileOverflowMenu(false);
+                setShowMobileSettingsMenu(true);
+              }}
+              className={`shrink-0 flex items-center justify-center transition-all duration-300 ${showMobileSettingsMenu ? 'bg-white/20 text-white' : 'bg-transparent text-white/70 hover:bg-white/10 hover:text-white'} ${iconButtonClass}`}
+              title="Configuración de audio y cámara"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317a1 1 0 011.35-.936l.432.174a1 1 0 00.982-.09l.407-.293a1 1 0 011.196.08l1.06 1.06a1 1 0 01.08 1.196l-.293.407a1 1 0 00-.09.982l.174.432a1 1 0 01-.936 1.35h-.514a1 1 0 00-.95.69l-.15.45a1 1 0 01-.95.69h-1.5a1 1 0 01-.95-.69l-.15-.45a1 1 0 00-.95-.69h-.514a1 1 0 01-.936-1.35l.174-.432a1 1 0 00-.09-.982L6.87 5.92a1 1 0 01.08-1.196l1.06-1.06a1 1 0 011.196-.08l.407.293a1 1 0 00.982.09l.432-.174a1 1 0 011.35.936z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
+          )}
+
+          {!isCompactLayout && <div className="w-px h-6 shrink-0 bg-white/10 mx-0.5"></div>}
 
           {/* Compartir Pantalla */}
           <div className={`${isMobileLayout ? 'hidden' : 'flex'} items-center gap-1`} data-tour-step="meeting-share-group">
             <button
               onClick={toggleScreenShare}
-              className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center transition-all duration-300 ${
+              className={`${iconButtonClass} shrink-0 flex items-center justify-center transition-all duration-300 ${
                 isScreenSharing ? 'bg-indigo-500 text-white' : 'bg-transparent text-white/70 hover:bg-white/10 hover:text-white'
               }`}
               title={isScreenSharing ? "Dejar de compartir" : "Compartir pantalla"}
@@ -370,14 +391,14 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
             </button>
           </div>
 
-          {!isMobileLayout && <div className="w-px h-6 shrink-0 bg-white/10 mx-0.5"></div>}
+          {!isCompactLayout && <div className="w-px h-6 shrink-0 bg-white/10 mx-0.5"></div>}
 
           <div className="flex items-center gap-1" data-tour-step="meeting-collaboration-group">
             {/* Chat */}
             {onToggleChat && (
               <button
                 onClick={onToggleChat}
-                className={`shrink-0 rounded-xl flex items-center justify-center transition-all duration-300 ${isMobileLayout ? 'w-11 h-11' : 'w-10 h-10'} ${
+                className={`shrink-0 flex items-center justify-center transition-all duration-300 ${iconButtonClass} ${
                   showChat ? 'bg-blue-500 text-white' : 'bg-transparent text-white/70 hover:bg-white/10 hover:text-white'
                 }`}
                 title="Chat"
@@ -392,7 +413,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
             <div className={`${isMobileLayout ? 'hidden' : 'relative'}`} data-tour-step="meeting-reactions-btn">
               <button
                 onClick={() => setShowEmojis(!showEmojis)}
-                className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                className={`${iconButtonClass} shrink-0 flex items-center justify-center transition-all duration-300 ${
                   showEmojis ? 'bg-amber-500 text-white' : 'bg-transparent text-white/70 hover:bg-white/10 hover:text-white'
                 }`}
                 title="Reacciones"
@@ -408,7 +429,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
                 onClick={() => {
                   void onToggleRaiseHand();
                 }}
-                className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                className={`${iconButtonClass} shrink-0 flex items-center justify-center transition-all duration-300 ${
                   isHandRaised ? 'bg-sky-500 text-white' : 'bg-transparent text-white/70 hover:bg-white/10 hover:text-white'
                 }`}
                 title={isHandRaised ? 'Bajar la mano' : 'Levantar la mano'}
@@ -477,13 +498,13 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
             </div>
           )}
 
-          {!isMobileLayout && <div className="w-px h-6 shrink-0 bg-white/10 mx-0.5"></div>}
+          {!isCompactLayout && <div className="w-px h-6 shrink-0 bg-white/10 mx-0.5"></div>}
 
           {/* Botón Ir al Espacio Virtual */}
           {onGoToVirtualSpace && !isMobileLayout && (
             <button
               onClick={onGoToVirtualSpace}
-              className="w-10 h-10 shrink-0 rounded-xl bg-transparent text-white/70 hover:bg-indigo-500/20 hover:text-indigo-400 flex items-center justify-center transition-all duration-300"
+              className={`${iconButtonClass} shrink-0 bg-transparent text-white/70 hover:bg-indigo-500/20 hover:text-indigo-400 flex items-center justify-center transition-all duration-300`}
               title="Ir al espacio virtual"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -498,7 +519,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
                 setShowMobileSettingsMenu(false);
                 setShowMobileOverflowMenu((current) => !current);
               }}
-              className={`w-11 h-11 shrink-0 rounded-2xl flex items-center justify-center transition-all duration-300 ${showMobileOverflowMenu ? 'bg-white/20 text-white' : 'bg-transparent text-white/70 hover:bg-white/10 hover:text-white'}`}
+              className={`h-11 w-11 shrink-0 rounded-2xl touch-manipulation flex items-center justify-center transition-all duration-300 ${showMobileOverflowMenu ? 'bg-white/20 text-white' : 'bg-transparent text-white/70 hover:bg-white/10 hover:text-white'}`}
               title="Más opciones"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -510,7 +531,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
           {/* Botón Salir */}
           <button
             onClick={handleLeave}
-            className={`shrink-0 rounded-xl bg-red-500/80 hover:bg-red-500 text-white flex items-center justify-center transition-all duration-300 ${isMobileLayout ? 'w-11 h-11 rounded-2xl' : 'w-10 h-10'}`}
+            className={`shrink-0 bg-red-500/80 hover:bg-red-500 text-white flex items-center justify-center transition-all duration-300 ${isMobileLayout ? 'h-11 w-11 rounded-2xl touch-manipulation' : 'h-10 w-10 rounded-xl'}`}
             title="Salir de la reunión"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -523,7 +544,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
       {isMobileLayout && showMobileOverflowMenu && (
         <>
           <button type="button" aria-label="Cerrar menú" onClick={() => setShowMobileOverflowMenu(false)} className="fixed inset-0 z-[230] bg-black/35 backdrop-blur-[1px] md:hidden" />
-          <div className="fixed inset-x-3 bottom-24 z-[240] rounded-3xl border border-white/10 bg-zinc-950/96 p-3 shadow-2xl backdrop-blur-2xl md:hidden">
+          <div className="fixed inset-x-3 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-[240] rounded-3xl border border-white/10 bg-zinc-950/96 p-3 shadow-2xl backdrop-blur-2xl md:hidden">
             <div className="grid gap-2">
               <button onClick={() => { void toggleScreenShare(); setShowMobileOverflowMenu(false); }} className={mobileMenuButtonClass}>
                 <span>Compartir pantalla</span>
@@ -568,55 +589,28 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
                 </button>
               )}
 
-              <button onClick={() => { setShowMobileOverflowMenu(false); setShowMobileSettingsMenu(true); }} className={mobileMenuButtonClass}>
-                <span>Configuración de audio y cámara</span>
-                <span className="text-white/60">⚙</span>
-              </button>
             </div>
           </div>
         </>
       )}
 
-      {isMobileLayout && showMobileSettingsMenu && (
-        <>
-          <button type="button" aria-label="Cerrar configuración" onClick={() => setShowMobileSettingsMenu(false)} className="fixed inset-0 z-[240] bg-black/45 backdrop-blur-[1px] md:hidden" />
-          <div className="fixed inset-x-3 bottom-24 top-16 z-[250] overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950/97 shadow-2xl backdrop-blur-2xl md:hidden">
-            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-              <div>
-                <div className="text-sm font-semibold text-white">Configuración</div>
-                <div className="text-xs text-white/50">Audio y cámara</div>
-              </div>
-              <button onClick={() => setShowMobileSettingsMenu(false)} className="w-10 h-10 rounded-2xl bg-white/5 text-white/70 hover:bg-white/10 hover:text-white">
-                <svg className="w-5 h-5 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="h-full overflow-y-auto overscroll-contain px-3 pb-6 pt-3">
-              <div className="rounded-3xl border border-white/10 bg-black/20 p-3">
-                <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Audio</div>
-                <SharedAudioSettingsPanel
-                  settings={audioSettings ?? defaultAudioSettings}
-                  currentStream={currentStream}
-                  onSettingsChange={handleAudioSettingChange}
-                />
-              </div>
-              <div className="mt-3 rounded-3xl border border-white/10 bg-black/20">
-                <div className="px-4 pt-4 text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Cámara</div>
-                <SharedCameraSettingsPanel
-                  settings={cameraSettings ?? defaultCameraSettings}
-                  currentStream={currentStream}
-                  onSettingsChange={handleCameraSettingChange}
-                />
-              </div>
-            </div>
-          </div>
-        </>
+      {isCompactLayout && (
+        <SharedMediaSettingsSheet
+          isOpen={showMobileSettingsMenu}
+          onClose={() => setShowMobileSettingsMenu(false)}
+          audioSettings={audioSettings ?? defaultAudioSettings}
+          cameraSettings={cameraSettings ?? defaultCameraSettings}
+          currentStream={currentStream}
+          onAudioSettingsChange={handleAudioSettingChange}
+          onCameraSettingsChange={handleCameraSettingChange}
+          overlayClassName={`fixed inset-0 z-[240] bg-black/45 backdrop-blur-[1px] ${isMobileLayout ? 'md:hidden' : ''}`}
+          panelClassName={`fixed z-[250] overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950/97 shadow-2xl backdrop-blur-2xl ${isMobileLayout ? 'inset-x-3 bottom-[calc(6rem+env(safe-area-inset-bottom))] top-16 md:hidden' : 'bottom-24 left-1/2 top-auto w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2'}`}
+        />
       )}
 
       {/* Emoji Picker */}
       {showEmojis && (
-        <div className="fixed bottom-24 left-1/2 z-[260] -translate-x-1/2 animate-emoji-popup md:absolute md:bottom-24 md:left-1/2 md:z-[220] md:-translate-x-1/2">
+        <div className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] left-1/2 z-[260] -translate-x-1/2 animate-emoji-popup md:absolute md:bottom-24 md:left-1/2 md:z-[220] md:-translate-x-1/2">
           <div className="flex gap-0.5 rounded-xl border border-white/10 bg-black/80 px-2 py-1.5 backdrop-blur-xl shadow-2xl">
             {emojis.map((emoji) => (
               <button
@@ -625,7 +619,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
                   void sendReaction(emoji);
                   setShowEmojis(false);
                 }}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-lg transition-all duration-150 hover:bg-white/20 hover:scale-110 active:scale-90"
+                className="flex h-10 w-10 touch-manipulation items-center justify-center rounded-lg text-lg transition-all duration-150 hover:bg-white/20 hover:scale-110 active:scale-90"
               >
                 {emoji}
               </button>

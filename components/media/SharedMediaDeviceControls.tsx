@@ -39,6 +39,20 @@ interface SharedCameraSettingsPanelProps {
   onSettingsChange: (partial: Partial<CameraSettings>) => void;
 }
 
+interface SharedMediaSettingsSheetProps {
+  isOpen: boolean;
+  onClose: () => void;
+  audioSettings: AudioSettings;
+  cameraSettings: CameraSettings;
+  currentStream?: MediaStream | null;
+  onAudioSettingsChange: (partial: Partial<AudioSettings>) => void;
+  onCameraSettingsChange: (partial: Partial<CameraSettings>) => void;
+  title?: string;
+  subtitle?: string;
+  overlayClassName?: string;
+  panelClassName?: string;
+}
+
 export const SharedAudioSettingsPanel: React.FC<SharedAudioSettingsPanelProps> = ({
   settings,
   currentStream,
@@ -301,6 +315,66 @@ export const SharedCameraSettingsPanel: React.FC<SharedCameraSettingsPanelProps>
         onChange={handleImageUpload}
         className="hidden"
       />
+    </>
+  );
+};
+
+export const SharedMediaSettingsSheet: React.FC<SharedMediaSettingsSheetProps> = ({
+  isOpen,
+  onClose,
+  audioSettings,
+  cameraSettings,
+  currentStream,
+  onAudioSettingsChange,
+  onCameraSettingsChange,
+  title = 'Configuración',
+  subtitle = 'Audio y cámara',
+  overlayClassName = 'fixed inset-0 z-[240] bg-black/45 backdrop-blur-[1px]',
+  panelClassName = 'fixed inset-x-3 bottom-24 top-16 z-[250] overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950/97 shadow-2xl backdrop-blur-2xl',
+}) => {
+  if (!isOpen) {
+    return null;
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label="Cerrar configuración"
+        onClick={onClose}
+        className={overlayClassName}
+      />
+      <div className={panelClassName}>
+        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+          <div>
+            <div className="text-sm font-semibold text-white">{title}</div>
+            <div className="text-xs text-white/50">{subtitle}</div>
+          </div>
+          <button onClick={onClose} className="h-10 w-10 rounded-2xl bg-white/5 text-white/70 hover:bg-white/10 hover:text-white">
+            <svg className="mx-auto h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="h-full overflow-y-auto overscroll-contain px-3 pb-6 pt-3">
+          <div className="rounded-3xl border border-white/10 bg-black/20 p-3">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Audio</div>
+            <SharedAudioSettingsPanel
+              settings={audioSettings}
+              currentStream={currentStream}
+              onSettingsChange={onAudioSettingsChange}
+            />
+          </div>
+          <div className="mt-3 rounded-3xl border border-white/10 bg-black/20">
+            <div className="px-4 pt-4 text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Cámara</div>
+            <SharedCameraSettingsPanel
+              settings={cameraSettings}
+              currentStream={currentStream}
+              onSettingsChange={onCameraSettingsChange}
+            />
+          </div>
+        </div>
+      </div>
     </>
   );
 };

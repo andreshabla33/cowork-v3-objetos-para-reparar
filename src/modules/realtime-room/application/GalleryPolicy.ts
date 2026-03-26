@@ -3,6 +3,8 @@ export interface GalleryPolicyInput {
   localParticipantId?: string | null;
   featuredParticipantId?: string | null;
   activeSpeakerId?: string | null;
+  activeSpeakerIds?: Iterable<string>;
+  recentSpeakerIds?: Iterable<string>;
   raisedHandParticipantIds?: Iterable<string>;
 }
 
@@ -30,18 +32,35 @@ export class GalleryPolicy {
 
   private getPriority(participantId: string, input: GalleryPolicyInput): number {
     const raisedHandParticipantIds = new Set(input.raisedHandParticipantIds ?? []);
+    const activeSpeakerIds = Array.from(input.activeSpeakerIds ?? []);
+    const recentSpeakerIds = Array.from(input.recentSpeakerIds ?? []);
+    const activeSpeakerPriorityIndex = activeSpeakerIds.indexOf(participantId);
+    const recentSpeakerPriorityIndex = recentSpeakerIds.indexOf(participantId);
+
     if (participantId === input.featuredParticipantId) {
       return 0;
     }
+
+    if (activeSpeakerPriorityIndex >= 0) {
+      return 10 + activeSpeakerPriorityIndex;
+    }
+
     if (participantId === input.activeSpeakerId) {
-      return 1;
+      return 20;
     }
+
+    if (recentSpeakerPriorityIndex >= 0) {
+      return 25 + recentSpeakerPriorityIndex;
+    }
+
     if (raisedHandParticipantIds.has(participantId)) {
-      return 2;
+      return 30;
     }
+
     if (participantId === input.localParticipantId) {
-      return 3;
+      return 40;
     }
-    return 4;
+
+    return 50;
   }
 }

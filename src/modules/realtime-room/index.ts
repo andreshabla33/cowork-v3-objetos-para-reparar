@@ -27,6 +27,8 @@ export { ActiveSpeakerPolicy } from './application/ActiveSpeakerPolicy';
 export type { ActiveSpeakerPolicyInput } from './application/ActiveSpeakerPolicy';
 export { GalleryPolicy } from './application/GalleryPolicy';
 export type { GalleryPolicyInput } from './application/GalleryPolicy';
+export { GalleryViewportPolicy } from './application/GalleryViewportPolicy';
+export type { GalleryViewportCapacityDecision, GalleryViewportPolicyInput, GalleryViewportTier } from './application/GalleryViewportPolicy';
 export { MeetingLayoutModelBuilder } from './application/MeetingLayoutModel';
 export type { MeetingGalleryLayoutConfig, MeetingLayoutModel, MeetingLayoutModelInput, MeetingLayoutTemplate } from './application/MeetingLayoutModel';
 export { RaiseHandUseCase } from './application/RaiseHandUseCase';

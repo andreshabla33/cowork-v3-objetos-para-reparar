@@ -27,7 +27,7 @@ export const VideoLayoutManager: React.FC<VideoLayoutManagerProps> = ({
 }) => {
   if (layoutModel.template === 'sidebar' && layoutModel.screenShareTrack) {
     return (
-      <div className="flex h-full w-full flex-col gap-2 p-2 md:flex-row">
+      <div className="flex h-full w-full flex-col gap-2 p-2 pb-28 md:flex-row md:pb-2">
         {/* Pantalla compartida - área principal */}
         <div className="min-h-0 flex-1 min-w-0">
           <ScreenShareViewer
@@ -40,11 +40,11 @@ export const VideoLayoutManager: React.FC<VideoLayoutManagerProps> = ({
         
         {/* Strip lateral de participantes */}
         <div className="flex shrink-0 flex-col gap-2 md:w-56 lg:w-64">
-          <div className="flex h-24 gap-2 overflow-x-auto pb-1 md:h-auto md:flex-1 md:flex-col md:overflow-y-auto md:overflow-x-hidden">
+          <div className="flex h-24 snap-x snap-mandatory gap-2 overflow-x-auto pb-1 pr-1 md:h-auto md:flex-1 md:flex-col md:overflow-y-auto md:overflow-x-hidden md:pr-0">
             {layoutModel.stripTracks.map((track, index) => (
               <div
                 key={track.participant?.identity || index}
-                className="h-full aspect-[4/3] rounded-xl overflow-hidden bg-zinc-900 shrink-0 md:min-h-[8rem] md:h-auto"
+                className="h-full aspect-[4/3] snap-start rounded-xl overflow-hidden bg-zinc-900 shrink-0 md:min-h-[8rem] md:h-auto"
               >
                 {renderParticipant(track, index)}
               </div>
@@ -68,7 +68,7 @@ export const VideoLayoutManager: React.FC<VideoLayoutManagerProps> = ({
 
   if (layoutModel.template === 'screen-share-top' && layoutModel.screenShareTrack) {
     return (
-      <div className="flex h-full w-full flex-col gap-2 p-2">
+      <div className="flex h-full w-full flex-col gap-2 p-2 pb-28 md:pb-2">
         {/* Pantalla compartida - área principal */}
         <div className="min-h-0 flex-1">
           <ScreenShareViewer
@@ -81,11 +81,11 @@ export const VideoLayoutManager: React.FC<VideoLayoutManagerProps> = ({
         
         {/* Strip inferior de participantes */}
         <div className="flex flex-col gap-2 shrink-0">
-          <div className="flex h-24 gap-2 overflow-x-auto pb-2 md:h-32">
+          <div className="flex h-24 snap-x snap-mandatory gap-2 overflow-x-auto pb-2 pr-1 md:h-32 md:pr-0">
             {layoutModel.stripTracks.map((track, index) => (
               <div
                 key={track.participant?.identity || index}
-                className="aspect-[4/3] h-full rounded-xl overflow-hidden bg-zinc-900 shrink-0"
+                className="aspect-[4/3] h-full snap-start rounded-xl overflow-hidden bg-zinc-900 shrink-0"
               >
                 {renderParticipant(track, index)}
               </div>
@@ -109,7 +109,7 @@ export const VideoLayoutManager: React.FC<VideoLayoutManagerProps> = ({
 
   if (layoutModel.template === 'speaker' && layoutModel.featuredTrack) {
     return (
-      <div className="h-full w-full overflow-y-auto overscroll-contain p-2 pb-28 md:overflow-hidden md:pb-2">
+      <div className="h-full w-full overflow-y-auto overscroll-contain p-2 pb-[calc(7rem+env(safe-area-inset-bottom))] md:overflow-hidden md:pb-2">
         <div className="flex min-h-full w-full flex-col gap-2 md:h-full">
           {/* Speaker principal */}
           <div className="shrink-0 md:flex-1 md:min-h-0 flex items-center justify-center">
@@ -146,8 +146,8 @@ export const VideoLayoutManager: React.FC<VideoLayoutManagerProps> = ({
   }
 
   return (
-    <div className={layoutModel.gallery?.viewportClassName ?? 'relative h-full w-full overflow-hidden p-3'}>
-      <div className={`grid min-h-full w-full ${layoutModel.gallery?.gridClassName ?? 'grid-cols-1 grid-rows-1'} auto-rows-[minmax(0,1fr)] gap-3 content-start justify-items-center`}>
+    <div className={layoutModel.gallery?.viewportClassName ?? 'relative h-full w-full overflow-hidden p-2 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:p-3 sm:pb-[calc(7rem+env(safe-area-inset-bottom))] md:p-3 md:pb-3'}>
+      <div className={`grid h-full min-h-full w-full ${layoutModel.gallery?.gridClassName ?? 'grid-cols-1 grid-rows-1'} auto-rows-[minmax(0,1fr)] gap-2 sm:gap-3 content-stretch items-stretch justify-items-stretch`}>
         {layoutModel.galleryTracks.map((track, index) => (
           <div
             key={track.participant?.identity || index}
@@ -157,21 +157,9 @@ export const VideoLayoutManager: React.FC<VideoLayoutManagerProps> = ({
           </div>
         ))}
       </div>
-      
-      {optimizacion?.mostrarPaginacion && (
-        <div className="pointer-events-none absolute inset-y-0 left-0 right-0 z-50 hidden items-center px-3 md:flex lg:px-4">
-          <VideoPagination
-            paginaActual={optimizacion.paginaActual}
-            totalPaginas={optimizacion.totalPaginas}
-            onAnterior={optimizacion.irPaginaAnterior}
-            onSiguiente={optimizacion.irPaginaSiguiente}
-            variant="sides"
-          />
-        </div>
-      )}
 
       {optimizacion?.mostrarPaginacion && (
-        <div className="absolute bottom-2 left-0 right-0 z-50 flex justify-center pb-20 md:hidden">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-5">
           <VideoPagination
             paginaActual={optimizacion.paginaActual}
             totalPaginas={optimizacion.totalPaginas}

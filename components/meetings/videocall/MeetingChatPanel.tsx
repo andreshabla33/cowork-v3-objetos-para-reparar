@@ -71,23 +71,32 @@ export const MeetingChatPanel: React.FC<MeetingChatPanelProps> = ({
     setDraft('');
   };
 
+  const panelStateClass = isOpen
+    ? 'pointer-events-auto opacity-100 translate-y-0 md:translate-x-0'
+    : 'pointer-events-none opacity-0 translate-y-full md:translate-y-0 md:translate-x-full';
+
   return (
-    <div
-      aria-hidden={!isOpen}
-      className={`absolute inset-0 z-[260] flex w-full flex-col bg-zinc-950/98 backdrop-blur-xl transition-all duration-300 md:inset-y-0 md:right-0 md:left-auto md:w-80 md:border-l md:border-white/10 ${
-        isOpen
-          ? 'pointer-events-auto opacity-100 translate-y-0 md:translate-x-0'
-          : 'pointer-events-none opacity-0 translate-y-full md:translate-y-0 md:translate-x-full'
-      }`}
-    >
-      <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-5 py-4 pt-[max(1rem,env(safe-area-inset-top))]">
+    <>
+      <button
+        type="button"
+        aria-label="Cerrar chat"
+        onClick={onClose}
+        className={`fixed inset-0 z-[255] bg-black/35 backdrop-blur-[1px] transition-opacity duration-300 md:hidden ${
+          isOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+      />
+      <div
+        aria-hidden={!isOpen}
+        className={`absolute inset-x-0 bottom-0 top-14 z-[260] flex w-full flex-col overflow-hidden rounded-t-[1.75rem] border-t border-white/10 bg-zinc-950/98 backdrop-blur-xl transition-all duration-300 md:inset-y-0 md:right-0 md:left-auto md:top-0 md:w-[22rem] md:rounded-none md:border-t-0 md:border-l md:border-white/10 ${panelStateClass}`}
+      >
+      <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5 md:px-5">
         <div>
           <h3 className="text-base font-semibold text-white">Chat de la reunión</h3>
           <p className="mt-1 text-xs text-white/45">Los mensajes se guardan como historial de la reunión.</p>
         </div>
         <button
           onClick={onClose}
-          className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white/70 transition-colors hover:bg-white/15 hover:text-white"
+          className="flex h-11 w-11 touch-manipulation items-center justify-center rounded-2xl bg-white/10 text-white/70 transition-colors hover:bg-white/15 hover:text-white"
           type="button"
           aria-label="Cerrar chat"
         >
@@ -95,7 +104,7 @@ export const MeetingChatPanel: React.FC<MeetingChatPanelProps> = ({
         </button>
       </div>
 
-      <div ref={scrollRef} className="flex-1 min-h-0 space-y-4 overflow-y-auto px-4 py-4">
+      <div ref={scrollRef} className="flex-1 min-h-0 space-y-4 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
         {normalizedMessages.length === 0 ? (
           <div className="flex h-full min-h-[220px] items-center justify-center px-6 text-center text-sm text-white/45">
             Envía el primer mensaje para iniciar la conversación.
@@ -115,7 +124,7 @@ export const MeetingChatPanel: React.FC<MeetingChatPanelProps> = ({
                 <span className="shrink-0 text-white/35">{message.timeLabel}</span>
               </div>
               <div
-                className={`max-w-[84%] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm ${
+                className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm sm:max-w-[84%] ${
                   message.isOwn
                     ? 'bg-indigo-500 text-white rounded-br-md'
                     : 'bg-white/10 text-white/92 rounded-bl-md'
@@ -128,7 +137,7 @@ export const MeetingChatPanel: React.FC<MeetingChatPanelProps> = ({
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="flex shrink-0 items-end gap-3 border-t border-white/10 bg-zinc-950/95 px-4 py-4 pb-[max(1rem,calc(1rem+env(safe-area-inset-bottom)))]">
+      <form onSubmit={handleSubmit} className="flex shrink-0 items-end gap-3 border-t border-white/10 bg-zinc-950/95 px-4 py-4 pb-[max(1rem,calc(1rem+env(safe-area-inset-bottom)))] sm:px-5 md:px-4">
         <input
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
@@ -138,13 +147,14 @@ export const MeetingChatPanel: React.FC<MeetingChatPanelProps> = ({
         <button
           type="submit"
           disabled={isSending || draft.trim().length === 0}
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-indigo-500 text-white transition-all hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-45"
+          className="flex h-12 w-12 shrink-0 touch-manipulation items-center justify-center rounded-2xl bg-indigo-500 text-white transition-all hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-45"
           aria-label="Enviar mensaje"
         >
           <Send className="h-4.5 w-4.5" />
         </button>
       </form>
-    </div>
+      </div>
+    </>
   );
 };
 
