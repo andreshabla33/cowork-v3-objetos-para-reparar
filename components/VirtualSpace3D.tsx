@@ -92,7 +92,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
 
   // Store
   const userRoleInActiveWorkspace = useStore((state) => state.userRoleInActiveWorkspace);
-  const { currentUser, onlineUsers, setPosition, activeWorkspace, toggleScreenShare, togglePrivacy, setPrivacy, session, setActiveSubTab, setActiveChatGroupId, activeSubTab, empresasAutorizadas, setEmpresasAutorizadas, isEditMode, setIsEditMode, isDragging, setIsDragging, handleToggleCameraNew, handleToggleMicrophoneNew, handleApplyAudioSettings, handleApplyCameraSettings, mediaState } = s;
+  const { currentUser, onlineUsers, setPosition, activeWorkspace, toggleScreenShare, togglePrivacy, setPrivacy, session, setActiveSubTab, setActiveChatGroupId, activeSubTab, empresasAutorizadas, setEmpresasAutorizadas, isEditMode, setIsEditMode, isDragging, setIsDragging, handleToggleCameraNew, handleToggleMicrophoneNew, handleApplyAudioSettings, handleApplyCameraSettings, mediaState, videoBackgroundKey } = s;
   const isScreenSharingActive = mediaState.screenShareSession.active;
 
   const [objetoEnColocacion, setObjetoEnColocacion] = React.useState<ObjetoPreview3D | null>(null);
@@ -1019,6 +1019,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       {mediaState.isCameraEnabled && stream && stream.getVideoTracks().length > 0 && cameraSettings.backgroundEffect !== 'none' && (
         <div className="absolute w-0 h-0 overflow-hidden opacity-0 pointer-events-none" aria-hidden="true">
           <VideoWithBackground
+            key={videoBackgroundKey}
             stream={stream}
             effectType={cameraSettings.backgroundEffect}
             backgroundImage={cameraSettings.backgroundImage}

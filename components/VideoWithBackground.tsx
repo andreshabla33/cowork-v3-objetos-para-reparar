@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, memo, useCallback } from 'react';
+import React, { useEffect, useRef, useState, memo, useCallback, useMemo } from 'react';
 import type { IBackgroundSegmenter } from '@/src/core/domain/ports/IBackgroundSegmenter';
 import type { IBackgroundCompositor } from '@/src/core/domain/ports/IBackgroundCompositor';
 import { MediaPipeSegmenterAdapter } from '@/src/core/infrastructure/MediaPipeSegmenterAdapter';
@@ -74,6 +74,20 @@ export const VideoWithBackground = memo(({
   const [isInitialized, setIsInitialized] = useState(false);
   const [showCanvas, setShowCanvas] = useState(false);
 
+  // ─── Stable stream signature — only video tracks matter for background effects ─
+  // Audio track changes (mic toggle) should NOT trigger reinitialization
+  const streamSignature = useMemo(() => {
+    if (!stream) return null;
+    const videoTracks = stream.getVideoTracks();
+    // Only track video track IDs - audio changes shouldn't restart the pipeline
+    const trackIds = videoTracks
+      .map(t => `${t.id}:${t.enabled}:${t.readyState}:${t.muted}`)
+      .join('|');
+    const signature = trackIds || 'no-video';
+    console.log('[VideoWithBackground] Stream signature:', signature.substring(0, 100));
+    return signature;
+  }, [stream]);
+
   // Compose canvas ref for React rendering (we need a ref to get DOM element)
   const outputCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -143,7 +157,18 @@ export const VideoWithBackground = memo(({
 
   // ─── Initialize pipeline ───────────────────────────────────────────
   useEffect(() => {
+    console.log('[VideoWithBackground] COMPONENT MOUNTED');
+    
+    return () => {
+      console.log('[VideoWithBackground] COMPONENT UNMOUNTED');
+    };
+  }, []);
+
+  // ─── Initialize pipeline ───────────────────────────────────────────
+  useEffect(() => {
+    console.log('[VideoWithBackground] INIT useEffect triggered, streamSignature:', streamSignature?.substring(0, 50), 'effectType:', effectType);
     if (!stream || effectType === 'none') {
+      console.log('[VideoWithBackground] Early return - no stream or effectType is none');
       setShowCanvas(false);
       setIsInitialized(false);
       return;
@@ -295,7 +320,7 @@ export const VideoWithBackground = memo(({
       onProcessedStreamReady?.(null);
       setIsInitialized(false);
     };
-  }, [stream, effectType]); // Only re-init on stream or effectType change
+  }, [streamSignature, effectType]); // Only re-init when video tracks or effect type change
 
   // ─── Update video source ───────────────────────────────────────────
   useEffect(() => {

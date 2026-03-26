@@ -620,6 +620,12 @@ export function useSpace3D(props: {
     return true;
   }, [replaceActiveCameraInput, settings.cameraSettings.selectedCameraId, settings.setCameraSettings]);
 
+  const videoBackgroundKey = useMemo(() => {
+    if (!mediaState.stream) return 'no-stream';
+    const videoTrack = mediaState.stream.getVideoTracks()[0];
+    return videoTrack?.id || 'no-video-track';
+  }, [mediaState.stream]);
+
   return {
     // Store
     currentUser: currentUserRefactored, onlineUsers, setPosition, activeWorkspace,
@@ -652,6 +658,7 @@ export function useSpace3D(props: {
     canJoinRealtimeRoom,
     preflightState: preflightCheck,
     mediaState,
+    videoBackgroundKey,
     realtimeState: livekit.realtimeCoordinatorState,
     mediaCoordinatorRef,
     mediaCoordinatorState,

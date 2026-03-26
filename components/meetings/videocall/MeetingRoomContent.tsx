@@ -103,7 +103,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
     onToggleChat,
     invitadosExternos,
   });
-  const { mediaState, cameraSettings, audioSettings, isLocalVideoProcessed, updateCameraSettings, updateAudioSettings, toggleMicrophone, toggleCamera, setProcessedStream } = useMeetingMediaBridge({
+  const { mediaState, cameraSettings, audioSettings, isLocalVideoProcessed, videoBackgroundKey, updateCameraSettings, updateAudioSettings, toggleMicrophone, toggleCamera, setProcessedStream } = useMeetingMediaBridge({
     room,
     initialCameraEnabled,
     initialMicrophoneEnabled,
@@ -221,6 +221,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
       {backgroundEffectReady && mediaState.desiredCameraEnabled && mediaState.stream && mediaState.stream.getVideoTracks().length > 0 && cameraSettings.backgroundEffect !== 'none' && (
         <div className="absolute h-0 w-0 overflow-hidden opacity-0 pointer-events-none" aria-hidden="true">
           <VideoWithBackground
+            key={videoBackgroundKey}
             stream={mediaState.stream}
             effectType={cameraSettings.backgroundEffect}
             backgroundImage={cameraSettings.backgroundImage}

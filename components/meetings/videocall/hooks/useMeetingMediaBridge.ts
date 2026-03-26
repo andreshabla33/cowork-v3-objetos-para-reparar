@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { Room, RoomEvent, Track } from 'livekit-client';
 import { loadCameraSettings, saveCameraSettings, loadAudioSettings, saveAudioSettings, type CameraSettings, type AudioSettings } from '@/modules/realtime-room';
 import { createProcessedAudioTrack, type ProcessedAudioTrackHandle } from '@/lib/audioProcessing';
@@ -437,12 +437,20 @@ export const useMeetingMediaBridge = ({
     coordinatorRef.current?.stopMedia();
   }, [cleanupProcessedAudio]);
 
+  // Key estable para VideoWithBackground - previene remounts al togglear mic
+  const videoBackgroundKey = useMemo(() => {
+    if (!mediaState.stream) return 'no-stream';
+    const videoTrack = mediaState.stream.getVideoTracks()[0];
+    return videoTrack?.id || 'no-video-track';
+  }, [mediaState.stream]);
+
   return {
     cameraSettings,
     audioSettings,
     mediaState,
     speakerDeviceId: audioSettings.selectedSpeakerId || undefined,
     isLocalVideoProcessed: cameraSettings.backgroundEffect !== 'none' && !!mediaState.processedStream,
+    videoBackgroundKey,
     updateCameraSettings,
     updateAudioSettings,
     toggleCamera,
