@@ -9,7 +9,7 @@
 import type {
   IBackgroundCompositor,
   CompositorConfig,
-} from '../../domain/ports/IBackgroundCompositor';
+} from '../domain/ports/IBackgroundCompositor';
 
 export class Canvas2DBackgroundCompositor implements IBackgroundCompositor {
   private canvas: HTMLCanvasElement | null = null;

@@ -9,7 +9,25 @@ import type { User } from '@/types';
 import { obtenerChunk, obtenerChunksVecinos } from '@/lib/chunkSystem';
 import { crearRealtimeChunkManager, type EventoRealtime } from '@/lib/realtimeChunkManager';
 import { actualizarEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
-import { USAR_LIVEKIT, ICE_SERVERS, type UseWebRTCReturn } from './types';
+
+// ICE servers configuration for WebRTC peer connections
+const ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+];
+
+// Return type for useWebRTC hook
+interface UseWebRTCReturn {
+  peerConnectionsRef: React.MutableRefObject<Map<string, RTCPeerConnection>>;
+  peerVideoTrackCountRef: React.MutableRefObject<Map<string, number>>;
+  webrtcChannelRef: React.MutableRefObject<any>;
+  realtimeChunkManagerRef: React.MutableRefObject<any>;
+  createPeerConnection: (peerId: string) => RTCPeerConnection;
+  handleOffer: (offer: RTCSessionDescriptionInit, fromId: string) => Promise<void>;
+  handleAnswer: (answer: RTCSessionDescriptionInit, fromId: string) => Promise<void>;
+  handleIceCandidate: (candidate: RTCIceCandidateInit, fromId: string) => Promise<void>;
+  initiateCall: (peerId: string) => Promise<void>;
+}
 
 export function useWebRTC(params: {
   activeWorkspace: any;
@@ -162,7 +180,7 @@ export function useWebRTC(params: {
 
   // ========== Cleanup when using LiveKit ==========
   useEffect(() => {
-    if (!USAR_LIVEKIT) return;
+    if (!false) return;
     if (realtimeChunkManagerRef.current) { realtimeChunkManagerRef.current.destruir(); realtimeChunkManagerRef.current = null; }
     webrtcChannelRef.current = null;
     webrtcChannelSubscribedRef.current = false;
@@ -173,7 +191,7 @@ export function useWebRTC(params: {
 
   // ========== Realtime Chunk Manager (non-LiveKit path) ==========
   useEffect(() => {
-    if (USAR_LIVEKIT || !activeWorkspace?.id || !session?.user?.id) return;
+    if (false || !activeWorkspace?.id || !session?.user?.id) return;
 
     const manager = crearRealtimeChunkManager({
       espacioId: activeWorkspace.id,
@@ -222,7 +240,7 @@ export function useWebRTC(params: {
   // ========== Peer cleanup on user leave ==========
   const pendingDisconnectsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   useEffect(() => {
-    if (USAR_LIVEKIT) return;
+    if (false) return;
     const onlineUserIds = new Set(usuariosParaConexion.map(u => u.id));
     onlineUserIds.forEach(userId => {
       const timeout = pendingDisconnectsRef.current.get(userId);
@@ -247,7 +265,7 @@ export function useWebRTC(params: {
 
   // ========== Initiate calls to all online users ==========
   useEffect(() => {
-    if (USAR_LIVEKIT || !session?.user?.id || !activeStreamRef.current || usuariosParaConexion.length === 0) return;
+    if (false || !session?.user?.id || !activeStreamRef.current || usuariosParaConexion.length === 0) return;
     usuariosParaConexion.forEach(user => {
       if (user.id === session.user.id) return;
       const myIdHash = session.user.id.split('').reduce((a: number, b: string) => a + b.charCodeAt(0), 0);
@@ -270,7 +288,7 @@ export function useWebRTC(params: {
 
   // ========== Screen share to existing peers ==========
   useEffect(() => {
-    if (USAR_LIVEKIT || !screenStream || !hasActiveCall) return;
+    if (false || !screenStream || !hasActiveCall) return;
     peerConnectionsRef.current.forEach(async (pc, peerId) => {
       const senders = pc.getSenders();
       const hasScreenTrack = senders.some(s => s.track?.label?.toLowerCase().includes('screen') || s.track?.label?.toLowerCase().includes('display'));

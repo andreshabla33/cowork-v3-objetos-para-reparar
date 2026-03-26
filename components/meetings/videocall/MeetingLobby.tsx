@@ -223,17 +223,26 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
 
   // Cargar información de la sala
   useEffect(() => {
+    console.log('[MeetingLobby] fetchSalaInfo iniciando', { codigoSala, tokenInvitacion: tokenInvitacion?.slice(0, 8) + '...' });
+    let isCancelled = false;
+    
     const fetchSalaInfo = async () => {
       try {
         setLoading(true);
         
         if (tokenInvitacion) {
+          console.log('[MeetingLobby] Validando invitación...');
           const { data, error: fnError } = await supabase.functions.invoke('validar-invitacion-reunion', {
             body: { token: tokenInvitacion }
           });
 
+          if (isCancelled) {
+            console.log('[MeetingLobby] Fetch cancelado (componente desmontado)');
+            return;
+          }
+
           if (fnError) {
-            console.error('Error validando invitación:', fnError);
+            console.error('[MeetingLobby] Error validando invitación:', fnError);
             throw new Error(fnError.message || 'Invitación no válida o expirada');
           }
 
@@ -257,8 +266,10 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
             organizador: data?.organizador_nombre || 'Organizador',
             configuracion: salaData?.configuracion || { sala_espera: true },
           });
+          console.log('[MeetingLobby] Sala cargada exitosamente:', salaData?.nombre);
         } else if (codigoSala) {
-          // Buscar por código de sala (query simplificada)
+          console.log('[MeetingLobby] Buscando sala por código...');
+          // ... resto del código
           const { data: sala, error: salaError } = await supabase
             .from('salas_reunion')
             .select(`
@@ -271,13 +282,14 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
             .eq('activa', true)
             .single();
 
+          if (isCancelled) return;
+
           if (salaError || !sala) {
             throw new Error('Código de sala no válido');
           }
 
           const salaTyped = sala as any;
           
-          // Obtener nombre del creador por separado
           let organizadorNombre = 'Organizador';
           if (salaTyped.creador_id) {
             const { data: creador } = await supabase
@@ -294,17 +306,27 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
             organizador: organizadorNombre,
             configuracion: salaTyped.configuracion || { sala_espera: true },
           });
+          console.log('[MeetingLobby] Sala cargada por código:', salaTyped.nombre);
         }
       } catch (err: any) {
-        setError(err.message);
-        onError?.(err.message);
+        if (!isCancelled) {
+          console.error('[MeetingLobby] Error en fetchSalaInfo:', err);
+          setError(err.message);
+          onError?.(err.message);
+        }
       } finally {
-        setLoading(false);
+        if (!isCancelled) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchSalaInfo();
-  }, [codigoSala, tokenInvitacion, onError]);
+    void fetchSalaInfo();
+    
+    return () => {
+      isCancelled = true;
+    };
+  }, [codigoSala, tokenInvitacion]); // Eliminado onError de dependencias
 
   // Toggle cámara
   const handleToggleCamera = () => {
@@ -410,7 +432,7 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-3 sm:p-4 lg:p-6">
       <div className="w-full max-w-6xl">
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl">
-          <div className="grid xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
+          <div className="grid lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_420px]">
             {/* Preview de cámara */}
             <div className="relative aspect-[4/5] sm:aspect-video xl:aspect-auto min-h-[280px] sm:min-h-[360px] xl:min-h-[560px] bg-black/50">
               {cameraEnabled && !cameraSettings.hideSelfView && stream && stream.getVideoTracks().length > 0 && cameraSettings.backgroundEffect !== 'none' && (

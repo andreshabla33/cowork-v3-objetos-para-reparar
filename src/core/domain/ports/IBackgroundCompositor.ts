@@ -8,7 +8,7 @@
  * Implementations can use Canvas2D (fallback) or WebGL (fast path).
  */
 
-export type CompositorEffectType = 'blur' | 'image';
+export type EffectType = 'none' | 'blur' | 'image';
 
 export interface CompositorConfig {
   /** Canvas width */
@@ -16,7 +16,7 @@ export interface CompositorConfig {
   /** Canvas height */
   height: number;
   /** Type of background effect */
-  effectType: CompositorEffectType;
+  effectType: EffectType;
   /** Blur radius in pixels (only for effectType='blur') */
   blurRadius: number;
   /** Whether to mirror the video horizontally */

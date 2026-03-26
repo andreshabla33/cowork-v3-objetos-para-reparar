@@ -227,19 +227,17 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
             backgroundImage={cameraSettings.backgroundImage}
             blurAmount={12}
             muted={true}
-            className="h-px w-px"
-            onProcessedStreamReady={setProcessedStream}
+            className="w-full h-full object-cover"
             mirrorVideo={cameraSettings.mirrorVideo}
           />
         </div>
       )}
 
-      {!isExternalGuest && (
-        <MeetingGuidedOnboarding
-          userId={userId}
-          showRecordingStep={Boolean(isHost || !isExternalGuest)}
-        />
-      )}
+      <MeetingGuidedOnboarding
+        userId={userId}
+        isExternalGuest={isExternalGuest}
+        showRecordingStep={Boolean(isHost || !isExternalGuest)}
+      />
 
       <MeetingAudioRenderer speakerDeviceId={audioSettings.selectedSpeakerId || undefined} />
 

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
@@ -12,6 +12,9 @@ interface ParametrosBootstrapAplicacion {
 }
 
 export function useBootstrapAplicacion({ initialize, setSession, setView, setAuthFeedback }: ParametrosBootstrapAplicacion) {
+  // Ref para deduplicar eventos de auth que llegan muy seguidos
+  const lastAuthEventRef = useRef<{ event: string; userId: string; timestamp: number } | null>(null);
+  
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tokenHash = urlParams.get('token_hash');
@@ -48,6 +51,17 @@ export function useBootstrapAplicacion({ initialize, setSession, setView, setAut
     void verificarEInicializar();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Deduplicación: ignorar eventos idénticos que lleguen dentro de 500ms
+      const eventKey = `${event}:${session?.user?.id || 'no-user'}`;
+      const now = Date.now();
+      const lastEvent = lastAuthEventRef.current;
+      
+      if (lastEvent && lastEvent.event === eventKey && (now - lastEvent.timestamp) < 500) {
+        console.log(`Auth Event: ${event} (deduplicado - mismo evento dentro de 500ms)`);
+        return;
+      }
+      
+      lastAuthEventRef.current = { event: eventKey, userId: session?.user?.id || 'no-user', timestamp: now };
       console.log('Auth Event:', event);
 
       // ─── PASSWORD_RECOVERY: NO inicializar, NO redirigir al dashboard ────────

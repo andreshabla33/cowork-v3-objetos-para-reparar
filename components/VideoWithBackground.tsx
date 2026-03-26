@@ -119,7 +119,7 @@ export const VideoWithBackground = memo(({
   useEffect(() => {
     if (!compositorRef.current?.isReady) return;
     compositorRef.current.updateConfig({
-      effectType: effectType === 'none' ? 'blur' : effectType as 'blur' | 'image',
+      effectType: effectType as 'blur' | 'image',
       blurRadius: blurAmount,
       mirror: mirrorVideo,
     });
@@ -220,7 +220,7 @@ export const VideoWithBackground = memo(({
       await compositor.initialize({
         width: w,
         height: h,
-        effectType: effectType === 'none' ? 'blur' : effectType as 'blur' | 'image',
+        effectType: effectType as 'blur' | 'image',
         blurRadius: blurAmount,
         mirror: mirrorVideo,
       });
