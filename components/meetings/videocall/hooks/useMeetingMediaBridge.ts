@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { Room, RoomEvent, Track } from 'livekit-client';
-import { crearOpcionesPublicacionTrackLiveKit, loadCameraSettings, saveCameraSettings, loadAudioSettings, saveAudioSettings, type CameraSettings, type AudioSettings } from '@/modules/realtime-room';
+import { TrackPublicationCoordinator, crearOpcionesPublicacionTrackLiveKit, loadCameraSettings, saveCameraSettings, loadAudioSettings, saveAudioSettings, type CameraSettings, type AudioSettings } from '@/modules/realtime-room';
 import { createProcessedAudioTrack, type ProcessedAudioTrackHandle } from '@/lib/audioProcessing';
 import { SpaceMediaCoordinator, type SpaceMediaCoordinatorState } from '@/modules/realtime-room';
 
@@ -61,6 +61,7 @@ export const useMeetingMediaBridge = ({
   initialMicrophoneEnabled,
 }: UseMeetingMediaBridgeParams) => {
   const coordinatorRef = useRef<SpaceMediaCoordinator | null>(null);
+  const coordinadorPublicacionTracksRef = useRef(new TrackPublicationCoordinator());
   const processedAudioHandleRef = useRef<ProcessedAudioTrackHandle | null>(null);
   const [cameraSettings, setCameraSettings] = useState<CameraSettings>(loadCameraSettings);
   const [audioSettings, setAudioSettings] = useState<AudioSettings>(loadAudioSettings);
@@ -276,6 +277,12 @@ export const useMeetingMediaBridge = ({
     return room?.localParticipant.getTrackPublication(source) ?? null;
   }, [room]);
 
+  const getPublishedMediaTrackId = useCallback((source: Track.Source) => {
+    const publication = getPublication(source);
+    const localTrack = publication?.track as unknown as MeetingMutableLocalTrack | undefined;
+    return localTrack?.mediaStreamTrack?.id ?? null;
+  }, [getPublication]);
+
   const stabilizeMicrophoneAfterCameraToggle = useCallback(async () => {
     const coordinator = coordinatorRef.current;
     if (!coordinator) {
@@ -320,44 +327,51 @@ export const useMeetingMediaBridge = ({
 
     const cameraPublication = getPublication(Track.Source.Camera);
     const microphonePublication = getPublication(Track.Source.Microphone);
-    if (effectiveVideoTrack) {
-      if (cameraPublication?.track) {
-        const localTrack = cameraPublication.track as unknown as MeetingMutableLocalTrack;
-        if (localTrack.mediaStreamTrack?.id !== effectiveVideoTrack.id && typeof localTrack.replaceTrack === 'function') {
-          await localTrack.replaceTrack(effectiveVideoTrack);
-        }
-        if (localTrack.isMuted && typeof localTrack.unmute === 'function') {
-          await localTrack.unmute();
-        }
-      } else {
-        await room.localParticipant.publishTrack(effectiveVideoTrack, crearOpcionesPublicacionTrackLiveKit('camera'));
-      }
-    } else if (cameraPublication?.track) {
-      const localTrack = cameraPublication.track as unknown as MeetingMutableLocalTrack;
-      if (!localTrack.isMuted && typeof localTrack.mute === 'function') {
-        await localTrack.mute();
-      }
-    }
+    const syncPlan = coordinadorPublicacionTracksRef.current.buildSyncPlan({
+      desiredMicrophoneEnabled: mediaState.desiredMicrophoneEnabled,
+      desiredCameraEnabled: mediaState.desiredCameraEnabled,
+      desiredScreenShareEnabled: false,
+      microphoneTrack: audioTrack,
+      cameraTrack: effectiveVideoTrack,
+      screenShareTrack: null,
+      publishedTrackIds: {
+        microphone: getPublishedMediaTrackId(Track.Source.Microphone),
+        camera: getPublishedMediaTrackId(Track.Source.Camera),
+        screen_share: null,
+      },
+    });
 
-    if (audioTrack) {
-      if (microphonePublication?.track) {
-        const localTrack = microphonePublication.track as unknown as MeetingMutableLocalTrack;
-        if (localTrack.mediaStreamTrack?.id !== audioTrack.id && typeof localTrack.replaceTrack === 'function') {
-          await localTrack.replaceTrack(audioTrack);
-        }
-        if (localTrack.isMuted && typeof localTrack.unmute === 'function') {
-          await localTrack.unmute();
-        }
-      } else {
-        await room.localParticipant.publishTrack(audioTrack, crearOpcionesPublicacionTrackLiveKit('microphone'));
+    for (const item of syncPlan.items) {
+      if (item.source === 'screen_share') {
+        continue;
       }
-    } else if (microphonePublication?.track) {
-      const localTrack = microphonePublication.track as unknown as MeetingMutableLocalTrack;
-      if (!localTrack.isMuted && typeof localTrack.mute === 'function') {
-        await localTrack.mute();
+
+      const publication = item.source === 'camera' ? cameraPublication : microphonePublication;
+
+      if (item.action === 'publish_or_replace' && item.track) {
+        if (publication?.track) {
+          const localTrack = publication.track as unknown as MeetingMutableLocalTrack;
+          if (localTrack.mediaStreamTrack?.id !== item.track.id && typeof localTrack.replaceTrack === 'function') {
+            await localTrack.replaceTrack(item.track);
+          }
+          if (localTrack.isMuted && typeof localTrack.unmute === 'function') {
+            await localTrack.unmute();
+          }
+        } else {
+          await room.localParticipant.publishTrack(item.track, crearOpcionesPublicacionTrackLiveKit(item.source));
+        }
+      } else if (item.action === 'unpublish' && publication?.track) {
+        const localTrack = publication.track as unknown as MeetingMutableLocalTrack;
+        if (!localTrack.isMuted && typeof localTrack.mute === 'function') {
+          await localTrack.mute();
+        }
+      }
+
+      if (item.track && item.targetTrackEnabled !== undefined) {
+        item.track.enabled = item.targetTrackEnabled;
       }
     }
-  }, [getPublication, mediaState.desiredCameraEnabled, mediaState.desiredMicrophoneEnabled, mediaState.effectiveStream, mediaState.stream, room]);
+  }, [getPublication, getPublishedMediaTrackId, mediaState.desiredCameraEnabled, mediaState.desiredMicrophoneEnabled, mediaState.effectiveStream, mediaState.stream, room]);
 
   useEffect(() => {
     if (!room || room.state !== 'connected') {
