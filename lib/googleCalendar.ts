@@ -129,9 +129,6 @@ export const googleCalendar = {
    * - Link de videollamada interno (sala propia)
    * - Invitaciones por email a participantes
    * - Notificaciones automáticas
-   * 
-   * NOTA: Ya NO crea Google Meet. El link interno se incluye en la descripción.
-   * Para restaurar Google Meet, usar el backup: googleCalendar.backup-google-meet.ts
    */
   createEvent: async (event: CreateEventParams): Promise<CreateEventResponse> => {
     const token = googleCalendar.getToken();

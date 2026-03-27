@@ -54,6 +54,8 @@ interface MeetingControlBarProps {
   recordingDiagnostics?: RecordingDiagnostics | null;
   cameraPermissionState?: PermissionState;
   microphonePermissionState?: PermissionState;
+  hasMicrophoneDevice?: boolean;
+  hasCameraDevice?: boolean;
   // Navegación
   onGoToVirtualSpace?: () => void;
 }
@@ -96,6 +98,8 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
   recordingDiagnostics = null,
   cameraPermissionState = 'unknown',
   microphonePermissionState = 'unknown',
+  hasMicrophoneDevice = true,
+  hasCameraDevice = true,
   onGoToVirtualSpace,
 }) => {
   const room = useRoomContext();
@@ -194,26 +198,30 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
     const result = await onToggleMic();
     if (result === false) {
       showTemporaryFeedback(
-        microphonePermissionState === 'denied'
+        !hasMicrophoneDevice
+          ? 'No se encontró un micrófono compatible en este equipo. Conecta uno y vuelve a intentar.'
+          : microphonePermissionState === 'denied'
           ? 'Permite el micrófono en tu navegador y vuelve a intentarlo.'
           : 'No pudimos activar el micrófono. Reintenta desde este botón.',
       );
       return;
     }
-  }, [microphonePermissionState, onToggleMic, showTemporaryFeedback]);
+  }, [hasMicrophoneDevice, microphonePermissionState, onToggleMic, showTemporaryFeedback]);
 
   // Toggle cámara
   const toggleCamera = useCallback(async () => {
     const result = await onToggleCamera();
     if (result === false) {
       showTemporaryFeedback(
-        cameraPermissionState === 'denied'
+        !hasCameraDevice
+          ? 'No se encontró una cámara compatible en este equipo. Conecta una y vuelve a intentar.'
+          : cameraPermissionState === 'denied'
           ? 'Permite la cámara en tu navegador y vuelve a intentarlo.'
           : 'No pudimos activar la cámara. Reintenta desde este botón.',
       );
       return;
     }
-  }, [cameraPermissionState, onToggleCamera, showTemporaryFeedback]);
+  }, [cameraPermissionState, hasCameraDevice, onToggleCamera, showTemporaryFeedback]);
 
   // Toggle compartir pantalla
   const toggleScreenShare = useCallback(async () => {

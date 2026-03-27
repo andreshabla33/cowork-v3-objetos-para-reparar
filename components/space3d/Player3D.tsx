@@ -38,6 +38,7 @@ import type { OcupacionAsientoReal } from '@/hooks/space3d/useOcupacionAsientos'
 import { statusColors, STATUS_LABELS, type VirtualSpace3DProps } from './spaceTypes';
 import { Avatar, type AvatarProps } from './Avatar3DScene';
 import { TeleportEffect } from './Avatar3DScene';
+import { useSeatDetection } from '@/hooks/space3d/useSeatDetection';
 
 // --- Player ---
 export interface PlayerProps {
@@ -456,92 +457,23 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
   }, [contextualAnim, isSitting, seatRuntime]);
 
   // Fase 2: Sit contextual — sentarse automáticamente al estar idle cerca de una silla
-  // Nota: usamos ref para contextualAnim dentro del interval para evitar que el
-  // effect se re-ejecute al cambiar contextualAnim y mate el seatTransitionTimer.
-  const contextualAnimRef = useRef<AnimationState | null>(null);
-  useEffect(() => { contextualAnimRef.current = contextualAnim; }, [contextualAnim]);
-
-  const sitCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  useEffect(() => {
-    if (sitCheckRef.current) clearInterval(sitCheckRef.current);
-    sitCheckRef.current = setInterval(() => {
-      void (async () => {
-        if (animationStateRef.current !== 'idle' || contextualAnimRef.current) return;
-        const px = positionRef.current?.x;
-        const pz = positionRef.current?.z;
-        if (px == null || pz == null) return;
-
-        const asientoDetectado = resolverAsientoUsuario({ x: px, z: pz }, null, asientosRef.current);
-        if (!asientoDetectado) return;
-        if (asientoOcupadoPorOtroUsuario(asientoDetectado)) return;
-        if (
-          seatCaptureCooldownSeatIdRef.current === asientoDetectado.id &&
-          performance.now() < seatCaptureCooldownUntilRef.current
-        ) {
-          logSitDebug('captura_bloqueada_cooldown', {
-            asientoId: asientoDetectado.id,
-            restanteMs: Math.round(seatCaptureCooldownUntilRef.current - performance.now()),
-          });
-          return;
-        }
-
-        const distanciaAlAsiento = Math.hypot(
-          asientoDetectado.posicion.x - positionRef.current.x,
-          asientoDetectado.posicion.z - positionRef.current.z
-        );
-
-        if (distanciaAlAsiento > asientoDetectado.radioCaptura) {
-          logSitDebug('captura_omitida', {
-            asientoId: asientoDetectado.id,
-            distancia: Number(distanciaAlAsiento.toFixed(3)),
-            radioCaptura: Number(asientoDetectado.radioCaptura.toFixed(3)),
-            radioActivacion: Number(asientoDetectado.radioActivacion.toFixed(3)),
-            rotacion: Number(asientoDetectado.rotacion.toFixed(3)),
-          });
-          return;
-        }
-
-        const reservado = await reservarAsientoPersistente(asientoDetectado);
-        if (!reservado) return;
-
-        seatApproachDurationMsRef.current = THREE.MathUtils.clamp(
-          Math.round(Math.max(ANIMATION_SIT_DOWN_DURATION, distanciaAlAsiento * 850)),
-          ANIMATION_SIT_DOWN_DURATION,
-          2000
-        );
-
-        logSitDebug('captura_iniciada', {
-          asientoId: asientoDetectado.id,
-          distancia: Number(distanciaAlAsiento.toFixed(3)),
-          radioCaptura: Number(asientoDetectado.radioCaptura.toFixed(3)),
-          posicionAsiento: {
-            x: Number(asientoDetectado.posicion.x.toFixed(3)),
-            y: Number(asientoDetectado.posicion.y.toFixed(3)),
-            z: Number(asientoDetectado.posicion.z.toFixed(3)),
-          },
-          rotacion: Number(asientoDetectado.rotacion.toFixed(3)),
-          duracionMs: seatApproachDurationMsRef.current,
-          offsetVerticalEstimado: Number(obtenerOffsetVerticalSentado(asientoDetectado).toFixed(3)),
-          avatarAltura: Number(avatarHeightRef.current.toFixed(3)),
-          avatarCadera: Number(avatarHipHeightRef.current.toFixed(3)),
-          perfilAsiento: asientoDetectado.perfil.tipoPerfil,
-          aproximacionFrontal: Number(asientoDetectado.perfil.aproximacionFrontal.toFixed(3)),
-        });
-
-        setSeatRuntime((prev) => prev?.id === asientoDetectado.id ? prev : asientoDetectado);
-        setContextualAnim('sit_down');
-        if (seatTransitionTimerRef.current) clearTimeout(seatTransitionTimerRef.current);
-        seatTransitionTimerRef.current = setTimeout(() => {
-          positionRef.current.x = asientoDetectado.posicion.x;
-          positionRef.current.z = asientoDetectado.posicion.z;
-          setContextualAnim('sit');
-        }, seatApproachDurationMsRef.current);
-      })();
-    }, 1000);
-    return () => {
-      if (sitCheckRef.current) clearInterval(sitCheckRef.current);
-    };
-  }, [asientoOcupadoPorOtroUsuario, reservarAsientoPersistente]);
+  // Extracted to useSeatDetection hook for maintainability.
+  useSeatDetection({
+    animationStateRef,
+    contextualAnim,
+    positionRef,
+    asientosRef,
+    seatCaptureCooldownSeatIdRef,
+    seatCaptureCooldownUntilRef,
+    seatApproachDurationMsRef,
+    seatTransitionTimerRef,
+    asientoOcupadoPorOtroUsuario,
+    reservarAsientoPersistente,
+    logSitDebug,
+    setSeatRuntime,
+    setContextualAnim,
+    obtenerOffsetVerticalSentado,
+  });
 
   useEffect(() => {
     return () => {

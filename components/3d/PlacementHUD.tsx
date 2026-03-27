@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { EspacioObjeto, TransformacionObjetoInput } from '@/hooks/space3d/useEspacioObjetos';
-import type { ModoEdicionObjeto } from '@/store/useStore';
+import type { ModoEdicionObjeto } from '@/store/slices';
 
 interface PlacementHUDProps {
   /** Nombre del objeto pendiente de colocar */

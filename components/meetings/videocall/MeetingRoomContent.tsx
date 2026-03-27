@@ -517,6 +517,8 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
         onAudioSettingsChange={updateAudioSettings}
         cameraPermissionState={mediaState.preflightCheck.camera}
         microphonePermissionState={mediaState.preflightCheck.microphone}
+        hasCameraDevice={mediaState.preflightCheck.hasCameraDevice}
+        hasMicrophoneDevice={mediaState.preflightCheck.hasMicrophoneDevice}
         onGoToVirtualSpace={!isExternalGuest ? onLeave : undefined}
       />
 

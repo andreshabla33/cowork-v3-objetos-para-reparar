@@ -44,9 +44,9 @@ export const SettingsPerformance: React.FC<SettingsPerformanceProps> = ({
 
   const qualityOptions = [
     { value: 'low', label: 'Bajo - Máximo rendimiento' },
-    { value: 'medium', label: 'Medio - Equilibrado' },
+    { value: 'medium', label: 'Medio - Equilibrado (recomendado)' },
     { value: 'high', label: 'Alto - Mejor calidad' },
-    { value: 'auto', label: 'Automático - Según conexión' }
+    { value: 'auto', label: 'Automático - Adaptativo' }
   ];
 
   const videoStreamOptions = [

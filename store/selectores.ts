@@ -1,6 +1,6 @@
-import type { AppState } from './useStore';
+import type { StoreState } from './state';
 
-export const seleccionarBootstrapApp = (state: AppState) => ({
+export const seleccionarBootstrapApp = (state: StoreState) => ({
   session: state.session,
   setSession: state.setSession,
   view: state.view,
@@ -12,7 +12,7 @@ export const seleccionarBootstrapApp = (state: AppState) => ({
   setActiveWorkspace: state.setActiveWorkspace,
 });
 
-export const seleccionarEspacioVirtual2D = (state: AppState) => ({
+export const seleccionarEspacioVirtual2D = (state: StoreState) => ({
   currentUser: state.currentUser,
   users: state.users,
   activeWorkspace: state.activeWorkspace,
@@ -28,7 +28,7 @@ export const seleccionarEspacioVirtual2D = (state: AppState) => ({
   onlineUsers: state.onlineUsers,
 });
 
-export const seleccionarSpace3DBase = (state: AppState) => ({
+export const seleccionarSpace3DBase = (state: StoreState) => ({
   currentUser: state.currentUser,
   onlineUsers: state.onlineUsers,
   setPosition: state.setPosition,
@@ -51,7 +51,7 @@ export const seleccionarSpace3DBase = (state: AppState) => ({
   setIsDragging: state.setIsDragging,
 });
 
-export const seleccionarProcesadorInvitacion = (state: AppState) => ({
+export const seleccionarProcesadorInvitacion = (state: StoreState) => ({
   session: state.session,
   setAuthFeedback: state.setAuthFeedback,
   setView: state.setView,

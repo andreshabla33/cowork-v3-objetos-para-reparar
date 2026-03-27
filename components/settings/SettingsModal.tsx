@@ -23,6 +23,7 @@ import { SettingsEmpresa } from './sections/SettingsEmpresa';
 import { SettingsZona } from './sections/SettingsZona';
 import { SettingsTerrenos } from './sections/SettingsTerrenos';
 import { loadCameraSettings } from '@/modules/realtime-room';
+import { createDefaultUserSettings, deepMergeSettings, type UserSettings } from '@/lib/userSettings';
 
 type SettingsTab = 'general' | 'calendar' | 'minimode' | 'audio' | 'video' | 'meetings' | 'notifications' | 'privacy' | 'performance' | 'space3d' | 'members' | 'guests' | 'security' | 'cargos' | 'departamentos' | 'empresa' | 'zonas' | 'terrenos';
 
@@ -37,102 +38,6 @@ interface SettingsModalProps {
 
 const STORAGE_KEY = 'user_settings';
 
-const defaultSettings = {
-  general: {
-    skipWelcomeScreen: false,
-    colorMode: 'dark',
-    language: 'es' as Language,
-    autoUpdates: true
-  },
-  calendar: {
-    googleConnected: false,
-    syncEnabled: true,
-    defaultReminder: 15,
-    showGoogleEvents: true,
-    autoCreateGoogleEvent: true
-  },
-  minimode: {
-    enableMiniMode: true,
-    miniModePosition: 'bottom-right',
-    showVideoInMini: true,
-    showChatInMini: true,
-    autoMinimize: false,
-    autoMinimizeDelay: 60
-  },
-  audio: {
-    selectedMicrophoneId: '',
-    selectedSpeakerId: '',
-    noiseReduction: true,
-    noiseReductionLevel: 'standard',
-    echoCancellation: true,
-    autoGainControl: true,
-    chatSounds: true,
-    sfxVolume: 70
-  },
-  video: {
-    selectedCameraId: '',
-    hdQuality: true,
-    mirrorVideo: true,
-    hideSelfView: false,
-    autoIdleMuting: true
-  },
-  meetings: {
-    autoMuteOnJoin: true,
-    autoCameraOffOnJoin: true,
-  },
-  notifications: {
-    desktopNotifications: true,
-    newMessageSound: true,
-    nearbyUserSound: false,
-    mentionNotifications: true
-  },
-  privacy: {
-    showOnlineStatus: true,
-    showActivityStatus: true,
-    allowDirectMessages: true,
-    showLocationInSpace: true,
-    activityHistoryEnabled: true,
-    activityRetentionDays: 30
-  },
-  performance: {
-    graphicsQuality: 'auto',
-    showVideos: true,
-    showAvatarAnimations: true,
-    reducedMotion: false,
-    hardwareAcceleration: true,
-    maxVideoStreams: 8,
-    batterySaver: false
-  },
-  space3d: {
-    cameraMode: 'free',
-    movementSpeed: 5,
-    cameraSensitivity: 5,
-    invertYAxis: false,
-    showFloorGrid: true,
-    showNamesAboveAvatars: true,
-    spatialAudio: true,
-    proximityRadius: 150,
-    radioInteresChunks: 1
-  },
-  guests: {
-    guestCheckInEnabled: false,
-    requireApproval: true,
-    guestAccessDuration: 24,
-    allowGuestChat: true,
-    allowGuestVideo: true
-  },
-  security: {
-    requireLogin: true,
-    passwordProtection: false,
-    spacePassword: '',
-    allowedDomains: [],
-    allowStaffAccess: true,
-    twoFactorRequired: false,
-    sessionTimeout: 480,
-    ipRestriction: false
-  }
-};
-
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
@@ -142,7 +47,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onThemeChange
 }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
-  const [settings, setSettings] = useState(defaultSettings);
+  const [settings, setSettings] = useState<UserSettings>(() => createDefaultUserSettings());
   const [currentLang, setCurrentLang] = useState<Language>(getCurrentLanguage());
 
   // Suscribirse a cambios de idioma
@@ -159,7 +64,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        setSettings({ ...defaultSettings, ...parsed });
+        setSettings(deepMergeSettings(createDefaultUserSettings(), parsed));
       } catch (e) {
         console.error('Error loading settings:', e);
       }
@@ -167,7 +72,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   }, []);
 
   // Guardar settings en localStorage + sincronizar con keys que lee VirtualSpace3D
-  const saveSettings = (newSettings: typeof settings) => {
+  const saveSettings = (newSettings: UserSettings) => {
     setSettings(newSettings);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
     
@@ -344,7 +249,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {activeTab === 'meetings' && (
               <SettingsMeetings
                 settings={settings.meetings}
-                onSettingsChange={(meetings) => saveSettings({ ...settings, meetings })}
+                onSettingsChange={(meetings) => saveSettings({ ...settings, meetings: { ...settings.meetings, ...meetings } })}
                 isAdmin={isAdmin}
                 workspaceId={workspaceId}
               />
@@ -370,7 +275,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             {activeTab === 'space3d' && (
               <SettingsSpace3D
                 settings={settings.space3d}
-                onSettingsChange={(space3d) => saveSettings({ ...settings, space3d })}
+                onSettingsChange={(space3d) => saveSettings({ ...settings, space3d: { ...settings.space3d, ...space3d } })}
               />
             )}
             {activeTab === 'members' && (

@@ -17,6 +17,8 @@
  */
 
 import type { AnimationState } from '@/components/avatar3d/shared';
+import type { AvatarConfig } from '@/types';
+import type { Avatar3DConfig } from '@/components/avatar3d/shared';
 
 // ─── Tipos del ECS ──────────────────────────────────────────────────────────
 
@@ -57,8 +59,8 @@ export interface AvatarEntity {
   empresaId: string | null;
   esFantasma: boolean;
   isCameraOn: boolean;
-  avatarConfig: any;
-  avatar3DConfig: any;
+  avatarConfig: AvatarConfig | null;
+  avatar3DConfig: Avatar3DConfig | null;
   profilePhoto: string | null;
   /** Timestamp de la última actualización recibida del servidor */
   lastServerUpdate: number;
@@ -145,7 +147,7 @@ class AvatarStore {
    * Añade nuevos avatares que aparecieron.
    */
   syncWithOnlineUsers(
-    onlineUsers: Array<{ id: string; name: string; x: number; y: number; direction?: string; status: string; empresa_id?: string | null; esFantasma?: boolean; isCameraOn?: boolean; avatarConfig?: any; avatar3DConfig?: any; profilePhoto?: string | null }>,
+    onlineUsers: Array<{ id: string; name: string; x: number; y: number; direction?: string; status: string; empresa_id?: string | null; esFantasma?: boolean; isCameraOn?: boolean; avatarConfig?: AvatarConfig | null; avatar3DConfig?: Avatar3DConfig | null; profilePhoto?: string | null }>,
     currentUserId: string,
     scaleFactor: number = 16
   ): void {

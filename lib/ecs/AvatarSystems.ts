@@ -12,14 +12,11 @@
 
 import * as THREE from 'three';
 import { avatarStore, type AvatarEntity } from './AvatarECS';
+import { resolveAvatarRenderPolicy, type AvatarRenderPolicyInput } from './avatarRenderPolicy';
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
 const TELEPORT_DISTANCE = 8;
-const LOD_NEAR = 10;
-const LOD_MID = 25;
-const CULL_DISTANCE = 80;
-const SHADOW_DISTANCE = 12;
 
 // ─── MovementSystem ──────────────────────────────────────────────────────────
 
@@ -98,12 +95,23 @@ const _tempVec = new THREE.Vector3();
 export const cullingSystem = {
   _frameCounter: 0,
 
-  update(camera: THREE.Camera, frustum: THREE.Frustum): void {
+  update(camera: THREE.Camera, frustum: THREE.Frustum, options: AvatarRenderPolicyInput = {}): void {
     this._frameCounter++;
     if (this._frameCounter < 5) return;
     this._frameCounter = 0;
 
     const entities = avatarStore.getAll();
+    const thresholds = resolveAvatarRenderPolicy({
+      ...options,
+      avatarCount: options.avatarCount ?? entities.length,
+    });
+
+    if (options.documentVisible === false) {
+      for (let i = 0; i < entities.length; i++) {
+        entities[i].isVisible = false;
+      }
+      return;
+    }
 
     for (let i = 0; i < entities.length; i++) {
       const e = entities[i];
@@ -113,23 +121,23 @@ export const cullingSystem = {
       e.distanceToCamera = _tempVec.distanceTo(camera.position);
 
       // Visibilidad
-      const isNearby = e.distanceToCamera < LOD_NEAR;
-      const isTooFar = e.distanceToCamera > CULL_DISTANCE;
+      const isNearby = e.distanceToCamera < thresholds.lodNear;
+      const isTooFar = e.distanceToCamera > thresholds.cullDistance;
       const inFrustum = frustum.containsPoint(_tempVec);
       e.isVisible = isNearby || (inFrustum && !isTooFar);
 
       // LOD
-      if (e.distanceToCamera > LOD_MID) e.lodLevel = 'low';
-      else if (e.distanceToCamera > LOD_NEAR) e.lodLevel = 'mid';
+      if (e.distanceToCamera > thresholds.lodMid) e.lodLevel = 'low';
+      else if (e.distanceToCamera > thresholds.lodNear) e.lodLevel = 'mid';
       else e.lodLevel = 'high';
 
       // Sombras: solo cerca
-      e.castShadow = e.distanceToCamera < SHADOW_DISTANCE;
+      e.castShadow = thresholds.shadowDistance > 0 && e.distanceToCamera < thresholds.shadowDistance;
 
       // FPS de animación según distancia
-      if (e.distanceToCamera > 30) e.animFPS = 15;
-      else if (e.distanceToCamera > 15) e.animFPS = 30;
-      else e.animFPS = 60;
+      if (e.distanceToCamera > thresholds.lodMid) e.animFPS = thresholds.farAnimFps;
+      else if (e.distanceToCamera > thresholds.lodNear) e.animFPS = thresholds.midAnimFps;
+      else e.animFPS = thresholds.nearAnimFps;
     }
   },
 };
@@ -143,8 +151,9 @@ export const cullingSystem = {
  * Retorna los IDs de avatares cuya animación cambió (para re-render selectivo).
  */
 export const animationSystem = {
-  update(delta: number): string[] {
+  update(delta: number, options: AvatarRenderPolicyInput = {}): string[] {
     const changed: string[] = [];
+    if (options.documentVisible === false) return changed;
     const now = performance.now();
     const entities = avatarStore.getAll();
 

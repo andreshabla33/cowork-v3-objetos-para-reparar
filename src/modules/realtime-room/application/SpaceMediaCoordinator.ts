@@ -238,6 +238,7 @@ export class SpaceMediaCoordinator {
           });
           this.preflightCheck.microphoneTrackReady = true;
         } else {
+          this.desiredMicrophoneEnabled = false;
           this.preflightCheck.microphoneTrackReady = false;
           await this.refreshPermissionState('microphone');
         }
@@ -402,6 +403,7 @@ export class SpaceMediaCoordinator {
           return true;
         }
       }
+      this.desiredMicrophoneEnabled = false;
       this.preflightCheck.microphoneTrackReady = false;
       await this.refreshPermissionState('microphone');
       this.updatePreflightReadiness();

@@ -19,6 +19,7 @@ export class DeviceManager {
     'NotReadableError',
     'TrackStartError',
   ]);
+  private static readonly USER_MEDIA_TIMEOUT_MS = 8000;
 
   constructor(options: DeviceManagerOptions = {}) {
     this.options = options;
@@ -98,6 +99,17 @@ export class DeviceManager {
       return stream;
     } catch (error) {
       console.error(`[DeviceManager] Failed to get ${kind} stream:`, error);
+
+      if (kind === 'audio') {
+        // Some desktop drivers fail with advanced audio constraints.
+        // Fall back to minimal constraints before giving up.
+        try {
+          const relaxedAudioStream = await this.requestUserMediaWithRetry({ audio: true }, kind, null, true);
+          return relaxedAudioStream;
+        } catch (relaxedError) {
+          console.error('[DeviceManager] Relaxed audio fallback failed:', relaxedError);
+        }
+      }
 
       // Try fallback to default device
       if (deviceId) {
@@ -298,7 +310,7 @@ export class DeviceManager {
       }
 
       try {
-        return await navigator.mediaDevices.getUserMedia(constraints);
+        return await this.requestUserMediaWithTimeout(constraints, DeviceManager.USER_MEDIA_TIMEOUT_MS);
       } catch (error) {
         lastError = error;
         const errorName = this.getMediaErrorName(error);
@@ -322,6 +334,22 @@ export class DeviceManager {
     }
 
     return 'UnknownError';
+  }
+
+  private async requestUserMediaWithTimeout(
+    constraints: MediaStreamConstraints,
+    timeoutMs: number,
+  ): Promise<MediaStream> {
+    const mediaPromise = navigator.mediaDevices.getUserMedia(constraints);
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      const timerId = window.setTimeout(() => {
+        window.clearTimeout(timerId);
+        reject(new DOMException('Timed out waiting for media device response', 'AbortError'));
+      }, timeoutMs);
+    });
+
+    return Promise.race([mediaPromise, timeoutPromise]);
   }
 
   private sleep(ms: number): Promise<void> {

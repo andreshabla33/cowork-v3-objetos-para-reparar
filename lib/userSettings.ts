@@ -2,13 +2,15 @@
 // Los settings se guardan en localStorage desde SettingsModal.
 // Esta utilidad permite a cualquier componente leer los settings sin importar SettingsModal.
 
+import type { Language } from './i18n';
+
 const STORAGE_KEY = 'user_settings';
 
 export interface UserSettings {
   general: {
     skipWelcomeScreen: boolean;
     colorMode: string;
-    language: string;
+    language: Language;
     autoUpdates: boolean;
   };
   audio: {
@@ -39,7 +41,7 @@ export interface UserSettings {
     waitingRoomEnabled?: boolean;
     allowScreenShare?: boolean;
     // Métricas de análisis customizables por tipo de reunión
-    analisisMetricas: {
+    analisisMetricas?: {
       rrhh_entrevista: string[];
       rrhh_one_to_one: string[];
       deals: string[];
@@ -79,7 +81,7 @@ export interface UserSettings {
     spatialAudio: boolean;
     proximityRadius: number;
     radioInteresChunks: number;
-    enableDayNightCycle: boolean;
+    enableDayNightCycle?: boolean;
   };
   calendar: {
     googleConnected: boolean;
@@ -96,9 +98,26 @@ export interface UserSettings {
     autoMinimize: boolean;
     autoMinimizeDelay: number;
   };
+  guests: {
+    guestCheckInEnabled: boolean;
+    requireApproval: boolean;
+    guestAccessDuration: number;
+    allowGuestChat: boolean;
+    allowGuestVideo: boolean;
+  };
+  security: {
+    requireLogin: boolean;
+    passwordProtection: boolean;
+    spacePassword: string;
+    allowedDomains: string[];
+    allowStaffAccess: boolean;
+    twoFactorRequired: boolean;
+    sessionTimeout: number;
+    ipRestriction: boolean;
+  };
 }
 
-const defaultSettings: UserSettings = {
+export const defaultUserSettings: UserSettings = {
   general: {
     skipWelcomeScreen: false,
     colorMode: 'dark',
@@ -181,12 +200,12 @@ const defaultSettings: UserSettings = {
     activityRetentionDays: 30
   },
   performance: {
-    graphicsQuality: 'auto',
+    graphicsQuality: 'medium',
     showVideos: true,
     showAvatarAnimations: true,
     reducedMotion: false,
     hardwareAcceleration: true,
-    maxVideoStreams: 8,
+    maxVideoStreams: 6,
     batterySaver: false
   },
   space3d: {
@@ -215,11 +234,32 @@ const defaultSettings: UserSettings = {
     showChatInMini: true,
     autoMinimize: false,
     autoMinimizeDelay: 60
+  },
+  guests: {
+    guestCheckInEnabled: false,
+    requireApproval: true,
+    guestAccessDuration: 24,
+    allowGuestChat: true,
+    allowGuestVideo: true
+  },
+  security: {
+    requireLogin: true,
+    passwordProtection: false,
+    spacePassword: '',
+    allowedDomains: [],
+    allowStaffAccess: true,
+    twoFactorRequired: false,
+    sessionTimeout: 480,
+    ipRestriction: false
   }
 };
 
+export function createDefaultUserSettings(): UserSettings {
+  return JSON.parse(JSON.stringify(defaultUserSettings)) as UserSettings;
+}
+
 // Deep merge: combina defaults con valores guardados preservando nuevas keys en subsecciones
-function deepMergeSettings<T extends Record<string, any>>(defaults: T, overrides: Record<string, any>): T {
+export function deepMergeSettings<T extends Record<string, any>>(defaults: T, overrides: Record<string, any>): T {
   const result = { ...defaults };
   for (const key of Object.keys(defaults)) {
     if (key in overrides) {
@@ -245,12 +285,12 @@ export function getUserSettings(): UserSettings {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      return deepMergeSettings(defaultSettings, parsed);
+      return deepMergeSettings(defaultUserSettings, parsed);
     }
   } catch (e) {
     console.error('Error loading user settings:', e);
   }
-  return defaultSettings;
+  return createDefaultUserSettings();
 }
 
 // Leer una sección específica

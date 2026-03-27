@@ -11,7 +11,7 @@ import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import { useStore } from '@/store/useStore';
 import { obtenerDimensionesObjetoRuntime } from './objetosRuntime';
 import { obtenerEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
-import { getSettingsSection } from '@/lib/userSettings';
+import { getSettingsSection, subscribeToSettings } from '@/lib/userSettings';
 import {
   AvatarLodLevel, DireccionAvatar,
   TELEPORT_DISTANCE, LOD_NEAR_DISTANCE, LOD_MID_DISTANCE, CULL_DISTANCE,
@@ -23,8 +23,13 @@ import { StableVideo } from './Overlays';
 // ECS imports (PR-6/7/9/10)
 import { avatarStore } from '@/lib/ecs/AvatarECS';
 import { movementSystem, cullingSystem, animationSystem } from '@/lib/ecs/AvatarSystems';
+import { resolveAvatarRenderPolicy } from '@/lib/ecs/avatarRenderPolicy';
+import { AvatarRuntimeScheduler, resolveAvatarRuntimePolicy } from '@/lib/ecs/avatarRuntimeScheduler';
 import { SpatialGrid } from '@/lib/spatial/SpatialGrid';
+import { frameMetrics } from '@/lib/metrics/frameMetrics';
 import { AvatarLabels } from '../3d/AvatarLabels';
+import { CrowdInstances, type CrowdEntity } from './CrowdInstances';
+import { MidLodInstances, type MidLodEntity } from './MidLodInstances';
 
 // ─── Labels de estado ────────────────────────────────────────────────────────
 const STATUS_LABELS: Record<PresenceStatus, string> = {
@@ -305,6 +310,16 @@ export const Avatar: React.FC<AvatarProps> = ({
 // ═══════════════════════════════════════════════════════════════════════════════
 const avatarSpatialGrid = new SpatialGrid<{ id: string }>(20);
 
+const CrowdAvatarMarker: React.FC<{
+  status: PresenceStatus;
+  onClick?: () => void;
+}> = ({ status, onClick }) => (
+  <mesh onClick={(e) => { e.stopPropagation(); onClick?.(); }}>
+    <sphereGeometry args={[0.28, 10, 10]} />
+    <meshBasicMaterial color={statusColors[status]} toneMapped={false} />
+  </mesh>
+);
+
 export interface RemoteUsersProps {
   users: User[];
   remoteStreams: Map<string, MediaStream>;
@@ -333,9 +348,30 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
   const { camera } = useThree();
   const frustumLocal = useMemo(() => new THREE.Frustum(), []);
   const projMatrix = useMemo(() => new THREE.Matrix4(), []);
+  const [settingsVersion, setSettingsVersion] = useState(0);
   const [renderVersion, setRenderVersion] = useState(0);
   const lastRenderVersionRef = useRef(0);
   const groupRefs = useRef(new Map<string, THREE.Group>());
+  const isDocumentVisibleRef = useRef(typeof document === 'undefined' ? true : !document.hidden);
+  const runtimeSchedulerRef = useRef(new AvatarRuntimeScheduler());
+  const performanceSettings = useMemo(() => getSettingsSection('performance'), [settingsVersion]);
+
+  useEffect(() => {
+    return subscribeToSettings(() => {
+      setSettingsVersion((prev) => prev + 1);
+    });
+  }, []);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      isDocumentVisibleRef.current = !document.hidden;
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   // Sync: usuarios online → avatarStore
   useEffect(() => {
@@ -344,11 +380,20 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
 
   // Cleanup al desmontar
   useEffect(() => {
-    return () => { avatarStore.clear(); avatarSpatialGrid.clear(); };
+    return () => {
+      avatarStore.clear();
+      avatarSpatialGrid.clear();
+      runtimeSchedulerRef.current.reset();
+    };
   }, []);
 
   // ECS Update Loop: 1 único useFrame para TODOS los avatares
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
+    // Record frame metrics
+    frameMetrics.record(delta);
+    frameMetrics.setAvatarCount(avatarStore.size);
+    frameMetrics.setDrawCalls((state.gl.info as any).render?.calls ?? 0);
+
     // 1. Alimentar posiciones del broadcast/realtime al ECS
     if (realtimePositionsRef?.current) {
       for (const [userId, data] of realtimePositionsRef.current) {
@@ -380,40 +425,103 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
       }
     }
 
-    movementSystem.update(delta);
+    const runtimePolicy = resolveAvatarRuntimePolicy({
+      avatarCount: avatarStore.size,
+      graphicsQuality: performanceSettings.graphicsQuality,
+      documentVisible: isDocumentVisibleRef.current,
+    });
+    const runtimeDecision = runtimeSchedulerRef.current.next(delta, runtimePolicy);
 
-    // Apply ECS positions directly to THREE.Group refs to bypass React render cycle lag
-    for (const entity of avatarStore.getAllVisible()) {
-      const g = groupRefs.current.get(entity.userId);
-      if (g) {
-        g.position.set(entity.currentX, 0, entity.currentZ);
-        g.visible = entity.isVisible;
+    if (runtimeDecision.runMovement) {
+      movementSystem.update(delta);
+
+      // Apply ECS positions directly to THREE.Group refs to bypass React render cycle lag
+      for (const entity of avatarStore.getAllVisible()) {
+        const g = groupRefs.current.get(entity.userId);
+        if (g) {
+          g.position.set(entity.currentX, 0, entity.currentZ);
+          g.visible = entity.isVisible;
+        }
       }
     }
 
-    // Grid spatial
-    for (const entity of avatarStore.getAll()) {
-      avatarSpatialGrid.insert({ id: entity.userId }, entity.currentX, entity.currentZ);
+    if (runtimeDecision.runSpatialIndex) {
+      // Rebuild grid per scheduler tick to avoid stale occupancy in low-FPS modes.
+      avatarSpatialGrid.clear();
+      for (const entity of avatarStore.getAll()) {
+        avatarSpatialGrid.insert({ id: entity.userId }, entity.currentX, entity.currentZ);
+      }
     }
 
-    projMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-    frustumLocal.setFromProjectionMatrix(projMatrix);
-    cullingSystem.update(camera, frustumLocal);
-    animationSystem.update(delta);
+    if (runtimeDecision.runCulling) {
+      projMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+      frustumLocal.setFromProjectionMatrix(projMatrix);
+      cullingSystem.update(camera, frustumLocal, {
+        graphicsQuality: performanceSettings.graphicsQuality,
+        avatarCount: avatarStore.size,
+        documentVisible: isDocumentVisibleRef.current,
+      });
+    }
 
-    if (avatarStore.version !== lastRenderVersionRef.current) {
+    if (runtimeDecision.runAnimation) {
+      animationSystem.update(delta, {
+        graphicsQuality: performanceSettings.graphicsQuality,
+        avatarCount: avatarStore.size,
+        documentVisible: isDocumentVisibleRef.current,
+      });
+    }
+
+    if (runtimeDecision.runRenderCommit && avatarStore.version !== lastRenderVersionRef.current) {
       lastRenderVersionRef.current = avatarStore.version;
       setRenderVersion(avatarStore.version);
     }
   });
 
   const visibleEntities = avatarStore.getAllVisible();
+  const usersById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
+  const renderPolicy = useMemo(() => resolveAvatarRenderPolicy({
+    graphicsQuality: performanceSettings.graphicsQuality,
+    avatarCount: visibleEntities.length,
+    documentVisible: isDocumentVisibleRef.current,
+  }), [performanceSettings.graphicsQuality, visibleEntities.length]);
+  const prioritizedEntities = useMemo(
+    () => [...visibleEntities].sort((a, b) => a.distanceToCamera - b.distanceToCamera),
+    [visibleEntities, renderVersion]
+  );
   const avatarOrigin = useMemo(() => new THREE.Vector3(0, 0, 0), []);
+
+  // Split entities into full-render / mid-LOD capsule / crowd sphere buckets
+  const { fullEntities, midEntities, crowdEntities } = useMemo(() => {
+    const full: typeof prioritizedEntities = [];
+    const mid: MidLodEntity[] = [];
+    const crowd: CrowdEntity[] = [];
+    const midThreshold = renderPolicy.crowdFallbackDistance * 2;
+    for (let i = 0; i < prioritizedEntities.length; i++) {
+      const entity = prioritizedEntities[i];
+      const user = usersById.get(entity.userId);
+      if (!user) continue;
+      const beyondBudget = !entity.esFantasma
+        && i >= renderPolicy.fullAvatarBudget
+        && entity.distanceToCamera > renderPolicy.crowdFallbackDistance;
+      if (beyondBudget) {
+        if (entity.distanceToCamera <= midThreshold) {
+          mid.push({ userId: entity.userId, x: entity.currentX, z: entity.currentZ, status: user.status });
+        } else {
+          crowd.push({ userId: entity.userId, x: entity.currentX, z: entity.currentZ, status: user.status });
+        }
+      } else {
+        full.push(entity);
+      }
+    }
+    return { fullEntities: full, midEntities: mid, crowdEntities: crowd };
+  }, [prioritizedEntities, usersById, renderPolicy]);
 
   return (
     <>
-      {visibleEntities.map(entity => {
-        const user = users.find(u => u.id === entity.userId);
+      <MidLodInstances entities={midEntities} onClick={onClickRemoteAvatar} />
+      <CrowdInstances entities={crowdEntities} onClick={onClickRemoteAvatar} />
+      {fullEntities.map((entity) => {
+        const user = usersById.get(entity.userId);
         if (!user) return null;
 
         return (
@@ -477,6 +585,17 @@ export const CameraFollow: React.FC<{ controlsRef: React.MutableRefObject<any>; 
   const initialized = useRef(false);
   const introStartedAtRef = useRef<number | null>(null);
   const isDragging = useStore((s) => s.isDragging);
+
+  // Cached zone detection results — recomputed every ZONE_REEVAL_FRAMES to avoid per-frame work
+  const ZONE_REEVAL_FRAMES = 30;
+  const zoneFrameCounter = useRef(0);
+  const cachedZoneResult = useRef<{
+    usarVistaInterior: boolean;
+    cameraTargetHeight: number;
+    cameraHeight: number;
+    cameraDistance: number;
+  } | null>(null);
+
   const recintosCompactos = useMemo(() => {
     const grupos = new Map<string, { minX: number; maxX: number; minZ: number; maxZ: number; paredes: number }>();
 
@@ -525,22 +644,32 @@ export const CameraFollow: React.FC<{ controlsRef: React.MutableRefObject<any>; 
     const controls = controlsRef.current;
     if (!playerPos || !controls || !controls.target) return;
 
-    const zonaPropia = empresaId ? zonasEmpresa.find((z) => z.empresa_id === empresaId && z.estado === 'activa') || null : null;
-    const anchoZona = zonaPropia ? Math.max(Number(zonaPropia.ancho) / 16, 0) : 0;
-    const altoZona = zonaPropia ? Math.max(Number(zonaPropia.alto) / 16, 0) : 0;
-    const centroZonaX = zonaPropia ? Number(zonaPropia.posicion_x) / 16 : 0;
-    const centroZonaZ = zonaPropia ? Number(zonaPropia.posicion_y) / 16 : 0;
-    const halfW = anchoZona / 2;
-    const halfH = altoZona / 2;
-    const dimensionMinima = Math.min(anchoZona || Number.POSITIVE_INFINITY, altoZona || Number.POSITIVE_INFINITY);
-    const estaDentroZonaPropia = !!zonaPropia && Math.abs(playerPos.x - centroZonaX) <= halfW && Math.abs(playerPos.z - centroZonaZ) <= halfH;
-    const recintoCompacto = recintosCompactos.find((g) => playerPos.x >= g.minX + 0.12 && playerPos.x <= g.maxX - 0.12 && playerPos.z >= g.minZ + 0.12 && playerPos.z <= g.maxZ - 0.12) || null;
-    const dimensionMinimaRecinto = recintoCompacto ? Math.min(recintoCompacto.ancho, recintoCompacto.alto) : null;
-    const usarVistaInterior = Boolean(recintoCompacto) || (estaDentroZonaPropia && Number.isFinite(dimensionMinima) && dimensionMinima <= 5);
-    const dimensionBaseInterior = dimensionMinimaRecinto ?? dimensionMinima;
-    const cameraTargetHeight = usarVistaInterior ? 1.2 : CAMERA_DEFAULT_TARGET_HEIGHT;
-    const cameraHeight = usarVistaInterior ? THREE.MathUtils.clamp(dimensionBaseInterior * 0.58, 2.1, 3.1) : CAMERA_DEFAULT_HEIGHT;
-    const cameraDistance = usarVistaInterior ? THREE.MathUtils.clamp(dimensionBaseInterior * 0.42, 1.55, 2.7) : CAMERA_DEFAULT_DISTANCE;
+    // Zone/interior detection: only recompute every ZONE_REEVAL_FRAMES
+    zoneFrameCounter.current += 1;
+    if (!cachedZoneResult.current || zoneFrameCounter.current >= ZONE_REEVAL_FRAMES) {
+      zoneFrameCounter.current = 0;
+      const zonaPropia = empresaId ? zonasEmpresa.find((z) => z.empresa_id === empresaId && z.estado === 'activa') || null : null;
+      const anchoZona = zonaPropia ? Math.max(Number(zonaPropia.ancho) / 16, 0) : 0;
+      const altoZona = zonaPropia ? Math.max(Number(zonaPropia.alto) / 16, 0) : 0;
+      const centroZonaX = zonaPropia ? Number(zonaPropia.posicion_x) / 16 : 0;
+      const centroZonaZ = zonaPropia ? Number(zonaPropia.posicion_y) / 16 : 0;
+      const halfW = anchoZona / 2;
+      const halfH = altoZona / 2;
+      const dimensionMinima = Math.min(anchoZona || Number.POSITIVE_INFINITY, altoZona || Number.POSITIVE_INFINITY);
+      const estaDentroZonaPropia = !!zonaPropia && Math.abs(playerPos.x - centroZonaX) <= halfW && Math.abs(playerPos.z - centroZonaZ) <= halfH;
+      const recintoCompacto = recintosCompactos.find((g) => playerPos.x >= g.minX + 0.12 && playerPos.x <= g.maxX - 0.12 && playerPos.z >= g.minZ + 0.12 && playerPos.z <= g.maxZ - 0.12) || null;
+      const dimensionMinimaRecinto = recintoCompacto ? Math.min(recintoCompacto.ancho, recintoCompacto.alto) : null;
+      const usarVistaInterior = Boolean(recintoCompacto) || (estaDentroZonaPropia && Number.isFinite(dimensionMinima) && dimensionMinima <= 5);
+      const dimensionBaseInterior = dimensionMinimaRecinto ?? dimensionMinima;
+      cachedZoneResult.current = {
+        usarVistaInterior,
+        cameraTargetHeight: usarVistaInterior ? 1.2 : CAMERA_DEFAULT_TARGET_HEIGHT,
+        cameraHeight: usarVistaInterior ? THREE.MathUtils.clamp(dimensionBaseInterior * 0.58, 2.1, 3.1) : CAMERA_DEFAULT_HEIGHT,
+        cameraDistance: usarVistaInterior ? THREE.MathUtils.clamp(dimensionBaseInterior * 0.42, 1.55, 2.7) : CAMERA_DEFAULT_DISTANCE,
+      };
+    }
+
+    const { usarVistaInterior, cameraTargetHeight, cameraHeight, cameraDistance } = cachedZoneResult.current;
 
     controls.enabled = !isDragging;
     controls.minDistance = usarVistaInterior ? 1.05 : 1.1;
