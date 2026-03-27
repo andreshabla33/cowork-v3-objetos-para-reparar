@@ -1,0 +1,315 @@
+{
+  "app": {
+    "name": "Cowork",
+    "tagline": "Espaço de trabalho virtual"
+  },
+  "nav": {
+    "workspace": "Espaço de trabalho",
+    "dashboard": "Dashboard",
+    "settings": "Configurações",
+    "profile": "Perfil",
+    "space": "Espaço",
+    "messages": "Mensagens",
+    "tasks": "Tarefas",
+    "recordings": "Gravações",
+    "members": "Membros",
+    "chat": "Chat",
+    "calendar": "Calendário",
+    "avatar": "Avatar"
+  },
+  "theme": {
+    "dark": "Escuro",
+    "light": "Claro",
+    "space": "Espacial",
+    "arcade": "Arcade",
+    "style": "Estilo"
+  },
+  "button": {
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "close": "Fechar",
+    "select": "Selecionar",
+    "games": "Jogos",
+    "viben": "Mónica AI",
+    "customize": "Personalizar",
+    "logout": "Sair do Espaço",
+    "askViben": "Mónica AI",
+    "create": "Criar"
+  },
+  "action": {
+    "edit": "Editar",
+    "delete": "Excluir",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "create": "Criar",
+    "add": "Adicionar",
+    "remove": "Remover",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "close": "Fechar"
+  },
+  "status": {
+    "online": "Online",
+    "offline": "Offline",
+    "busy": "Ocupado",
+    "away": "Ausente"
+  },
+  "state": {
+    "loading": "Carregando",
+    "error": "Erro",
+    "success": "Sucesso",
+    "typingSingular": "está digitando...",
+    "typingPlural": "estão digitando..."
+  },
+  "workspace": {
+    "inUse": "Workspace em uso",
+    "spatialWorld": "Spatial World"
+  },
+  "settings": {
+    "title": "Configurações",
+    "category": {
+      "preferences": "Preferências",
+      "workspace": "Espaço"
+    },
+    "general": {
+      "title": "Geral",
+      "description": "Configure as preferências gerais do aplicativo",
+      "skipWelcome": "Pular tela de boas-vindas",
+      "skipWelcomeDesc": "Use suas configurações salvas de mic e câmera ao entrar",
+      "autoUpdates": "Atualizações automáticas",
+      "autoUpdatesDesc": "Instalar atualizações não críticas em segundo plano",
+      "language": "Idioma da interface",
+      "languageDesc": "Escolha o idioma do aplicativo",
+      "colorMode": "Modo de cor",
+      "colorModeDesc": "Escolha entre claro, escuro ou siga a preferência do sistema"
+    },
+    "audio": {
+      "title": "Áudio",
+      "description": "Configure seus dispositivos e preferências de áudio",
+      "microphone": "Microfone",
+      "microphoneDesc": "Selecione o dispositivo de entrada de áudio",
+      "speaker": "Alto-falante",
+      "speakerDesc": "Selecione o dispositivo de saída de áudio",
+      "noiseReduction": "Redução de ruído",
+      "echoCancellation": "Cancelamento de eco",
+      "echoCancellationDesc": "Reduz o eco quando seu microfone capta o som dos alto-falantes",
+      "autoGain": "Controle de ganho automático",
+      "autoGainDesc": "Ajusta automaticamente o nível de entrada do microfone",
+      "chatSounds": "Sons do chat",
+      "chatSoundsDesc": "Reproduzir som ao receber novas mensagens",
+      "sfxVolume": "Volume dos efeitos",
+      "sfxVolumeDesc": "Ajuste o volume dos sons do aplicativo"
+    },
+    "video": {
+      "title": "Vídeo",
+      "description": "Configure sua câmera e preferências de vídeo",
+      "camera": "Câmera",
+      "cameraDesc": "Selecione o dispositivo de vídeo",
+      "hdQuality": "Qualidade HD",
+      "hdQualityDesc": "Transmitir vídeo em alta definição quando disponível",
+      "mirror": "Espelhar vídeo",
+      "mirrorDesc": "Inverte seu vídeo como um espelho",
+      "hideSelf": "Ocultar meu vídeo",
+      "hideSelfDesc": "Oculta sua própria visualização durante conversas",
+      "autoMute": "Silenciar ao sair",
+      "autoMuteDesc": "Desliga automaticamente mic e câmera ao mudar de aba"
+    },
+    "notifications": {
+      "title": "Notificações",
+      "description": "Configure como e quando receber notificações",
+      "desktop": "Notificações de desktop",
+      "desktopDesc": "Mostrar notificações do sistema operacional",
+      "messageSound": "Som de nova mensagem",
+      "messageSoundDesc": "Reproduzir som ao receber uma mensagem de chat",
+      "nearbySound": "Som de usuário próximo",
+      "nearbySoundDesc": "Reproduzir som quando alguém se aproxima no espaço",
+      "mentions": "Notificar menções",
+      "mentionsDesc": "Receber notificação quando mencionado (@)"
+    },
+    "calendar": {
+      "title": "Calendário",
+      "description": "Configure a integração com o Google Calendar",
+      "googleConnected": "Google Calendar conectado",
+      "syncEnabled": "Sincronização habilitada",
+      "defaultReminder": "Lembrete padrão"
+    },
+    "minimode": {
+      "title": "Mini Mode",
+      "description": "Configure o modo mini do aplicativo"
+    },
+    "meetings": {
+      "title": "Reuniões",
+      "description": "Configure as preferências de reuniões"
+    },
+    "privacy": {
+      "title": "Privacidade",
+      "description": "Configure sua privacidade e visibilidade"
+    },
+    "performance": {
+      "title": "Desempenho",
+      "description": "Otimize o desempenho do aplicativo"
+    },
+    "space3d": {
+      "title": "Espaço 3D",
+      "description": "Configure o ambiente virtual 3D"
+    },
+    "members": {
+      "title": "Membros",
+      "description": "Gerencie os membros do espaço"
+    },
+    "guests": {
+      "title": "Convidados",
+      "description": "Configure o acesso de convidados"
+    },
+    "security": {
+      "title": "Segurança",
+      "description": "Configure a segurança do espaço"
+    }
+  },
+  "chat": {
+    "title": "Chat",
+    "placeholder": "Digite uma mensagem...",
+    "send": "Enviar",
+    "noMessages": "Não há mensagens neste canal",
+    "unread": "Não lidos",
+    "newChannel": "Novo Canal",
+    "name": "Nome",
+    "namePlaceholder": "ex: desenvolvimento",
+    "public": "Público",
+    "private": "Privado",
+    "member": "Membro",
+    "addToChannel": "Adicionar ao canal",
+    "searchMembers": "Buscar membros...",
+    "directMessage": "Mensagem direta",
+    "openCollaboration": "Espaço de colaboração aberta",
+    "mention": "Mencionar",
+    "replyingInThread": "Respondendo no tópico",
+    "replyInThread": "Responder no tópico...",
+    "thread": "Tópico",
+    "message": "mensagem",
+    "messages": "mensagens",
+    "original": "Original",
+    "beFirstToReply": "Seja o primeiro a responder",
+    "messageTo": "Mensagem para",
+    "messageIn": "Mensagem em",
+    "user": "usuário",
+    "channel": "canal"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Bem-vindo",
+    "myWorkspaces": "Meus Workspaces",
+    "createWorkspace": "Criar Workspace",
+    "joinWorkspace": "Entrar em Workspace"
+  },
+  "tasks": {
+    "title": "Tarefas",
+    "newTask": "Nova Tarefa",
+    "inProgress": "Em andamento",
+    "completed": "Concluídas",
+    "toDo": "A fazer"
+  },
+  "recordings": {
+    "title": "Gravações",
+    "noRecordings": "Sem gravações",
+    "duration": "Duração",
+    "date": "Data",
+    "status": {
+      "recording": "Gravando",
+      "processing": "Processando",
+      "transcribing": "Transcrevendo",
+      "analyzing": "Analisando",
+      "completed": "Concluído",
+      "error": "Erro"
+    },
+    "type": {
+      "rrhh": "RH",
+      "interview": "Entrevista",
+      "oneToOne": "One-to-One",
+      "deals": "Negociação",
+      "team": "Equipe",
+      "meeting": "Reunião"
+    },
+    "filter": {
+      "all": "Todas",
+      "allTypes": "Todos os tipos"
+    },
+    "actions": {
+      "download": "Baixar",
+      "delete": "Excluir",
+      "viewAnalysis": "Ver Análise"
+    }
+  },
+  "games": {
+    "title": "Jogos",
+    "chess": "Xadrez",
+    "ticTacToe": "Jogo da Velha",
+    "invite": "Convidar para jogar",
+    "accept": "Aceitar",
+    "decline": "Recusar"
+  },
+  "sidebar": {
+    "threads": "Tópicos",
+    "meetings": "Reuniões",
+    "calendar": "Calendário",
+    "drafts": "Rascunhos",
+    "channels": "Canais",
+    "directMessages": "Mensagens Diretas",
+    "people": "Pessoas",
+    "invitePeople": "Convidar Pessoas"
+  },
+  "gameHub": {
+    "title": "Game Hub",
+    "subtitle": "Mini jogos de Team Building",
+    "tabs": {
+      "games": "Jogos",
+      "leaderboard": "Classificação",
+      "achievements": "Conquistas"
+    },
+    "stats": {
+      "victories": "vitórias",
+      "points": "pts",
+      "streak": "sequência"
+    },
+    "difficulty": {
+      "easy": "Fácil",
+      "medium": "Médio",
+      "hard": "Difícil"
+    },
+    "gameInfo": {
+      "players": "jogadores",
+      "minutes": "min"
+    },
+    "escapeRoom": {
+      "title": "Escape Room Virtual",
+      "description": "Resolva puzzles e enigmas em equipe para escapar antes que o tempo acabe.",
+      "tags": ["Resolução de problemas", "Trabalho em equipe", "Comunicação"]
+    },
+    "triviaBattle": {
+      "title": "Trivia Battle",
+      "description": "Compita respondendo perguntas de cultura geral e conhecimento da empresa.",
+      "tags": ["Conhecimento", "Velocidade", "Competitividade"]
+    },
+    "scavengerHunt": {
+      "title": "Scavenger Hunt 3D",
+      "description": "Explore o espaço virtual e encontre objetos ocultos antes dos outros.",
+      "tags": ["Exploração", "Atenção aos detalhes", "Navegação"]
+    },
+    "speedNetworking": {
+      "title": "Speed Networking",
+      "description": "Conheça seus colegas em sessões rápidas de conversação."
+    },
+    "mysteryRolePlay": {
+      "title": "Mystery Role Play",
+      "description": "Assuma um papel secreto e investigue para resolver o mistério."
+    },
+    "buildingChallenge": {
+      "title": "Desafio de Construção",
+      "description": "Construa estruturas criativas e compita pela melhor criação."
+    },
+    "chess": {
+      "title": "Xadrez Online",
+      "description": "Jogue xadrez em tempo real contra colegas do seu espaço de trabalho."
+    }
+  }
+}
