@@ -638,17 +638,17 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                   {salaInfo?.nombre}
                 </h1>
                 <p className="text-base text-zinc-400 lg:text-lg">
-                  Organizado por <span className="font-black text-white">{salaInfo?.organizador}</span>
+                  Organizado por <span className="font-black text-white whitespace-nowrap">{salaInfo?.organizador}</span>
                 </p>
               </div>
 
-              <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 lg:mb-8">
+              <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 lg:mb-8">
                 {roomMeta.map((item) => (
-                  <div key={item.label} className="rounded-2xl border border-white/8 bg-black/25 px-4 py-3 backdrop-blur-xl">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                  <div key={item.label} className="rounded-2xl border border-white/8 bg-black/25 px-4 py-3 backdrop-blur-xl min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 truncate">
                       {item.label}
                     </p>
-                    <p className="mt-1 text-sm font-semibold text-white leading-snug">
+                    <p className="mt-1 text-sm font-semibold text-white leading-snug break-words">
                       {item.value}
                     </p>
                   </div>
