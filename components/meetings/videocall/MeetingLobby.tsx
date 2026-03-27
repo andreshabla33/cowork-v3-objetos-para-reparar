@@ -526,80 +526,95 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
       </div>
 
-      <div className="relative z-10 mx-auto flex min-h-full w-full max-w-[1400px] items-center justify-center p-3 sm:p-4 lg:p-6">
-        <div className="relative w-full">
-          <div className="absolute -inset-1 rounded-[32px] sm:rounded-[40px] bg-gradient-to-r from-violet-600/20 via-fuchsia-600/20 to-cyan-500/20 blur-xl opacity-60" />
-          <div className="relative overflow-hidden rounded-[24px] sm:rounded-[32px] border border-white/[0.08] bg-white/[0.03] shadow-2xl backdrop-blur-xl">
-            <div className="flex flex-col lg:grid lg:grid-cols-[1fr_340px] xl:grid-cols-[1fr_380px] 2xl:grid-cols-[1fr_420px] min-h-[calc(100dvh-80px)] lg:min-h-[min(90dvh,800px)] lg:max-h-[min(90dvh,800px)]">
-            {/* Preview de cámara */}
-            <div className="relative flex-shrink-0 h-[45dvh] min-h-[280px] max-h-[400px] sm:h-[50dvh] sm:min-h-[320px] sm:max-h-[480px] lg:h-auto lg:min-h-0 lg:max-h-none border-b border-white/5 lg:border-b-0 lg:border-r lg:border-white/5">
-              <div className="absolute inset-0 overflow-hidden rounded-t-[24px] sm:rounded-t-[32px] lg:rounded-l-[32px] lg:rounded-tr-none">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(124,58,237,0.12),_transparent_45%)]" />
-              {cameraEnabled && !cameraSettings.hideSelfView && stream && stream.getVideoTracks().length > 0 && cameraSettings.backgroundEffect !== 'none' && (
-                <VideoWithBackground
-                  stream={stream}
-                  effectType={cameraSettings.backgroundEffect}
-                  backgroundImage={cameraSettings.backgroundImage}
-                  blurAmount={12}
-                  muted={true}
-                  className="w-full h-full object-cover"
-                  onProcessedStreamReady={setProcessedStream}
-                  mirrorVideo={cameraSettings.mirrorVideo}
+      <div className="relative z-10 mx-auto flex min-h-full w-full max-w-md lg:max-w-lg items-center justify-center p-4">
+        <div className="relative w-full my-auto">
+          {/* Glow exterior */}
+          <div className="absolute -inset-1 bg-gradient-to-r from-violet-600/20 via-fuchsia-600/20 to-cyan-500/20 rounded-[40px] blur-xl opacity-60" />
+          
+          {/* Card principal glassmorphism */}
+          <div className="relative backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-[36px] p-6 lg:p-8 shadow-2xl overflow-hidden">
+            <div className="flex flex-col justify-center bg-[rgba(23,23,42,0.55)] p-6 sm:p-7 lg:p-8 xl:p-10">
+              {/* Info de la reunión */}
+              <div className="mb-6 sm:mb-8">
+                <div className={`mb-5 inline-flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-gradient-to-r px-4 py-2 text-sm font-black text-white shadow-lg ${tipoInfo.color}`}>
+                  <span>{tipoInfo.icon}</span>
+                  <span>{tipoInfo.label}</span>
+                </div>
+                <h1 className="mb-3 text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white lg:text-4xl xl:text-[2.6rem]">
+                  {salaInfo?.nombre}
+                </h1>
+                <p className="text-base text-zinc-400 lg:text-lg">
+                  Organizado por <span className="font-black text-white whitespace-nowrap">{salaInfo?.organizador}</span>
+                </p>
+              </div>
+
+              <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 lg:mb-8">
+                {roomMeta.map((item) => (
+                  <div key={item.label} className="flex-1 min-w-[100px] max-w-[140px] rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-center">
+                    <p className="text-[9px] font-black uppercase tracking-wider text-zinc-500 truncate">
+                      {item.label}
+                    </p>
+                    <p className="mt-0.5 text-xs font-semibold text-white leading-tight">
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Preview de video integrado */}
+              <div className="relative mb-5 rounded-2xl overflow-hidden border border-white/10 bg-black/40 aspect-video">
+                {cameraEnabled && !cameraSettings.hideSelfView && stream && stream.getVideoTracks().length > 0 && cameraSettings.backgroundEffect !== 'none' && (
+                  <VideoWithBackground
+                    stream={stream}
+                    effectType={cameraSettings.backgroundEffect}
+                    backgroundImage={cameraSettings.backgroundImage}
+                    blurAmount={12}
+                    muted={true}
+                    className="w-full h-full object-cover"
+                    onProcessedStreamReady={setProcessedStream}
+                    mirrorVideo={cameraSettings.mirrorVideo}
+                  />
+                )}
+
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className={`w-full h-full object-cover ${!cameraEnabled || cameraSettings.hideSelfView || cameraSettings.backgroundEffect !== 'none' ? 'hidden' : ''} ${cameraSettings.mirrorVideo ? 'mirror' : ''}`}
                 />
-              )}
 
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className={`w-full h-full object-cover ${!cameraEnabled || cameraSettings.hideSelfView || cameraSettings.backgroundEffect !== 'none' ? 'hidden' : ''} ${cameraSettings.mirrorVideo ? 'mirror' : ''}`}
-              />
-
-              {joining && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
-                  <div className="flex flex-col items-center gap-3 text-white">
-                    <div className="w-10 h-10 border-4 border-white/80 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-sm font-medium text-white/80">Preparando cámara...</span>
+                {joining && (
+                  <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
+                    <div className="flex flex-col items-center gap-2 text-white">
+                      <div className="w-8 h-8 border-2 border-white/80 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-xs font-medium text-white/80">Preparando...</span>
+                    </div>
                   </div>
-                </div>
-              )}
-              
-              {(!cameraEnabled || cameraSettings.hideSelfView) && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 via-fuchsia-600 to-cyan-500 shadow-2xl shadow-violet-600/30 sm:h-28 sm:w-28">
-                    <span className="text-3xl font-black text-white sm:text-4xl">
-                      {nombre ? nombre.charAt(0).toUpperCase() : '?'}
-                    </span>
+                )}
+                
+                {(!cameraEnabled || cameraSettings.hideSelfView) && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 via-fuchsia-600 to-cyan-500 shadow-xl shadow-violet-600/30">
+                      <span className="text-2xl font-black text-white">
+                        {nombre ? nombre.charAt(0).toUpperCase() : '?'}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <div className="absolute left-2 right-2 top-2 z-20 sm:left-3 sm:right-3 sm:top-3 lg:left-4 lg:right-4 lg:top-4">
-                <div className="flex flex-col gap-2 sm:gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="max-w-[20rem] sm:max-w-[22rem] lg:max-w-[24rem] rounded-xl sm:rounded-2xl border border-white/10 bg-black/30 px-3 py-2.5 sm:px-4 sm:py-3 backdrop-blur-xl">
-                    <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.18em] sm:tracking-[0.22em] text-zinc-400">
-                      Vista previa
-                    </p>
-                    <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm font-semibold text-white lg:text-base leading-tight">
-                      Revisa cámara, micrófono y efectos antes de entrar
-                    </p>
-                    <p className="mt-0.5 sm:mt-1 text-[10px] sm:text-xs leading-relaxed text-zinc-400 sm:text-sm hidden sm:block">
-                      {previewStatusLabel}. Los cambios se aplican con los mismos controles de la reunión.
-                    </p>
-                  </div>
-
-                  <div className={`inline-flex items-center gap-1.5 sm:gap-2 self-start rounded-full border px-2.5 py-1.5 sm:px-3 sm:py-2 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em] sm:tracking-[0.18em] shadow-lg backdrop-blur-xl ${joinStatusTone.pillClass}`}>
-                    <span className={`h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full ${joinStatusTone.dotClass}`} />
+                {/* Status pill */}
+                <div className="absolute top-3 right-3 z-20">
+                  <div className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-wider shadow-lg backdrop-blur-xl ${joinStatusTone.pillClass}`}>
+                    <span className={`h-2 w-2 rounded-full ${joinStatusTone.dotClass}`} />
                     <span className="whitespace-nowrap">{joinStatusTone.label}</span>
                   </div>
                 </div>
               </div>
-              </div>
 
-              <div className="absolute inset-x-2 bottom-2 z-20 sm:inset-x-3 sm:bottom-3 lg:inset-x-4 lg:bottom-4">
-                <div className="rounded-xl sm:rounded-2xl border border-white/10 bg-black/35 p-2 shadow-[0_8px_32px_rgba(0,0,0,0.35)] backdrop-blur-2xl">
-                  <div className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 lg:gap-3 lg:justify-start">
+              {/* Controles de dispositivos */}
+              <div className="mb-5 rounded-xl border border-white/10 bg-black/35 p-3 shadow-lg backdrop-blur-xl">
+                <div className="flex items-center justify-center gap-2">
                   <SharedAudioDeviceControl
                     isEnabled={micEnabled}
                     settings={audioSettings ?? defaultAudioSettings}
@@ -618,41 +633,10 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                     dataTourStep="lobby-camera-group"
                     showMenuToggle={true}
                   />
-                  <div className="hidden sm:block sm:flex-1 text-center text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.15em] sm:tracking-[0.18em] text-zinc-400 sm:text-left lg:min-w-[140px]">
-                    Ajusta tus dispositivos antes de entrar
-                  </div>
-                  </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Formulario */}
-            <div className="flex flex-col justify-center bg-[rgba(23,23,42,0.55)] p-6 sm:p-7 lg:p-8 xl:p-10">
-              {/* Info de la reunión */}
-              <div className="mb-6 sm:mb-8">
-                <div className={`mb-5 inline-flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-gradient-to-r px-4 py-2 text-sm font-black text-white shadow-lg ${tipoInfo.color}`}>
-                  <span>{tipoInfo.icon}</span>
-                  <span>{tipoInfo.label}</span>
-                </div>
-                <h1 className="mb-3 text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white lg:text-4xl xl:text-[2.6rem]">
-                  {salaInfo?.nombre}
-                </h1>
-                <p className="text-base text-zinc-400 lg:text-lg">
-                  Organizado por <span className="font-black text-white whitespace-nowrap">{salaInfo?.organizador}</span>
+                <p className="mt-2 text-center text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                  Ajusta tus dispositivos antes de entrar
                 </p>
-              </div>
-
-              <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 lg:mb-8">
-                {roomMeta.map((item) => (
-                  <div key={item.label} className="rounded-2xl border border-white/8 bg-black/25 px-4 py-3 backdrop-blur-xl min-w-0">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 truncate">
-                      {item.label}
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-white leading-snug break-words">
-                      {item.value}
-                    </p>
-                  </div>
-                ))}
               </div>
 
               {/* Formulario de ingreso */}
@@ -793,7 +777,6 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
               </p>
             </div>
           </div>
-        </div>
         </div>
       </div>
     </div>
