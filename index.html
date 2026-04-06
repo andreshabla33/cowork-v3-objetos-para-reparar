@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" style="background-color: #09090b;">
+<html lang="en" translate="no" style="background-color: #09090b;">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -10,6 +10,9 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#6366f1">
+    <!-- Previene que Google Translate modifique el DOM, evitando crash de React
+         (react#11538, chromium#872770). La app ya está en español; no necesita traducción. -->
+    <meta name="google" content="notranslate">
     <!-- Tailwind CSS: migrated from CDN to local PostCSS compilation (see styles/tailwind.css) -->
     <!-- The CSS is now imported via index.tsx and processed by Vite + PostCSS -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
