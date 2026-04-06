@@ -1,0 +1,97 @@
+/**
+ * @module infrastructure/di/container
+ *
+ * Contenedor de Dependency Injection para el proyecto.
+ * Conecta ports del dominio con sus adapters de infraestructura.
+ *
+ * Clean Architecture: este archivo es el único lugar donde se instancian
+ * los adapters concretos. El resto del código depende de los ports (interfaces).
+ *
+ * Patrón: Singleton lazy (se crea una sola vez en runtime).
+ *
+ * Ref CLEAN-ARCH-F3
+ */
+
+import type { ITextureFactory } from '../../domain/ports/ITextureFactory';
+import type { IRenderingOptimizationService } from '../../domain/ports/IRenderingOptimizationService';
+import type { IAuthRepository } from '../../domain/ports/IAuthRepository';
+import type { IWorkspaceRepository } from '../../domain/ports/IWorkspaceRepository';
+import type { IProfileRepository } from '../../domain/ports/IProfileRepository';
+import type { IChatRepository } from '../../domain/ports/IChatRepository';
+
+// ─── Tipo del contenedor ──────────────────────────────────────────────────────
+
+export interface DIContainer {
+  /** Fábrica de texturas PBR para suelos 3D */
+  textureFactory: ITextureFactory;
+  /** Servicio de optimización de renderizado (instancing, salud de frame) */
+  renderingOptimization: IRenderingOptimizationService;
+  /** Repositorio de autenticación */
+  auth: IAuthRepository;
+  /** Repositorio de workspaces */
+  workspace: IWorkspaceRepository;
+  /** Repositorio de perfil de usuario */
+  profile: IProfileRepository;
+  /** Repositorio de chat */
+  chat: IChatRepository;
+}
+
+// ─── Singleton ────────────────────────────────────────────────────────────────
+
+let _container: DIContainer | null = null;
+
+/**
+ * Inicializa y devuelve el contenedor DI (singleton).
+ * Lazy initialization: solo crea los adapters cuando se llama por primera vez.
+ *
+ * @throws Error si se llama antes de que los adapters estén disponibles
+ */
+export async function getDIContainer(): Promise<DIContainer> {
+  if (_container) return _container;
+
+  // Imports dinámicos para evitar circular deps y permitir tree-shaking
+  const [
+    { ThreeTextureFactoryAdapter },
+    { RenderingOptimizationAdapter },
+    { AuthSupabaseRepository },
+    { WorkspaceSupabaseRepository },
+    { ProfileSupabaseRepository },
+    { chatRepository },
+  ] = await Promise.all([
+    import('../adapters/ThreeTextureFactoryAdapter'),
+    import('../adapters/RenderingOptimizationAdapter'),
+    import('../adapters/AuthSupabaseRepository'),
+    import('../adapters/WorkspaceSupabaseRepository'),
+    import('../adapters/ProfileSupabaseRepository'),
+    import('../adapters/ChatSupabaseRepository'),
+  ]);
+
+  _container = {
+    textureFactory: new ThreeTextureFactoryAdapter(),
+    renderingOptimization: new RenderingOptimizationAdapter(),
+    auth: new AuthSupabaseRepository(),
+    workspace: new WorkspaceSupabaseRepository(),
+    profile: new ProfileSupabaseRepository(),
+    chat: chatRepository,
+  };
+
+  return _container;
+}
+
+/**
+ * Versión síncrona para uso en componentes que ya inicializaron el container.
+ * @throws Error si el container no ha sido inicializado aún.
+ */
+export function getDIContainerSync(): DIContainer {
+  if (!_container) {
+    throw new Error(
+      '[DI] Container no inicializado. Llama a getDIContainer() en el bootstrap de la app.',
+    );
+  }
+  return _container;
+}
+
+/** Limpia el contenedor (útil en tests y hot-reload) */
+export function resetDIContainer(): void {
+  _container = null;
+}

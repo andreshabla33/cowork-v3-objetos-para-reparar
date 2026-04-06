@@ -4,6 +4,8 @@
  * v2.1: Sistema de cargos laborales y permisos por rol
  */
 
+import { getMetricasCached } from '../../../../lib/metricasAnalisis';
+
 // ==================== CARGOS LABORALES Y PERMISOS ====================
 
 /**
@@ -286,9 +288,7 @@ export function getConfiguracionConMetricasCustom(tipo: TipoGrabacionDetallado, 
   const config = { ...CONFIGURACIONES_GRABACION_DETALLADO[tipo] };
   
   try {
-    // Importación dinámica para evitar dependencia circular
     // getMetricasCached es síncrono y lee del cache en memoria
-    const { getMetricasCached } = require('../../../lib/metricasAnalisis');
     const metricasCustom = getMetricasCached(tipo, espacioId);
     if (Array.isArray(metricasCustom) && metricasCustom.length > 0) {
       config.metricas = metricasCustom;

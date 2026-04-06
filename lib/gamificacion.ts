@@ -18,6 +18,13 @@ export const XP_POR_ACCION = {
   teleport: 1,
 } as const;
 
+/**
+ * Tipo seguro para las claves de acciones de XP.
+ * Usar en lugar de `string` en firmas de grantXP para satisfacer
+ * strictFunctionTypes (REMEDIATION-TS2).
+ */
+export type AccionXP = keyof typeof XP_POR_ACCION;
+
 // Fórmula de nivel: XP necesario para nivel N = 100 * N^1.5
 export const xpParaNivel = (nivel: number): number => Math.floor(100 * Math.pow(nivel, 1.5));
 

@@ -5,15 +5,17 @@ import { AvatarPreview } from './Navbar';
 import { UserAvatar } from './UserAvatar';
 import { StatusSelector } from './StatusSelector';
 import { Role, PresenceStatus, ThemeType, User } from '../types';
-import { supabase, SUPABASE_ANON_KEY, SUPABASE_URL } from '../lib/supabase';
+import type { GameInvitationData, SubTabType } from '../types/workspace';
 import { Language, getCurrentLanguage, subscribeToLanguageChange, t } from '../lib/i18n';
 import { getSettingsSection } from '../lib/userSettings';
 import { cargarMetricasEspacio } from '../lib/metricasAnalisis';
-import { obtenerChunk, obtenerChunksVecinos } from '../lib/chunkSystem';
 import { MiniModeOverlay } from './MiniModeOverlay';
+import { NotificationToast } from './ui/NotificationToast';
 import { ProductTour } from './onboarding/ProductTour';
 import { useIdleDetection } from '../hooks/useIdleDetection';
 import { useLogoutUser } from '../hooks/app/useLogoutUser';
+import { useWorkspaceData } from '../hooks/workspace/useWorkspaceData';
+import { usePresenceChannels } from '../hooks/workspace/usePresenceChannels';
 
 const VirtualSpace3D = lazy(() => import('./VirtualSpace3D'));
 const TaskBoard = lazy(() => import('./TaskBoard').then(module => ({ default: module.TaskBoard })));
@@ -38,22 +40,72 @@ const FallbackWorkspacePanel = () => (
 );
 
 export const WorkspaceLayout: React.FC = () => {
-  const { activeWorkspace, activeSubTab, setActiveSubTab, setActiveWorkspace, currentUser, theme, setTheme, setView, session, setOnlineUsers, addNotification, unreadChatCount, clearUnreadChat, userRoleInActiveWorkspace, setMiniMode, isMiniMode, setEmpresaId, setDepartamentoId, setEmpresasAutorizadas, avatar3DConfig } = useStore();
+  const {
+    activeWorkspace,
+    activeSubTab,
+    setActiveSubTab,
+    setActiveWorkspace,
+    currentUser,
+    theme,
+    setTheme,
+    setView,
+    session,
+    setOnlineUsers,
+    addNotification,
+    unreadChatCount,
+    clearUnreadChat,
+    userRoleInActiveWorkspace,
+    setMiniMode,
+    isMiniMode,
+    setEmpresaId,
+    setDepartamentoId,
+    setEmpresasAutorizadas,
+    avatar3DConfig,
+  } = useStore();
+
   const [showViben, setShowViben] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showGameHub, setShowGameHub] = useState(false);
   const [isPlayingGame, setIsPlayingGame] = useState(false);
-  const [pendingGameInvitation, setPendingGameInvitation] = useState<{ invitacion: any; partidaId: string } | null>(null);
-  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
+  const [
+    pendingGameInvitation,
+    setPendingGameInvitation,
+  ] = useState<{ invitacion: GameInvitationData; partidaId: string } | null>(
+    null
+  );
+  const [
+    isMobile,
+    setIsMobile,
+  ] = useState(
+    typeof window !== 'undefined' && window.innerWidth < 768
+  );
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const presenceChannelsRef = useRef<Map<string, any>>(new Map());
-  const prevOnlineUsersRef = useRef<Set<string>>(new Set());
-  const lastNotificationRef = useRef<Map<string, number>>(new Map());
-  const currentUserRef = useRef(currentUser);
   const avatar3DConfigRef = useRef(avatar3DConfig);
   avatar3DConfigRef.current = avatar3DConfig;
-  const [currentLang, setCurrentLang] = useState<Language>(getCurrentLanguage());
+  const [currentLang, setCurrentLang] = useState<Language>(
+    getCurrentLanguage()
+  );
+
+  // Use cases via hooks (Clean Architecture)
+  useWorkspaceData({
+    activeWorkspaceId: activeWorkspace?.id,
+    userId: session?.user?.id,
+    session,
+    currentUserEmpresaId: currentUser.empresa_id ?? null,
+    onEmpresaIdLoaded: setEmpresaId,
+    onDepartamentoIdLoaded: setDepartamentoId,
+    onAutorizacionesLoaded: setEmpresasAutorizadas,
+  });
+
+  const { syncPresenceByChunk, updatePresenceInChannels, cleanup } =
+    usePresenceChannels({
+      activeWorkspaceId: activeWorkspace?.id,
+      userId: session?.user?.id,
+      currentUser,
+      sessionAccessToken: session?.access_token,
+      onOnlineUsersChange: setOnlineUsers,
+    });
 
   // Responsive: detectar mobile con resize listener
   useEffect(() => {
@@ -91,7 +143,10 @@ export const WorkspaceLayout: React.FC = () => {
   }, []);
 
   // Handler para cuando se acepta una invitación de juego
-  const handleGameInvitationAccepted = (invitacion: any, partidaId: string) => {
+  const handleGameInvitationAccepted = (
+    invitacion: GameInvitationData,
+    partidaId: string
+  ) => {
     setPendingGameInvitation({ invitacion, partidaId });
     setShowGameHub(true);
   };
@@ -105,149 +160,6 @@ export const WorkspaceLayout: React.FC = () => {
   // Detección de inactividad: después de 5 min sin actividad → estado 'away'
   useIdleDetection();
 
-  useEffect(() => {
-    currentUserRef.current = currentUser;
-  }, [currentUser]);
-
-  const recalcularUsuarios = useCallback(() => {
-    const usuariosMap = new Map<string, User>();
-    const detalleMap = new Map<string, 'empresa' | 'publico'>();
-    presenceChannelsRef.current.forEach((channel) => {
-      const state = channel.presenceState();
-      Object.keys(state).forEach(key => {
-        const presences = state[key] as any[];
-        presences.forEach(presence => {
-          if (presence.user_id !== session?.user?.id) {
-            const nivelDetalle: 'empresa' | 'publico' = presence.nivel_detalle === 'publico' ? 'publico' : 'empresa';
-            const nivelPrevio = detalleMap.get(presence.user_id);
-            if (nivelPrevio === 'empresa' && nivelDetalle === 'publico') return;
-
-            detalleMap.set(presence.user_id, nivelDetalle);
-            usuariosMap.set(presence.user_id, {
-              id: presence.user_id,
-              name: presence.name || (nivelDetalle === 'publico' ? 'Miembro de otra empresa' : 'Usuario'),
-              role: presence.role || Role.MIEMBRO,
-              avatar: presence.profilePhoto || '',
-              profilePhoto: presence.profilePhoto || '',
-              avatarConfig: presence.avatarConfig || { skinColor: '#fcd34d', clothingColor: '#6366f1', hairColor: '#4b2c20', accessory: 'none' },
-              avatar3DConfig: presence.avatar3DConfig || null,
-              empresa_id: presence.empresa_id || undefined,
-              departamento_id: presence.departamento_id || undefined,
-              x: presence.x || 500,
-              y: presence.y || 500,
-              direction: presence.direction || 'front',
-              isOnline: true,
-              isMicOn: presence.isMicOn || false,
-              isCameraOn: presence.isCameraOn || false,
-              isScreenSharing: false,
-              isPrivate: presence.isPrivate ?? nivelDetalle === 'publico',
-              status: presence.status || PresenceStatus.AVAILABLE,
-            });
-          }
-        });
-      });
-    });
-
-    const nextIds = new Set(usuariosMap.keys());
-    const now = Date.now();
-    nextIds.forEach((userId) => {
-      if (!prevOnlineUsersRef.current.has(userId)) {
-        const lastTime = lastNotificationRef.current.get(userId) ?? 0;
-        if (now - lastTime > 30000) {
-          addNotification(`${usuariosMap.get(userId)?.name || 'Usuario'} se conectó`, 'entry');
-          lastNotificationRef.current.set(userId, now);
-        }
-      }
-    });
-
-    prevOnlineUsersRef.current = nextIds;
-    setOnlineUsers(Array.from(usuariosMap.values()));
-  }, [addNotification, session?.user?.id, setOnlineUsers]);
-
-  const trackPresenceEnCanal = useCallback(async (channel: any, nivelDetalle: 'publico' | 'empresa') => {
-    if (!session?.user?.id) return;
-    const privacy = getSettingsSection('privacy');
-    const usuarioActual = currentUserRef.current;
-    const statusPrivado = !privacy.showOnlineStatus
-      ? PresenceStatus.AWAY
-      : !privacy.showActivityStatus
-      ? PresenceStatus.AVAILABLE
-      : usuarioActual.status;
-    const payloadBase = {
-      user_id: session.user.id,
-      empresa_id: usuarioActual.empresa_id ?? null,
-      departamento_id: usuarioActual.departamento_id ?? null,
-      nivel_detalle: nivelDetalle,
-      x: privacy.showLocationInSpace ? usuarioActual.x : 0,
-      y: privacy.showLocationInSpace ? usuarioActual.y : 0,
-      direction: usuarioActual.direction,
-      status: statusPrivado,
-    };
-    const payloadEmpresa = {
-      ...payloadBase,
-      name: usuarioActual.name,
-      role: usuarioActual.role,
-      avatarConfig: usuarioActual.avatarConfig,
-      profilePhoto: usuarioActual.profilePhoto,
-      isMicOn: usuarioActual.isMicOn,
-      isCameraOn: usuarioActual.isCameraOn,
-      avatar3DConfig: avatar3DConfigRef.current || null,
-    };
-    const payloadPublico = {
-      ...payloadBase,
-      name: 'Miembro de otra empresa',
-      role: Role.MIEMBRO,
-      avatarConfig: undefined,
-      profilePhoto: '',
-      isMicOn: false,
-      isCameraOn: false,
-      isPrivate: true,
-      status: PresenceStatus.AWAY,
-    };
-    await channel.track(nivelDetalle === 'empresa' ? payloadEmpresa : payloadPublico);
-  }, [session?.user?.id]);
-
-  const sincronizarCanalesPorChunk = useCallback(() => {
-    if (!activeWorkspace?.id || !session?.user?.id) return;
-    const usuarioActual = currentUserRef.current;
-    const chunkActual = obtenerChunk(usuarioActual.x, usuarioActual.y);
-    const claves = obtenerChunksVecinos(chunkActual, 2);
-    const canalesDeseados = new Map<string, 'publico' | 'empresa'>();
-    const empresaId = usuarioActual.empresa_id ?? null;
-
-    claves.forEach((clave) => {
-      canalesDeseados.set(`workspace:${activeWorkspace.id}:${clave}:publico`, 'publico');
-      if (empresaId) {
-        canalesDeseados.set(`workspace:${activeWorkspace.id}:${clave}:empresa:${empresaId}`, 'empresa');
-      }
-    });
-
-    canalesDeseados.forEach((nivelDetalle, canalNombre) => {
-      if (presenceChannelsRef.current.has(canalNombre)) return;
-      const channel = supabase.channel(canalNombre, {
-        config: { presence: { key: session.user.id } }
-      });
-
-      channel
-        .on('presence', { event: 'sync' }, () => {
-          recalcularUsuarios();
-        })
-        .subscribe(async (status) => {
-          if (status === 'SUBSCRIBED') {
-            await trackPresenceEnCanal(channel, nivelDetalle);
-          }
-        });
-
-      presenceChannelsRef.current.set(canalNombre, channel);
-    });
-
-    presenceChannelsRef.current.forEach((channel, canalNombre) => {
-      if (!canalesDeseados.has(canalNombre)) {
-        supabase.removeChannel(channel);
-        presenceChannelsRef.current.delete(canalNombre);
-      }
-    });
-  }, [activeWorkspace?.id, session?.user?.id, recalcularUsuarios, trackPresenceEnCanal]);
 
   // Aplicar reducedMotion globalmente al body
   useEffect(() => {
@@ -270,184 +182,55 @@ export const WorkspaceLayout: React.FC = () => {
     }
   }, [activeWorkspace?.id]);
 
-  useEffect(() => {
-    if (!activeWorkspace?.id || !session?.user?.id) return;
-    let cancelado = false;
-    const cargarEmpresa = async () => {
-      try {
-        const { data } = await supabase
-          .from('miembros_espacio')
-          .select('empresa_id, departamento_id')
-          .eq('espacio_id', activeWorkspace.id)
-          .eq('usuario_id', session.user.id)
-          .maybeSingle();
-
-        if (!cancelado) {
-          setEmpresaId(data?.empresa_id ?? null);
-          setDepartamentoId(data?.departamento_id ?? null);
-        }
-      } catch (error) {
-        if (!cancelado) {
-          setEmpresaId(null);
-          setDepartamentoId(null);
-        }
-      }
-    };
-
-    cargarEmpresa();
-    return () => {
-      cancelado = true;
-    };
-  }, [activeWorkspace?.id, session?.user?.id, setEmpresaId, setDepartamentoId]);
-
-  useEffect(() => {
-    if (!activeWorkspace?.id || !currentUser.empresa_id) {
-      setEmpresasAutorizadas([]);
-      return;
-    }
-
-    let cancelado = false;
-    const cargarAutorizaciones = async () => {
-      try {
-        const { data } = await supabase
-          .from('autorizaciones_empresa')
-          .select('empresa_origen_id, empresa_destino_id, estado')
-          .eq('espacio_id', activeWorkspace.id)
-          .eq('estado', 'aprobada');
-
-        if (cancelado) return;
-        const autorizadas = new Set<string>();
-        (data || []).forEach((row: any) => {
-          if (row.empresa_origen_id === currentUser.empresa_id && row.empresa_destino_id) {
-            autorizadas.add(row.empresa_destino_id);
-          }
-          if (row.empresa_destino_id === currentUser.empresa_id && row.empresa_origen_id) {
-            autorizadas.add(row.empresa_origen_id);
-          }
-        });
-        setEmpresasAutorizadas(Array.from(autorizadas));
-      } catch (error) {
-        if (!cancelado) setEmpresasAutorizadas([]);
-      }
-    };
-
-    cargarAutorizaciones();
-    return () => {
-      cancelado = true;
-    };
-  }, [activeWorkspace?.id, currentUser.empresa_id, setEmpresasAutorizadas]);
 
   // Realtime Presence por chunk (interest management)
   useEffect(() => {
-    if (!activeWorkspace?.id || !session?.user?.id) return;
-    sincronizarCanalesPorChunk();
-    return () => {
-      presenceChannelsRef.current.forEach((channel) => {
-        supabase.removeChannel(channel);
-      });
-      presenceChannelsRef.current.clear();
-      prevOnlineUsersRef.current = new Set();
-    };
-  }, [activeWorkspace?.id, session?.user?.id, currentUser.empresa_id, sincronizarCanalesPorChunk]);
-
-  useEffect(() => {
-    if (!activeWorkspace?.id || !session?.user?.id) return;
-    sincronizarCanalesPorChunk();
-  }, [activeWorkspace?.id, session?.user?.id, currentUser.x, currentUser.y, currentUser.empresa_id, sincronizarCanalesPorChunk]);
-
-  // Registrar conexión al espacio para tracking de tiempo (solo si activityHistory está habilitado)
-  useEffect(() => {
-    if (!activeWorkspace?.id || !session?.user?.id) return;
-    let conexionId: string | null = null;
-    const privacyForConn = getSettingsSection('privacy');
-    if (privacyForConn.activityHistoryEnabled !== false) {
-      const registrarConexion = async () => {
-        try {
-          const { data } = await supabase
-            .from('registro_conexiones')
-            .insert({ usuario_id: session.user.id, espacio_id: activeWorkspace.id, empresa_id: currentUserRef.current.empresa_id ?? null })
-            .select('id')
-            .single();
-          if (data) conexionId = data.id;
-
-          await supabase.from('actividades_log').insert({
-            usuario_id: session.user.id,
-            empresa_id: currentUserRef.current.empresa_id ?? null,
-            espacio_id: activeWorkspace.id,
-            accion: 'conexion_espacio',
-            entidad: 'espacio',
-            entidad_id: activeWorkspace.id,
-            descripcion: 'Usuario conectado al espacio',
-            datos_extra: { origen: 'workspace_layout' }
-          });
-          
-          // Limpiar registros antiguos según retención configurada
-          const retDays = privacyForConn.activityRetentionDays;
-          if (retDays && retDays > 0) {
-            const cutoff = new Date(Date.now() - retDays * 24 * 60 * 60 * 1000).toISOString();
-            supabase.from('registro_conexiones')
-              .delete()
-              .eq('usuario_id', session.user.id)
-              .lt('conectado_en', cutoff)
-              .then(() => {});
-          }
-        } catch (e) { console.warn('Error registrando conexión:', e); }
-      };
-      registrarConexion();
+    if (!activeWorkspace?.id || !session?.user?.id) {
+      return;
     }
-
-    // Al cerrar pestaña, registrar desconexión via fetch keepalive (soporta headers)
-    const handleBeforeUnload = () => {
-      if (conexionId) {
-        const url = `${SUPABASE_URL}/rest/v1/registro_conexiones?id=eq.${conexionId}`;
-        fetch(url, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${session.access_token}`,
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify({ desconectado_en: new Date().toISOString() }),
-          keepalive: true
-        }).catch(() => {});
-      }
-    };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
+    syncPresenceByChunk();
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      // Registrar desconexión al desmontar
-      if (conexionId) {
-        supabase.from('registro_conexiones')
-          .update({ desconectado_en: new Date().toISOString() })
-          .eq('id', conexionId)
-          .then(() => console.log('Desconexión registrada'));
-
-        supabase.from('actividades_log').insert({
-          usuario_id: session.user.id,
-          empresa_id: currentUserRef.current.empresa_id ?? null,
-          espacio_id: activeWorkspace.id,
-          accion: 'desconexion_espacio',
-          entidad: 'espacio',
-          entidad_id: activeWorkspace.id,
-          descripcion: 'Usuario desconectado del espacio',
-          datos_extra: { origen: 'workspace_layout' }
-        }).then(() => {});
-      }
+      cleanup();
     };
-  }, [activeWorkspace?.id, session?.user?.id, session?.access_token]);
+  }, [
+    activeWorkspace?.id,
+    session?.user?.id,
+    currentUser.empresa_id,
+    syncPresenceByChunk,
+    cleanup,
+  ]);
+
+  useEffect(() => {
+    if (!activeWorkspace?.id || !session?.user?.id) {
+      return;
+    }
+    syncPresenceByChunk();
+  }, [
+    activeWorkspace?.id,
+    session?.user?.id,
+    currentUser.x,
+    currentUser.y,
+    currentUser.empresa_id,
+    syncPresenceByChunk,
+  ]);
+
 
   // Actualizar presencia cuando cambia la posición (respetando settings de privacidad)
   useEffect(() => {
-    if (!session?.user?.id) return;
-    presenceChannelsRef.current.forEach((channel, canalNombre) => {
-      if (channel.state === 'joined') {
-        const nivelDetalle = canalNombre.includes(':publico') ? 'publico' : 'empresa';
-        trackPresenceEnCanal(channel, nivelDetalle);
-      }
-    });
-  }, [currentUser.x, currentUser.y, currentUser.isMicOn, currentUser.isCameraOn, currentUser.status, currentUser.empresa_id, session?.user?.id, trackPresenceEnCanal]);
+    if (!session?.user?.id) {
+      return;
+    }
+    updatePresenceInChannels('empresa');
+  }, [
+    currentUser.x,
+    currentUser.y,
+    currentUser.isMicOn,
+    currentUser.isCameraOn,
+    currentUser.status,
+    currentUser.empresa_id,
+    session?.user?.id,
+    updatePresenceInChannels,
+  ]);
 
   if (!activeWorkspace) return null;
 
@@ -534,16 +317,16 @@ export const WorkspaceLayout: React.FC = () => {
 
         <nav className="flex-1 flex flex-col gap-1 mt-3" data-tour-step="sidebar-nav">
           {[
-            { id: 'space', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', label: t('nav.space', currentLang) },
-            { id: 'chat', icon: 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z', label: t('nav.messages', currentLang) },
-            { id: 'tasks', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', label: t('nav.tasks', currentLang) },
-            { id: 'grabaciones', icon: 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z', label: t('nav.recordings', currentLang) },
-            { id: 'metricas', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', label: 'Métricas' }
+            { id: 'space' as SubTabType, icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', label: t('nav.space', currentLang) },
+            { id: 'chat' as SubTabType, icon: 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z', label: t('nav.messages', currentLang) },
+            { id: 'tasks' as SubTabType, icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', label: t('nav.tasks', currentLang) },
+            { id: 'grabaciones' as SubTabType, icon: 'M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z', label: t('nav.recordings', currentLang) },
+            { id: 'metricas' as SubTabType, icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', label: 'Métricas' }
           ].map(item => (
-            <button 
+            <button
               key={item.id}
               onClick={() => {
-                setActiveSubTab(item.id as any);
+                setActiveSubTab(item.id);
                 if (item.id === 'chat') clearUnreadChat();
               }}
               className={`relative p-2.5 rounded-lg transition-all duration-200 group ${activeSubTab === item.id 
@@ -760,9 +543,11 @@ export const WorkspaceLayout: React.FC = () => {
             <div className="h-full w-full flex flex-col overflow-hidden animate-in fade-in duration-500">
               {/* Mobile: header con botón volver al espacio */}
               {isMobile && (
-                <div className={`flex items-center gap-3 px-4 py-3 border-b ${s.border} shrink-0 ${s.header} backdrop-blur-xl`}>
+                <div
+                  className={`flex items-center gap-3 px-4 py-3 border-b ${s.border} shrink-0 ${s.header} backdrop-blur-xl`}
+                >
                   <button
-                    onClick={() => setActiveSubTab('space' as any)}
+                    onClick={() => setActiveSubTab('space')}
                     className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -895,24 +680,75 @@ export const WorkspaceLayout: React.FC = () => {
                 {/* Backdrop */}
                 <div className={`absolute inset-0 ${theme === 'light' ? 'bg-white/80' : 'bg-black/80'} backdrop-blur-xl`} />
                 {/* Grid de opciones */}
-                <div className="relative grid grid-cols-3 gap-4 p-8 max-w-xs" onClick={(e) => e.stopPropagation()}>
+                <div
+                  className="relative grid grid-cols-3 gap-4 p-8 max-w-xs"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   {[
-                    { id: 'space', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', label: 'Espacio', color: 'from-indigo-500 to-blue-500' },
-                    { id: 'chat', icon: 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z', label: 'Chat', color: 'from-blue-500 to-cyan-500', badge: unreadChatCount },
-                    { id: '_drawer_sidebar', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10', label: 'Workspace', color: 'from-violet-500 to-purple-500' },
-                    { id: '_games', icon: 'M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z', label: 'Juegos', color: 'from-amber-500 to-orange-500' },
-                    { id: '_settings', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z', label: 'Ajustes', color: 'from-zinc-400 to-zinc-600' },
-                    { id: 'calendar', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', label: 'Calendario', color: 'from-emerald-500 to-teal-500' },
+                    {
+                      id: 'space',
+                      icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+                      label: 'Espacio',
+                      color: 'from-indigo-500 to-blue-500',
+                    },
+                    {
+                      id: 'chat',
+                      icon: 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z',
+                      label: 'Chat',
+                      color: 'from-blue-500 to-cyan-500',
+                      badge: unreadChatCount,
+                    },
+                    {
+                      id: '_drawer_sidebar',
+                      icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10',
+                      label: 'Workspace',
+                      color: 'from-violet-500 to-purple-500',
+                    },
+                    {
+                      id: '_games',
+                      icon: 'M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z',
+                      label: 'Juegos',
+                      color: 'from-amber-500 to-orange-500',
+                    },
+                    {
+                      id: '_settings',
+                      icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
+                      label: 'Ajustes',
+                      color: 'from-zinc-400 to-zinc-600',
+                    },
+                    {
+                      id: 'calendar',
+                      icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
+                      label: 'Calendario',
+                      color: 'from-emerald-500 to-teal-500',
+                    },
                   ].map((item, i) => {
                     const handleItemClick = () => {
                       setMobileMenuOpen(false);
-                      if (item.id === '_games') { setShowGameHub(true); return; }
-                      if (item.id === '_settings') { setShowSettings(true); return; }
+                      if (item.id === '_games') {
+                        setShowGameHub(true);
+                        return;
+                      }
+                      if (item.id === '_settings') {
+                        setShowSettings(true);
+                        return;
+                      }
                       if (item.id === '_drawer_sidebar') {
                         setMobileDrawerOpen(true);
                         return;
                       }
-                      setActiveSubTab(item.id as any);
+                      if (
+                        item.id === 'space' ||
+                        item.id === 'chat' ||
+                        item.id === 'tasks' ||
+                        item.id === 'grabaciones' ||
+                        item.id === 'metricas' ||
+                        item.id === 'miembros' ||
+                        item.id === 'avatar' ||
+                        item.id === 'calendar'
+                      ) {
+                        setActiveSubTab(item.id);
+                      }
                       if (item.id === 'chat') clearUnreadChat();
                     };
                     return (
@@ -950,13 +786,16 @@ export const WorkspaceLayout: React.FC = () => {
             workspaceId={activeWorkspace?.id || ''}
             isAdmin={isAdmin}
             currentTheme={theme}
-            onThemeChange={(newTheme) => setTheme(newTheme as any)}
+            onThemeChange={(newTheme) => setTheme(newTheme)}
           />
         </Suspense>
       )}
 
       {/* Mini Mode Overlay */}
       <MiniModeOverlay />
+
+      {/* Global notification toasts */}
+      <NotificationToast />
 
       {/* Product Tour - Guía interactiva para nuevos miembros */}
       {activeWorkspace?.id && session?.user?.id && activeSubTab === 'space' && (

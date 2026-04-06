@@ -1,9 +1,68 @@
 /**
  * PermissionService - Unified permission handling for media devices
  * Detects granted/prompt/denied states with fallback when Permissions API is not available
+ *
+ * Phase 2 — MediaDeviceFailure alignment:
+ * livekit-client v2.18.0 no exporta MediaDeviceFailure como clase pública.
+ * Se implementa MediaDeviceFailureReason y classifyMediaDeviceError() que replican
+ * el comportamiento que documenta LiveKit en RoomEvent.MediaDevicesError.
+ *
+ * @see https://docs.livekit.io/client-sdk-js/functions/MediaDeviceFailure.getFailure.html
  */
 
+import { logger } from '@/lib/logger';
 import { PermissionState, PreflightError } from '../../domain/types';
+
+/**
+ * Razones de fallo de dispositivo de media — alinea con lo que LiveKit documenta
+ * en RoomEvent.MediaDevicesError (MediaDeviceFailure.getFailure).
+ */
+export enum MediaDeviceFailureReason {
+  /** El usuario denegó el permiso (NotAllowedError / PermissionDeniedError) */
+  PermissionDenied = 'PermissionDenied',
+  /** No se encontró el dispositivo (NotFoundError / DevicesNotFoundError) */
+  NotFound = 'NotFound',
+  /** El dispositivo está en uso o no responde (NotReadableError / TrackStartError) */
+  NotReadable = 'NotReadable',
+  /** Browser no soporta media (NotSupportedError) */
+  BrowserNotSupported = 'BrowserNotSupported',
+  /** Error desconocido */
+  Other = 'Other',
+}
+
+/**
+ * Clasifica un error de getUserMedia en un MediaDeviceFailureReason tipado.
+ * Replica el comportamiento de MediaDeviceFailure.getFailure() de LiveKit.
+ * Compatible con livekit-client v2.x donde la clase no se exporta públicamente.
+ */
+export function classifyMediaDeviceError(error: unknown): MediaDeviceFailureReason {
+  const errorName = error instanceof Error ? error.name : String(error);
+
+  switch (errorName) {
+    case 'NotAllowedError':
+    case 'PermissionDeniedError':
+      return MediaDeviceFailureReason.PermissionDenied;
+
+    case 'NotFoundError':
+    case 'DevicesNotFoundError':
+    case 'OverconstrainedError':
+      return MediaDeviceFailureReason.NotFound;
+
+    case 'NotReadableError':
+    case 'TrackStartError':
+    case 'AbortError':
+      return MediaDeviceFailureReason.NotReadable;
+
+    case 'NotSupportedError':
+    case 'SecurityError':
+      return MediaDeviceFailureReason.BrowserNotSupported;
+
+    default:
+      return MediaDeviceFailureReason.Other;
+  }
+}
+
+const log = logger.child('permission-service');
 
 export interface PermissionServiceOptions {
   onPermissionChange?: (permission: PermissionState, device: 'camera' | 'microphone') => void;
@@ -26,7 +85,7 @@ export class PermissionService {
     try {
       // Check if Permissions API is available
       if (!navigator.permissions || !navigator.permissions.query) {
-        console.log(`[PermissionService] Permissions API not available, using fallback for ${device}`);
+        log.info(`Permissions API not available, using fallback for ${device}`, { device });
         return 'prompt';
       }
 
@@ -45,7 +104,10 @@ export class PermissionService {
       return state;
     } catch (error) {
       // Some browsers don't support querying camera/microphone permissions
-      console.warn(`[PermissionService] Cannot query ${device} permission:`, error);
+      log.warn(`Cannot query ${device} permission`, {
+        device,
+        error: error instanceof Error ? error.message : String(error),
+      });
       return 'prompt';
     }
   }
@@ -81,15 +143,16 @@ export class PermissionService {
     try {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
-      // Permission granted
+      // Permission granted — devolver stream sin detenerlo para evitar doble prompt
       return { granted: true, stream };
     } catch (error) {
-      const err = error as Error;
+      // Phase 2: usar classifyMediaDeviceError() en lugar de switch manual sobre err.name
+      const reason = classifyMediaDeviceError(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       let preflightError: PreflightError;
 
-      switch (err.name) {
-        case 'NotAllowedError':
-        case 'PermissionDeniedError':
+      switch (reason) {
+        case MediaDeviceFailureReason.PermissionDenied:
           preflightError = {
             type: 'permission-denied',
             device: device === 'both' ? undefined : device,
@@ -98,8 +161,7 @@ export class PermissionService {
           };
           break;
 
-        case 'NotFoundError':
-        case 'DevicesNotFoundError':
+        case MediaDeviceFailureReason.NotFound:
           preflightError = {
             type: 'no-device',
             device: device === 'both' ? undefined : device,
@@ -108,17 +170,7 @@ export class PermissionService {
           };
           break;
 
-        case 'NotReadableError':
-        case 'TrackStartError':
-          preflightError = {
-            type: 'track-error',
-            device: device === 'both' ? undefined : device,
-            message: this.getTrackErrorMessage(device),
-            recoverable: true,
-          };
-          break;
-
-        case 'NotSupportedError':
+        case MediaDeviceFailureReason.BrowserNotSupported:
           preflightError = {
             type: 'browser-not-supported',
             message: 'Tu navegador no soporta acceso a dispositivos de media.',
@@ -126,14 +178,24 @@ export class PermissionService {
           };
           break;
 
+        case MediaDeviceFailureReason.NotReadable:
+        case MediaDeviceFailureReason.Other:
         default:
           preflightError = {
             type: 'track-error',
             device: device === 'both' ? undefined : device,
-            message: `Error al acceder a ${device === 'both' ? 'dispositivos' : device}: ${err.message}`,
+            message: reason === MediaDeviceFailureReason.NotReadable
+              ? this.getTrackErrorMessage(device)
+              : `Error al acceder a ${device === 'both' ? 'dispositivos' : device}: ${errorMessage}`,
             recoverable: true,
           };
       }
+
+      log.warn('Media device error classified', {
+        reason,
+        device,
+        errorMessage,
+      });
 
       return { granted: false, error: preflightError };
     }

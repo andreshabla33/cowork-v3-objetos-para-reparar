@@ -10,7 +10,7 @@ import type { ThemeType } from '../../types';
 interface Notification {
   id: string;
   message: string;
-  type: 'info' | 'mention' | 'entry';
+  type: 'info' | 'mention' | 'entry' | 'success' | 'error';
   timestamp: number;
 }
 
@@ -25,6 +25,7 @@ export interface UISlice {
   setView: (view: UISlice['view']) => void;
   setActiveSubTab: (tab: UISlice['activeSubTab']) => void;
   addNotification: (message: string, type?: Notification['type']) => void;
+  removeNotification: (id: string) => void;
   clearNotifications: () => void;
   setMiniMode: (val: boolean) => void;
   toggleMiniMode: () => void;
@@ -47,6 +48,11 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
         { id: Math.random().toString(), message, type, timestamp: Date.now() },
         ...state.notifications,
       ].slice(0, 5),
+    })),
+
+  removeNotification: (id) =>
+    set((state) => ({
+      notifications: state.notifications.filter((n) => n.id !== id),
     })),
 
   clearNotifications: () => set({ notifications: [] }),

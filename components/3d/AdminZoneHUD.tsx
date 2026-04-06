@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { guardarZonaEmpresa, eliminarZonaEmpresa } from '@/lib/autorizacionesEmpresa';
+import { logger } from '@/lib/logger';
 import { FloorType, FLOOR_TYPE_LABELS, FLOOR_TYPE_CATEGORIES, normalizarTipoSuelo } from '../../src/core/domain/entities';
 import { normalizarConfiguracionZonaEmpresa, normalizarTipoSubsueloZona, type TipoSubsueloZona } from '../../src/core/domain/entities/cerramientosZona';
-import { TEXTURE_REGISTRY } from '../../src/core/infrastructure/textureRegistry';
+import { TEXTURE_REGISTRY } from '../../lib/rendering/textureRegistry';
 import { ZonaEmpresa } from '@/types';
 import { supabase } from '@/lib/supabase';
 
@@ -16,14 +17,15 @@ interface AdminZoneHUDProps {
   onZonaCreada?: () => void;
 }
 
-export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({ 
-  workspaceId, 
-  nuevaZona, 
+export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
+  workspaceId,
+  nuevaZona,
   zonaAEditar,
-  onLimpiarNuevaZona, 
+  onLimpiarNuevaZona,
   onMaterialSeleccionado,
-  onZonaCreada 
+  onZonaCreada
 }) => {
+  const log = logger.child('AdminZoneHUD');
   const isDrawingZone = useStore((s) => s.isDrawingZone);
   const setIsDrawingZone = useStore((s) => s.setIsDrawingZone);
   const paintFloorType = useStore((s) => s.paintFloorType);
@@ -104,7 +106,7 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
       if (onZonaCreada) onZonaCreada();
       onLimpiarNuevaZona();
     } catch (e) {
-      console.error(e);
+      log.error('handleEliminar error', { error: e instanceof Error ? e.message : String(e) });
       alert('Error eliminando zona');
     } finally {
       setIsDeleting(false);
@@ -171,7 +173,7 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
       setTipoSubsuelo('organizacional');
       setEsComun(false);
     } catch (e) {
-      console.error(e);
+      log.error('handleGuardar error', { error: e instanceof Error ? e.message : String(e) });
       alert('Error guardando zona');
     } finally {
       setIsSaving(false);

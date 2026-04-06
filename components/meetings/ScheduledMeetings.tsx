@@ -36,7 +36,7 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
       .from('reuniones_programadas')
       .select(`
         *,
-        creador:usuarios!reuniones_programadas_creado_por_fkey(id, nombre),
+        creador:usuarios!reuniones_programadas_creado_por_usuarios_fkey(id, nombre),
         sala:salas_reunion(id, nombre),
         participantes:reunion_participantes(
           id, usuario_id, estado, notificado,

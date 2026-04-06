@@ -9,6 +9,7 @@ import { useRef, useState, useMemo, useEffect, useCallback } from 'react';
 import { useStore } from '@/store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 import type { User } from '@/types';
+import type { RealtimePositionEntry } from './types';
 import { isTouchDevice, hapticFeedback } from '@/lib/mobileDetect';
 import { registrarLoginDiario, otorgarXP, XP_POR_ACCION } from '@/lib/gamificacion';
 import { supabase } from '@/lib/supabase';
@@ -26,6 +27,9 @@ import { useBroadcast, setBroadcastSoundFunctions } from './useBroadcast';
 import { useGatherInteractions } from './useGatherInteractions';
 import { Gatekeeper, PreflightSessionStore, SpaceMediaCoordinator, getPreflightFeedback, getPreflightFeedbackMessage } from '@/modules/realtime-room';
 import type { PreflightCheck, SpaceMediaCoordinatorState } from '@/modules/realtime-room';
+import { logger } from '@/lib/logger';
+
+const log = logger.child('useSpace3D');
 
 export function useSpace3D(props: {
   theme?: string;
@@ -78,7 +82,7 @@ export function useSpace3D(props: {
   const isMobile = useMemo(() => isTouchDevice(), []);
   const cardScreenPosRef = useRef<{ x: number; y: number } | null>(null);
   const proximidadNotificadaRef = useRef(false);
-  const realtimePositionsRef = useRef<Map<string, any>>(new Map());
+  const realtimePositionsRef = useRef<Map<string, RealtimePositionEntry>>(new Map());
   const hasActiveCallRef = useRef(false);
   const mediaCoordinatorRef = useRef<SpaceMediaCoordinator | null>(null);
   const preflightStoreRef = useRef<PreflightSessionStore | null>(null);
@@ -191,7 +195,7 @@ export function useSpace3D(props: {
 
   // ========== 1. User Settings ==========
   const settings = useUserSettings({
-    livekitRoomRef: { current: null } as any, // Se actualiza abajo
+    livekitRoomRef: { current: null } as React.MutableRefObject<import('livekit-client').Room | null>, // Se actualiza abajo
     hasActiveCallRef,
     toggleMic,
     toggleCamera,
@@ -231,7 +235,6 @@ export function useSpace3D(props: {
   useEffect(() => {
     mediaCoordinatorRef.current?.syncExternalMediaState({
       stream: media.stream,
-      processedStream: media.processedStream,
       screenShareSession: media.screenStream
         ? {
             active: true,
@@ -244,7 +247,7 @@ export function useSpace3D(props: {
       desiredMicrophoneEnabled: desiredMediaState.isMicrophoneEnabled,
       desiredScreenShareEnabled: desiredMediaState.isScreenShareEnabled,
     });
-  }, [media.stream, media.processedStream, media.screenStream, desiredMediaState.isCameraEnabled, desiredMediaState.isMicrophoneEnabled, desiredMediaState.isScreenShareEnabled]);
+  }, [media.stream, media.screenStream, desiredMediaState.isCameraEnabled, desiredMediaState.isMicrophoneEnabled, desiredMediaState.isScreenShareEnabled]);
 
   useEffect(() => {
     const store = preflightStoreRef.current;
@@ -300,12 +303,10 @@ export function useSpace3D(props: {
     onlineUsers,
     activeStreamRef: media.activeStreamRef,
     activeScreenRef: media.activeScreenRef,
-    effectiveStreamRef: media.effectiveStreamRef,
     desiredMediaState,
     mediaCoordinatorState,
     stream: media.stream,
     screenStream: media.screenStream,
-    processedStream: media.processedStream,
     cameraSettings: settings.cameraSettings,
     performanceSettings: settings.performanceSettings as { graphicsQuality?: string; batterySaver?: boolean },
     hasActiveCall: hasActiveCallComputed.current,
@@ -314,8 +315,8 @@ export function useSpace3D(props: {
     conversacionesBloqueadasRemoto: conversacionesBloqueadasRemotoRef.current,
   });
 
-  // Patch livekitRoomRef en settings
-  (settings as any)._livekitRoomRef = livekit.livekitRoomRef;
+  // TODO(round-2): El livekitRoomRef pasado a useUserSettings es un dummy —
+  // refactorizar para inyectar el ref real de livekit.livekitRoomRef.
 
   // ========== 7. Proximity ==========
   // Ahora tenemos remoteStreams de livekit
@@ -395,7 +396,8 @@ export function useSpace3D(props: {
         .eq('usuario_id', session.user.id)
         .eq('espacio_id', activeWorkspace.id)
         .single();
-      const clave = (data?.cargo_ref as any)?.clave;
+      const cargoRef = data?.cargo_ref as { clave?: string } | null;
+      const clave = cargoRef?.clave;
       if (clave) setCargoUsuario(clave);
     };
     cargarCargo();
@@ -420,8 +422,6 @@ export function useSpace3D(props: {
   const coordinatorMediaSnapshot = mediaCoordinatorState ?? mediaCoordinatorRef.current?.getState() ?? null;
   const mediaState = {
     stream: coordinatorMediaSnapshot?.stream ?? null,
-    processedStream: coordinatorMediaSnapshot?.processedStream ?? null,
-    effectiveStream: coordinatorMediaSnapshot?.effectiveStream ?? null,
     screenShareSession: coordinatorMediaSnapshot?.screenShareSession ?? { active: false, withAudio: false, stream: undefined, track: undefined },
     desiredCameraEnabled: coordinatorMediaSnapshot?.desiredCameraEnabled ?? coordinatorMediaSnapshot?.isCameraEnabled ?? false,
     desiredMicrophoneEnabled: coordinatorMediaSnapshot?.desiredMicrophoneEnabled ?? coordinatorMediaSnapshot?.isMicrophoneEnabled ?? false,
@@ -438,8 +438,6 @@ export function useSpace3D(props: {
   const mediaRefactored = {
     ...media,
     stream: mediaState.stream,
-    processedStream: mediaState.processedStream,
-    effectiveStream: mediaState.effectiveStream,
     screenStream: mediaState.screenShareSession.stream ?? null,
   };
   useEffect(() => {
@@ -522,7 +520,10 @@ export function useSpace3D(props: {
 
       return true;
     } catch (error) {
-      console.error('Error applying new microphone:', error);
+      log.error('Error applying new microphone', {
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+      });
       return false;
     }
   }, [livekit.livekitRoomRef, livekit.publicarTrackLocal, media, mediaState.desiredMicrophoneEnabled]);

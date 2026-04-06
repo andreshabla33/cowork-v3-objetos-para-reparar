@@ -1,3 +1,5 @@
+import type { ConnectionQualityLevel } from './ConnectionQualityMonitor';
+
 export type SubscriptionVideoQuality = 'high' | 'medium' | 'low';
 export type SubscriptionInterestTier = 'direct' | 'audio-range' | 'out-of-range';
 
@@ -9,6 +11,10 @@ export interface SubscriptionPolicyInput {
   audioRangeIds: Set<string>;
   speakingIds: Set<string>;
   lockedConversations: Map<string, string[]>;
+  /** Calidades de conexión de participantes remotos (opcional, del ConnectionQualityMonitor) */
+  connectionQualities?: Map<string, ConnectionQualityLevel>;
+  /** Si la red general está degradada */
+  isNetworkDegraded?: boolean;
 }
 
 export interface SubscriptionPolicyDecision {
@@ -80,6 +86,8 @@ export class SubscriptionPolicyService {
         audioRangeIds: input.audioRangeIds,
         speakingIds: input.speakingIds,
         blockedIds,
+        connectionQuality: input.connectionQualities?.get(participantId),
+        isNetworkDegraded: input.isNetworkDegraded,
       }));
     });
 
@@ -182,6 +190,8 @@ export class SubscriptionPolicyService {
     audioRangeIds: Set<string>;
     speakingIds: Set<string>;
     blockedIds: Set<string>;
+    connectionQuality?: ConnectionQualityLevel;
+    isNetworkDegraded?: boolean;
   }): SubscriptionPolicyDecision {
     const { participantId, usersInCallCount, directProximityIds, audioRangeIds, speakingIds, blockedIds } = input;
     const blocked = blockedIds.has(participantId);
@@ -214,19 +224,31 @@ export class SubscriptionPolicyService {
     }
 
     if (inDirectRange) {
+      // Degradar a 'medium' si la conexión del participante o la red está degradada
+      const quality = this.clampByConnectionQuality(
+        'high',
+        input.connectionQuality,
+        input.isNetworkDegraded,
+      );
       return {
         participantId,
         blocked: false,
         tier: 'direct',
         shouldSubscribe: true,
         shouldEnable: true,
-        preferredVideoQuality: 'high',
+        preferredVideoQuality: quality,
         deferUnsubscribeMs: null,
       };
     }
 
     const isLargeRoom = usersInCallCount > this.largeRoomThreshold;
     const isSpeaking = speakingIds.has(participantId);
+    const baseQuality: SubscriptionVideoQuality = isLargeRoom && !isSpeaking ? 'low' : 'medium';
+    const quality = this.clampByConnectionQuality(
+      baseQuality,
+      input.connectionQuality,
+      input.isNetworkDegraded,
+    );
 
     return {
       participantId,
@@ -234,9 +256,37 @@ export class SubscriptionPolicyService {
       tier: 'audio-range',
       shouldSubscribe: true,
       shouldEnable: true,
-      preferredVideoQuality: isLargeRoom && !isSpeaking ? 'low' : 'medium',
+      preferredVideoQuality: quality,
       deferUnsubscribeMs: null,
     };
+  }
+
+  /**
+   * Degrada la calidad de video basándose en la calidad de conexión.
+   * - 'poor' connection → máximo 'medium'
+   * - 'lost' connection → máximo 'low'
+   * - Network degradada → baja un nivel
+   */
+  private clampByConnectionQuality(
+    desired: SubscriptionVideoQuality,
+    connectionQuality?: ConnectionQualityLevel,
+    isNetworkDegraded?: boolean,
+  ): SubscriptionVideoQuality {
+    const qualityRank: Record<SubscriptionVideoQuality, number> = { low: 0, medium: 1, high: 2 };
+    let rank = qualityRank[desired];
+
+    if (connectionQuality === 'lost') {
+      rank = Math.min(rank, 0); // force low
+    } else if (connectionQuality === 'poor') {
+      rank = Math.min(rank, 1); // max medium
+    }
+
+    if (isNetworkDegraded && rank > 0) {
+      rank = rank - 1; // degrade one level
+    }
+
+    const rankToQuality: SubscriptionVideoQuality[] = ['low', 'medium', 'high'];
+    return rankToQuality[rank];
   }
 
   shouldSubscribeOnTrackPublished(snapshot: SubscriptionPolicySnapshot | null, participantId: string): boolean {

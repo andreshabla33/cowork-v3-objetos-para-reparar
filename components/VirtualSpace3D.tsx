@@ -8,12 +8,14 @@ import { Room, Track } from 'livekit-client';
 import { User, PresenceStatus, Role, ZonaEmpresa } from '@/types';
 import { FloorType } from '../src/core/domain/entities';
 import { RecordingManager } from './meetings/recording/RecordingManager';
+import type { CargoLaboral } from './meetings/recording/types/analysis';
 import { ConsentimientoPendiente } from './meetings/recording/ConsentimientoPendiente';
 import { BottomControlBar } from './BottomControlBar';
 import { AvatarCustomizer3D } from './AvatarCustomizer3D';
-import { VideoWithBackground } from './VideoWithBackground';
+import { useBackgroundProcessor } from '@/hooks/space3d/useBackgroundProcessor';
 import { SpatialAudio } from './3d/SpatialAudio';
 import { type GpuInfo } from '@/lib/gpuCapabilities';
+import { logger } from '@/lib/logger';
 import { MobileJoystick, type JoystickInput } from './3d/MobileJoystick';
 import { EmoteWheel } from './3d/EmoteWheel';
 import { DayNightCycle } from './3d/DayNightCycle';
@@ -68,7 +70,7 @@ const RendererMetricsProbe: React.FC<{ adaptiveDpr: number; gpuInfo?: GpuInfo | 
     if (now - lastLogAtRef.current < 8000) return;
     lastLogAtRef.current = now;
 
-    console.log('[3D] Renderer metrics', {
+    logger.child('renderer-metrics').info('Frame stats', {
       dpr: Number(adaptiveDpr.toFixed(2)),
       calls: gl.info.render.calls,
       triangles: gl.info.render.triangles,
@@ -86,6 +88,9 @@ const RendererMetricsProbe: React.FC<{ adaptiveDpr: number; gpuInfo?: GpuInfo | 
 };
 
 const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameHubOpen = false, isPlayingGame = false, showroomMode = false, showroomDuracionMin = 5, showroomNombreVisitante }) => {
+  // ========== Structured Logger ==========
+  const log = logger.child('VirtualSpace3D');
+
   // ========== Domain Hook Facade ==========
   const s = useSpace3D({ theme, isGameHubOpen, isPlayingGame, showroomMode, showroomDuracionMin, showroomNombreVisitante });
   const addNotification = useStore((state) => state.addNotification);
@@ -135,8 +140,8 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
 
   // Settings
   const { gpuRenderConfig, gpuInfo, userMoveSpeed, userRunSpeed, userProximityRadius, maxDpr, minDpr, adaptiveDpr, setAdaptiveDpr, enableDayNightCycle, cameraSettings, audioSettings } = s.settings;
-  const space3dSettings = s.settings.space3dSettings as any;
-  const performanceSettings = s.settings.performanceSettings as any;
+  const space3dSettings = s.settings.space3dSettings;
+  const performanceSettings = s.settings.performanceSettings;
 
   // Chunks
   const { currentUserEcs, onlineUsersEcs, usuariosEnChunks, usuariosParaConexion, usuariosParaMinimapa, chunkActual, ecsStateRef, interpolacionWorkerRef, posicionesInterpoladasRef, setPositionEcs, chunkVecinosRef, usuariosVisiblesRef } = s.chunks;
@@ -148,13 +153,20 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   const { notificacionAutorizacion, setNotificacionAutorizacion, zonasEmpresa, zonaAccesoProxima, handleSolicitarAccesoZona, solicitandoAcceso, setZonaColisionadaId, refrescarZonasEmpresa } = s.notifications;
 
   // Media
-  const { stream, processedStream, setProcessedStream, screenStream, activeScreenRef, effectiveStream, effectiveStreamRef, handleToggleScreenShare } = s.media;
-  const isUsingProcessedLocalVideo = cameraSettings.backgroundEffect !== 'none' && !!processedStream && processedStream !== stream;
+  const { stream, screenStream, activeScreenRef, handleToggleScreenShare } = s.media;
 
   // LiveKit
-  const { livekitConnected, remoteAudioTracks, speakingUsers, sincronizarTracksLocales, enviarDataLivekit } = s.livekit;
+  const { livekitConnected, remoteAudioTracks, speakingUsers, sincronizarTracksLocales, enviarDataLivekit, getPublishedVideoTrack } = s.livekit;
   const remoteStreams = s.livekit.remoteStreams;
   const remoteScreenStreams = s.livekit.remoteScreenStreams;
+
+  // Background processor — aplicado directamente al track de LiveKit via setProcessor()
+  const { isProcessorActive } = useBackgroundProcessor({
+    effectType: cameraSettings.backgroundEffect as 'none' | 'blur' | 'image',
+    blurRadius: 12,
+    backgroundImage: cameraSettings.backgroundImage,
+    getPublishedVideoTrack,
+  });
 
   // Proximity
   const { usersInCall, orderedUsersInCall, usersInCallIds, hasActiveCall, usersInAudioRange, usersInAudioRangeIds, userDistances, remoteStreamsRouted, remoteScreenStreamsRouted, conversacionBloqueada, conversacionProximaBloqueada } = s.proximity;
@@ -476,8 +488,10 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       clearPlantillaZonaEnColocacion();
       await Promise.all([refrescarZonasEmpresa(), refrescarObjetos()]);
       addNotification(`Plantilla ${resultado.plantilla.nombre} aplicada en la posición elegida.`, 'info');
-    } catch (error: any) {
-      addNotification(error?.message || 'No se pudo aplicar la plantilla de zona.', 'info');
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      log.error('Failed to apply plantilla de zona', { error: errorMsg });
+      addNotification(errorMsg || 'No se pudo aplicar la plantilla de zona.', 'info');
     }
   }, [activeWorkspace?.id, addNotification, aplicarPlantillaZonaUseCase, clearPlantillaZonaEnColocacion, plantillaZonaEnColocacion, refrescarObjetos, refrescarZonasEmpresa, session?.user?.id]);
 
@@ -487,8 +501,9 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     }
 
     const coincidenciaPlantilla = (objeto.plantilla_origen || '').match(/^zona:([^:]+):(.+)$/);
+    const metaPlantilla = (objeto.configuracion_geometria as Record<string, unknown> | null)?.meta_plantilla_zona as { zona_id?: string } | undefined;
     const zonaId = coincidenciaPlantilla?.[2]
-      || (objeto.configuracion_geometria as any)?.meta_plantilla_zona?.zona_id
+      || metaPlantilla?.zona_id
       || null;
 
     if (!zonaId) {
@@ -508,8 +523,10 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       await Promise.all([refrescarObjetos(), refrescarZonasEmpresa()]);
       addNotification(`Plantilla eliminada. Objetos: ${resultado.objetosEliminados}, subzonas: ${resultado.subzonasEliminadas}.`, 'info');
       return true;
-    } catch (error: any) {
-      addNotification(error?.message || 'No se pudo eliminar la plantilla completa.', 'info');
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      log.error('Failed to delete plantilla completa', { error: errorMsg });
+      addNotification(errorMsg || 'No se pudo eliminar la plantilla completa.', 'info');
       return false;
     }
   }, [activeWorkspace?.id, addNotification, clearObjectSelection, eliminarPlantillaZonaUseCase, refrescarObjetos, refrescarZonasEmpresa, session?.user?.id]);
@@ -624,8 +641,9 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
               setSelectedObjectIds(result.map(o => o.id));
               toastEmitter.emit({ message: `✨ ${result.length} objeto(s) pegado(s)`, variant: 'success' });
             }
-          } catch (e) {
-            console.error('Error pasting objects', e);
+          } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            log.error('Error pasting objects', { error: errorMsg });
           }
         }
       }
@@ -658,7 +676,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   }, []);
 
   // Ref para OrbitControls (usado en JSX/Scene)
-  const orbitControlsRef = useRef<any>(null);
+  const orbitControlsRef = useRef<{ target: THREE.Vector3; update: () => void; object?: THREE.Camera } | null>(null);
   const cameraResetAnimationRef = useRef<number | null>(null);
 
   const animarCamaraOrbit = useCallback((toPosition: THREE.Vector3, toTarget: THREE.Vector3, durationMs = 350) => {
@@ -743,8 +761,9 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       if (catalogData && catalogData.id && catalogData.nombre) {
         handlePrepararObjeto(catalogData);
       }
-    } catch (err) {
-      console.error('[DnD] Error procesando drop de objeto:', err);
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      log.error('[DnD] Error procesando drop de objeto', { error: errorMsg });
     }
   }, [handlePrepararObjeto]);
 
@@ -754,7 +773,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     setIsSceneReady(true);
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
     const elapsed = Math.max(0, Math.round(now - canvasMetricsRef.current.mountedAt));
-    console.log(`[3D] Scene ready in ${elapsed}ms | DPR ${adaptiveDpr.toFixed(2)}`);
+    log.info('[3D] Scene ready', { elapsedMs: elapsed, dpr: Number(adaptiveDpr.toFixed(2)) });
   }, [adaptiveDpr]);
 
   // PR-4: Memoizar handlers del Canvas y la Scene para evitar re-renders
@@ -775,7 +794,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     if (livekitConnected) {
       setTimeout(() => {
         sincronizarTracksLocales().catch(() => {});
-        console.log('[LIVEKIT] Re-sincronizando tracks tras teleport');
+        log.debug('[LIVEKIT] Re-sincronizando tracks tras teleport');
       }, 800);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -809,7 +828,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     canvasMetricsRef.current.mountedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
     sceneReadyRef.current = false;
     setIsSceneReady(false);
-    console.log(`[3D] VirtualSpace3D mount #${canvasMetricsRef.current.mountCount}`);
+    log.debug('[3D] VirtualSpace3D mount', { mountCount: canvasMetricsRef.current.mountCount });
 
     return () => {
       const canvasEl = canvasDomRef.current;
@@ -823,7 +842,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       canvasDomRef.current = null;
       canvasEventHandlersRef.current = { lost: null, restored: null };
       setIsSceneReady(false);
-      console.log(`[3D] VirtualSpace3D unmount #${canvasMetricsRef.current.mountCount}`);
+      log.debug('[3D] VirtualSpace3D unmount', { mountCount: canvasMetricsRef.current.mountCount });
     };
   }, []);
 
@@ -874,18 +893,18 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
             canvasMetricsRef.current.contextLossCount += 1;
             sceneReadyRef.current = false;
             setIsSceneReady(false);
-            console.warn(`[3D] WebGL context lost #${canvasMetricsRef.current.contextLossCount}`);
+            log.warn('[3D] WebGL context lost', { contextLossCount: canvasMetricsRef.current.contextLossCount });
           };
           const handleContextRestored = () => {
             canvasMetricsRef.current.mountedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
             sceneReadyRef.current = false;
             setIsSceneReady(false);
-            console.log('[3D] WebGL context restored');
+            log.info('[3D] WebGL context restored');
           };
           canvasEventHandlersRef.current = { lost: handleContextLost, restored: handleContextRestored };
           canvasEl.addEventListener('webglcontextlost', handleContextLost);
           canvasEl.addEventListener('webglcontextrestored', handleContextRestored);
-          console.log(`Canvas created | GPU Tier: ${gpuInfo?.tier ?? '?'} | API: ${gpuInfo?.api ?? '?'} | Renderer: ${gpuInfo?.renderer ?? '?'}`);
+          log.info('Canvas created', { gpuTier: gpuInfo?.tier ?? '?', gpuApi: gpuInfo?.api ?? '?', gpuRenderer: gpuInfo?.renderer ?? '?' });
           gl.setClearColor(themeColors[theme] || '#000000');
           if (gpuRenderConfig) {
             gl.toneMappingExposure = gpuRenderConfig.toneMappingExposure;
@@ -909,10 +928,10 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
             setPosition={setPositionEcs}
             theme={theme}
             orbitControlsRef={orbitControlsRef}
-            stream={effectiveStream}
+            stream={stream}
             remoteStreams={remoteStreamsRouted}
             showVideoBubbles={true}
-            videoIsProcessed={isUsingProcessedLocalVideo}
+            videoIsProcessed={isProcessorActive}
             localMessage={localMessage}
             remoteMessages={remoteMessages}
             localReactions={localReactions}
@@ -1016,21 +1035,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
         />
       )}
 
-      {mediaState.isCameraEnabled && stream && stream.getVideoTracks().length > 0 && cameraSettings.backgroundEffect !== 'none' && (
-        <div className="absolute w-0 h-0 overflow-hidden opacity-0 pointer-events-none" aria-hidden="true">
-          <VideoWithBackground
-            key={videoBackgroundKey}
-            stream={stream}
-            effectType={cameraSettings.backgroundEffect}
-            backgroundImage={cameraSettings.backgroundImage}
-            blurAmount={12}
-            muted={true}
-            className="w-px h-px"
-            onProcessedStreamReady={setProcessedStream}
-            mirrorVideo={cameraSettings.mirrorVideo}
-          />
-        </div>
-      )}
+      {/* Background effects are now applied directly on the LiveKit track via useBackgroundProcessor (setProcessor API) */}
       
       {/* Indicador discreto de grabación para otros usuarios (no el grabador) */}
       {isRecording && (tipoGrabacionActual === null || !['rrhh_entrevista', 'rrhh_one_to_one'].includes(tipoGrabacionActual) || consentimientoAceptado) && (
@@ -1070,7 +1075,6 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
           isPrivate={currentUser.isPrivate}
           layoutSnapshot={videoHudLayoutSnapshot}
           stream={stream}
-          effectiveStream={effectiveStream}
           screenStream={screenStream}
           remoteReaction={remoteReaction}
           onWaveUser={handleWaveUser}
@@ -1458,7 +1462,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
           userName={currentUser.name}
           reunionTitulo={`Reunión ${new Date().toLocaleDateString()}`}
           stream={stream}
-          cargoUsuario={cargoUsuario as any}
+          cargoUsuario={cargoUsuario as CargoLaboral}
           usuariosEnLlamada={usersInCall.map(u => ({ id: u.id, nombre: u.name }))}
           onRecordingStateChange={(recording) => {
             setIsRecording(recording);
@@ -1471,7 +1475,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
           onDurationChange={(duration) => setRecordingDuration(duration)}
           onTipoGrabacionChange={(tipo) => setTipoGrabacionActual(tipo)}
           onProcessingComplete={(resultado) => {
-            console.log('✅ Análisis conductual completado:', resultado?.tipo_grabacion, resultado?.analisis);
+            log.info('✅ Análisis conductual completado', { tipoGrabacion: resultado?.tipo_grabacion, analisis: resultado?.analisis });
           }}
           headlessMode={true}
           externalTrigger={recordingTrigger}
@@ -1482,7 +1486,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       {/* Modal de consentimiento para usuarios evaluados */}
       <ConsentimientoPendiente
         onConsentimientoRespondido={(grabacionId, acepto) => {
-          console.log(`📝 Consentimiento ${acepto ? 'aceptado' : 'rechazado'} para grabación:`, grabacionId);
+          log.info('📝 Consentimiento respondido para grabación', { grabacionId, aceptado: acepto });
         }}
       />
       

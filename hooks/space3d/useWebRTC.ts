@@ -4,11 +4,13 @@
  * señalización via Realtime chunks, y ciclo de vida de peer connections.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import type { User } from '@/types';
+import { useEffect, useCallback, useRef } from 'react';
+import type { User, Workspace } from '@/types';
+import type { Session } from '@supabase/supabase-js';
 import { obtenerChunk, obtenerChunksVecinos } from '@/lib/chunkSystem';
-import { crearRealtimeChunkManager, type EventoRealtime } from '@/lib/realtimeChunkManager';
+import { crearRealtimeChunkManager, type EventoRealtime, RealtimeChunkManager } from '@/lib/realtimeChunkManager';
 import { actualizarEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
+import { logger } from '@/lib/logger';
 
 // ICE servers configuration for WebRTC peer connections
 const ICE_SERVERS = [
@@ -16,12 +18,16 @@ const ICE_SERVERS = [
   { urls: 'stun:stun1.l.google.com:19302' },
 ];
 
+interface WebRTCChannel {
+  send: (message: { type?: string; event: string; payload: Record<string, unknown> }) => void;
+}
+
 // Return type for useWebRTC hook
 interface UseWebRTCReturn {
   peerConnectionsRef: React.MutableRefObject<Map<string, RTCPeerConnection>>;
   peerVideoTrackCountRef: React.MutableRefObject<Map<string, number>>;
-  webrtcChannelRef: React.MutableRefObject<any>;
-  realtimeChunkManagerRef: React.MutableRefObject<any>;
+  webrtcChannelRef: React.MutableRefObject<WebRTCChannel | null>;
+  realtimeChunkManagerRef: React.MutableRefObject<RealtimeChunkManager | null>;
   createPeerConnection: (peerId: string) => RTCPeerConnection;
   handleOffer: (offer: RTCSessionDescriptionInit, fromId: string) => Promise<void>;
   handleAnswer: (answer: RTCSessionDescriptionInit, fromId: string) => Promise<void>;
@@ -30,8 +36,8 @@ interface UseWebRTCReturn {
 }
 
 export function useWebRTC(params: {
-  activeWorkspace: any;
-  session: any;
+  activeWorkspace: Workspace;
+  session: Session;
   activeStreamRef: React.MutableRefObject<MediaStream | null>;
   activeScreenRef: React.MutableRefObject<MediaStream | null>;
   usuariosParaConexion: User[];
@@ -44,7 +50,7 @@ export function useWebRTC(params: {
   currentUserEcs: User;
   setRemoteStreams: React.Dispatch<React.SetStateAction<Map<string, MediaStream>>>;
   setRemoteScreenStreams: React.Dispatch<React.SetStateAction<Map<string, MediaStream>>>;
-  manejarEventoInstantaneo: (mensaje: { type: string; payload: any }) => void;
+  manejarEventoInstantaneo: (mensaje: { type: string; payload: Record<string, unknown> }) => void;
 }): UseWebRTCReturn {
   const {
     activeWorkspace, session, activeStreamRef, activeScreenRef,
@@ -55,9 +61,10 @@ export function useWebRTC(params: {
 
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const peerVideoTrackCountRef = useRef<Map<string, number>>(new Map());
-  const webrtcChannelRef = useRef<any>(null);
-  const realtimeChunkManagerRef = useRef<any>(null);
+  const webrtcChannelRef = useRef<WebRTCChannel | null>(null);
+  const realtimeChunkManagerRef = useRef<RealtimeChunkManager | null>(null);
   const webrtcChannelSubscribedRef = useRef(false);
+  const log = logger.child('useWebRTC');
 
   // ========== createPeerConnection ==========
   const createPeerConnection = useCallback((peerId: string) => {
@@ -197,10 +204,11 @@ export function useWebRTC(params: {
       espacioId: activeWorkspace.id,
       userId: session.user.id,
       onMessage: (evento: EventoRealtime, payload: Record<string, unknown>) => {
-        const p = payload as any;
-        if (evento === 'offer' && p.to === session.user.id) { handleOffer(p.offer, p.from); return; }
-        if (evento === 'answer' && p.to === session.user.id) { handleAnswer(p.answer, p.from); return; }
-        if (evento === 'ice-candidate' && p.to === session.user.id) { handleIceCandidate(p.candidate, p.from); return; }
+        // Type payload as a WebRTC signaling message
+        const p = payload as Record<string, unknown> & { to?: string; from?: string; offer?: RTCSessionDescriptionInit; answer?: RTCSessionDescriptionInit; candidate?: RTCIceCandidateInit };
+        if (evento === 'offer' && p.to === session.user.id) { handleOffer(p.offer as RTCSessionDescriptionInit, p.from as string); return; }
+        if (evento === 'answer' && p.to === session.user.id) { handleAnswer(p.answer as RTCSessionDescriptionInit, p.from as string); return; }
+        if (evento === 'ice-candidate' && p.to === session.user.id) { handleIceCandidate(p.candidate as RTCIceCandidateInit, p.from as string); return; }
         manejarEventoInstantaneo({ type: evento, payload: p });
       },
       onSubscriptionChange: (activos) => {
@@ -210,7 +218,7 @@ export function useWebRTC(params: {
 
     realtimeChunkManagerRef.current = manager;
     webrtcChannelRef.current = {
-      send: ({ event, payload }: { type?: string; event: string; payload: any }) => {
+      send: ({ event, payload }: { type?: string; event: string; payload: Record<string, unknown> }) => {
         manager.broadcast(event as EventoRealtime, payload);
       },
     };
@@ -300,7 +308,13 @@ export function useWebRTC(params: {
           if (webrtcChannelRef.current) {
             webrtcChannelRef.current.send({ type: 'broadcast', event: 'offer', payload: { offer, to: peerId, from: session?.user?.id } });
           }
-        } catch (err) { console.error('Error renegotiating screen share:', err); }
+        } catch (err) {
+          if (err instanceof Error) {
+            log.error('Error renegotiating screen share', { message: err.message, stack: err.stack });
+          } else {
+            log.error('Error renegotiating screen share', { error: String(err) });
+          }
+        }
       }
     });
   }, [screenStream, hasActiveCall, session?.user?.id]);

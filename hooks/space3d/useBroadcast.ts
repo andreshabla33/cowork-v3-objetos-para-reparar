@@ -5,8 +5,11 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { User } from '@/types';
+import type { User, Workspace } from '@/types';
+import type { Session } from '@supabase/supabase-js';
+import type { UserSettings } from '@/lib/userSettings';
 import { obtenerChunk } from '@/lib/chunkSystem';
+import type { AccionXP } from '@/lib/gamificacion';
 import { actualizarEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
 import { getSettingsSection, sendDesktopNotification } from '@/lib/userSettings';
 import { audioManager } from '@/services/audioManager';
@@ -21,7 +24,7 @@ import {
   RaiseHandUseCase,
   type RealtimeEventBus,
 } from '@/modules/realtime-room';
-import { MOVEMENT_BROADCAST_MS, type UseBroadcastReturn } from './types';
+import { MOVEMENT_BROADCAST_MS, type RealtimePositionEntry, type UseBroadcastReturn } from './types';
 
 // Sonidos (importados como funciones puras — se definen en VirtualSpace3D)
 let playWaveSound: () => void = () => {};
@@ -36,15 +39,15 @@ export function setBroadcastSoundFunctions(wave: () => void, nudge: () => void, 
 }
 
 export function useBroadcast(params: {
-  session: any;
+  session: Session | null;
   currentUser: User;
   currentUserEcs: User;
-  activeWorkspace: any;
+  activeWorkspace: Workspace | null;
   usersInCall: User[];
   enviarDataLivekit: (mensaje: DataPacketContract, reliable?: boolean) => boolean;
   ecsStateRef: React.MutableRefObject<EstadoEcsEspacio>;
   usuariosVisiblesRef: React.MutableRefObject<Set<string>>;
-  realtimePositionsRef: React.MutableRefObject<Map<string, any>>;
+  realtimePositionsRef: React.MutableRefObject<Map<string, RealtimePositionEntry>>;
   realtimeEventBusRef: React.MutableRefObject<RealtimeEventBus | null>;
   livekitConnected: boolean;
   raisedHandParticipantIds: Set<string>;
@@ -52,8 +55,8 @@ export function useBroadcast(params: {
   conversacionBloqueada: boolean;
   setConversacionBloqueada: React.Dispatch<React.SetStateAction<boolean>>;
   setConversacionesBloqueadasRemoto: React.Dispatch<React.SetStateAction<Map<string, string[]>>>;
-  grantXP: (accion: string, cooldownMs?: number) => void;
-  notifSettings: any;
+  grantXP: (accion: AccionXP, cooldownMs?: number) => void;
+  notifSettings: UserSettings['notifications'];
   setPrivacy: (value: boolean) => void;
   hasActiveCall: boolean;
   proximidadNotificadaRef: React.MutableRefObject<boolean>;

@@ -1,15 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from '@/store/useStore';
-import { supabase } from '@/lib/supabase';
-import { CONFIG_PUBLICA_APP } from '@/lib/env';
+import { logger } from '@/lib/logger';
+import { SUPABASE_URL } from '@/lib/supabase';
 import { otorgarXP, XP_POR_ACCION } from '@/lib/gamificacion';
 import { RealtimeSessionTelemetry } from '@/modules/realtime-room';
+import { meetingAccessRepository } from '@/src/core/infrastructure/adapters/MeetingAccessSupabaseRepository';
+import { ObtenerAccesoReunionUseCase } from '@/src/core/application/usecases/ObtenerAccesoReunionUseCase';
 import type { CargoLaboral } from '../../recording/types/analysis';
 import type { InvitadoExterno, TipoReunionUnificado } from '@/types/meeting-types';
 import type { GuestPermissions, MeetingRecoveryState, MeetingRoomProps, TokenData } from '../meetingRoom.types';
 import type { TipoReunion } from '../MeetingControlBar';
 
-const SUPABASE_URL = CONFIG_PUBLICA_APP.urlSupabase;
+const log = logger.child('use-meeting-access');
+const obtenerAcceso = new ObtenerAccesoReunionUseCase(meetingAccessRepository);
+
 const HEARTBEAT_INTERVAL_MS = 60_000;
 const TOKEN_REQUEST_TIMEOUT_MS = 15_000;
 const inFlightTokenRequests = new Map<string, Promise<{ status: number; statusText: string; text: string }>>();
@@ -72,17 +76,10 @@ export const useMeetingAccess = ({
 
       if (!currentUser?.id || !activeWorkspace?.id) return;
 
-      const { data } = await supabase
-        .from('miembros_espacio')
-        .select('cargo_id, cargo_ref:cargos!cargo_id(clave)')
-        .eq('usuario_id', currentUser.id)
-        .eq('espacio_id', activeWorkspace.id)
-        .single();
-
-      const clave = (data?.cargo_ref as any)?.clave;
-      if (clave) {
-        console.log('Cargo del usuario (MeetingRoom):', clave);
-        setCargoUsuario(clave as CargoLaboral);
+      const result = await obtenerAcceso.obtenerCargoUsuario(currentUser.id, activeWorkspace.id);
+      if (result.cargo) {
+        log.debug('User cargo loaded', { cargo: result.cargo });
+        setCargoUsuario(result.cargo as CargoLaboral);
       }
     };
 
@@ -117,14 +114,14 @@ export const useMeetingAccess = ({
         headers.Authorization = `Bearer ${session.access_token}`;
       }
 
-      const body: Record<string, any> = tokenInvitacion
+      const body: Record<string, string | undefined> = tokenInvitacion
         ? {
             token_invitacion: tokenInvitacion,
             ...(nombreInvitado ? { nombre_invitado: nombreInvitado } : {}),
           }
         : { sala_id: salaId };
 
-      console.log('Calling LiveKit token Edge Function...');
+      log.debug('Calling LiveKit token Edge Function');
 
       let request = inFlightTokenRequests.get(requestKey);
       if (!request) {
@@ -154,10 +151,9 @@ export const useMeetingAccess = ({
 
       const response = await request;
 
-      console.log('Response status:', response.status, response.statusText);
+      log.debug('Token response received', { status: response.status, statusText: response.statusText });
 
       const text = response.text;
-      console.log('Response text:', text);
 
       if (!text) {
         throw new Error('Respuesta vacía del servidor. Verifica que LiveKit esté configurado.');
@@ -166,12 +162,14 @@ export const useMeetingAccess = ({
       let data: TokenData;
       try {
         data = JSON.parse(text);
-      } catch {
-        throw new Error(`Error parseando respuesta: ${text.substring(0, 200)}`);
+      } catch (parseError: unknown) {
+        const errorMsg = parseError instanceof Error ? parseError.message : 'Unknown parsing error';
+        throw new Error(`Error parseando respuesta: ${text.substring(0, 200)} (${errorMsg})`);
       }
 
       if (response.status < 200 || response.status >= 300) {
-        throw new Error((data as any).error || `Error ${response.status}: ${response.statusText}`);
+        const errorData = data as Record<string, unknown>;
+        throw new Error(String(errorData.error) || `Error ${response.status}: ${response.statusText}`);
       }
 
       setTokenData(data);
@@ -203,11 +201,14 @@ export const useMeetingAccess = ({
       if (data.reunion_id) {
         setReunionId(data.reunion_id);
       }
-    } catch (err: any) {
-      console.error('Error fetching token:', err);
-      const message = err?.name === 'AbortError'
-        ? 'La conexión al servidor tardó demasiado al preparar la reunión.'
-        : err.message;
+    } catch (err: unknown) {
+      let message = 'Error desconocido';
+      if (err instanceof Error) {
+        message = err.name === 'AbortError'
+          ? 'La conexión al servidor tardó demasiado al preparar la reunión.'
+          : err.message;
+      }
+      log.error('Error fetching token', { message });
       setError(message);
       setRecoveryState((prev) => ({
         ...prev,
@@ -255,85 +256,75 @@ export const useMeetingAccess = ({
 
       try {
         if (tokenInvitacion) {
-          const { data, error: fnError } = await supabase.functions.invoke('validar-invitacion-reunion', {
-            body: { token: tokenInvitacion },
-          });
+          const invData = await obtenerAcceso.validarInvitacion(tokenInvitacion);
 
-          if (fnError || data?.error) {
-            throw new Error(fnError?.message || data?.error || 'Invitación no válida');
-          }
+          if (invData.sala) {
+            const config = invData.sala.configuracion as Record<string, unknown>;
 
-          const salaData = data?.invitacion?.sala as any;
-          if (salaData) {
-            const config = salaData.configuracion;
-
-            if (salaData.espacio_id) {
-              setSalaEspacioId(salaData.espacio_id);
+            if (invData.sala.espacio_id) {
+              setSalaEspacioId(invData.sala.espacio_id);
             }
 
-            if (config?.tipo_reunion) {
-              setTipoReunion(tipoMapUnificado[config.tipo_reunion as TipoReunionUnificado] || 'equipo');
+            const configTipoReunion = config?.tipo_reunion as TipoReunionUnificado | undefined;
+            if (configTipoReunion) {
+              setTipoReunion(tipoMapUnificado[configTipoReunion] || 'equipo');
             } else {
-              setTipoReunion(tipoMapBD[salaData.tipo] || 'equipo');
+              setTipoReunion(tipoMapBD[invData.sala.tipo] || 'equipo');
             }
 
-            if (config?.reunion_id) {
-              setReunionId(config.reunion_id);
+            const configReunionId = config?.reunion_id as string | undefined;
+            if (configReunionId) {
+              setReunionId(configReunionId);
             }
 
-            if (config?.invitados_externos?.[0]) {
-              setInvitadoExterno(config.invitados_externos[0]);
+            const configInvitadosExternos = config?.invitados_externos as InvitadoExterno[] | undefined;
+            if (configInvitadosExternos?.[0]) {
+              setInvitadoExterno(configInvitadosExternos[0]);
             }
 
-            if (config?.guests) {
+            const configGuests = config?.guests as Record<string, unknown> | undefined;
+            if (configGuests) {
               setGuestPermissions({
-                allowChat: config.guests.allowChat ?? true,
-                allowVideo: config.guests.allowVideo ?? true,
+                allowChat: (configGuests.allowChat ?? true) as boolean,
+                allowVideo: (configGuests.allowVideo ?? true) as boolean,
               });
             }
           }
         } else if (salaId) {
-          const { data: sala } = await supabase
-            .from('salas_reunion')
-            .select('tipo, configuracion, espacio_id')
-            .eq('id', salaId)
-            .single();
+          const sala = await obtenerAcceso.obtenerSalaPorId(salaId);
 
           if (sala) {
-            const config = sala.configuracion as any;
-            if (config?.tipo_reunion) {
-              setTipoReunion(tipoMapUnificado[config.tipo_reunion as TipoReunionUnificado] || 'equipo');
+            const config = sala.configuracion as Record<string, unknown>;
+            const configTipoReunion = config?.tipo_reunion as TipoReunionUnificado | undefined;
+            if (configTipoReunion) {
+              setTipoReunion(tipoMapUnificado[configTipoReunion] || 'equipo');
             } else {
               setTipoReunion(tipoMapBD[sala.tipo] || 'equipo');
             }
 
-            if (config?.reunion_id) {
-              setReunionId(config.reunion_id);
+            const configReunionId = config?.reunion_id as string | undefined;
+            if (configReunionId) {
+              setReunionId(configReunionId);
             }
 
-            if (config?.invitados_externos?.[0]) {
-              setInvitadoExterno(config.invitados_externos[0]);
+            const configInvitadosExternos = config?.invitados_externos as InvitadoExterno[] | undefined;
+            if (configInvitadosExternos?.[0]) {
+              setInvitadoExterno(configInvitadosExternos[0]);
             }
 
             if (sala.espacio_id) {
               setSalaEspacioId(sala.espacio_id);
-              const { data: espacio } = await supabase
-                .from('espacios_trabajo')
-                .select('configuracion')
-                .eq('id', sala.espacio_id)
-                .single();
-
-              if (espacio?.configuracion?.guests) {
-                setGuestPermissions({
-                  allowChat: espacio.configuracion.guests.allowChat ?? true,
-                  allowVideo: espacio.configuracion.guests.allowVideo ?? true,
-                });
-              }
+              const permisos = await obtenerAcceso.obtenerPermisosInvitado(sala.espacio_id);
+              setGuestPermissions({
+                allowChat: permisos.allowChat,
+                allowVideo: permisos.allowVideo,
+              });
             }
           }
         }
-      } catch (err) {
-        console.warn('No se pudo obtener info de la sala:', err);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Error desconocido al obtener info de la sala';
+        log.warn('Could not fetch sala info', { message });
       } finally {
         setSalaInfoFetched(true);
       }
@@ -352,11 +343,7 @@ export const useMeetingAccess = ({
 
     const fetchEspacioId = async () => {
       try {
-        const { data: sala } = await supabase
-          .from('salas_reunion')
-          .select('espacio_id')
-          .eq('id', salaId)
-          .single();
+        const sala = await obtenerAcceso.obtenerSalaPorId(salaId);
         if (sala?.espacio_id) {
           setSalaEspacioId(sala.espacio_id);
         }
@@ -371,9 +358,9 @@ export const useMeetingAccess = ({
   const startHeartbeat = useCallback(() => {
     if (tokenInvitacion || !currentUser) return;
 
-    void supabase.rpc('heartbeat_participante', { p_sala_id: salaId, p_usuario_id: currentUser.id });
+    void obtenerAcceso.heartbeat(salaId, currentUser.id);
     heartbeatRef.current = setInterval(() => {
-      void supabase.rpc('heartbeat_participante', { p_sala_id: salaId, p_usuario_id: currentUser.id });
+      void obtenerAcceso.heartbeat(salaId, currentUser.id);
     }, HEARTBEAT_INTERVAL_MS);
   }, [salaId, currentUser, tokenInvitacion]);
 
@@ -395,7 +382,7 @@ export const useMeetingAccess = ({
   }, [stopHeartbeat]);
 
   const handleRoomConnected = useCallback(() => {
-    console.log('Conectado a la sala');
+    log.info('Room connected');
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = null;
@@ -415,11 +402,10 @@ export const useMeetingAccess = ({
     });
 
     if (!tokenInvitacion && currentUser) {
-      void supabase
-        .from('participantes_sala')
-        .update({ estado_participante: 'en_sala', ultima_actividad: new Date().toISOString() })
-        .eq('sala_id', salaId)
-        .eq('usuario_id', currentUser.id);
+      void obtenerAcceso.actualizarEstado(salaId, currentUser.id, {
+        estado_participante: 'en_sala',
+        ultima_actividad: new Date().toISOString(),
+      });
     }
 
     startHeartbeat();
@@ -439,7 +425,7 @@ export const useMeetingAccess = ({
   }, []);
 
   const handleLiveKitError = useCallback((err: Error) => {
-    console.error('LiveKit error:', err);
+    log.error('LiveKit error', { message: err.message });
     const msg = err.message || '';
     const isRecoverable =
       msg.includes('Device in use') ||
@@ -470,7 +456,7 @@ export const useMeetingAccess = ({
         data: { salaId, message: msg },
       });
     } else {
-      console.warn('Error recuperable de LiveKit (ignorado):', msg);
+      log.warn('Recoverable LiveKit error (ignored)', { message: msg });
       setRecoveryState((prev) => ({
         ...prev,
         phase: 'degraded',
@@ -491,7 +477,7 @@ export const useMeetingAccess = ({
   }, []);
 
   const handleRoomDisconnected = useCallback(() => {
-    console.log('Desconectado de la sala');
+    log.info('Room disconnected');
     stopHeartbeat();
     telemetryRef.current.record({
       category: 'meeting_access',
@@ -507,11 +493,10 @@ export const useMeetingAccess = ({
     if (userInitiatedLeaveRef.current) {
       // Salida voluntaria — actualizar estado y navegar
       if (!tokenInvitacion && currentUser) {
-        void supabase
-          .from('participantes_sala')
-          .update({ estado_participante: 'desconectado', salido_en: new Date().toISOString() })
-          .eq('sala_id', salaId)
-          .eq('usuario_id', currentUser.id);
+        void obtenerAcceso.actualizarEstado(salaId, currentUser.id, {
+          estado_participante: 'desconectado',
+          salido_en: new Date().toISOString(),
+        });
       }
       onLeaveRef.current?.();
       return;
@@ -521,7 +506,7 @@ export const useMeetingAccess = ({
     if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
       reconnectAttemptsRef.current += 1;
       const delay = RECONNECT_BASE_DELAY_MS * reconnectAttemptsRef.current;
-      console.log(`Reconexión automática intento ${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS} en ${delay}ms...`);
+      log.debug('Scheduling automatic reconnection', { attempt: reconnectAttemptsRef.current, delay });
       setRecoveryState({
         phase: 'reconnecting',
         reconnectAttempt: reconnectAttemptsRef.current,
@@ -541,20 +526,19 @@ export const useMeetingAccess = ({
       });
 
       reconnectTimerRef.current = setTimeout(() => {
-        console.log('Reobteniendo token para reconexión...');
+        log.debug('Fetching new token for reconnection');
         tokenFetchedRef.current = false;
         reconnectTimerRef.current = null;
         void fetchToken();
       }, delay);
     } else {
       // Agotados los intentos — marcar como desconectado
-      console.warn('Reconexión agotada, mostrando error.');
+      log.warn('Reconnection exhausted, showing error');
       if (!tokenInvitacion && currentUser) {
-        void supabase
-          .from('participantes_sala')
-          .update({ estado_participante: 'desconectado', salido_en: new Date().toISOString() })
-          .eq('sala_id', salaId)
-          .eq('usuario_id', currentUser.id);
+        void obtenerAcceso.actualizarEstado(salaId, currentUser.id, {
+          estado_participante: 'desconectado',
+          salido_en: new Date().toISOString(),
+        });
       }
       setError('Se perdió la conexión con la sala. Por favor reintenta.');
       setRecoveryState({

@@ -178,20 +178,34 @@ export type DataPacketType =
   | 'speaker_hint'
   | 'moderation_notice';
 
+// ─── Campo seq para paquetes Reliable (Roadmap REMEDIATION-005) ─────────────
+// Los paquetes que se envían via Reliable delivery incluyen un número de secuencia
+// para garantizar idempotencia en el receptor.
+// Lossy packets (movement, speaker_hint) omiten el campo seq intencionalmente
+// ya que la pérdida de paquetes es aceptable para esos tipos.
+
+/** Mixin de idempotencia para paquetes Reliable */
+export interface ReliablePacketMeta {
+  /** Número de secuencia monotónico. El receptor debe ignorar seq repetidos. */
+  seq: number;
+}
+
 export type MovementDataPacket = { type: 'movement'; payload: MovementPayload };
-export type ChatDataPacket = { type: 'chat'; payload: ChatPayload };
-export type ReactionDataPacket = { type: 'reaction'; payload: ReactionPayload };
-export type WaveDataPacket = { type: 'wave'; payload: WavePayload };
-export type NudgeDataPacket = { type: 'nudge'; payload: NudgePayload };
-export type InviteDataPacket = { type: 'invite'; payload: InvitePayload };
-export type LockConversationDataPacket = { type: 'lock_conversation'; payload: LockConversationPayload };
-export type RecordingStatusDataPacket = { type: 'recording_status'; payload: RecordingStatusPayload };
-export type ConsentRequestDataPacket = { type: 'consent_request'; payload: ConsentRequestPayload };
-export type ConsentResponseDataPacket = { type: 'consent_response'; payload: ConsentResponsePayload };
-export type RaiseHandDataPacket = { type: 'raise_hand'; payload: RaiseHandPayload };
-export type PinParticipantDataPacket = { type: 'pin_participant'; payload: PinParticipantPayload };
 export type SpeakerHintDataPacket = { type: 'speaker_hint'; payload: SpeakerHintPayload };
-export type ModerationNoticeDataPacket = { type: 'moderation_notice'; payload: ModerationNoticePayload };
+
+// Paquetes Reliable — incluyen seq para idempotencia
+export type ChatDataPacket = { type: 'chat'; payload: ChatPayload } & ReliablePacketMeta;
+export type ReactionDataPacket = { type: 'reaction'; payload: ReactionPayload } & ReliablePacketMeta;
+export type WaveDataPacket = { type: 'wave'; payload: WavePayload } & ReliablePacketMeta;
+export type NudgeDataPacket = { type: 'nudge'; payload: NudgePayload } & ReliablePacketMeta;
+export type InviteDataPacket = { type: 'invite'; payload: InvitePayload } & ReliablePacketMeta;
+export type LockConversationDataPacket = { type: 'lock_conversation'; payload: LockConversationPayload } & ReliablePacketMeta;
+export type RecordingStatusDataPacket = { type: 'recording_status'; payload: RecordingStatusPayload } & ReliablePacketMeta;
+export type ConsentRequestDataPacket = { type: 'consent_request'; payload: ConsentRequestPayload } & ReliablePacketMeta;
+export type ConsentResponseDataPacket = { type: 'consent_response'; payload: ConsentResponsePayload } & ReliablePacketMeta;
+export type RaiseHandDataPacket = { type: 'raise_hand'; payload: RaiseHandPayload } & ReliablePacketMeta;
+export type PinParticipantDataPacket = { type: 'pin_participant'; payload: PinParticipantPayload } & ReliablePacketMeta;
+export type ModerationNoticeDataPacket = { type: 'moderation_notice'; payload: ModerationNoticePayload } & ReliablePacketMeta;
 
 export type DataPacketContract =
   | MovementDataPacket

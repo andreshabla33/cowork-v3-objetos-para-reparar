@@ -1,3 +1,10 @@
+/**
+ * @deprecated ARCHIVO HUÉRFANO — Sin referencias activas. Eliminar manualmente.
+ * Detectado en auditoría arquitectural 2026-03-30 (ARCH-CLEANUP-001).
+ * Los tipos de base de datos se generan automáticamente vía `supabase gen types`.
+ * Usar los tipos generados en types/ o ejecutar: git rm lib/database.types.ts
+ */
+
 export type Json =
   | string
   | number

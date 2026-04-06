@@ -10,6 +10,9 @@ import { detectGpuCapabilities, adaptiveConfigFromTier, type GpuInfo } from '@/l
 import { loadCameraSettings, saveCameraSettings, loadAudioSettings, saveAudioSettings, type CameraSettings, type AudioSettings } from '@/modules/realtime-room';
 import { MOVE_SPEED, RUN_SPEED, PROXIMITY_RADIUS, type UseUserSettingsReturn, type UseUserSettingsParams } from './types';
 import type { Room } from 'livekit-client';
+import { logger } from '@/lib/logger';
+
+const log = logger.child('useUserSettings');
 
 export function useUserSettings(params: UseUserSettingsParams): UseUserSettingsReturn {
   const { livekitRoomRef, hasActiveCallRef, toggleMic, toggleCamera } = params;
@@ -114,7 +117,7 @@ export function useUserSettings(params: UseUserSettingsParams): UseUserSettingsR
   }, []);
 
   // ========== Auto-mute idle ==========
-  const idleTimerRef = useRef<any>(null);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wasIdleMutedRef = useRef(false);
   const micOnRef = useRef(false);
   const camOnRef = useRef(false);
@@ -138,13 +141,13 @@ export function useUserSettings(params: UseUserSettingsParams): UseUserSettingsR
       wasIdleMutedRef.current = false;
       idleTimerRef.current = setTimeout(() => {
         if (isInActiveCall()) {
-          console.log('[AutoIdleMute] Inactivo pero en conversación activa — no se apaga mic/cam');
+          log.info('User inactive but in active call - keeping mic/cam on');
           return;
         }
         if (micOnRef.current) { toggleMic(); wasIdleMutedRef.current = true; }
         if (camOnRef.current) { toggleCamera(); wasIdleMutedRef.current = true; }
         if (micOnRef.current || camOnRef.current) {
-          console.log('[AutoIdleMute] Usuario inactivo y sin conversación, mic/cam apagados');
+          log.info('User inactive with no active call - disabling mic/cam');
         }
       }, IDLE_TIMEOUT);
     };

@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { logger } from '@/lib/logger';
+
+const log = logger.child('useOcupacionAsientos');
 
 export interface OcupacionAsientoReal {
   id: string;
@@ -69,7 +72,7 @@ export function useOcupacionAsientos(
         .eq('espacio_id', espacioId);
 
       if (error) {
-        console.error('[useOcupacionAsientos] Error fetching ocupaciones:', error);
+        log.error('Error fetching ocupaciones', { error: error instanceof Error ? error.message : String(error) });
       } else {
         setOcupacionesRaw((data as OcupacionAsientoReal[]) || []);
       }
@@ -136,7 +139,7 @@ export function useOcupacionAsientos(
       if (mensaje.includes('ASIENTO_OCUPADO')) {
         return { ok: false, motivo: 'asiento_ocupado' };
       }
-      console.error('[useOcupacionAsientos] Error ocupando asiento:', error);
+      log.error('Error ocupando asiento', { error: error instanceof Error ? error.message : String(error) });
       return { ok: false, motivo: 'error' };
     }
 
@@ -152,7 +155,7 @@ export function useOcupacionAsientos(
     });
 
     if (error) {
-      console.error('[useOcupacionAsientos] Error liberando asiento:', error);
+      log.error('Error liberando asiento', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
 
@@ -168,7 +171,7 @@ export function useOcupacionAsientos(
     });
 
     if (error) {
-      console.error('[useOcupacionAsientos] Error refrescando ocupación:', error);
+      log.error('Error refrescando ocupación', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
 

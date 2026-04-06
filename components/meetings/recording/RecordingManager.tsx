@@ -1,6 +1,6 @@
 /**
  * RecordingManager - Componente de grabación con análisis conductual avanzado
- * 
+ *
  * Características:
  * - Selector de tipo: RRHH, Deals, Equipo
  * - Disclaimer condicional (solo RRHH)
@@ -11,13 +11,14 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { supabase } from '../../../lib/supabase';
+import { logger } from '@/lib/logger';
 import type { RecordingDiagnosticsSnapshot } from '@/modules/realtime-room';
+import { useRecordingManager } from '@/hooks/meetings/useRecordingManager';
 import { useTranscription } from './useTranscription';
 import { useCombinedAnalysis, AnalisisResumenTiempoReal } from './useCombinedAnalysis';
 import { RecordingTypeSelectorV2 } from './RecordingTypeSelectorV2';
 import { AnalysisDashboard } from './AnalysisDashboard';
-import { 
+import {
   TipoGrabacionDetallado,
   CargoLaboral,
   CONFIGURACIONES_GRABACION_DETALLADO,
@@ -25,6 +26,8 @@ import {
   ResultadoAnalisis,
   tienePermisoAnalisis,
 } from './types/analysis';
+
+const log = logger.child('recording-manager');
 
 interface UsuarioEnLlamada {
   id: string;
@@ -94,6 +97,13 @@ const getRecordingPresets = (stream: MediaStream): RecordingPreset[] => {
   return presets;
 };
 
+/**
+ * Validate if a string is a valid UUID
+ */
+const isValidUUID = (id: string): boolean => {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+};
+
 export const RecordingManager: React.FC<RecordingManagerProps> = ({
   espacioId,
   userId,
@@ -114,6 +124,9 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
   preselectedTipoGrabacion,
   onRequestGuestConsent,
 }) => {
+  // Hook for recording operations
+  const recordingOps = useRecordingManager();
+
   // Estados principales
   const [processingState, setProcessingState] = useState<ProcessingState>({
     step: 'idle',
@@ -157,8 +170,8 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
   });
 
   // Obtener tipo base para el hook de análisis (rrhh_entrevista y rrhh_one_to_one -> rrhh)
-  const tipoBase = tipoGrabacion 
-    ? CONFIGURACIONES_GRABACION_DETALLADO[tipoGrabacion].tipoBase 
+  const tipoBase = tipoGrabacion
+    ? CONFIGURACIONES_GRABACION_DETALLADO[tipoGrabacion].tipoBase
     : 'equipo';
 
   // Hook de análisis combinado (se inicializa cuando se selecciona tipo)
@@ -205,10 +218,10 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
 
   // Buscar o crear elemento de video para análisis conductual
   const hiddenVideoRef = useRef<HTMLVideoElement | null>(null);
-  
+
   const findVideoElement = useCallback((): HTMLVideoElement | null => {
     if (!stream) return null;
-    
+
     // Primero buscar en el DOM un video con nuestro stream
     const videoElements = document.querySelectorAll('video');
     for (const video of videoElements) {
@@ -216,7 +229,7 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
         return video as HTMLVideoElement;
       }
     }
-    
+
     // En LiveKit los videos se renderizan internamente,
     // así que creamos un video oculto para el análisis facial/corporal
     if (!hiddenVideoRef.current) {
@@ -233,14 +246,14 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
       document.body.appendChild(hiddenVideo);
       hiddenVideoRef.current = hiddenVideo;
     }
-    
+
     // Asignar el stream al video oculto
     if (hiddenVideoRef.current.srcObject !== stream) {
       hiddenVideoRef.current.srcObject = stream;
       hiddenVideoRef.current.play().catch(() => {});
     }
-    
-    console.log('🎥 Video oculto creado para análisis conductual');
+
+    log.debug('Hidden video element created for behavioral analysis');
     return hiddenVideoRef.current;
   }, [stream]);
 
@@ -254,9 +267,6 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
       }
     };
   }, []);
-
-  // Validar si es UUID válido
-  const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
   // Iniciar grabación
   const startRecording = useCallback(async (tipo: TipoGrabacionDetallado, analisis: boolean = true, evaluadoId?: string, evaluadoNombre?: string, evaluadoEmail?: string) => {
@@ -344,58 +354,56 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
       recordingMimeTypeRef.current = resolvedMimeType;
       startTimeRef.current = Date.now();
 
-      // Registrar en Supabase
-      console.log('💾 Insertando grabación en BD...', { espacio_id: espacioId, creado_por: userId });
-      const { error: insertError } = await supabase.from('grabaciones').insert({
-        id: grabacionIdRef.current,
-        espacio_id: espacioId,
-        creado_por: userId,
-        estado: 'grabando',
-        inicio_grabacion: new Date().toISOString(),
-        tipo: tipo,
-        tiene_video: true,
-        tiene_audio: true,
-        formato: resolvedMimeType,
-        evaluado_id: (evaluadoId && isValidUUID(evaluadoId)) ? evaluadoId : null,
-        evaluado_nombre: evaluadoNombre || null,
-        evaluado_email: evaluadoEmail || null,
-      });
-      
-      if (insertError) {
-        console.error('❌ Error insertando grabación:', insertError);
-        updateState({ step: 'error', message: `Error creando grabación: ${insertError.message}` });
+      // Crear grabación en BD usando el hook
+      log.info('Creating recording in database', { espacioId, userId });
+      try {
+        await recordingOps.crearGrabacion({
+          grabacionId: grabacionIdRef.current,
+          espacioId,
+          userId,
+          tipo,
+          formato: resolvedMimeType,
+          evaluadoId: (evaluadoId && isValidUUID(evaluadoId)) ? evaluadoId : null,
+          evaluadoNombre: evaluadoNombre || null,
+          evaluadoEmail: evaluadoEmail || null,
+        });
+        log.info('Recording created successfully', { grabacionId: grabacionIdRef.current });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        log.error('Failed to create recording', { error: message });
+        updateState({ step: 'error', message: `Error creando grabación: ${message}` });
         return;
       }
-      console.log('✅ Grabación insertada en BD');
 
       // Si hay evaluado con UUID válido, enviar solicitud de consentimiento
       if (evaluadoId && isValidUUID(evaluadoId)) {
-        console.log('📨 Enviando solicitud de consentimiento a:', evaluadoId);
-        const { error: consentError } = await supabase.rpc('solicitar_consentimiento_grabacion', {
-          p_grabacion_id: grabacionIdRef.current,
-          p_evaluado_id: evaluadoId,
-          p_tipo_grabacion: tipo,
-        });
-        if (consentError) {
-          console.warn('⚠️ Error enviando solicitud de consentimiento:', consentError);
-        } else {
-          console.log('✅ Solicitud de consentimiento enviada');
+        log.debug('Requesting consent from evaluated user', { evaluadoId, tipo });
+        try {
+          await recordingOps.solicitarConsentimiento(grabacionIdRef.current, evaluadoId, tipo);
+          log.info('Consent request sent', { evaluadoId });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          log.warn('Failed to request consent', { error: message });
         }
       } else if (evaluadoId && evaluadoNombre) {
         // Invitado externo: solicitar consentimiento via DataChannel
-        console.log('👤 Evaluado es invitado externo, solicitando consentimiento via DataChannel:', evaluadoNombre, evaluadoEmail);
+        log.debug('External guest evaluated, requesting consent via DataChannel', { evaluadoNombre, evaluadoEmail });
         onRequestGuestConsent?.(evaluadoNombre, evaluadoEmail || '', grabacionIdRef.current);
       }
 
       // Registrar al grabador como participante
-      await supabase.from('participantes_grabacion').insert({
-        grabacion_id: grabacionIdRef.current,
-        usuario_id: userId,
-        nombre_mostrado: userName,
-        es_evaluado: false,
-        consentimiento_dado: true,
-        consentimiento_fecha: new Date().toISOString(),
-      });
+      log.debug('Registering recorder as participant', { grabacionId: grabacionIdRef.current, userId });
+      try {
+        await recordingOps.registrarParticipante({
+          grabacionId: grabacionIdRef.current,
+          userId,
+          userName,
+        });
+        log.info('Participant registered', { userId });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        log.warn('Failed to register participant', { error: message });
+      }
 
       // Timer de duración
       durationIntervalRef.current = setInterval(() => {
@@ -404,11 +412,11 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
         onDurationChange?.(elapsed); // Notificar al padre
       }, 1000);
 
-      updateState({ 
-        step: 'recording', 
-        progress: 0, 
-        message: `Grabando ${CONFIGURACIONES_GRABACION_DETALLADO[tipo].titulo}...`, 
-        duration: 0 
+      updateState({
+        step: 'recording',
+        progress: 0,
+        message: `Grabando ${CONFIGURACIONES_GRABACION_DETALLADO[tipo].titulo}...`,
+        duration: 0
       });
       onRecordingStateChange?.(true);
       onTipoGrabacionChange?.(tipo); // Notificar el tipo para el banner
@@ -418,7 +426,8 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
       if (audioTracks.length > 0) {
         const audioStream = new MediaStream(audioTracks);
         startTranscription(audioStream).catch(err => {
-          console.warn('⚠️ Transcripción en tiempo real no disponible:', err.message);
+          const message = err instanceof Error ? err.message : String(err);
+          log.warn('Real-time transcription not available', { error: message });
         });
       }
 
@@ -427,18 +436,20 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
         await combinedAnalysis.startAnalysis(videoElementRef.current);
       }
 
-      console.log(`🔴 Grabación iniciada: ${tipo.toUpperCase()}`);
+      log.info('Recording started', { tipo });
 
-    } catch (err: any) {
-      console.error('Error iniciando grabación:', err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      const errorName = err instanceof Error ? err.name : undefined;
+      log.error('Error starting recording', { error: message, errorName });
       updateState({
         step: 'error',
-        message: err?.name === 'NotSupportedError'
+        message: errorName === 'NotSupportedError'
           ? 'Tu navegador no pudo iniciar la grabación con la configuración actual. Intenta nuevamente con la cámara o el micrófono reiniciados.'
-          : err.message || 'Error al iniciar grabación',
+          : message || 'Error al iniciar grabación',
       });
     }
-  }, [canStartRecording, stream, espacioId, userId, updateState, onRecordingStateChange, startTranscription, findVideoElement, combinedAnalysis]);
+  }, [canStartRecording, stream, espacioId, userId, userName, updateState, onRecordingStateChange, onTipoGrabacionChange, startTranscription, findVideoElement, combinedAnalysis, recordingOps, onRequestGuestConsent]);
 
   // Detener grabación
   const stopRecording = useCallback(async () => {
@@ -455,7 +466,7 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
       const finalTranscript = await stopTranscription();
       if (finalTranscript && finalTranscript.length > 0) {
         transcriptRef.current = finalTranscript;
-        console.log('📝 Transcripción final capturada:', finalTranscript.length, 'caracteres');
+        log.debug('Final transcription captured', { length: finalTranscript.length });
       }
 
       // Detener análisis combinado
@@ -466,8 +477,9 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
         if (mediaRecorderRef.current.state === 'recording') {
           mediaRecorderRef.current.requestData();
         }
-      } catch (e) {
-        console.warn('⚠️ requestData falló (normal si ya se detuvo):', e);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        log.debug('requestData failed (normal if already stopped)', { error: message });
       }
 
       // Esperar un tick para que el último chunk se procese antes de stop
@@ -479,13 +491,13 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
       }
       onRecordingStateChange?.(false);
 
-      console.log('⏹️ Grabación detenida');
+      log.info('Recording stopped');
     }
   }, [updateState, onRecordingStateChange, stopTranscription, combinedAnalysis]);
 
   // Manejar selección de tipo
   const handleTypeSelect = useCallback(async (tipo: TipoGrabacionDetallado, analisis: boolean, evaluadoId?: string, evaluadoNombre?: string, evaluadoEmail?: string) => {
-    console.log('🎬 Tipo seleccionado:', tipo, 'con análisis:', analisis, 'evaluado:', evaluadoId, 'nombre:', evaluadoNombre, 'email:', evaluadoEmail);
+    log.debug('Type selected', { tipo, analisis, evaluadoId, evaluadoNombre });
     setTipoGrabacion(tipo);
     setConAnalisis(analisis);
     setShowTypeSelector(false);
@@ -501,10 +513,10 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
         // Si requiere disclaimer (RRHH), mostrar selector para elegir evaluado y aceptar
         const preConfig = CONFIGURACIONES_GRABACION_DETALLADO[preselectedTipoGrabacion];
         if (preConfig?.requiereDisclaimer) {
-          console.log('🎬 Tipo predefinido requiere disclaimer, mostrando selector:', preselectedTipoGrabacion);
+          log.debug('Preselected type requires disclaimer, showing selector', { tipo: preselectedTipoGrabacion });
           setShowTypeSelector(true);
         } else {
-          console.log('🎬 Auto-inicio con tipo predefinido:', preselectedTipoGrabacion);
+          log.debug('Auto-starting with preselected type', { tipo: preselectedTipoGrabacion });
           handleTypeSelect(preselectedTipoGrabacion, true);
         }
       } else {
@@ -538,43 +550,44 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
       const blob = new Blob(chunksRef.current, { type: resolvedBlobType });
       // Calcular duración desde startTimeRef (más confiable que el estado)
       const duration = Math.floor((Date.now() - startTimeRef.current) / 1000);
-      console.log('📊 Duración calculada:', duration, 'segundos');
+      log.debug('Calculated recording duration', { duration });
 
       updateState({ step: 'processing', progress: 20, message: 'Procesando transcripción...' });
 
       // Obtener transcripción - intentar múltiples fuentes
       let transcript = transcriptRef.current;
-      console.log('📝 Transcripción desde ref:', transcript?.length || 0, 'caracteres');
-      
+      log.debug('Transcription from ref', { length: transcript?.length || 0 });
+
       // Si el ref está vacío, intentar desde fullTranscript del hook
       if (!transcript || transcript.trim().length < 20) {
         transcript = fullTranscript;
-        console.log('📝 Transcripción desde fullTranscript:', transcript?.length || 0, 'caracteres');
+        log.debug('Transcription from fullTranscript', { length: transcript?.length || 0 });
       }
-      
+
       // Si aún está vacío, intentar concatenar segments
       if (!transcript || transcript.trim().length < 20) {
         if (segments && segments.length > 0) {
           transcript = segments.map(s => s.texto).join(' ');
-          console.log('📝 Transcripción desde segments:', transcript?.length || 0, 'caracteres');
+          log.debug('Transcription from segments', { length: transcript?.length || 0 });
         }
       }
-      
+
       // Último recurso: transcribir el blob de audio
       if (!transcript || transcript.trim().length < 20) {
-        console.log('📝 Intentando transcribir blob de audio...');
+        log.debug('Attempting to transcribe audio blob');
         try {
           transcript = await transcribeAudioBlob(blob) || '';
-          console.log('📝 Transcripción desde blob:', transcript?.length || 0, 'caracteres');
+          log.debug('Transcription from blob', { length: transcript?.length || 0 });
         } catch (err) {
-          console.warn('⚠️ Error transcribiendo blob:', err);
+          const message = err instanceof Error ? err.message : String(err);
+          log.warn('Error transcribing blob', { error: message });
         }
       }
-      
+
       // Si todo falla, usar placeholder informativo
       if (!transcript || transcript.trim().length < 10) {
         transcript = `[Grabación de ${Math.round(duration / 60)} minutos - transcripción no disponible]`;
-        console.warn('⚠️ Usando placeholder para transcripción');
+        log.warn('Using placeholder for transcription');
       }
 
       updateState({ progress: 40, message: 'Generando análisis conductual...' });
@@ -584,65 +597,50 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
 
       updateState({ progress: 50, message: 'Guardando transcripción...' });
 
-      // Guardar transcripción en Supabase
+      // Guardar transcripción
       if (transcript && transcript.trim().length > 0) {
-        console.log('📝 Guardando transcripción en BD...');
+        log.debug('Saving transcription to database', { length: transcript.length });
         try {
-          const transcripcionRecord = {
-            grabacion_id: grabacionIdRef.current,
+          await recordingOps.guardarTranscripcion({
+            grabacionId: grabacionIdRef.current,
             texto: transcript,
-            inicio_segundos: 0,
-            fin_segundos: duration,
-            speaker_id: userId,
-            speaker_nombre: userName,
-            confianza: 0.9,
-            idioma: 'es',
-          };
-          
-          const { error: transcError } = await supabase
-            .from('transcripciones')
-            .insert(transcripcionRecord);
-          
-          if (transcError) {
-            console.error('❌ Error guardando transcripción:', transcError);
-          } else {
-            console.log('✅ Transcripción guardada en Supabase');
-          }
+            duracion: duration,
+            userId,
+            userName,
+          });
+          log.info('Transcription saved successfully');
         } catch (err) {
-          console.error('❌ Error inesperado guardando transcripción:', err);
+          const message = err instanceof Error ? err.message : String(err);
+          log.error('Failed to save transcription', { error: message });
         }
       } else {
-        console.log('⚠️ Sin transcripción que guardar');
+        log.debug('No transcription to save');
       }
 
       updateState({ progress: 70, message: 'Guardando análisis conductual...' });
 
-      // Guardar análisis en Supabase
+      // Guardar análisis
       const emotionFrames = resultadoAnalisis.frames_faciales;
       if (emotionFrames.length > 0) {
-        const emotionRecords = emotionFrames
-          .filter((_, i) => i % 2 === 0) // Cada 2 frames para mejor resolución
-          .map((e) => ({
-            id: crypto.randomUUID(),
-            grabacion_id: grabacionIdRef.current,
-            timestamp_segundos: e.timestamp_segundos,
-            emocion_dominante: e.emocion_dominante,
-            engagement_score: e.engagement_score,
-            participante_id: userId,
-            participante_nombre: userName,
-          }));
-
-        // Insertar en lotes
-        for (let i = 0; i < emotionRecords.length; i += 50) {
-          const batch = emotionRecords.slice(i, i + 50);
-          const { error: analisisError } = await supabase.from('analisis_comportamiento').insert(batch);
-          if (analisisError) {
-            console.error('Error guardando análisis:', analisisError);
-          }
+        log.debug('Saving behavioral analysis', { frameCount: emotionFrames.length });
+        try {
+          await recordingOps.guardarAnalisis({
+            grabacionId: grabacionIdRef.current,
+            frames: emotionFrames.map(e => ({
+              timestamp_segundos: e.timestamp_segundos,
+              emocion_dominante: e.emocion_dominante,
+              engagement_score: e.engagement_score,
+            })),
+            userId,
+            userName,
+          });
+          log.info('Behavioral analysis saved successfully', { frameCount: emotionFrames.length });
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          log.error('Failed to save behavioral analysis', { error: message });
         }
-        console.log(`✅ ${emotionRecords.length} registros de análisis guardados`);
       } else {
-        console.warn('⚠️ No hay frames de análisis para guardar');
+        log.warn('No behavioral analysis frames to save');
       }
 
       updateState({ progress: 80, message: 'Generando resumen AI...' });
@@ -653,70 +651,58 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
         : 0.5;
 
       try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const accessToken = sessionData?.session?.access_token;
-        
-        if (accessToken) {
-          console.log('🤖 Llamando a generar-resumen-ai...');
-          // Muestrear emociones uniformemente (máx 100 frames distribuidos en toda la grabación)
-          const maxEmotionFrames = 100;
-          const sampledEmotions = emotionFrames.length <= maxEmotionFrames
-            ? emotionFrames
-            : emotionFrames.filter((_, i) => i % Math.ceil(emotionFrames.length / maxEmotionFrames) === 0);
-          
-          // Usar Promise.race con timeout de 60 segundos (reuniones largas necesitan más)
-          const aiPromise = supabase.functions.invoke('generar-resumen-ai', {
-            headers: { Authorization: `Bearer ${accessToken}` },
-            body: {
-              grabacion_id: grabacionIdRef.current,
-              espacio_id: espacioId,
-              creador_id: userId,
-              transcripcion: transcript,
-              emociones: sampledEmotions,
-              duracion_segundos: duration,
-              participantes: [userName],
-              reunion_titulo: reunionTitulo,
-              tipo_grabacion: tipoGrabacion,
-              metricas_adicionales: {
-                engagement_promedio: avgEngagement,
-                microexpresiones_detectadas: resultadoAnalisis.microexpresiones.length,
-                tipo_analisis: tipoGrabacion,
-                total_emotion_frames: emotionFrames.length,
-              },
-            },
+        log.debug('Generating AI summary', { grabacionId: grabacionIdRef.current, emotionFrameCount: emotionFrames.length });
+        // Muestrear emociones uniformemente (máx 100 frames distribuidos en toda la grabación)
+        const maxEmotionFrames = 100;
+        const sampledEmotions = emotionFrames.length <= maxEmotionFrames
+          ? emotionFrames
+          : emotionFrames.filter((_, i) => i % Math.ceil(emotionFrames.length / maxEmotionFrames) === 0);
+
+        try {
+          await recordingOps.generarResumenAI({
+            grabacionId: grabacionIdRef.current,
+            espacioId,
+            userId,
+            transcripcion: transcript,
+            emociones: sampledEmotions.map(e => ({
+              timestamp_segundos: e.timestamp_segundos,
+              emocion_dominante: e.emocion_dominante,
+              engagement_score: e.engagement_score,
+            })),
+            duracion: duration,
+            participantes: [userName],
+            reunionTitulo,
+            tipoGrabacion,
+            engagementPromedio: avgEngagement,
+            microexpresionesCount: resultadoAnalisis.microexpresiones.length,
+            totalFrames: emotionFrames.length,
           });
-          
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout')), 60000)
-          );
-          
-          try {
-            const { error: aiError } = await Promise.race([aiPromise, timeoutPromise]) as any;
-            if (aiError) {
-              console.warn('⚠️ Error generando resumen AI:', aiError.message);
-            } else {
-              console.log('✅ Resumen AI generado');
-            }
-          } catch (timeoutErr) {
-            console.warn('⚠️ Timeout generando resumen AI, continuando...');
-          }
-        } else {
-          console.warn('⚠️ No hay sesión activa para generar resumen AI');
+          log.info('AI summary generated successfully');
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          log.warn('Error generating AI summary, continuing', { error: message });
         }
       } catch (aiErr) {
-        console.warn('⚠️ Error en proceso AI, continuando:', aiErr);
+        const message = aiErr instanceof Error ? aiErr.message : String(aiErr);
+        log.warn('Error in AI process, continuing', { error: message });
       }
 
-      // Actualizar grabación en Supabase (metadatos sin archivo de video)
-      await supabase.from('grabaciones').update({
-        estado: 'completado',
-        duracion_segundos: duration,
-        fin_grabacion: new Date().toISOString(),
-        archivo_nombre: reunionTitulo || `Reunión ${new Date().toLocaleDateString('es-ES')}`,
-      }).eq('id', grabacionIdRef.current);
+      // Completar grabación
+      log.debug('Completing recording', { grabacionId: grabacionIdRef.current, duration });
+      try {
+        await recordingOps.completarGrabacion({
+          grabacionId: grabacionIdRef.current,
+          duracion: duration,
+          archivoNombre: reunionTitulo || `Reunión ${new Date().toLocaleDateString('es-ES')}`,
+        });
+        log.info('Recording completed successfully');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        log.error('Failed to complete recording', { error: message });
+      }
 
       // Video procesado localmente - no se sube a storage por privacidad
-      console.log('📹 Video procesado localmente (no subido a storage)');
+      log.debug('Video processed locally (not uploaded to storage)');
 
       // Guardar resultado
       setResultado(resultadoAnalisis);
@@ -724,45 +710,55 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
       updateState({ step: 'complete', progress: 100, message: '¡Análisis completado!' });
       onProcessingComplete?.(resultadoAnalisis);
 
-      // Notificación
-      await supabase.from('notificaciones').insert({
-        usuario_id: userId,
-        espacio_id: espacioId,
-        tipo: 'analisis_listo',
-        titulo: `📊 Análisis de ${config?.titulo || 'reunión'} listo`,
-        mensaje: reunionTitulo
-          ? `El análisis de "${reunionTitulo}" está disponible`
-          : 'El análisis de tu reunión está disponible',
-        entidad_tipo: 'grabacion',
-        entidad_id: grabacionIdRef.current,
-      });
+      // Crear notificación
+      log.debug('Creating analysis notification', { userId, grabacionId: grabacionIdRef.current });
+      try {
+        await recordingOps.crearNotificacion({
+          userId,
+          espacioId,
+          titulo: `📊 Análisis de ${config?.titulo || 'reunión'} listo`,
+          mensaje: reunionTitulo
+            ? `El análisis de "${reunionTitulo}" está disponible`
+            : 'El análisis de tu reunión está disponible',
+          grabacionId: grabacionIdRef.current,
+        });
+        log.info('Notification created successfully');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        log.warn('Failed to create notification', { error: message });
+      }
 
-      console.log('✅ Procesamiento completo');
+      log.info('Processing complete');
 
-    } catch (err: any) {
-      console.error('Error procesando grabación:', err);
-      updateState({ step: 'error', message: err.message || 'Error en el procesamiento' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      log.error('Error processing recording', { error: message });
+      updateState({ step: 'error', message: message || 'Error en el procesamiento' });
 
       // Marcar grabación como error
-      await supabase.from('grabaciones').update({
-        estado: 'error',
-        error_mensaje: err.message || 'Error en procesamiento',
-      }).eq('id', grabacionIdRef.current);
+      log.warn('Marking recording as error', { grabacionId: grabacionIdRef.current });
+      try {
+        await recordingOps.marcarError(grabacionIdRef.current, message || 'Error en procesamiento');
+      } catch (markErr) {
+        const markMessage = markErr instanceof Error ? markErr.message : String(markErr);
+        log.error('Failed to mark recording as error', { error: markMessage });
+      }
     }
   }, [
-    processingState.duration, 
-    updateState, 
-    onProcessingComplete, 
-    combinedAnalysis, 
+    processingState.duration,
+    updateState,
+    onProcessingComplete,
+    combinedAnalysis,
     transcribeAudioBlob,
     fullTranscript,
     segments,
-    userId, 
-    userName, 
-    espacioId, 
-    reunionTitulo, 
+    userId,
+    userName,
+    espacioId,
+    reunionTitulo,
     tipoGrabacion,
     config,
+    recordingOps,
   ]);
 
   // Formatear duración
@@ -827,7 +823,7 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
             <div className="text-center">
               <div className="w-16 h-16 mx-auto mb-4 relative">
                 <div className="absolute inset-0 border-4 border-indigo-500/30 rounded-full"></div>
-                <div 
+                <div
                   className="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"
                   style={{ animationDuration: '1s' }}
                 ></div>
@@ -835,12 +831,12 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
                   <span className="text-2xl">🧠</span>
                 </div>
               </div>
-              
+
               <h3 className="text-white font-bold text-lg mb-2">Procesando Análisis</h3>
               <p className="text-white/70 text-sm mb-4">{processingState.message}</p>
-              
+
               <div className="w-full bg-white/10 rounded-full h-2 mb-2">
-                <div 
+                <div
                   className="bg-indigo-500 h-2 rounded-full transition-all duration-500"
                   style={{ width: `${processingState.progress}%` }}
                 ></div>
@@ -860,7 +856,7 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
               <p className="font-bold text-sm">Error en procesamiento</p>
               <p className="text-xs opacity-80">{processingState.message}</p>
             </div>
-            <button 
+            <button
               onClick={() => updateState({ step: 'idle', message: '' })}
               className="ml-2 w-6 h-6 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30"
             >
@@ -887,7 +883,7 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
               <span className="text-white/60 text-xs">Engagement</span>
               <div className="flex items-center gap-2">
                 <div className="w-20 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className={`h-full rounded-full transition-all ${
                       resumenTiempoReal.engagementActual > 0.6 ? 'bg-green-500' :
                       resumenTiempoReal.engagementActual > 0.4 ? 'bg-yellow-500' : 'bg-red-500'
@@ -952,7 +948,7 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
               <span className="w-4 h-4 bg-red-500 rounded-full animate-pulse"></span>
               <span className="font-bold text-sm">Grabar con Análisis</span>
               <span className="text-xl">🧠</span>
-              
+
               {/* Tooltip */}
               <div className="absolute bottom-full mb-2 right-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                 <div className="bg-black text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap">

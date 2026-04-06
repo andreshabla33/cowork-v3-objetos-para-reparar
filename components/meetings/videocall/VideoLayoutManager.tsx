@@ -43,7 +43,7 @@ export const VideoLayoutManager: React.FC<VideoLayoutManagerProps> = ({
           <div className="flex h-24 snap-x snap-mandatory gap-2 overflow-x-auto pb-1 pr-1 md:h-auto md:flex-1 md:flex-col md:overflow-y-auto md:overflow-x-hidden md:pr-0">
             {layoutModel.stripTracks.map((track, index) => (
               <div
-                key={track.participant?.identity || index}
+                key={`${track.participant?.identity ?? 'unknown'}-${track.source ?? index}`}
                 className="h-full aspect-[4/3] snap-start rounded-xl overflow-hidden bg-zinc-900 shrink-0 md:min-h-[8rem] md:h-auto"
               >
                 {renderParticipant(track, index)}
@@ -84,7 +84,7 @@ export const VideoLayoutManager: React.FC<VideoLayoutManagerProps> = ({
           <div className="flex h-24 snap-x snap-mandatory gap-2 overflow-x-auto pb-2 pr-1 md:h-32 md:pr-0">
             {layoutModel.stripTracks.map((track, index) => (
               <div
-                key={track.participant?.identity || index}
+                key={`${track.participant?.identity ?? 'unknown'}-${track.source ?? index}`}
                 className="aspect-[4/3] h-full snap-start rounded-xl overflow-hidden bg-zinc-900 shrink-0"
               >
                 {renderParticipant(track, index)}
@@ -122,7 +122,7 @@ export const VideoLayoutManager: React.FC<VideoLayoutManagerProps> = ({
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:flex md:h-24 md:justify-center md:overflow-x-auto lg:h-32">
             {layoutModel.stripTracks.map((track, index) => (
               <div
-                key={track.participant?.identity || index}
+                key={`${track.participant?.identity ?? 'unknown'}-${track.source ?? index}`}
                 className="w-full aspect-[4/3] rounded-xl overflow-hidden bg-zinc-900 md:h-full md:w-auto md:shrink-0"
               >
                 {renderParticipant(track, index + 1)}
@@ -147,10 +147,10 @@ export const VideoLayoutManager: React.FC<VideoLayoutManagerProps> = ({
 
   return (
     <div className={layoutModel.gallery?.viewportClassName ?? 'relative h-full w-full overflow-hidden p-2 pb-[calc(7rem+env(safe-area-inset-bottom))] sm:p-3 sm:pb-[calc(7rem+env(safe-area-inset-bottom))] md:p-3 md:pb-3'}>
-      <div className={`grid h-full min-h-full w-full ${layoutModel.gallery?.gridClassName ?? 'grid-cols-1 grid-rows-1'} auto-rows-[minmax(0,1fr)] gap-2 sm:gap-3 content-stretch items-stretch justify-items-stretch`}>
+      <div className={`grid h-full min-h-full w-full ${layoutModel.gallery?.gridClassName ?? 'grid-cols-1 grid-rows-1 place-content-center place-items-center'} auto-rows-[minmax(0,1fr)] gap-2 sm:gap-3`}>
         {layoutModel.galleryTracks.map((track, index) => (
           <div
-            key={track.participant?.identity || index}
+            key={`${track.participant?.identity ?? 'unknown'}-${track.source ?? index}`}
             className={layoutModel.gallery?.getTileClassName(index) ?? 'rounded-2xl overflow-hidden bg-zinc-900 min-h-0 h-full w-full'}
           >
             {renderParticipant(track, index)}

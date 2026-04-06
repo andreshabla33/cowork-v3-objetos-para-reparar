@@ -24,6 +24,7 @@ import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
+import { logger } from '@/lib/logger';
 import { avatarStore, type AvatarEntity } from '@/lib/ecs/AvatarECS';
 import {
   createInstanceAnimationAttributes,
@@ -33,6 +34,8 @@ import {
 import { getOrBakeAnimations, type BakedAnimationSet } from '@/lib/gpu/AnimationBaker';
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
+
+const log = logger.child('InstancedAvatarRenderer');
 
 const MAX_INSTANCES = 512;
 const ANIMATION_NAMES = ['idle', 'walk', 'run', 'sit'] as const;
@@ -76,7 +79,7 @@ export const InstancedAvatarRenderer: React.FC<InstancedAvatarRendererProps> = (
     });
 
     if (!skinnedMesh || animations.length === 0) {
-      console.warn(`[InstancedAvatarRenderer] No SkinnedMesh or animations found in ${modelUrl}`);
+      log.warn('No SkinnedMesh or animations found', { modelUrl });
       return null;
     }
 
@@ -126,19 +129,25 @@ export const InstancedAvatarRenderer: React.FC<InstancedAvatarRendererProps> = (
   }, [bakedSet]);
 
   // ── Geometría del SkinnedMesh ──
+  // Reutilizamos la geometría original y le asignamos atributos de instancia.
+  // No clonamos para evitar duplicar buffers en GPU (~15-20MB por modelo).
   const geometry = useMemo(() => {
     if (!bakedSet) return null;
-    const geo = bakedSet.geometry.clone();
-    // Añadir atributos de instancia
-    geo.setAttribute('animIndex', animAttributes.animIndex);
-    geo.setAttribute('animTime', animAttributes.animTime);
+    const geo = bakedSet.geometry;
+    // Asignar atributos de instancia idempotentemente
+    if (!geo.getAttribute('animIndex')) {
+      geo.setAttribute('animIndex', animAttributes.animIndex);
+    }
+    if (!geo.getAttribute('animTime')) {
+      geo.setAttribute('animTime', animAttributes.animTime);
+    }
     return geo;
   }, [bakedSet, animAttributes]);
 
   // ── Click handler con raycasting por instanceId ──
   const handleClick = useMemo(() => {
     if (!onClickAvatar) return undefined;
-    return (event: any) => {
+    return (event: { stopPropagation: () => void; instanceId?: number }) => {
       event.stopPropagation();
       const instanceId = event.instanceId;
       if (instanceId !== undefined) {

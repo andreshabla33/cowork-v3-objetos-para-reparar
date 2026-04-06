@@ -35,7 +35,15 @@ export const createFetchWorkspacesAction = (
       }
 
       log.info('Workspaces fetched', { count: data?.length || 0 });
-      const workspaces: Workspace[] = (data || []).map((workspace: any) => ({
+      interface WorkspaceRow {
+        id: string;
+        nombre: string;
+        descripcion: string | null;
+        slug: string | null;
+        miembros_espacio: Array<{ rol: Role; aceptado: boolean }>;
+      }
+
+      const workspaces: Workspace[] = (data as WorkspaceRow[] || []).map((workspace) => ({
         id: workspace.id,
         name: workspace.nombre,
         descripcion: workspace.descripcion,
@@ -43,13 +51,14 @@ export const createFetchWorkspacesAction = (
         width: 2000,
         height: 2000,
         items: [],
-        userRole: workspace.miembros_espacio[0]?.rol as Role,
+        userRole: workspace.miembros_espacio[0]?.rol,
       }));
 
       set({ workspaces, authFeedback: null });
       return workspaces;
-    } catch (error: any) {
-      log.error('Fetch workspaces failed', { error: error?.message || String(error) });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      log.error('Fetch workspaces failed', { error: message });
       return [];
     }
   };

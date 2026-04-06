@@ -1,3 +1,15 @@
+/**
+ * @module hooks/app/useRutasReunion
+ * @description Meeting route management hook — extracts meeting tokens from URL,
+ * manages meeting preferences, and provides navigation callbacks.
+ *
+ * Architecture decision (ARC-011): This hook uses local useState intentionally.
+ * Meeting route state is ephemeral (tied to the current page load) and does NOT
+ * need persistence in the global Zustand store. The state is consumed only by App.tsx
+ * and is cleaned up on navigation. Promoting it to global store would add unnecessary
+ * complexity and coupling.
+ */
+
 import { useCallback, useEffect, useState } from 'react';
 
 const STORAGE_KEY_PREFERENCIAS_REUNION = 'meeting_join_preferences';

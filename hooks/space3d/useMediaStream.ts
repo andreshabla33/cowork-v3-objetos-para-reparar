@@ -8,7 +8,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { CameraSettings, AudioSettings } from '@/modules/realtime-room';
 import { createProcessedAudioTrack, type ProcessedAudioTrackHandle } from '@/lib/audioProcessing';
 import { getVideoConstraints } from '@/lib/userSettings';
+import { logger } from '@/lib/logger';
 import { type UseMediaStreamReturn } from './types';
+
+const log = logger.child('use-media-stream');
 
 export function useMediaStream(params: {
   desiredMediaState: { isMicrophoneEnabled: boolean; isCameraEnabled: boolean; isScreenShareEnabled: boolean };
@@ -19,7 +22,6 @@ export function useMediaStream(params: {
   const { desiredMediaState, cameraSettings, audioSettings, setScreenShareDesiredState } = params;
 
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [processedStream, setProcessedStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
   const activeStreamRef = useRef<MediaStream | null>(null);
   const activeScreenRef = useRef<MediaStream | null>(null);
@@ -46,11 +48,6 @@ export function useMediaStream(params: {
     return processedHandle.track;
   }, [limpiarAudioProcesado]);
 
-  // ========== Effective stream ==========
-  const effectiveStream = (cameraSettings.backgroundEffect !== 'none' && processedStream) ? processedStream : stream;
-  const effectiveStreamRef = useRef<MediaStream | null>(null);
-  effectiveStreamRef.current = effectiveStream;
-
   // ========== getUserMedia management ==========
   const isProcessingStreamRef = useRef(false);
   const pendingUpdateRef = useRef(false);
@@ -62,13 +59,13 @@ export function useMediaStream(params: {
 
     const manageStream = async () => {
       if (isProcessingStreamRef.current) {
-        console.log('ManageStream busy, marking pending update...');
+        log.info('ManageStream busy, marking pending update', { processing: true });
         pendingUpdateRef.current = true;
         return;
       }
 
       const shouldHaveStream = shouldHaveStreamRef.current;
-      console.log('ManageStream starting - shouldHaveStream:', shouldHaveStream);
+      log.info('ManageStream starting', { shouldHaveStream });
 
       try {
         isProcessingStreamRef.current = true;
@@ -96,10 +93,10 @@ export function useMediaStream(params: {
             if (wantAudio) mediaConstraints.audio = audioConstraints;
             if (!wantVideo && !wantAudio) mediaConstraints.audio = audioConstraints;
 
-            console.log('Requesting media access...', { wantVideo, wantAudio });
+            log.info('Requesting media access', { wantVideo, wantAudio });
             const newStream = await navigator.mediaDevices.getUserMedia(mediaConstraints).catch(async (err) => {
               if (cameraSettings.selectedCameraId || audioSettings.selectedMicrophoneId) {
-                console.warn('Selected device not available, using default:', err.message);
+                log.warn('Selected device not available, using default', { error: err instanceof Error ? err.message : String(err) });
                 const fallbackConstraints: MediaStreamConstraints = {};
                 if (wantVideo) fallbackConstraints.video = getVideoConstraints();
                 if (wantAudio || !wantVideo) fallbackConstraints.audio = {
@@ -110,7 +107,7 @@ export function useMediaStream(params: {
                 return navigator.mediaDevices.getUserMedia(fallbackConstraints);
               }
               if (wantVideo && err.name === 'NotReadableError') {
-                console.warn('Camera in use, falling back to audio-only:', err.message);
+                log.warn('Camera in use, falling back to audio-only', { error: err instanceof Error ? err.message : String(err) });
                 return navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
               }
               throw err;
@@ -122,7 +119,7 @@ export function useMediaStream(params: {
             }
 
             if (!shouldHaveStreamRef.current) {
-              console.log('Stream loaded but no longer needed, stopping...');
+              log.info('Stream loaded but no longer needed, stopping', {});
               newStream.getTracks().forEach(t => t.stop());
               return;
             }
@@ -142,7 +139,7 @@ export function useMediaStream(params: {
 
             activeStreamRef.current = streamToUse;
             setStream(streamToUse);
-            console.log('Camera/mic stream started');
+            log.info('Camera/mic stream started', { hasAudio: !!audioTrack, hasVideo: streamToUse.getVideoTracks().length > 0 });
           }
 
           // Actualizar estado de tracks
@@ -151,13 +148,13 @@ export function useMediaStream(params: {
 
             const videoTracks = activeStreamRef.current.getVideoTracks();
             if (!desiredMediaState.isCameraEnabled && videoTracks.length > 0) {
-              console.log('Camera OFF - stopping video track to release hardware');
+              log.info('Camera OFF - stopping video track to release hardware', { trackCount: videoTracks.length });
               videoTracks.forEach(track => {
                 track.stop();
                 activeStreamRef.current?.removeTrack(track);
               });
             } else if (desiredMediaState.isCameraEnabled && videoTracks.length === 0 && activeStreamRef.current) {
-              console.log('Camera ON - requesting new video track');
+              log.info('Camera ON - requesting new video track', {});
               try {
                 const videoConstraints: MediaTrackConstraints = getVideoConstraints();
                 if (cameraSettings.selectedCameraId) {
@@ -170,7 +167,7 @@ export function useMediaStream(params: {
                   setStream(new MediaStream(activeStreamRef.current.getTracks()));
                 }
               } catch (e) {
-                console.error('Error getting video track:', e);
+                log.error('Error getting video track', { error: e instanceof Error ? e.message : String(e) });
               }
             }
           }
@@ -178,11 +175,11 @@ export function useMediaStream(params: {
           // Re-check with delay
           await new Promise(r => setTimeout(r, 300));
           if (shouldHaveStreamRef.current) {
-            console.log('ManageStream: stop cancelado — shouldHaveStream cambió a true');
+            log.info('ManageStream: stop cancelled - shouldHaveStream changed to true', {});
             return;
           }
           if (activeStreamRef.current) {
-            console.log('Stopping camera/mic - user disabled all media');
+            log.info('Stopping camera/mic - user disabled all media', { trackCount: activeStreamRef.current.getTracks().length });
             const tracks = activeStreamRef.current.getTracks();
             tracks.forEach(track => { track.stop(); });
             activeStreamRef.current = null;
@@ -190,12 +187,12 @@ export function useMediaStream(params: {
           }
         }
       } catch (err) {
-        console.error("Media error:", err);
+        log.error('Media error', { error: err instanceof Error ? err.message : String(err) });
       } finally {
         if (mounted) {
           isProcessingStreamRef.current = false;
           if (pendingUpdateRef.current) {
-            console.log('Executing pending manageStream update...');
+            log.info('Executing pending manageStream update', {});
             pendingUpdateRef.current = false;
             manageStream();
           }
@@ -219,17 +216,6 @@ export function useMediaStream(params: {
     limpiarAudioProcesado,
   ]);
 
-  // ========== Cleanup processed stream ==========
-  useEffect(() => {
-    if (!stream && processedStream) {
-      setProcessedStream(null);
-      return;
-    }
-    if (cameraSettings.backgroundEffect === 'none' && processedStream) {
-      setProcessedStream(null);
-    }
-  }, [cameraSettings.backgroundEffect, stream, processedStream]);
-
   // ========== Screen share toggle ==========
   const handleToggleScreenShare = useCallback(async () => {
     if (!desiredMediaState.isScreenShareEnabled) {
@@ -250,7 +236,7 @@ export function useMediaStream(params: {
         setScreenStream(displayStream);
         setScreenShareDesiredState(true);
       } catch (err) {
-        console.error("Screen Share Error:", err);
+        log.error('Screen share error', { error: err instanceof Error ? err.message : String(err) });
         setScreenShareDesiredState(false);
       }
     } else {
@@ -266,14 +252,10 @@ export function useMediaStream(params: {
   return {
     stream,
     setStream,
-    processedStream,
-    setProcessedStream,
     screenStream,
     setScreenStream,
     activeStreamRef,
     activeScreenRef,
-    effectiveStream,
-    effectiveStreamRef,
     handleToggleScreenShare,
     crearAudioProcesado,
     limpiarAudioProcesado,

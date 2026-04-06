@@ -23,6 +23,9 @@ export { rectangulosSeIntersecan, rectanguloContenidoEn, detectarSolapamientoSub
 export { normalizarTipoSubsueloZona, resolverTipoSubsueloZona } from './cerramientosZona';
 export type { TipoSubsueloZona } from './cerramientosZona';
 
+// ─── Espacio 3D (migrado desde components/space3d/*Runtime.ts) ───────────────
+export * from './espacio3d';
+
  export interface Subfloor {
   id: string;
   floorId: string;

@@ -2,6 +2,7 @@ import type { ZonaEmpresa } from '@/types';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import type { EstiloVisualArquitectonico } from '@/src/core/domain/entities/estilosVisualesArquitectonicos';
 import { resolverConfiguracionCerramientoZona, type LadoCerramientoZona } from '@/src/core/domain/entities/cerramientosZona';
+import type { ConfiguracionGeometricaObjeto, TipoMaterialArquitectonico } from '@/src/core/domain/entities/objetosArquitectonicos';
 
 const ESCALA_ZONA_ESCENA = 16;
 
@@ -18,7 +19,7 @@ const crearObjetoCerramientoZona = (payload: {
   colorBase: string;
   opacidad: number;
   estiloVisual: EstiloVisualArquitectonico;
-  tipoMaterial: EspacioObjeto['configuracion_geometria']['tipo_material'];
+  tipoMaterial: TipoMaterialArquitectonico;
   escalaTextura: number;
   rugosidad: number;
   metalicidad: number;

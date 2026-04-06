@@ -1,4 +1,9 @@
 /**
+ * @deprecated ARCHIVO HUÉRFANO — Sin referencias activas. Eliminar manualmente.
+ * Detectado en auditoría arquitectural 2026-03-30 (ARCH-CLEANUP-001).
+ * Agones no está integrado en la arquitectura actual del proyecto.
+ * Ejecutar: git rm lib/agonesClient.ts
+ *
  * Agones Game Server Client
  * =========================
  * Abstracción client-side para conectarse a game servers orquestados por Agones.

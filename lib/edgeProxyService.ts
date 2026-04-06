@@ -1,4 +1,9 @@
 /**
+ * @deprecated ARCHIVO HUÉRFANO — Sin referencias activas. Eliminar manualmente.
+ * Detectado en auditoría arquitectural 2026-03-30 (ARCH-CLEANUP-001).
+ * Funcionalidad absorbida por repositorios de Supabase en src/core/infrastructure/.
+ * Ejecutar: git rm lib/edgeProxyService.ts
+ *
  * Edge Proxy Service
  * ==================
  * Cliente para la Edge Function `edge-proxy-posiciones`.

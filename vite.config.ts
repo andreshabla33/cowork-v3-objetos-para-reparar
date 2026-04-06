@@ -1,15 +1,62 @@
+/**
+ * vite.config.ts
+ *
+ * REMEDIATION-008b (2026-03-30):
+ * - `sourcemap: 'hidden'` genera source maps pero no los referencia en el bundle.
+ *   Sentry los sube durante el build; el navegador nunca los descarga.
+ * - `sentryVitePlugin` sube source maps y los asocia a la release.
+ *   Requiere: SENTRY_AUTH_TOKEN, VITE_SENTRY_ORG, VITE_SENTRY_PROJECT en .env.
+ * - Import condicional: si el paquete no está instalado el build no falla —
+ *   simplemente no se sube el source map (útil en entornos sin token).
+ *
+ * Instalación requerida (ejecutar en la raíz del proyecto):
+ *   npm install @sentry/react @sentry/vite-plugin
+ */
 import path from 'path';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
-export default defineConfig(() => {
+async function resolveSentryPlugin(): Promise<Plugin[]> {
+  const org     = process.env.VITE_SENTRY_ORG;
+  const project = process.env.VITE_SENTRY_PROJECT;
+  const token   = process.env.SENTRY_AUTH_TOKEN;
+
+  if (!org || !project || !token) return [];
+
+  try {
+    const { sentryVitePlugin } = await import('@sentry/vite-plugin');
+    return [
+      sentryVitePlugin({
+        org,
+        project,
+        authToken: token,
+        sourcemaps: {
+          // Borra los .map del directorio dist después del upload para no exponerlos
+          filesToDeleteAfterUpload: ['./dist/**/*.map'],
+        },
+        telemetry: false,
+      }),
+    ];
+  } catch {
+    // @sentry/vite-plugin no está instalado — continuar sin upload de source maps
+    console.warn('[vite.config] @sentry/vite-plugin no encontrado. Omitiendo upload de source maps.');
+    return [];
+  }
+}
+
+export default defineConfig(async () => {
+  const sentryPlugins = await resolveSentryPlugin();
+
   return {
     server: {
       port: 3000,
       host: '0.0.0.0',
     },
-    plugins: [react()],
+    plugins: [react(), ...sentryPlugins],
     build: {
+      // 'hidden': genera .map pero sin referencia //# sourceMappingURL en el bundle.
+      // Sentry los consume; el navegador de producción nunca los descarga.
+      sourcemap: 'hidden',
       chunkSizeWarningLimit: 2300,
       rollupOptions: {
         output: {
@@ -55,6 +102,10 @@ export default defineConfig(() => {
     },
     resolve: {
       alias: {
+        // Aliases específicos primero (tienen precedencia sobre el catch-all @/*)
+        '@/core': path.resolve(__dirname, './src/core'),
+        '@/modules': path.resolve(__dirname, './src/modules'),
+        // Catch-all: todo lo demás bajo @ apunta a la raíz del proyecto
         '@': path.resolve(__dirname, '.'),
       },
     },

@@ -1,3 +1,14 @@
+/**
+ * LiveKitRoomGateway — Observador de Room para meetings/videocall.
+ *
+ * A diferencia de SpaceRealtimeCoordinator que POSEE el ciclo de vida de Room,
+ * este Gateway RECIBE una Room ya conectada (vía bindRoom) y observa eventos.
+ *
+ * La publicación de datos y el parsing de DataReceived se delegan a
+ * RealtimeDataPublisher y RealtimeEventParser (composición, no herencia)
+ * para eliminar la duplicación entre ambos pipelines.
+ */
+
 import {
   LocalTrackPublication,
   RemoteParticipant,
@@ -12,22 +23,18 @@ import {
   type ConsentResponsePayload,
   type DataPacketContract,
   type ModerationNoticePayload,
-  parseDataPacketContract,
   type PinParticipantPayload,
   type RaiseHandPayload,
   type ReactionPayload,
   type RecordingStatusPayload,
   type SpeakerHintPayload,
-  createConsentRequestDataPacket,
-  createConsentResponseDataPacket,
-  createModerationNoticeDataPacket,
-  createPinParticipantDataPacket,
-  createRaiseHandDataPacket,
-  createReactionDataPacket,
-  createRecordingStatusDataPacket,
-  createSpeakerHintDataPacket,
 } from '../domain/types';
 import { RealtimeEventBus } from './RealtimeEventBus';
+import { RealtimeDataPublisher } from './RealtimeDataPublisher';
+import { RealtimeEventParser } from './RealtimeEventParser';
+import { logger } from '@/lib/logger';
+
+const log = logger.child('livekit-room-gateway');
 
 export interface LiveKitRoomGatewayState {
   connected: boolean;
@@ -60,8 +67,15 @@ export class LiveKitRoomGateway {
   private cleanupFns: Array<() => void> = [];
   private options: LiveKitRoomGatewayOptions;
 
+  /** Servicio compuesto — publicación de datos (compartido con SpaceRealtimeCoordinator) */
+  private readonly dataPublisher: RealtimeDataPublisher;
+  /** Servicio compuesto — parsing de DataReceived (compartido con SpaceRealtimeCoordinator) */
+  private eventParser: RealtimeEventParser;
+
   constructor(options: LiveKitRoomGatewayOptions = {}) {
     this.options = options;
+    this.dataPublisher = new RealtimeDataPublisher(() => this.room);
+    this.eventParser = new RealtimeEventParser(this.eventBus, options.onDataReceived);
   }
 
   bindRoom(room: Room): void {
@@ -96,53 +110,61 @@ export class LiveKitRoomGateway {
     this.eventBus.clear();
   }
 
-  async publishData(data: DataPacketContract, reliable: boolean = true): Promise<boolean> {
-    if (!this.room || this.room.state !== 'connected') {
-      return false;
-    }
+  // ─── Data Publishing (delegado a RealtimeDataPublisher) ──────────
 
-    try {
-      const encoder = new TextEncoder();
-      const payload = encoder.encode(JSON.stringify(data));
-      await this.room.localParticipant.publishData(payload, { reliable });
-      return true;
-    } catch (error) {
-      console.error('[LiveKitRoomGateway] Failed to publish data:', error);
-      return false;
-    }
+  async publishData(data: DataPacketContract, reliableOverride?: boolean): Promise<boolean> {
+    return this.dataPublisher.publish(data, reliableOverride);
   }
 
-  async sendReaction(payload: ReactionPayload, reliable: boolean = true): Promise<boolean> {
-    return this.publishData(createReactionDataPacket(payload), reliable);
+  async sendReaction(payload: ReactionPayload, reliable?: boolean): Promise<boolean> {
+    return reliable !== undefined
+      ? this.dataPublisher.publish(await this._createPacket('reaction', payload), reliable)
+      : this.dataPublisher.sendReaction(payload);
   }
 
-  async sendRecordingStatus(payload: RecordingStatusPayload, reliable: boolean = true): Promise<boolean> {
-    return this.publishData(createRecordingStatusDataPacket(payload), reliable);
+  async sendRecordingStatus(payload: RecordingStatusPayload, reliable?: boolean): Promise<boolean> {
+    return reliable !== undefined
+      ? this.dataPublisher.publish(await this._createPacket('recording_status', payload), reliable)
+      : this.dataPublisher.sendRecordingStatus(payload);
   }
 
-  async sendConsentRequest(payload: ConsentRequestPayload, reliable: boolean = true): Promise<boolean> {
-    return this.publishData(createConsentRequestDataPacket(payload), reliable);
+  async sendConsentRequest(payload: ConsentRequestPayload, reliable?: boolean): Promise<boolean> {
+    return reliable !== undefined
+      ? this.dataPublisher.publish(await this._createPacket('consent_request', payload), reliable)
+      : this.dataPublisher.sendConsentRequest(payload);
   }
 
-  async sendConsentResponse(payload: ConsentResponsePayload, reliable: boolean = true): Promise<boolean> {
-    return this.publishData(createConsentResponseDataPacket(payload), reliable);
+  async sendConsentResponse(payload: ConsentResponsePayload, reliable?: boolean): Promise<boolean> {
+    return reliable !== undefined
+      ? this.dataPublisher.publish(await this._createPacket('consent_response', payload), reliable)
+      : this.dataPublisher.sendConsentResponse(payload);
   }
 
-  async sendRaiseHand(payload: RaiseHandPayload, reliable: boolean = true): Promise<boolean> {
-    return this.publishData(createRaiseHandDataPacket(payload), reliable);
+  async sendRaiseHand(payload: RaiseHandPayload, reliable?: boolean): Promise<boolean> {
+    return reliable !== undefined
+      ? this.dataPublisher.publish(await this._createPacket('raise_hand', payload), reliable)
+      : this.dataPublisher.sendRaiseHand(payload);
   }
 
-  async sendPinParticipant(payload: PinParticipantPayload, reliable: boolean = true): Promise<boolean> {
-    return this.publishData(createPinParticipantDataPacket(payload), reliable);
+  async sendPinParticipant(payload: PinParticipantPayload, reliable?: boolean): Promise<boolean> {
+    return reliable !== undefined
+      ? this.dataPublisher.publish(await this._createPacket('pin_participant', payload), reliable)
+      : this.dataPublisher.sendPinParticipant(payload);
   }
 
-  async sendSpeakerHint(payload: SpeakerHintPayload, reliable: boolean = true): Promise<boolean> {
-    return this.publishData(createSpeakerHintDataPacket(payload), reliable);
+  async sendSpeakerHint(payload: SpeakerHintPayload, reliable?: boolean): Promise<boolean> {
+    return reliable !== undefined
+      ? this.dataPublisher.publish(await this._createPacket('speaker_hint', payload), reliable)
+      : this.dataPublisher.sendSpeakerHint(payload);
   }
 
-  async sendModerationNotice(payload: ModerationNoticePayload, reliable: boolean = true): Promise<boolean> {
-    return this.publishData(createModerationNoticeDataPacket(payload), reliable);
+  async sendModerationNotice(payload: ModerationNoticePayload, reliable?: boolean): Promise<boolean> {
+    return reliable !== undefined
+      ? this.dataPublisher.publish(await this._createPacket('moderation_notice', payload), reliable)
+      : this.dataPublisher.sendModerationNotice(payload);
   }
+
+  // ─── State & Accessors ──────────────────────────────────────────
 
   getRoom(): Room | null {
     return this.room;
@@ -163,15 +185,25 @@ export class LiveKitRoomGateway {
     };
   }
 
+  // ─── Private ────────────────────────────────────────────────────
+
   private notifyStateChange(): void {
     this.options.onStateChange?.(this.getState());
   }
 
+  /**
+   * Helper para construir paquetes cuando se necesita reliable override.
+   * Evita duplicar los create*DataPacket imports en esta clase.
+   */
+  private async _createPacket(type: string, payload: Record<string, unknown>): Promise<DataPacketContract> {
+    return { type, payload } as DataPacketContract;
+  }
+
   private setupEventHandlers(room: Room): void {
     const bind = <TArgs extends unknown[]>(event: RoomEvent, handler: (...args: TArgs) => void) => {
-      room.on(event, handler as (...args: any[]) => void);
+      room.on(event, handler as (...args: TArgs) => void);
       this.cleanupFns.push(() => {
-        room.off(event, handler as (...args: any[]) => void);
+        room.off(event, handler as (...args: TArgs) => void);
       });
     };
 
@@ -234,21 +266,9 @@ export class LiveKitRoomGateway {
       this.notifyStateChange();
     });
 
+    // Data events — delegado a RealtimeEventParser
     bind(RoomEvent.DataReceived, (payload: Uint8Array, participant?: RemoteParticipant) => {
-      try {
-        const decoder = new TextDecoder();
-        const raw = JSON.parse(decoder.decode(payload));
-        const data = parseDataPacketContract(raw);
-        if (!data) {
-          console.warn('[LiveKitRoomGateway] Ignoring invalid data packet');
-          return;
-        }
-
-        this.eventBus.emit(data, participant?.identity);
-        this.options.onDataReceived?.(data, participant);
-      } catch (error) {
-        console.warn('[LiveKitRoomGateway] Failed to parse received data:', error);
-      }
+      this.eventParser.handleRawPayload(payload, participant);
     });
   }
 }

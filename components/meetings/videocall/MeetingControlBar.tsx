@@ -11,13 +11,17 @@ import {
   useRoomContext,
   useTracks,
 } from '@livekit/components-react';
-import { Track, RoomEvent } from 'livekit-client';
+import { Track, RoomEvent, type ScreenShareCaptureOptions } from 'livekit-client';
 import {
   SharedAudioDeviceControl,
   SharedCameraDeviceControl,
   SharedMediaSettingsSheet,
 } from '@/components/media/SharedMediaDeviceControls';
-import { defaultAudioSettings, defaultCameraSettings, type CameraSettings, type AudioSettings, type PermissionState, type RecordingDiagnostics } from '@/modules/realtime-room';
+import { defaultAudioSettings, defaultCameraSettings, canShareScreenWithAudio, type CameraSettings, type AudioSettings, type PermissionState, type RecordingDiagnostics } from '@/modules/realtime-room';
+import { logger } from '@/lib/logger';
+
+const log = logger.child('meeting-control-bar');
+const browserSupportsScreenShareAudio = canShareScreenWithAudio();
 
 // ============== TIPOS ==============
 export type TipoReunion = 'equipo' | 'deal' | 'entrevista';
@@ -112,7 +116,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
   const [showEmojis, setShowEmojis] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [controlFeedback, setControlFeedback] = useState<string | null>(null);
-  const [shareScreenWithAudio, setShareScreenWithAudio] = useState(true);
+  const [shareScreenWithAudio, setShareScreenWithAudio] = useState(browserSupportsScreenShareAudio);
   const [isCompactLayout, setIsCompactLayout] = useState(typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
   const [isMobileLayout, setIsMobileLayout] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
   const [showMobileOverflowMenu, setShowMobileOverflowMenu] = useState(false);
@@ -240,18 +244,24 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
       if (isScreenSharing) {
         await localParticipant.setScreenShareEnabled(false);
       } else {
-        await (localParticipant as any).setScreenShareEnabled(true, { audio: shareScreenWithAudio });
+        const screenShareOptions: ScreenShareCaptureOptions = {
+          audio: shareScreenWithAudio,
+          selfBrowserSurface: 'include',
+          surfaceSwitching: 'include',
+          systemAudio: shareScreenWithAudio ? 'include' : 'exclude',
+        };
+        await localParticipant.setScreenShareEnabled(true, screenShareOptions);
       }
       setIsScreenSharing(!isScreenSharing);
-    } catch (err: any) {
-      console.error('[MeetingControlBar] Error toggling screen share:', err);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      log.warn('Error toggling screen share', { error: errorMessage });
       setIsScreenSharing(localParticipant.isScreenShareEnabled);
 
-      const errorMessage = String(err?.message || '');
       if (errorMessage && !errorMessage.toLowerCase().includes('cancel')) {
         showTemporaryFeedback(
           shareScreenWithAudio
-            ? 'No fue posible compartir pantalla con audio en este navegador. Prueba desactivar el audio del sistema.'
+            ? 'No fue posible compartir pantalla con audio en este navegador. Prueba compartir una pestaña del navegador para incluir audio.'
             : 'No fue posible compartir pantalla en este navegador.',
         );
       }
@@ -275,7 +285,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
   // Enviar reacción via DataChannel
   const sendReaction = useCallback(async (emoji: string) => {
     if (!onSendReaction) {
-      console.warn('[MeetingControlBar] onSendReaction no configurado');
+      log.warn('onSendReaction no configurado');
       return;
     }
 

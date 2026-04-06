@@ -1,4 +1,3 @@
-import type { CatalogoObjeto3D } from '@/types/objetos3d';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import {
   normalizarEstiloVisualArquitectonico,
@@ -37,15 +36,18 @@ export interface ConfiguracionGeometricaObjeto {
   aberturas: AberturaArquitectonica[];
 }
 
-export interface ObjetoArquitectonicoFuente extends Partial<Pick<CatalogoObjeto3D,
-  'tipo'
-  |
-  'built_in_geometry'
-  | 'built_in_color'
-  | 'ancho'
-  | 'alto'
-  | 'profundidad'
->> {
+/**
+ * Fuente mínima de datos para calcular la geometría de un objeto arquitectónico.
+ * Acepta null en los campos para ser compatible con valores provenientes de la BD
+ * (ObjetoEspacio3D) y de previews de catálogo (ObjetoPreview3D).
+ */
+export interface ObjetoArquitectonicoFuente {
+  tipo?: string | null;
+  built_in_geometry?: string | null;
+  built_in_color?: string | null;
+  ancho?: number | string | null;
+  alto?: number | string | null;
+  profundidad?: number | string | null;
   configuracion_geometria?: unknown;
 }
 
@@ -318,7 +320,7 @@ export const normalizarConfiguracionGeometricaObjeto = (fuente: ObjetoArquitecto
     ? tieneConfiguracionGeometricaExplicita(configuracionCruda)
     : false;
   const configuracionLegacy = fuente.built_in_geometry
-    ? inferirConfiguracionLegacy(fuente.built_in_geometry, fuente.tipo, ancho, alto, color_base)
+    ? inferirConfiguracionLegacy(fuente.built_in_geometry, fuente.tipo ?? undefined, ancho, alto, color_base)
     : null;
 
   if (configuracionCruda && configuracionExplicita) {

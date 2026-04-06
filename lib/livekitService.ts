@@ -1,7 +1,8 @@
 import { detectBestRegion, getCachedRegion } from './regionDetector';
-
 import { CONFIG_PUBLICA_APP } from './env';
+import { logger } from './logger';
 
+const log = logger.child('livekit-service');
 const SUPABASE_URL = CONFIG_PUBLICA_APP.urlSupabase;
 
 interface LivekitTokenResponse {
@@ -22,6 +23,17 @@ interface LivekitTokenRequest {
   puedeSuscribir?: boolean;
   puedePublicarDatos?: boolean;
   region?: string;
+}
+
+function isLivekitTokenResponse(data: unknown): data is LivekitTokenResponse {
+  if (typeof data !== 'object' || data === null) return false;
+  const obj = data as Record<string, unknown>;
+  return (
+    typeof obj.token === 'string' &&
+    typeof obj.url === 'string' &&
+    typeof obj.sala_nombre === 'string' &&
+    typeof obj.participante_id === 'string'
+  );
 }
 
 export const obtenerTokenLivekitEspacio = async (payload: LivekitTokenRequest): Promise<LivekitTokenResponse> => {
@@ -52,19 +64,24 @@ export const obtenerTokenLivekitEspacio = async (payload: LivekitTokenRequest): 
     body: JSON.stringify(body),
   });
 
-  const data = await response.json();
+  const data: unknown = await response.json();
   if (!response.ok) {
-    throw new Error(data?.error || 'Error obteniendo token de LiveKit');
+    const errorMsg = (typeof data === 'object' && data !== null && 'error' in data)
+      ? String((data as Record<string, unknown>).error)
+      : 'Error obteniendo token de LiveKit';
+    log.error('Token request failed', { status: response.status, error: errorMsg, roomName: payload.roomName });
+    throw new Error(errorMsg);
   }
 
-  return data as LivekitTokenResponse;
+  if (!isLivekitTokenResponse(data)) {
+    log.error('Invalid token response shape', { roomName: payload.roomName });
+    throw new Error('Respuesta del servidor LiveKit inválida');
+  }
+
+  log.info('Token obtained', { roomName: payload.roomName, region: data.region });
+  return data;
 };
 
 export const crearSalaLivekitPorEspacio = (espacioId: string): string => {
   return `espacio_${espacioId}`;
-};
-
-/** @deprecated Usar crearSalaLivekitPorEspacio — arquitectura de 1 sala por espacio */
-export const crearSalaLivekitPorChunk = (espacioId: string, _chunkClave: string): string => {
-  return crearSalaLivekitPorEspacio(espacioId);
 };

@@ -3,6 +3,7 @@
  * Extracted from useMediaStream logic to provide clean separation of concerns
  */
 
+import { logger } from '@/lib/logger';
 import { DeviceManager } from '../infrastructure/browser/DeviceManager';
 import { PermissionService } from '../infrastructure/browser/PermissionService';
 import {
@@ -15,10 +16,10 @@ import {
   ScreenShareSession,
 } from '../domain/types';
 
+const log = logger.child('space-media-coordinator');
+
 export interface SpaceMediaCoordinatorState {
   stream: MediaStream | null;
-  processedStream: MediaStream | null;
-  effectiveStream: MediaStream | null;
   screenShareSession: ScreenShareSession;
   preflightCheck: PreflightCheck;
   devicePreferences: DevicePreferences;
@@ -46,7 +47,6 @@ export class SpaceMediaCoordinator {
   // State
   private stream: MediaStream | null = null;
   private screenShareSession: ScreenShareSession = { active: false, withAudio: false };
-  private processedStream: MediaStream | null = null;
   private devicePreferences: DevicePreferences = {
     selectedCameraId: null,
     selectedMicrophoneId: null,
@@ -62,6 +62,20 @@ export class SpaceMediaCoordinator {
   private desiredMicrophoneEnabled = false;
   private desiredScreenShareEnabled = false;
   private trackStates: Map<string, MediaTrackState> = new Map();
+
+  /**
+   * Mutex para serializar llamadas concurrentes a startMedia().
+   *
+   * Bajo React Strict Mode, dos init() pueden llamar startMedia() en paralelo.
+   * Aunque el cancelled check en init() previene el caso más común, este mutex
+   * es defensa en profundidad: si dos startMedia() coinciden por cualquier path,
+   * la segunda espera a que la primera complete y luego aplica el idempotency guard.
+   *
+   * Flujo:
+   *   call#1 → pendingStartMedia === null → ejecuta doStartMedia(), guarda promesa
+   *   call#2 → pendingStartMedia !== null → await promesa → idempotency guard → skip
+   */
+  private pendingStartMedia: Promise<MediaStream | null> | null = null;
   private preflightCheck: PreflightCheck = {
     camera: 'unknown',
     microphone: 'unknown',
@@ -154,39 +168,138 @@ export class SpaceMediaCoordinator {
   }
 
   /**
-   * Start media capture with current preferences
+   * Start media capture with current preferences.
+   *
+   * Phase 2 — Elimina el doble getUserMedia prompt:
+   * Si el permiso no está concedido, requestPermissionAccess() adquiere un stream
+   * y lo devuelve SIN detenerlo. startMedia() reutiliza esos tracks en lugar de
+   * llamar getUserMedia() una segunda vez, evitando el doble prompt del browser.
    */
   async startMedia(wantVideo: boolean = true, wantAudio: boolean = true): Promise<MediaStream | null> {
+    // ── Mutex: serializar llamadas concurrentes ─────────────────────────
+    // Si hay un startMedia() en vuelo, esperar a que termine y luego
+    // aplicar el idempotency guard (el stream del primer call probablemente
+    // ya satisface los requisitos del segundo).
+    if (this.pendingStartMedia) {
+      log.info('[Coordinator] startMedia: MUTEX — otra llamada en vuelo, esperando', {
+        wantVideo,
+        wantAudio,
+      });
+      await this.pendingStartMedia;
+      // Después de esperar, el idempotency guard de doStartMedia()
+      // evaluará si el stream recién creado satisface los requisitos.
+    }
+
+    const promise = this.doStartMedia(wantVideo, wantAudio);
+    this.pendingStartMedia = promise;
+
+    try {
+      return await promise;
+    } finally {
+      // Limpiar mutex solo si somos la promesa actual
+      if (this.pendingStartMedia === promise) {
+        this.pendingStartMedia = null;
+      }
+    }
+  }
+
+  /**
+   * Implementación interna de startMedia — solo llamada desde startMedia()
+   * después del mutex guard.
+   */
+  private async doStartMedia(wantVideo: boolean, wantAudio: boolean): Promise<MediaStream | null> {
     try {
       this.desiredCameraEnabled = wantVideo;
       this.desiredMicrophoneEnabled = wantAudio;
 
-      // Stop existing stream
+      // ── Idempotency guard ──────────────────────────────────────────────
+      // Si ya existe un stream con tracks vivos que satisfacen los
+      // requisitos solicitados, reutilizarlo sin llamar getUserMedia().
+      //
+      // Casos cubiertos:
+      //   - React Strict Mode: init effect doble — el deferred cleanup del
+      //     hook cancela el stopMedia(), así que el stream de mount#1 aún
+      //     existe cuando mount#2 llama startMedia(). Sin este guard,
+      //     startMedia() destruiría el stream válido y llamaría getUserMedia()
+      //     de nuevo (segundo MediaStreamTrack con ID diferente → 2 WASM inits).
+      //   - Llamadas redundantes desde otras partes del código.
+      //   - Segundo call que pasó el mutex y encuentra stream recién creado.
+      if (this.stream) {
+        const videoOk = !wantVideo || this.stream.getVideoTracks().some(t => t.readyState === 'live');
+        const audioOk = !wantAudio || this.stream.getAudioTracks().some(t => t.readyState === 'live');
+        if (videoOk && audioOk) {
+          log.info('[Coordinator] startMedia: IDEMPOTENCY GUARD — stream existente reutilizado, skip getUserMedia', {
+            wantVideo,
+            wantAudio,
+            videoTracks: this.stream.getVideoTracks().length,
+            audioTracks: this.stream.getAudioTracks().length,
+          });
+          this.notifyStateChange();
+          return this.stream;
+        }
+      }
+
+      // Stop existing stream (solo si no es reutilizable)
       this.stopMedia();
 
       this.desiredCameraEnabled = wantVideo;
       this.desiredMicrophoneEnabled = wantAudio;
 
+      // Adquirir stream de permiso (si se necesita) y reutilizarlo para evitar doble prompt.
+      // requestPermissionAccess() devuelve el stream sin detenerlo (Phase 2 fix).
+      let preAcquiredStream: MediaStream | null = null;
+
       if (wantVideo && wantAudio) {
         if (this.preflightCheck.camera !== 'granted' || this.preflightCheck.microphone !== 'granted') {
-          await this.requestPermissionAccess('both');
+          const permResult = await this.requestPermissionAccess('both');
+          preAcquiredStream = permResult.stream;
         }
       } else if (wantVideo) {
         if (this.preflightCheck.camera !== 'granted') {
-          await this.requestPermissionAccess('camera');
+          const permResult = await this.requestPermissionAccess('camera');
+          preAcquiredStream = permResult.stream;
         }
       } else if (wantAudio) {
         if (this.preflightCheck.microphone !== 'granted') {
-          await this.requestPermissionAccess('microphone');
+          const permResult = await this.requestPermissionAccess('microphone');
+          preAcquiredStream = permResult.stream;
         }
       }
 
-      // Request video if needed
+      // Request video if needed.
+      // Intenta reutilizar el track del preAcquiredStream para evitar segundo getUserMedia.
+      // Solo reutiliza si no hay preferencia de dispositivo específica (o el track
+      // viene del device correcto). En caso contrario llama getDeviceStream() con el
+      // deviceId preferido — esto NO causa un segundo prompt porque el permiso ya fue
+      // concedido en requestPermissionAccess().
       if (wantVideo) {
-        const videoStream = await this.deviceManager.getDeviceStream(
-          'video',
-          this.devicePreferences.selectedCameraId
+        const preAcquiredVideoTrack = preAcquiredStream
+          ?.getVideoTracks()
+          .find((t) => t.readyState === 'live') ?? null;
+        const canReuseVideoTrack = !!preAcquiredVideoTrack && (
+          // Sin preferencia de device → cualquier track sirve
+          !this.devicePreferences.selectedCameraId
+          // Con preferencia → verificar si el track es del device correcto
+          || preAcquiredVideoTrack.getSettings().deviceId === this.devicePreferences.selectedCameraId
         );
+
+        let videoStream: MediaStream | null = null;
+        if (canReuseVideoTrack && preAcquiredVideoTrack) {
+          videoStream = new MediaStream([preAcquiredVideoTrack]);
+          // Detener los demás tracks del preAcquiredStream que no vamos a usar
+          preAcquiredStream?.getTracks().forEach((t) => {
+            if (t !== preAcquiredVideoTrack && t.kind === 'video') t.stop();
+          });
+          log.debug('Reutilizando video track pre-adquirido (evita segundo getUserMedia)');
+        } else {
+          // Detener video tracks del pre-acquired si no los usamos
+          preAcquiredStream?.getVideoTracks().forEach((t) => t.stop());
+          videoStream = await this.deviceManager.getDeviceStream(
+            'video',
+            this.devicePreferences.selectedCameraId,
+          );
+        }
+
         if (videoStream) {
           await this.refreshDeviceAvailability();
           this.stream = videoStream;
@@ -206,13 +319,30 @@ export class SpaceMediaCoordinator {
         }
       }
 
-      // Request audio if needed
+      // Request audio if needed — misma lógica de reutilización.
       if (wantAudio) {
-        const audioStream = await this.deviceManager.getDeviceStream(
-          'audio',
-          this.devicePreferences.selectedMicrophoneId,
-          this.audioProcessingOptions
+        const preAcquiredAudioTrack = preAcquiredStream
+          ?.getAudioTracks()
+          .find((t) => t.readyState === 'live') ?? null;
+        const canReuseAudioTrack = !!preAcquiredAudioTrack && (
+          !this.devicePreferences.selectedMicrophoneId
+          || preAcquiredAudioTrack.getSettings().deviceId === this.devicePreferences.selectedMicrophoneId
         );
+
+        let audioStream: MediaStream | null = null;
+        if (canReuseAudioTrack && preAcquiredAudioTrack) {
+          audioStream = new MediaStream([preAcquiredAudioTrack]);
+          log.debug('Reutilizando audio track pre-adquirido (evita segundo getUserMedia)');
+        } else {
+          // Detener audio tracks del pre-acquired si no los usamos
+          preAcquiredStream?.getAudioTracks().forEach((t) => t.stop());
+          audioStream = await this.deviceManager.getDeviceStream(
+            'audio',
+            this.devicePreferences.selectedMicrophoneId,
+            this.audioProcessingOptions,
+          );
+        }
+
         if (audioStream) {
           await this.refreshDeviceAvailability();
           if (this.stream) {
@@ -244,6 +374,15 @@ export class SpaceMediaCoordinator {
         }
       }
 
+      // Limpiar cualquier track restante del preAcquiredStream que no haya sido reutilizado
+      if (preAcquiredStream) {
+        preAcquiredStream.getTracks().forEach((t) => {
+          if (t.readyState === 'live' && !this.stream?.getTracks().includes(t)) {
+            t.stop();
+          }
+        });
+      }
+
       // Update preflight
       this.updatePreflightReadiness();
       this.options.onStreamChange?.(this.stream);
@@ -251,7 +390,9 @@ export class SpaceMediaCoordinator {
 
       return this.stream;
     } catch (error) {
-      console.error('[SpaceMediaCoordinator] Failed to start media:', error);
+      log.error('Failed to start media', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       this.options.onError?.({
         type: 'track-error',
         message: 'Error al iniciar la captura de media',
@@ -266,9 +407,7 @@ export class SpaceMediaCoordinator {
    */
   stopMedia(): void {
     this.deviceManager.stopStream(this.stream);
-    this.deviceManager.stopStream(this.processedStream);
     this.stream = null;
-    this.processedStream = null;
     this.desiredCameraEnabled = false;
     this.desiredMicrophoneEnabled = false;
     this.trackStates.clear();
@@ -296,8 +435,11 @@ export class SpaceMediaCoordinator {
     const videoTracks = this.stream.getVideoTracks();
 
     if (enabled && videoTracks.length === 0) {
+      // Phase 2: requestPermissionAccess devuelve el stream, limpiar si no lo usamos
       if (this.preflightCheck.camera !== 'granted') {
-        await this.requestPermissionAccess('camera');
+        const { stream: permStream } = await this.requestPermissionAccess('camera');
+        // En toggleCamera no reutilizamos el stream porque necesitamos el device preferido
+        if (permStream) { this.deviceManager.stopStream(permStream); }
       }
 
       // Need to add video track
@@ -370,8 +512,10 @@ export class SpaceMediaCoordinator {
     const audioTracks = this.stream.getAudioTracks();
 
     if (enabled && audioTracks.length === 0) {
+      // Phase 2: requestPermissionAccess devuelve el stream, limpiar si no lo usamos
       if (this.preflightCheck.microphone !== 'granted') {
-        await this.requestPermissionAccess('microphone');
+        const { stream: permStream } = await this.requestPermissionAccess('microphone');
+        if (permStream) { this.deviceManager.stopStream(permStream); }
       }
 
       // Need to add audio track
@@ -524,7 +668,9 @@ export class SpaceMediaCoordinator {
       this.notifyStateChange();
       return this.screenShareSession;
     } catch (error) {
-      console.error('[SpaceMediaCoordinator] Failed to start screen share:', error);
+      log.error('Failed to start screen share', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       return null;
     }
   }
@@ -595,14 +741,12 @@ export class SpaceMediaCoordinator {
 
   syncExternalMediaState(snapshot: {
     stream: MediaStream | null;
-    processedStream: MediaStream | null;
     screenShareSession?: ScreenShareSession;
     desiredCameraEnabled?: boolean;
     desiredMicrophoneEnabled?: boolean;
     desiredScreenShareEnabled?: boolean;
   }): void {
     this.stream = snapshot.stream;
-    this.processedStream = snapshot.processedStream;
     this.screenShareSession = snapshot.screenShareSession ?? { active: false, withAudio: false };
     this.desiredCameraEnabled = snapshot.desiredCameraEnabled ?? (snapshot.stream?.getVideoTracks().some(track => track.readyState === 'live' && track.enabled) ?? false);
     this.desiredMicrophoneEnabled = snapshot.desiredMicrophoneEnabled ?? (snapshot.stream?.getAudioTracks().some(track => track.readyState === 'live' && track.enabled) ?? false);
@@ -614,23 +758,12 @@ export class SpaceMediaCoordinator {
     this.notifyStateChange();
   }
 
-  setProcessedStream(stream: MediaStream | null): void {
-    this.processedStream = stream;
-    this.notifyStateChange();
-  }
-
-  getEffectiveStream(): MediaStream | null {
-    return this.processedStream ?? this.stream;
-  }
-
   /**
    * Get current state
    */
   getState(): SpaceMediaCoordinatorState {
     return {
       stream: this.stream,
-      processedStream: this.processedStream,
-      effectiveStream: this.getEffectiveStream(),
       screenShareSession: this.screenShareSession,
       preflightCheck: this.preflightCheck,
       devicePreferences: { ...this.devicePreferences },
@@ -701,12 +834,23 @@ export class SpaceMediaCoordinator {
     this.preflightCheck.microphone = permission;
   }
 
-  private async requestPermissionAccess(device: 'camera' | 'microphone' | 'both'): Promise<boolean> {
+  /**
+   * Phase 2 — Solicita permiso de media y DEVUELVE el stream sin detenerlo.
+   *
+   * El stream es retornado al caller (startMedia, toggleCamera, toggleMicrophone)
+   * para que pueda reutilizar los tracks directamente, evitando un segundo getUserMedia
+   * que causaría un segundo prompt de permisos o latencia adicional.
+   *
+   * Responsabilidad de limpieza: el caller es responsable de detener los tracks del
+   * stream devuelto si no los reutiliza.
+   */
+  private async requestPermissionAccess(
+    device: 'camera' | 'microphone' | 'both',
+  ): Promise<{ granted: boolean; stream: MediaStream | null }> {
     const result = await this.permissionService.requestPermission(device);
 
-    if (result.stream) {
-      this.deviceManager.stopStream(result.stream);
-    }
+    // Phase 2: NO detenemos el stream aquí — el caller lo reutiliza o lo limpia.
+    // Antes: this.deviceManager.stopStream(result.stream); ← causaba doble prompt
 
     if (device !== 'microphone') {
       await this.refreshPermissionState('camera');
@@ -724,7 +868,7 @@ export class SpaceMediaCoordinator {
       this.options.onError?.(result.error);
     }
 
-    return result.granted;
+    return { granted: result.granted, stream: result.stream ?? null };
   }
 
   private async refreshDeviceAvailability(): Promise<void> {

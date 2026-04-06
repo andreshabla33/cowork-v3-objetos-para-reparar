@@ -1,6 +1,6 @@
 import React from 'react';
+import { logger } from '@/lib/logger';
 import { ChatToast } from '@/components/ChatToast';
-import { VideoWithBackground } from '@/components/VideoWithBackground';
 import { RecordingDiagnosticsService, type RecordingDiagnosticsSnapshot } from '@/modules/realtime-room';
 import { RecordingManager } from '../recording/RecordingManager';
 import { MeetingAudioRenderer } from './MeetingAudioRenderer';
@@ -18,12 +18,7 @@ import { useMeetingMediaBridge } from './hooks/useMeetingMediaBridge';
 import { useMeetingRealtimeState } from './hooks/useMeetingRealtimeState';
 import type { MeetingRoomContentProps } from './meetingRoom.types';
 
-/**
- * How long to wait (ms) after a new video track becomes available before mounting
- * the background-effect pipeline. VideoWithBackground already retries internally
- * until the track is truly playable, so this is just a small safety buffer.
- */
-const BACKGROUND_EFFECT_INITIALIZATION_DELAY_MS = 500;
+const log = logger.child('MeetingRoomContent');
 
 const MeetingMediaStreamPreview: React.FC<{
   stream: MediaStream | null;
@@ -97,9 +92,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
   const recordingDiagnosticsService = React.useMemo(() => new RecordingDiagnosticsService(), []);
   const [recordingDiagnosticsSnapshot, setRecordingDiagnosticsSnapshot] = React.useState<RecordingDiagnosticsSnapshot | null>(null);
   const [isConnectedPopoverOpen, setIsConnectedPopoverOpen] = React.useState(false);
-  const [backgroundEffectReady, setBackgroundEffectReady] = React.useState(false);
   const connectedPopoverRef = React.useRef<HTMLDivElement | null>(null);
-  const prevVideoTrackIdRef = React.useRef<string | null>(null);
   const {
     room,
     localParticipant,
@@ -157,7 +150,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
     onToggleChat,
     invitadosExternos,
   });
-  const { mediaState, cameraSettings, audioSettings, isLocalVideoProcessed, videoBackgroundKey, updateCameraSettings, updateAudioSettings, toggleMicrophone, toggleCamera, setProcessedStream } = useMeetingMediaBridge({
+  const { mediaState, cameraSettings, audioSettings, isLocalVideoProcessed, updateCameraSettings, updateAudioSettings, toggleMicrophone, toggleCamera } = useMeetingMediaBridge({
     room,
     initialCameraEnabled,
     initialMicrophoneEnabled,
@@ -188,33 +181,29 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
 
     return validTracks.find((track) => track.participant?.identity === speakerBubbleParticipant.identity) ?? null;
   }, [speakerBubbleParticipant, validTracks]);
-  const shouldMountBackgroundPipeline = Boolean(
-    backgroundEffectReady
-    && mediaState.desiredCameraEnabled
-    && mediaState.stream
-    && mediaState.stream.getVideoTracks().length > 0
-    && cameraSettings.backgroundEffect !== 'none'
-  );
+  // Cuando background effects están activos, el processor se aplica in-place
+  // sobre el LocalVideoTrack publicado via track.setProcessor() (gestionado
+  // por useMeetingMediaBridge). MeetingTrackRenderer muestra el output
+  // procesado directamente, así que forzamos null para que CustomParticipantTile
+  // use MeetingTrackRenderer en vez de LocalPreviewRenderer (stream crudo).
+  // Cuando la cámara está OFF el track sigue readyState='live' pero produce
+  // frames negros. Forzamos null para que CustomParticipantTile muestre el
+  // avatar en vez del LocalPreviewRenderer con un stream negro.
   const localPreviewStream = React.useMemo(
-    () => (shouldMountBackgroundPipeline ? mediaState.processedStream ?? mediaState.stream : mediaState.stream),
-    [mediaState.processedStream, mediaState.stream, shouldMountBackgroundPipeline],
+    () => (isLocalVideoProcessed || !mediaState.desiredCameraEnabled ? null : mediaState.stream),
+    [mediaState.stream, isLocalVideoProcessed, mediaState.desiredCameraEnabled],
   );
-  const localPreviewMirror = React.useMemo(
-    () => cameraSettings.mirrorVideo && (!shouldMountBackgroundPipeline || !mediaState.processedStream),
-    [cameraSettings.mirrorVideo, mediaState.processedStream, shouldMountBackgroundPipeline],
-  );
+  const localPreviewMirror = cameraSettings.mirrorVideo;
   const remoteVideoTrackCount = React.useMemo(
     () => videoTracks.filter((track) => track.participant?.identity && track.participant.identity !== localParticipant?.identity).length,
     [localParticipant?.identity, videoTracks],
   );
-  const shouldShowLocalSelfViewStage = Boolean(
-    !screenShareTrack
-    && remoteVideoTrackCount === 0
-    && mediaState.desiredCameraEnabled
-    && !cameraSettings.hideSelfView
-    && mediaState.stream
-    && mediaState.stream.getVideoTracks().length > 0
-  );
+  // El overlay fullscreen de self-view fue eliminado. El grid de galería con
+  // place-content-center + max-w-5xl aspect-video (MeetingLayoutModel count=1)
+  // ya renderiza un recuadro centrado y responsive para 1 participante.
+  // Esto también permite que el blur sea visible: sin overlay, el tile renderiza
+  // el track publicado (con setProcessor aplicado) vía MeetingTrackRenderer.
+  const shouldShowLocalSelfViewStage = false;
   const showRecoveryBanner = recoveryState && recoveryState.phase !== 'connected';
   const { layoutSnapshot } = useMeetingLayoutSnapshot({
     validTracks,
@@ -231,42 +220,6 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
       setIsConnectedPopoverOpen(false);
     }
   }, [effectiveViewMode]);
-
-  React.useEffect(() => {
-    // Check if video track actually changed (not just mic/audio)
-    const videoTrack = mediaState.stream?.getVideoTracks()[0];
-    const currentVideoTrackId = videoTrack?.id || null;
-    const hasVideoTrack = !!videoTrack;
-
-    // backgroundEffect is NOT in shouldBeReady — changing from 'none' to 'blur'
-    // should NOT unmount/remount VideoWithBackground. The component handles
-    // effectType changes internally via updateConfig() without pipeline restart.
-    const shouldBeReady = !!(
-      room
-      && room.state === 'connected'
-      && mediaState.desiredCameraEnabled
-      && hasVideoTrack
-    );
-
-    if (!shouldBeReady) {
-      setBackgroundEffectReady(false);
-      prevVideoTrackIdRef.current = currentVideoTrackId;
-      return;
-    }
-
-    // Only delay when video track actually changed (camera switch)
-    const videoTrackChanged = prevVideoTrackIdRef.current !== currentVideoTrackId;
-    if (videoTrackChanged || !backgroundEffectReady) {
-      const timer = window.setTimeout(() => {
-        setBackgroundEffectReady(true);
-        prevVideoTrackIdRef.current = currentVideoTrackId;
-      }, BACKGROUND_EFFECT_INITIALIZATION_DELAY_MS);
-
-      return () => {
-        window.clearTimeout(timer);
-      };
-    }
-  }, [mediaState.desiredCameraEnabled, mediaState.stream, room, videoBackgroundKey]);
 
   React.useEffect(() => {
     if (!isConnectedPopoverOpen) {
@@ -312,20 +265,9 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
         }
       `}</style>
 
-      {shouldMountBackgroundPipeline && (
-        <div className="absolute h-0 w-0 overflow-hidden opacity-0 pointer-events-none" aria-hidden="true">
-          <VideoWithBackground
-            stream={mediaState.stream}
-            effectType={cameraSettings.backgroundEffect}
-            backgroundImage={cameraSettings.backgroundImage}
-            blurAmount={12}
-            muted={true}
-            className="w-full h-full object-cover"
-            onProcessedStreamReady={setProcessedStream}
-            mirrorVideo={cameraSettings.mirrorVideo}
-          />
-        </div>
-      )}
+      {/* El background processor se gestiona en useMeetingMediaBridge via
+          GestionarBackgroundVideoUseCase. No se necesita un componente headless —
+          el processor se aplica in-place sobre el LocalVideoTrack publicado. */}
 
       <MeetingGuidedOnboarding
         userId={userId}
@@ -381,7 +323,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
                   localMirrorVideo={cameraSettings.mirrorVideo}
                   localVideoProcessed={isLocalVideoProcessed}
                   localPreviewStream={localPreviewStream}
-                />
+                    />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900 px-3 text-center text-sm font-semibold text-white/90">
                   Esperando video del participante activo
@@ -424,7 +366,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
         </div>
       )}
 
-      <div data-tour-step="meeting-stage" className={`relative h-full w-full pb-24 transition-all duration-300 md:pb-20 ${showChat ? 'pr-0 md:pr-80' : ''}`}>
+      <div data-tour-step="meeting-stage" className={`relative h-full w-full pt-14 pb-24 transition-all duration-300 md:pt-16 md:pb-20 ${showChat ? 'pr-0 md:pr-80' : ''}`}>
         {shouldShowLocalSelfViewStage && (
           <div className="pointer-events-none absolute inset-0 z-[5] px-2 py-2 md:px-2 md:py-2">
             <div className="relative h-full w-full overflow-hidden rounded-xl bg-zinc-900 md:rounded-2xl">
@@ -536,7 +478,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
           onDurationChange={setRecordingDuration}
           onDiagnosticsSnapshotChange={setRecordingDiagnosticsSnapshot}
           onProcessingComplete={(resultado) => {
-            console.log('✅ Análisis conductual completado en videollamada:', resultado?.tipo_grabacion);
+            log.info('Análisis conductual completado en videollamada', { tipo_grabacion: resultado?.tipo_grabacion });
           }}
           preselectedTipoGrabacion={preselectedTipoGrabacion}
           headlessMode={true}

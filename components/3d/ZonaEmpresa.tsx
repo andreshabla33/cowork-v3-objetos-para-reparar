@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useGLTF, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import { FloorType, normalizarTipoSuelo } from '../../src/core/domain/entities';
-import { crearPropsMaterialSueloPbr, TEXTURE_REGISTRY } from '../../src/core/infrastructure/textureRegistry';
+import { crearPropsMaterialSueloPbr, TEXTURE_REGISTRY } from '../../lib/rendering/textureRegistry';
 
 interface ZonaEmpresaProps {
   posicion: [number, number, number];

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { 
+import { logger } from '@/lib/logger';
+import {
   TrackReferenceOrPlaceholder,
   useMaybeTrackRefContext,
   useEnsureTrackRef,
@@ -12,6 +13,8 @@ import {
 import { Track, Participant, RoomEvent } from 'livekit-client';
 import { ParticipantAvatar } from './ParticipantAvatar';
 import { MeetingTrackRenderer } from './MeetingTrackRenderer';
+
+const log = logger.child('CustomParticipantTile');
 
 interface CustomParticipantTileProps {
   trackRef?: TrackReferenceOrPlaceholder;
@@ -106,7 +109,7 @@ export const CustomParticipantTile: React.FC<CustomParticipantTileProps> = ({
     const onMetadataChanged = (metadata: string | undefined, p: Participant | undefined) => {
       // Verificar si el cambio es para este participante
       if (p?.identity === participant.identity) {
-        console.log(`🔄 Metadata actualizada para ${p.identity}:`, metadata);
+        log.info('Metadata actualizada para participante', { identity: p.identity, metadata });
         setCurrentMetadata(metadata);
       }
     };
@@ -198,22 +201,22 @@ export const CustomParticipantTile: React.FC<CustomParticipantTileProps> = ({
               stream={localPreviewStream}
               muted={true}
               className="w-full h-full object-cover bg-transparent"
-              mirror={localMirrorVideo && !localVideoProcessed}
+              mirror={localMirrorVideo}
             />
           ) : isVideoEnabled && !disableVideo && publicationTrack ? (
             <MeetingTrackRenderer
               track={publicationTrack}
               muted={isLocalParticipant}
               className="w-full h-full object-cover bg-transparent"
-              mirror={isLocalParticipant && localMirrorVideo && !localVideoProcessed}
+              mirror={isLocalParticipant && localMirrorVideo}
               dataLocalParticipant={isLocalParticipant}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-800 to-[#181825]">
               <ParticipantAvatar
                 name={participantName}
                 avatarUrl={finalAvatarUrl || undefined}
-                size="lg"
+                size="xl"
                 isSpeaking={isSpeaking}
               />
             </div>

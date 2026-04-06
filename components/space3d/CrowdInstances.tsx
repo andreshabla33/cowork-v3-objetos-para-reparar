@@ -69,13 +69,17 @@ export const CrowdInstances: React.FC<{
 
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+
+    // Recompute bounding sphere para que frustum culling funcione con InstancedMesh
+    mesh.computeBoundingBox();
+    mesh.computeBoundingSphere();
   }, [entities]);
 
   return (
     <instancedMesh
       ref={meshRef}
       args={[geometry, material, MAX_CROWD]}
-      frustumCulled={false}
+      frustumCulled={true}
       onClick={(e) => {
         if (!onClick) return;
         e.stopPropagation();

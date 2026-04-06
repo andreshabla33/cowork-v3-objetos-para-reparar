@@ -27,6 +27,9 @@ import type { ThreeEvent } from '@react-three/fiber';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import { obtenerDimensionesObjetoRuntime } from '../space3d/objetosRuntime';
 import { ObjetoEscena3D } from './ObjetoEscena3D';
+import { logger } from '@/lib/logger';
+
+const log = logger.child('ObjetosInstanciados');
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -280,8 +283,8 @@ class GrupoModeloErrorBoundary extends React.Component<
 > {
   state = { error: false };
   static getDerivedStateFromError() { return { error: true }; }
-  componentDidCatch(error: unknown) {
-    console.warn('[ObjetosInstanciados] Error en grupo GLTF, usando fallback individual:', error);
+  componentDidCatch(error: unknown, _info: React.ErrorInfo) {
+    log.warn('Error en grupo GLTF, usando fallback individual:', error as Record<string, unknown>);
   }
   render() {
     return this.state.error ? this.props.fallback : this.props.children;

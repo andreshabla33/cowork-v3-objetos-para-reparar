@@ -1,8 +1,25 @@
+/**
+ * @module hooks/app/useBootstrapAplicacion
+ * @description Application bootstrap hook — session verification, OTP confirmation,
+ * and auth state change handling.
+ *
+ * Dependencies:
+ * - Receives store actions via props (DI pattern, ARC-010)
+ * - Uses useStore.getState() inside onAuthStateChange callback for fresh state
+ *   (accepted Zustand pattern: getState() for non-reactive access in closures)
+ *
+ * Ref: Supabase JS v2 — onAuthStateChange events, verifyOtp API.
+ * Ref: Zustand 5 — getState() for imperative access outside React render cycle.
+ */
+
 import { useEffect, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
 import { useStore } from '@/store/useStore';
+import { logger } from '@/lib/logger';
+
+const log = logger.child('bootstrap');
 
 interface ParametrosBootstrapAplicacion {
   initialize: () => Promise<unknown>;
@@ -41,8 +58,8 @@ export function useBootstrapAplicacion({ initialize, setSession, setView, setAut
             setAuthFeedback({ type: 'success', message: '¡Email confirmado! Bienvenido a Cowork.' });
           }
           window.history.replaceState({}, '', window.location.pathname);
-        } catch (err) {
-          console.error('Error en verifyOtp:', err);
+        } catch (err: unknown) {
+          log.error('Error en verifyOtp', { error: err instanceof Error ? err.message : String(err) });
         }
       }
       await initialize();
@@ -57,19 +74,19 @@ export function useBootstrapAplicacion({ initialize, setSession, setView, setAut
       const lastEvent = lastAuthEventRef.current;
       
       if (lastEvent && lastEvent.event === eventKey && (now - lastEvent.timestamp) < 500) {
-        console.log(`Auth Event: ${event} (deduplicado - mismo evento dentro de 500ms)`);
+        log.debug(`Auth event deduplicado`, { event, within: '500ms' });
         return;
       }
       
       lastAuthEventRef.current = { event: eventKey, userId: session?.user?.id || 'no-user', timestamp: now };
-      console.log('Auth Event:', event);
+      log.info('Auth event', { event, userId: session?.user?.id });
 
       // ─── PASSWORD_RECOVERY: NO inicializar, NO redirigir al dashboard ────────
       // Este evento llega cuando el usuario hace clic en el link del correo de
       // recuperación. Guardamos la sesión temporal y seteamos la vista especial.
       // NO llamamos initialize() porque eso buscaría workspaces y redirigiría.
       if (event === 'PASSWORD_RECOVERY') {
-        console.log('Auth Event PASSWORD_RECOVERY: Activando pantalla de reset');
+        log.info('PASSWORD_RECOVERY: activando pantalla de reset');
         if (shouldSyncSession(session)) {
           setSession(session);
         }
@@ -86,16 +103,16 @@ export function useBootstrapAplicacion({ initialize, setSession, setView, setAut
         // Si ya estamos en el flujo de reset, ignorar el SIGNED_IN que Supabase
         // dispara junto con PASSWORD_RECOVERY para no sobreescribir la vista
         if (state.view === 'reset_password') {
-          console.log('Auth Event SIGNED_IN ignorado: estamos en flujo reset_password');
+          log.debug('SIGNED_IN ignorado: flujo reset_password activo');
           return;
         }
         // Si ya estamos en onboarding, no re-inicializar (usuario nuevo sin workspaces)
         if (state.initialized && (state.view === 'onboarding_creador' || state.view === 'onboarding')) {
-          console.log('Auth Event SIGNED_IN ignorado: estamos en flujo onboarding');
+          log.debug('SIGNED_IN ignorado: flujo onboarding activo');
           return;
         }
         if (state.initialized && state.activeWorkspace) {
-          console.log('Auth Event SIGNED_IN: Already initialized with workspace, skipping re-init');
+          log.debug('SIGNED_IN: ya inicializado con workspace activo, omitiendo re-init');
           return;
         }
         await initialize();

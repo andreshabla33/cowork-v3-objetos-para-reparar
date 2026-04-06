@@ -11,6 +11,7 @@
 export * from './domain/types';
 export type { AudioSettings, CameraSettings } from './domain/MediaSettings';
 export { defaultAudioSettings, defaultCameraSettings } from './domain/MediaSettings';
+export { resolveDeliveryReliable, resolveDeliveryMode, type DeliveryMode } from './domain/DataDeliveryPolicy';
 
 // Application
 export { SpaceMediaCoordinator } from './application/SpaceMediaCoordinator';
@@ -21,6 +22,10 @@ export { SpaceInteractionCoordinator } from './application/SpaceInteractionCoord
 export type { SpaceInteractionCoordinatorOptions, SpaceInteractionCoordinatorState, SpaceInteractionCoordinatorRuntime } from './application/SpaceInteractionCoordinator';
 export { RealtimeEventBus } from './application/RealtimeEventBus';
 export type { RealtimeEventEnvelope, RealtimeEventListener } from './application/RealtimeEventBus';
+export { RealtimeDataPublisher } from './application/RealtimeDataPublisher';
+export type { RoomProvider } from './application/RealtimeDataPublisher';
+export { RealtimeEventParser } from './application/RealtimeEventParser';
+export type { OnDataReceivedCallback } from './application/RealtimeEventParser';
 export { LiveKitRoomGateway } from './application/LiveKitRoomGateway';
 export type { LiveKitRoomGatewayOptions, LiveKitRoomGatewayState } from './application/LiveKitRoomGateway';
 export { ActiveSpeakerPolicy } from './application/ActiveSpeakerPolicy';
@@ -61,11 +66,15 @@ export { TrackPublicationCoordinator } from './application/TrackPublicationCoord
 export type { TrackPublicationAction, TrackPublicationCoordinatorInput, TrackPublicationPlan, TrackPublicationPlanItem, TrackPublicationSource } from './application/TrackPublicationCoordinator';
 export {
   CAPAS_SIMULCAST_VIDEO_LIVEKIT,
+  CODEC_VIDEO_BACKUP,
+  CODEC_VIDEO_PREFERIDO,
   CODIFICACION_SCREEN_SHARE_LIVEKIT,
   CODIFICACION_VIDEO_CAMARA_LIVEKIT,
   crearOpcionesPublicacionTrackLiveKit,
   crearOpcionesSalaLiveKit,
   obtenerSiguienteDelayReconexionLiveKitMs,
+  SCALABILITY_MODE_CAMERA,
+  SCALABILITY_MODE_SCREEN_SHARE,
 } from './application/PoliticaTransporteLiveKit';
 export { RemoteTrackAttachmentPolicy } from './application/RemoteTrackAttachmentPolicy';
 export type { RemoteTrackAttachmentAction, RemoteTrackAttachmentDecision, RemoteTrackAttachmentSlot, RemoteTrackAttachmentState } from './application/RemoteTrackAttachmentPolicy';
@@ -73,6 +82,8 @@ export { RemoteRenderLifecyclePolicy } from './application/RemoteRenderLifecycle
 export type { RemoteRenderAction, RemoteRenderDecision, RemoteRenderLifecycleState, RemoteRenderSlot } from './application/RemoteRenderLifecyclePolicy';
 export { RemoteMediaLifecycleDiagnostics } from './application/RemoteMediaLifecycleDiagnostics';
 export type { RemoteMediaLifecycleDiagnosticsOptions, RemoteMediaLifecycleDiagnosticsPayload, RemoteMediaLifecycleEvent } from './application/RemoteMediaLifecycleDiagnostics';
+export { ConnectionQualityMonitor } from './application/ConnectionQualityMonitor';
+export type { ConnectionQualityEntry, ConnectionQualityLevel, ConnectionQualityMonitorOptions, ConnectionQualitySnapshot } from './application/ConnectionQualityMonitor';
 export { RealtimeSessionTelemetry } from './application/RealtimeSessionTelemetry';
 export type { RealtimeTelemetryCategory, RealtimeTelemetryEvent, RealtimeTelemetrySeverity, RealtimeTelemetrySnapshot, RealtimeSessionTelemetryOptions } from './application/RealtimeSessionTelemetry';
 export { PreflightSessionStore } from './application/PreflightSessionStore';
@@ -88,3 +99,5 @@ export type { DeviceManagerOptions } from './infrastructure/browser/DeviceManage
 export { loadAudioSettings, saveAudioSettings, loadCameraSettings, saveCameraSettings } from './infrastructure/browser/MediaSettingsStorage';
 export { PermissionService } from './infrastructure/browser/PermissionService';
 export type { PermissionServiceOptions } from './infrastructure/browser/PermissionService';
+export { detectBrowserInfo, canShareScreenWithAudio } from './infrastructure/browser/BrowserCompatibility';
+export type { BrowserInfo, BrowserCapabilities } from './infrastructure/browser/BrowserCompatibility';

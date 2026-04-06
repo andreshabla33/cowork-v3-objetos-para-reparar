@@ -6,31 +6,35 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
-  LocalTrack, Room, RoomEvent, Track, VideoQuality,
-  RemoteTrackPublication,
+  LocalTrack, LocalVideoTrack, Room, RoomEvent, Track, VideoQuality,
+  RemoteTrackPublication, RemoteParticipant,
 } from 'livekit-client';
-import type { User } from '@/types';
+import type { Session } from '@supabase/supabase-js';
+import type { User, Workspace } from '@/types';
+import { logger } from '@/lib/logger';
 import { crearSalaLivekitPorEspacio, obtenerTokenLivekitEspacio } from '@/lib/livekitService';
+import { supabase } from '@/lib/supabase';
+import { getTurnIceServers } from '@/lib/network/turnCredentialsService';
 import type { DataPacketContract } from '@/modules/realtime-room';
 import type { SpaceMediaCoordinatorState } from '@/modules/realtime-room';
 import type { SpaceRealtimeCoordinatorState } from '@/modules/realtime-room';
 import { RealtimeEventBus, RealtimeSessionTelemetry, RemoteMediaLifecycleDiagnostics, RemoteRenderLifecyclePolicy, RemoteTrackAttachmentPolicy, SpaceRealtimeCoordinator, SubscriptionPolicyService, TrackPublicationCoordinator } from '@/modules/realtime-room';
 import { type UseLiveKitReturn } from './types';
 
+const log = logger.child('use-livekit');
+
 export function useLiveKit(params: {
-  activeWorkspace: any;
-  session: any;
+  activeWorkspace: Workspace | null;
+  session: Session | null;
   currentUser: User;
   empresasAutorizadas: string[];
   onlineUsers: User[];
   activeStreamRef: React.MutableRefObject<MediaStream | null>;
   activeScreenRef: React.MutableRefObject<MediaStream | null>;
-  effectiveStreamRef: React.MutableRefObject<MediaStream | null>;
   desiredMediaState: { isMicrophoneEnabled: boolean; isCameraEnabled: boolean; isScreenShareEnabled: boolean };
   mediaCoordinatorState: SpaceMediaCoordinatorState | null;
   stream: MediaStream | null;
   screenStream: MediaStream | null;
-  processedStream: MediaStream | null;
   cameraSettings: { backgroundEffect: string };
   performanceSettings?: { graphicsQuality?: string; batterySaver?: boolean };
   hasActiveCall: boolean;
@@ -40,10 +44,10 @@ export function useLiveKit(params: {
 }): UseLiveKitReturn {
   const {
     activeWorkspace, session, currentUser, empresasAutorizadas, onlineUsers,
-    activeStreamRef, activeScreenRef, effectiveStreamRef,
+    activeStreamRef, activeScreenRef,
     desiredMediaState,
     mediaCoordinatorState,
-    stream, screenStream, processedStream, cameraSettings,
+    stream, screenStream, cameraSettings,
     performanceSettings,
     hasActiveCall, usersInCall, usersInAudioRange, conversacionesBloqueadasRemoto,
   } = params;
@@ -288,7 +292,7 @@ export function useLiveKit(params: {
     try {
       await coordinator.unpublishTracksBySource(source);
     } catch (e) {
-      console.warn('Error despublicando track LiveKit:', e);
+      log.warn('Error despublicando track', { source, error: e instanceof Error ? e.message : String(e) });
     }
   }, []);
 
@@ -307,7 +311,7 @@ export function useLiveKit(params: {
     if (!replaced) {
       throw new Error(`No se pudo publicar/reemplazar track ${tipo}`);
     }
-    console.log(`[LIVEKIT] Track ${tipo} publicado`);
+    log.info('Track publicado', { tipo, source });
   }, []);
 
   const sincronizarTracksLocales = useCallback(async () => {
@@ -316,10 +320,9 @@ export function useLiveKit(params: {
 
     const streamActual = activeStreamRef.current;
     const audioTrack = streamActual?.getAudioTracks()[0] ?? null;
-    let cameraTrack = effectiveStreamRef.current?.getVideoTracks().find((t) => t.readyState === 'live') ?? null;
-    if (!cameraTrack) {
-      cameraTrack = streamActual?.getVideoTracks().find((t) => t.readyState === 'live') ?? null;
-    }
+    // Siempre publicar el track RAW de cámara — el background effect se aplica
+    // vía setProcessor() en el LocalVideoTrack, no vía stream swap.
+    const cameraTrack = streamActual?.getVideoTracks().find((t) => t.readyState === 'live') ?? null;
     const screenTrack = activeScreenRef.current?.getVideoTracks()[0] ?? null;
 
     const syncPlan = trackPublicationCoordinatorRef.current.buildSyncPlan({
@@ -405,6 +408,7 @@ export function useLiveKit(params: {
       const coordinator = new SpaceRealtimeCoordinator({
         serverUrl: tokenData.url,
         token: tokenData.token,
+        iceServerProvider: () => getTurnIceServers(supabase),
         onConnectionChange: (connected) => {
           setLivekitConnected(connected);
           if (!connected) {
@@ -621,16 +625,17 @@ export function useLiveKit(params: {
 
       livekitRoomRef.current = room;
       livekitRoomNameRef.current = roomName;
-      console.log(`[LIVEKIT] Connected to room ${roomName} (${room.remoteParticipants.size} participants)`);
+      log.info('Connected to room', { roomName, remoteParticipants: room.remoteParticipants.size });
       recordRealtimeTelemetry('livekit_connected', {
         roomName,
         remoteParticipants: room.remoteParticipants.size,
       });
-    } catch (err: any) {
-      console.error('[LIVEKIT] Connection failed:', err.message);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'unknown';
+      log.error('Connection failed', { roomName, error: errorMessage });
       recordRealtimeTelemetry('livekit_connection_failed', {
         roomName,
-        message: err?.message ?? 'unknown',
+        message: errorMessage,
       }, 'error');
       livekitRoomNameRef.current = null; livekitRoomRef.current = null;
       realtimeCoordinatorRef.current = null;
@@ -651,7 +656,7 @@ export function useLiveKit(params: {
     if (!activeWorkspace?.id) return;
     if (hayOtrosUsuariosOnline) {
       const roomName = crearSalaLivekitPorEspacio(activeWorkspace.id);
-      conectarLivekit(roomName).catch(console.error);
+      conectarLivekit(roomName).catch((e: unknown) => log.error('Auto-connect failed', { error: e instanceof Error ? e.message : String(e) }));
     } else {
       const timer = setTimeout(() => {
         if (!hayOtrosUsuariosRef.current && livekitRoomRef.current) {
@@ -670,7 +675,7 @@ export function useLiveKit(params: {
   const hasAnyoneNearbyForSync = hasActiveCall || usersInAudioRange.length > 0;
   useEffect(() => {
     if (!livekitConnected || !hasAnyoneNearbyForSync) return;
-    sincronizarTracksLocales().catch(console.warn);
+    sincronizarTracksLocales().catch((e: unknown) => log.warn('Error sincronizando tracks locales', { error: e instanceof Error ? e.message : String(e) }));
   }, [livekitConnected, hasAnyoneNearbyForSync, hasActiveCall, isMicrophoneEnabled, isCameraEnabled, isScreenShareEnabled, stream, screenStream, sincronizarTracksLocales]);
 
   // ========== Suscripción selectiva (3-tier) ==========
@@ -818,7 +823,7 @@ export function useLiveKit(params: {
     if (!livekitConnected) return;
     const room = livekitRoomRef.current;
     if (!room) return;
-    const handleTrackPublished = (publication: any, participant: any) => {
+    const handleTrackPublished = (publication: RemoteTrackPublication, participant: RemoteParticipant) => {
       if (!participant) return;
       if (!subscriptionPolicyServiceRef.current.shouldSubscribeOnTrackPublished(subscriptionPolicySnapshotRef.current, participant.identity)) {
         recordRealtimeTelemetry('track_published_subscription_skipped', {
@@ -855,7 +860,7 @@ export function useLiveKit(params: {
 
     if (!hasAnyoneNearby && prevHasAnyoneNearby) {
       if (publishDelayTimerRef.current) { clearTimeout(publishDelayTimerRef.current); publishDelayTimerRef.current = null; }
-      ['audio', 'video', 'screen'].forEach(t => despublicarTrackLocal(t as any).catch(() => {}));
+      (['audio', 'video', 'screen'] as const).forEach(t => despublicarTrackLocal(t).catch(() => {}));
     } else if (!hasActiveCall && prevHasActiveCall && usersInAudioRange.length > 0) {
       if (publishDelayTimerRef.current) { clearTimeout(publishDelayTimerRef.current); publishDelayTimerRef.current = null; }
       despublicarTrackLocal('screen').catch(() => {});
@@ -875,32 +880,34 @@ export function useLiveKit(params: {
     return () => { if (publishDelayTimerRef.current) { clearTimeout(publishDelayTimerRef.current); publishDelayTimerRef.current = null; } };
   }, [livekitConnected, hasActiveCall, hasAnyoneNearby, usersInAudioRange.length, despublicarTrackLocal, sincronizarTracksLocales, stream]);
 
-  // ========== Re-publicar video al cambiar effectiveStream ==========
-  const prevEffectiveStreamRef = useRef<MediaStream | null>(null);
-  useEffect(() => {
-    if (!livekitConnected || !hasActiveCall || !isCameraEnabled) return;
-    const room = livekitRoomRef.current;
-    if (!room || room.state !== 'connected') return;
-    const effectiveStream = effectiveStreamRef.current;
-    if (effectiveStream === prevEffectiveStreamRef.current) return;
-    if (cameraSettings.backgroundEffect !== 'none' && !processedStream) return;
-
-    const debounce = setTimeout(async () => {
-      const videoTrack = effectiveStream?.getVideoTracks().find(t => t.readyState === 'live');
-      if (videoTrack) {
-        try { await publicarTrackLocal(videoTrack, 'video'); prevEffectiveStreamRef.current = effectiveStream; }
-        catch (e) { console.error('[LIVEKIT] Error re-publicando video:', e); }
-      }
-    }, 800);
-    return () => clearTimeout(debounce);
-  }, [livekitConnected, processedStream, hasActiveCall, isCameraEnabled, cameraSettings.backgroundEffect, publicarTrackLocal]);
+  // Background effects are now handled via useBackgroundProcessor + track.setProcessor()
+  // No need to re-publish video when effect changes — the processor modifies the track in-place
 
   // ========== DataChannel send ==========
-  const enviarDataLivekit = useCallback((mensaje: DataPacketContract, reliable = true) => {
+  /**
+   * Envía datos por LiveKit. El modo de entrega (lossy/reliable) se resuelve
+   * automáticamente por DataDeliveryPolicy según el tipo de paquete:
+   * - movement/speaker_hint → lossy (UDP, baja latencia)
+   * - chat/invite/recording/etc → reliable (entrega garantizada)
+   */
+  const enviarDataLivekit = useCallback((mensaje: DataPacketContract, reliableOverride?: boolean) => {
     const coordinator = realtimeCoordinatorRef.current;
     if (!coordinator) return false;
-    coordinator.publishData(mensaje, reliable).catch(console.warn);
+    coordinator.publishData(mensaje, reliableOverride).catch((e: unknown) => log.warn('Error enviando data LiveKit', { error: e instanceof Error ? e.message : String(e) }));
     return true;
+  }, []);
+
+  /**
+   * Obtiene el LocalVideoTrack de cámara publicado actualmente en LiveKit.
+   * Usado por useBackgroundProcessor para aplicar setProcessor() nativo.
+   */
+  const getPublishedVideoTrack = useCallback((): LocalVideoTrack | null => {
+    const coordinator = realtimeCoordinatorRef.current;
+    if (!coordinator) return null;
+    const pub = coordinator.getLocalTrackPublicationBySource('camera');
+    if (!pub?.track) return null;
+    if (pub.track instanceof LocalVideoTrack) return pub.track;
+    return null;
   }, []);
 
   return {
@@ -922,5 +929,6 @@ export function useLiveKit(params: {
     limpiarLivekit,
     enviarDataLivekit,
     permitirMediaParticipante,
+    getPublishedVideoTrack,
   };
 }

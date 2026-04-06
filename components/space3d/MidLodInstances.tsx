@@ -71,13 +71,17 @@ export const MidLodInstances: React.FC<{
 
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+
+    // Recompute bounding para frustum culling con InstancedMesh
+    mesh.computeBoundingBox();
+    mesh.computeBoundingSphere();
   }, [entities]);
 
   return (
     <instancedMesh
       ref={meshRef}
       args={[geometry, material, MAX_MID]}
-      frustumCulled={false}
+      frustumCulled={true}
       onClick={(e) => {
         if (!onClick) return;
         e.stopPropagation();

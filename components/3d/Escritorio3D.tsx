@@ -9,10 +9,13 @@ import React, { useRef, useState, useMemo, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
+import { logger } from '@/lib/logger';
 import { useStore } from '@/store/useStore';
 import { hapticFeedback } from '@/lib/mobileDetect';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import { FACTOR_ESCALA_OBJETOS_ESCENA } from '../space3d/shared';
+
+const log = logger.child('Escritorio3D');
 
 interface Escritorio3DProps {
   objeto: EspacioObjeto;
@@ -55,12 +58,15 @@ export const Escritorio3D: React.FC<Escritorio3DProps> = ({
     return '#1e293b'; // Dark — libre
   }, [esPropio, esLibre]);
 
-  // Proximidad check en useFrame — ref para click handler, state para renders
+  // Proximidad check throttled — cada 6 frames (~5Hz a 30fps).
+  // Usa distancia al cuadrado para evitar Math.sqrt por frame.
+  const frameCounterRef = useRef(0);
+  const PROXIMIDAD_SQ = PROXIMIDAD_INTERACCION * PROXIMIDAD_INTERACCION;
   useFrame(() => {
+    if (++frameCounterRef.current % 6 !== 0) return;
     const dx = playerPosition.x - posicion[0];
     const dz = playerPosition.z - posicion[2];
-    const dist = Math.sqrt(dx * dx + dz * dz);
-    const ahora = dist < PROXIMIDAD_INTERACCION;
+    const ahora = (dx * dx + dz * dz) < PROXIMIDAD_SQ;
     cercanoRef.current = ahora;
     if (ahora !== cercano) setCercano(ahora);
   });
@@ -75,7 +81,7 @@ export const Escritorio3D: React.FC<Escritorio3DProps> = ({
   const isSelected = selectedObjectIds.includes(objeto.id);
   const isPrimarySelected = selectedObjectId === objeto.id;
 
-  const handleClick = (e: any) => {
+  const handleClick = (e: { stopPropagation: () => void; shiftKey?: boolean }) => {
     e.stopPropagation();
 
     if (isEditMode) {
@@ -98,7 +104,7 @@ export const Escritorio3D: React.FC<Escritorio3DProps> = ({
     if (onRotar) {
       const success = await onRotar(objeto.id, objeto.rotacion_y || 0);
       if (success) {
-        console.log('[Escritorio3D] Rotated successfully');
+        log.info('Escritorio3D Rotated successfully', { objetoId: objeto.id });
       }
     }
     hapticFeedback('medium');

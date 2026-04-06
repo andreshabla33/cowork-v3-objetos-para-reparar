@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logger';
+
 export type RealtimeTelemetryCategory = 'remote_media' | 'subscription_policy' | 'meeting_access' | 'meeting_realtime' | 'meeting_quality' | 'space_realtime';
 export type RealtimeTelemetrySeverity = 'info' | 'warn' | 'error';
 
@@ -44,6 +46,7 @@ export class RealtimeSessionTelemetry {
   private scope: string;
   private sessionKey: string;
   private maxEvents: number;
+  private log = logger.child('realtime-session-telemetry');
 
   constructor(options: RealtimeSessionTelemetryOptions) {
     this.enabled = options.enabled ?? false;
@@ -88,16 +91,31 @@ export class RealtimeSessionTelemetry {
       return;
     }
 
-    const prefix = `[${this.scope}] ${event.category}:${event.name}`;
+    const eventKey = `${event.category}:${event.name}`;
     if (event.severity === 'error') {
-      console.error(prefix, event.data);
+      this.log.error('Realtime telemetry event recorded', {
+        event: eventKey,
+        scope: this.scope,
+        sessionKey: this.sessionKey,
+        data: event.data,
+      });
       return;
     }
     if (event.severity === 'warn') {
-      console.warn(prefix, event.data);
+      this.log.warn('Realtime telemetry event recorded', {
+        event: eventKey,
+        scope: this.scope,
+        sessionKey: this.sessionKey,
+        data: event.data,
+      });
       return;
     }
-    console.log(prefix, event.data);
+    this.log.debug('Realtime telemetry event recorded', {
+      event: eventKey,
+      scope: this.scope,
+      sessionKey: this.sessionKey,
+      data: event.data,
+    });
   }
 
   getSnapshot(): RealtimeTelemetrySnapshot {

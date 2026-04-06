@@ -6,13 +6,18 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import type { User } from '@/types';
+import type { Session } from '@supabase/supabase-js';
+import type { UserSettings } from '@/lib/userSettings';
 import { AUDIO_SPATIAL_RADIUS_FACTOR, PROXIMITY_ACTIVATION_FACTOR, PROXIMITY_COORD_THRESHOLD, PROXIMITY_EXIT_FACTOR, type UseProximityReturn } from './types';
 import { useStore } from '@/store/useStore';
 import { ActiveSpeakerPolicy, GalleryPolicy } from '@/modules/realtime-room';
 import { normalizarConfiguracionZonaEmpresa } from '@/src/core/domain/entities/cerramientosZona';
+import { logger } from '@/lib/logger';
+
+const log = logger.child('useProximity');
 
 /** Check if a point (px, py) is inside a zone's bounding box */
-const isPointInZone = (px: number, py: number, zona: { posicion_x: any; posicion_y: any; ancho: any; alto: any }): boolean => {
+const isPointInZone = (px: number, py: number, zona: { posicion_x: number | string; posicion_y: number | string; ancho: number | string; alto: number | string }): boolean => {
   const halfW = Number(zona.ancho) / 2;
   const halfH = Number(zona.alto) / 2;
   const cx = Number(zona.posicion_x);
@@ -30,7 +35,7 @@ const getMegaRoomVideoLimit = (peopleCount: number): number => {
 export function useProximity(params: {
   currentUserEcs: User;
   usuariosEnChunks: User[];
-  session: any;
+  session: Session | null;
   currentUser: User;
   isScreenShareEnabled: boolean;
   userProximityRadius: number;
@@ -38,7 +43,7 @@ export function useProximity(params: {
   remoteScreenStreams: Map<string, MediaStream>;
   speakingUsers: Set<string>;
   raisedHandParticipantIds?: Iterable<string>;
-  performanceSettings: any;
+  performanceSettings: UserSettings['performance'];
   selectedRemoteUser: User | null;
   setSelectedRemoteUser: React.Dispatch<React.SetStateAction<User | null>>;
   handleToggleScreenShare: () => Promise<void>;
@@ -152,17 +157,33 @@ export function useProximity(params: {
         nextConnectedUsers.add(u.id);
         if (!wasInCall) {
           if (effectiveZone) {
-            console.log(`[PROXIMITY ENTER] User ${u.name} joined zone ${effectiveZone.nombre_zona || effectiveZone.id}`);
+            log.info('User entered zone', {
+              userName: u.name,
+              zoneName: effectiveZone.nombre_zona || effectiveZone.id,
+              zoneId: effectiveZone.id,
+            });
           } else {
-            console.log(`[PROXIMITY ENTER] User ${u.name} entered. Dist: ${dist.toFixed(1)} < ${userProximityRadius}`);
+            log.info('User entered proximity', {
+              userName: u.name,
+              distance: Number(dist.toFixed(1)),
+              threshold: userProximityRadius,
+            });
           }
           if (selectedRemoteUser?.id === u.id) setSelectedRemoteUser(null);
         }
       } else if (wasInCall) {
         if (effectiveZone) {
-          console.log(`[PROXIMITY EXIT] User ${u.name} left zone ${effectiveZone.nombre_zona || effectiveZone.id}`);
+          log.info('User left zone', {
+            userName: u.name,
+            zoneName: effectiveZone.nombre_zona || effectiveZone.id,
+            zoneId: effectiveZone.id,
+          });
         } else {
-          console.log(`[PROXIMITY EXIT] User ${u.name} exited. Dist: ${dist.toFixed(1)} > ${threshold.toFixed(1)}`);
+          log.info('User left proximity', {
+            userName: u.name,
+            distance: Number(dist.toFixed(1)),
+            threshold: Number(threshold.toFixed(1)),
+          });
         }
       }
 

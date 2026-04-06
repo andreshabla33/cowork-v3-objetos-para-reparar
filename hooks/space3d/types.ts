@@ -4,13 +4,16 @@
  * Centraliza las definiciones para evitar duplicación y circular dependencies.
  */
 
-import type { User, PresenceStatus, AutorizacionEmpresa, ZonaEmpresa } from '@/types';
+import type { User, PresenceStatus, AutorizacionEmpresa, ZonaEmpresa, Workspace } from '@/types';
 import type { CameraSettings, AudioSettings } from '@/modules/realtime-room';
 import type { JoystickInput } from '@/components/3d/MobileJoystick';
 import type { EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
 import type { GpuInfo } from '@/lib/gpuCapabilities';
+import type { UserSettings } from '@/lib/userSettings';
 import type { Room } from 'livekit-client';
+import type { Session } from '@supabase/supabase-js';
 import type { DataPacketContract, RealtimeEventBus, SpaceRealtimeCoordinator, SpaceRealtimeCoordinatorState } from '@/modules/realtime-room';
+import type { AccionXP } from '@/lib/gamificacion';
 import type { SpaceMediaCoordinatorState } from '@/modules/realtime-room';
 
 // ========== Constantes globales ==========
@@ -34,6 +37,15 @@ export const PROXIMITY_COORD_THRESHOLD = 8;
 export type RealtimeTransportMode = 'livekit';
 
 // ========== Tipos auxiliares ==========
+
+export interface RealtimePositionEntry {
+  x: number;
+  y: number;
+  direction?: string;
+  isMoving?: boolean;
+  animState?: string;
+  timestamp: number;
+}
 
 export type AvatarLodLevel = 'high' | 'mid' | 'low';
 export type DireccionAvatar = User['direction'] | 'up' | 'down' | 'front-left' | 'front-right' | 'up-left' | 'up-right';
@@ -95,7 +107,7 @@ export interface UseNotificationsReturn {
     titulo: string;
     mensaje?: string | null;
     tipo: string;
-    datos_extra?: Record<string, any> | null;
+    datos_extra?: Record<string, unknown> | null;
   } | null;
   setNotificacionAutorizacion: React.Dispatch<React.SetStateAction<UseNotificationsReturn['notificacionAutorizacion']>>;
   solicitudesEnviadas: AutorizacionEmpresa[];
@@ -128,14 +140,10 @@ export interface UseChunkSystemReturn {
 export interface UseMediaStreamReturn {
   stream: MediaStream | null;
   setStream: React.Dispatch<React.SetStateAction<MediaStream | null>>;
-  processedStream: MediaStream | null;
-  setProcessedStream: React.Dispatch<React.SetStateAction<MediaStream | null>>;
   screenStream: MediaStream | null;
   setScreenStream: React.Dispatch<React.SetStateAction<MediaStream | null>>;
   activeStreamRef: React.MutableRefObject<MediaStream | null>;
   activeScreenRef: React.MutableRefObject<MediaStream | null>;
-  effectiveStream: MediaStream | null;
-  effectiveStreamRef: React.MutableRefObject<MediaStream | null>;
   handleToggleScreenShare: () => Promise<void>;
   crearAudioProcesado: (track: MediaStreamTrack, nivel: 'standard' | 'enhanced') => Promise<MediaStreamTrack | null>;
   limpiarAudioProcesado: () => void;
@@ -160,6 +168,7 @@ export interface UseLiveKitReturn {
   limpiarLivekit: () => Promise<void>;
   enviarDataLivekit: (mensaje: DataPacketContract, reliable?: boolean) => boolean;
   permitirMediaParticipante: (metadata?: string | null) => boolean;
+  getPublishedVideoTrack: () => import('livekit-client').LocalVideoTrack | null;
 }
 
 export interface UseProximityReturn {
@@ -254,14 +263,14 @@ export interface UseChunkSystemParams {
 export interface UseProximityParams {
   currentUserEcs: User;
   usuariosEnChunks: User[];
-  session: any;
+  session: Session | null;
   currentUser: User;
   userProximityRadius: number;
   conversacionesBloqueadasRemoto: Map<string, string[]>;
   remoteStreams: Map<string, MediaStream>;
   remoteScreenStreams: Map<string, MediaStream>;
   speakingUsers: Set<string>;
-  performanceSettings: any;
+  performanceSettings: UserSettings['performance'];
   usersInAudioRange: User[];
   selectedRemoteUser: User | null;
   setSelectedRemoteUser: React.Dispatch<React.SetStateAction<User | null>>;
@@ -269,34 +278,34 @@ export interface UseProximityParams {
 }
 
 export interface UseBroadcastParams {
-  session: any;
+  session: Session | null;
   currentUser: User;
   currentUserEcs: User;
-  activeWorkspace: any;
+  activeWorkspace: Workspace | null;
   usersInCall: User[];
   enviarDataLivekit: (mensaje: DataPacketContract, reliable?: boolean) => boolean;
   ecsStateRef: React.MutableRefObject<EstadoEcsEspacio>;
   usuariosVisiblesRef: React.MutableRefObject<Set<string>>;
-  realtimePositionsRef: React.MutableRefObject<Map<string, any>>;
+  realtimePositionsRef: React.MutableRefObject<Map<string, RealtimePositionEntry>>;
   realtimeEventBusRef: React.MutableRefObject<RealtimeEventBus | null>;
   conversacionBloqueada: boolean;
   setConversacionBloqueada: React.Dispatch<React.SetStateAction<boolean>>;
   setConversacionesBloqueadasRemoto: React.Dispatch<React.SetStateAction<Map<string, string[]>>>;
-  grantXP: (accion: string, cooldownMs?: number) => void;
-  notifSettings: any;
+  grantXP: (accion: AccionXP, cooldownMs?: number) => void;
+  notifSettings: UserSettings['notifications'];
   setPrivacy: (value: boolean) => void;
   hasActiveCall: boolean;
   proximidadNotificadaRef: React.MutableRefObject<boolean>;
 }
 
 export interface UseGatherInteractionsParams {
-  session: any;
+  session: Session | null;
   currentUser: User;
   currentUserEcs: User;
   usuariosEnChunks: User[];
   ecsStateRef: React.MutableRefObject<EstadoEcsEspacio>;
   enviarDataLivekit: (mensaje: DataPacketContract, reliable?: boolean) => boolean;
-  grantXP: (accion: string, cooldownMs?: number) => void;
+  grantXP: (accion: AccionXP, cooldownMs?: number) => void;
   setTeleportTarget: React.Dispatch<React.SetStateAction<{ x: number; z: number } | null>>;
   setMoveTarget: React.Dispatch<React.SetStateAction<{ x: number; z: number } | null>>;
   setIncomingNudge: React.Dispatch<React.SetStateAction<{ from: string; fromName: string } | null>>;
@@ -304,29 +313,27 @@ export interface UseGatherInteractionsParams {
 }
 
 export interface UseNotificationsParams {
-  session: any;
-  activeWorkspace: any;
+  session: Session | null;
+  activeWorkspace: Workspace | null;
   currentUser: User;
   empresasAutorizadas: string[];
   setEmpresasAutorizadas: (empresas: string[]) => void;
   currentUserEcs: User;
-  notifSettings: any;
+  notifSettings: UserSettings['notifications'];
 }
 
 export interface UseLiveKitParams {
-  activeWorkspace: any;
-  session: any;
+  activeWorkspace: Workspace | null;
+  session: Session | null;
   currentUser: User;
   empresasAutorizadas: string[];
   onlineUsers: User[];
   activeStreamRef: React.MutableRefObject<MediaStream | null>;
   activeScreenRef: React.MutableRefObject<MediaStream | null>;
-  effectiveStreamRef: React.MutableRefObject<MediaStream | null>;
   desiredMediaState: { isMicrophoneEnabled: boolean; isCameraEnabled: boolean; isScreenShareEnabled: boolean };
   mediaCoordinatorState: SpaceMediaCoordinatorState | null;
   stream: MediaStream | null;
   screenStream: MediaStream | null;
-  processedStream: MediaStream | null;
   cameraSettings: { backgroundEffect: string };
   performanceSettings?: { graphicsQuality?: string; batterySaver?: boolean };
   hasActiveCall: boolean;

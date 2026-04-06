@@ -6,7 +6,22 @@
  * - Log levels: debug, info, warn, error
  * - Contextual fields (userId, module, traceId)
  * - Ring-buffer for recent logs (exportable for error reports)
+ * - Forward de errores a Sentry (Roadmap REMEDIATION-008)
  */
+
+// Lazy import de Sentry para no bloquear el bundle principal.
+// captureError es no-op si Sentry no está inicializado.
+let _sentryCapture: ((err: unknown, ctx?: Record<string, unknown>) => void) | null = null;
+
+/**
+ * Registra el handler de Sentry en el logger global.
+ * Llamar desde sentryInit.ts después de Sentry.init().
+ */
+export function registerSentryForwarder(
+  handler: (err: unknown, ctx?: Record<string, unknown>) => void,
+): void {
+  _sentryCapture = handler;
+}
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -90,6 +105,14 @@ class StructuredLogger {
 
   error(msg: string, fields?: Record<string, unknown>): void {
     this.log('error', msg, fields);
+
+    // Forward a Sentry si está disponible (Roadmap REMEDIATION-008)
+    if (_sentryCapture) {
+      const errorObj = fields?.error instanceof Error
+        ? fields.error
+        : new Error(msg);
+      _sentryCapture(errorObj, fields);
+    }
   }
 
   /** Export the ring buffer for error reports / diagnostics */

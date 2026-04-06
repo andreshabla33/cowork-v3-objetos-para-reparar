@@ -7,6 +7,7 @@
 import type { StateCreator } from 'zustand';
 import { FloorType } from '../../src/core/domain/entities';
 import type { PlantillaZonaId } from '../../src/core/domain/entities/plantillasEspacio';
+import type { EspacioObjeto } from '../../hooks/space3d/useEspacioObjetos';
 
 export type ModoEdicionObjeto = 'mover' | 'rotar' | 'escalar' | 'add';
 
@@ -27,7 +28,7 @@ export interface EditorSlice {
   modoEdicionObjeto: ModoEdicionObjeto;
   selectedObjectId: string | null;
   selectedObjectIds: string[];
-  copiedObjects: any[];
+  copiedObjects: EspacioObjeto[];
   isDragging: boolean;
   isDrawingZone: boolean;
   paintFloorType: FloorType;
@@ -39,7 +40,7 @@ export interface EditorSlice {
   setSelectedObjectIds: (ids: string[]) => void;
   toggleObjectSelection: (id: string, multi: boolean) => void;
   clearObjectSelection: () => void;
-  setCopiedObjects: (objs: any[]) => void;
+  setCopiedObjects: (objs: EspacioObjeto[]) => void;
   setIsDragging: (val: boolean) => void;
   setIsDrawingZone: (val: boolean) => void;
   setPaintFloorType: (tipo: FloorType) => void;

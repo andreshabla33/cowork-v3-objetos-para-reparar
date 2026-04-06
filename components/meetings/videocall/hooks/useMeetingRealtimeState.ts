@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useChat, useLocalParticipant, useRoomContext, useTracks } from '@livekit/components-react';
-import { type Participant, RoomEvent, Track } from 'livekit-client';
-import { supabase } from '@/lib/supabase';
+import { type Participant, RemoteTrackPublication, RoomEvent, Track } from 'livekit-client';
+import { logger } from '@/lib/logger';
 import { sendDesktopNotification } from '@/lib/userSettings';
 import { LiveKitRoomGateway, RaiseHandUseCase, RealtimeSessionTelemetry } from '@/modules/realtime-room';
+import { GestionarChatReunionUseCase } from '@/src/core/application/usecases/GestionarChatReunionUseCase';
+import { ObtenerAccesoReunionUseCase } from '@/src/core/application/usecases/ObtenerAccesoReunionUseCase';
+import { GestionarGrabacionUseCase } from '@/src/core/application/usecases/GestionarGrabacionUseCase';
+import { chatRepository } from '@/src/core/infrastructure/adapters/ChatSupabaseRepository';
+import { meetingAccessRepository } from '@/src/core/infrastructure/adapters/MeetingAccessSupabaseRepository';
+import { recordingRepository } from '@/src/core/infrastructure/adapters/RecordingSupabaseRepository';
+import type { MensajeChatRecord } from '@/src/core/domain/ports/IChatRepository';
 import type { InvitadoExterno } from '@/types/meeting-types';
 import type { TipoGrabacionDetallado } from '../../recording/types/analysis';
 import type { ToastNotification } from '@/components/ChatToast';
@@ -11,6 +18,11 @@ import type { GuestPermissions, MeetingConsentRequest, MeetingQualityState } fro
 import type { ViewMode } from '../ViewModeSelector';
 import type { TipoReunion } from '../MeetingControlBar';
 import { useOptimizacionSalaGrande } from './useOptimizacionSalaGrande';
+
+const log = logger.child('use-meeting-realtime-state');
+const gestionarChat = new GestionarChatReunionUseCase(chatRepository);
+const obtenerAcceso = new ObtenerAccesoReunionUseCase(meetingAccessRepository);
+const gestionarGrabacion = new GestionarGrabacionUseCase(recordingRepository);
 
 const SPEAKER_HOLD_MS = 5000;
 const SHORT_SPEAKER_BUBBLE_MS = 5000;
@@ -80,7 +92,7 @@ const playRaiseHandSound = () => {
       type: 'sine',
     });
   } catch (error) {
-    console.warn('No se pudo reproducir el sonido de mano levantada:', error);
+    log.warn('Failed to play raise hand sound', { error });
   }
 };
 
@@ -94,7 +106,7 @@ const playParticipantJoinSound = () => {
       type: 'triangle',
     });
   } catch (error) {
-    console.warn('No se pudo reproducir el sonido de entrada a la sala:', error);
+    log.warn('Failed to play participant join sound', { error });
   }
 };
 
@@ -240,72 +252,46 @@ export const useMeetingRealtimeState = ({
   useEffect(() => {
     if (!salaId || !espacioId || isExternalGuest) return;
 
+    // React best practice for async effects: cancelled flag prevents state
+    // updates from stale invocations (e.g. StrictMode double-mount in dev,
+    // or rapid re-renders). The cleanup function sets cancelled=true so any
+    // in-flight async call bails out before calling setState.
+    // Ref: https://react.dev/reference/react/useEffect#fetching-data-with-effects
+    let cancelled = false;
+
     const initMeetingChatGroup = async () => {
       try {
         const groupName = `reunion:${salaId}`;
-        let resolvedGroupId: string | null = null;
 
-        // Try to find existing meeting chat group (search by name + espacio)
-        const { data: existing, error: findErr } = await supabase
-          .from('grupos_chat')
-          .select('id')
-          .eq('espacio_id', espacioId)
-          .eq('nombre', groupName)
-          .limit(1)
-          .maybeSingle();
+        // Initialize or retrieve chat group for this meeting.
+        // The upsert in ChatSupabaseRepository guarantees idempotency
+        // at the DB level even if this runs twice concurrently.
+        const groupId = await gestionarChat.inicializarGrupo(
+          salaId,
+          espacioId,
+          groupName
+        );
 
-        if (findErr) {
-          console.warn('⚠️ Error buscando grupo chat reunión:', findErr.message);
-        }
+        // Bail out if the component unmounted or deps changed while awaiting
+        if (cancelled) return;
 
-        if (existing) {
-          resolvedGroupId = existing.id;
-        } else {
-          // Create a new chat group for this meeting (use tipo 'publico' for RLS compatibility)
-          const { data: newGroup, error: createErr } = await supabase
-            .from('grupos_chat')
-            .insert({
-              espacio_id: espacioId,
-              nombre: groupName,
-              tipo: 'publico',
-              icono: '📹',
-              creado_por: userId || null,
-            })
-            .select('id')
-            .single();
-
-          if (createErr) {
-            console.warn('⚠️ Error creando grupo chat reunión:', createErr.message);
-            return;
-          }
-          resolvedGroupId = newGroup.id;
-        }
-
-        if (!resolvedGroupId) return;
-        setMeetingGroupId(resolvedGroupId);
+        setMeetingGroupId(groupId);
         telemetryRef.current.record({
           category: 'meeting_realtime',
           name: 'meeting_chat_group_ready',
           data: {
             salaId,
-            groupId: resolvedGroupId,
+            groupId,
           },
         });
 
         // Load historical messages from this meeting group
-        const { data: history, error: histErr } = await supabase
-          .from('mensajes_chat')
-          .select('id, contenido, creado_en, usuario_id, usuario:usuarios!mensajes_chat_usuario_id_fkey(nombre, apellido)')
-          .eq('grupo_id', resolvedGroupId)
-          .order('creado_en', { ascending: true })
-          .limit(200);
+        const history = await gestionarChat.cargarHistorial(groupId);
 
-        if (histErr) {
-          console.warn('⚠️ Error cargando historial chat reunión:', histErr.message);
-        }
+        if (cancelled) return;
 
         if (history && history.length > 0) {
-          const mapped: MeetingChatMessage[] = history.map((msg: any) => {
+          const mapped: MeetingChatMessage[] = history.map((msg: MensajeChatRecord) => {
             persistedMessageIdsRef.current.add(msg.id);
             return {
               id: `db-${msg.id}`,
@@ -320,13 +306,20 @@ export const useMeetingRealtimeState = ({
           setPersistedMessages(mapped);
         }
 
-        console.log('💬 Meeting chat group ready:', resolvedGroupId, '| historial:', history?.length ?? 0);
+        log.info('Meeting chat group ready', { groupId, historyCount: history?.length ?? 0 });
       } catch (err) {
-        console.warn('⚠️ Error inicializando chat de reunión:', err);
+        if (!cancelled) {
+          log.error('Failed to initialize meeting chat', { error: err });
+        }
       }
     };
 
     void initMeetingChatGroup();
+
+    // Cleanup: mark this effect invocation as stale
+    return () => {
+      cancelled = true;
+    };
   }, [salaId, espacioId, userId, isExternalGuest]);
 
   // --- Realtime subscription: listen for new messages inserted by other participants ---
@@ -334,70 +327,74 @@ export const useMeetingRealtimeState = ({
     if (!meetingGroupId || isExternalGuest) return;
     const groupId = meetingGroupId;
 
-    const channel = supabase
-      .channel(`meeting-chat-${groupId}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'mensajes_chat', filter: `grupo_id=eq.${groupId}` },
-        async (payload) => {
-          const msg = payload.new as any;
-          if (!msg?.id || persistedMessageIdsRef.current.has(msg.id)) return;
-          persistedMessageIdsRef.current.add(msg.id);
+    const setupSubscription = async () => {
+      try {
+        const unsubscribe = await gestionarChat.suscribir(
+          groupId,
+          async (msg: MensajeChatRecord) => {
+            if (!msg?.id || persistedMessageIdsRef.current.has(msg.id)) return;
+            persistedMessageIdsRef.current.add(msg.id);
 
-          // Skip messages sent by current user (already shown via LiveKit)
-          if (msg.usuario_id === userId) return;
+            // Skip messages sent by current user (already shown via LiveKit)
+            if (msg.usuario_id === userId) return;
 
-          // Resolve sender name
-          let senderName = 'Participante';
-          if (msg.usuario_id) {
-            const { data: u } = await supabase
-              .from('usuarios')
-              .select('nombre, apellido')
-              .eq('id', msg.usuario_id)
-              .maybeSingle();
-            if (u) senderName = [u.nombre, u.apellido].filter(Boolean).join(' ') || 'Participante';
+            // Resolve sender name
+            let senderName = 'Participante';
+            if (msg.usuario_id) {
+              const nombreData = await gestionarChat.resolverNombreUsuario(msg.usuario_id);
+              if (nombreData) {
+                senderName = [nombreData.nombre, nombreData.apellido].filter(Boolean).join(' ') || 'Participante';
+              }
+            }
+
+            setPersistedMessages((prev) => [
+              ...prev,
+              {
+                id: `db-${msg.id}`,
+                message: msg.contenido,
+                timestamp: new Date(msg.creado_en).getTime(),
+                from: { identity: msg.usuario_id || 'unknown', name: senderName },
+              },
+            ]);
+            telemetryRef.current.record({
+              category: 'meeting_realtime',
+              name: 'meeting_chat_message_persisted_remote',
+              data: {
+                salaId,
+                groupId,
+                senderId: msg.usuario_id || 'unknown',
+              },
+            });
           }
+        );
 
-          setPersistedMessages((prev) => [
-            ...prev,
-            {
-              id: `db-${msg.id}`,
-              message: msg.contenido,
-              timestamp: new Date(msg.creado_en).getTime(),
-              from: { identity: msg.usuario_id || 'unknown', name: senderName },
-            },
-          ]);
-          telemetryRef.current.record({
-            category: 'meeting_realtime',
-            name: 'meeting_chat_message_persisted_remote',
-            data: {
-              salaId,
-              groupId,
-              senderId: msg.usuario_id || 'unknown',
-            },
-          });
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
+        return () => {
+          unsubscribe();
+        };
+      } catch (err) {
+        log.error('Failed to setup chat subscription', { error: err });
+      }
     };
-  }, [meetingGroupId, userId, isExternalGuest]);
+
+    const subscription = setupSubscription();
+    return () => {
+      subscription.then((unsub) => unsub?.());
+    };
+  }, [meetingGroupId, userId, isExternalGuest, salaId]);
 
   // Persist a single message to the database
   const persistMessageToDB = useCallback(async (content: string) => {
     if (!meetingGroupId || !userId || isExternalGuest) return;
 
     try {
-      await supabase.from('mensajes_chat').insert({
+      await gestionarChat.enviarMensaje({
         grupo_id: meetingGroupId,
         usuario_id: userId,
         contenido: content,
         tipo: 'texto',
       });
     } catch (err) {
-      console.warn('⚠️ Error persistiendo mensaje de reunión:', err);
+      log.warn('Failed to persist message to database', { error: err });
     }
   }, [meetingGroupId, userId, isExternalGuest]);
 
@@ -413,7 +410,7 @@ export const useMeetingRealtimeState = ({
         length: message.trim().length,
       },
     });
-  }, [send, persistMessageToDB]);
+  }, [send, persistMessageToDB, salaId]);
 
   // Merge persisted (historical) messages with live LiveKit messages, sorted by timestamp
   const allChatMessages = useMemo(() => {
@@ -438,7 +435,7 @@ export const useMeetingRealtimeState = ({
 
     const localIdentity = room?.localParticipant?.identity;
 
-    chatMessages.forEach((msg: any) => {
+    chatMessages.forEach((msg: MeetingChatMessage) => {
       if (!msg.id || persistedMessageIdsRef.current.has(msg.id)) return;
       persistedMessageIdsRef.current.add(msg.id);
 
@@ -448,32 +445,28 @@ export const useMeetingRealtimeState = ({
         if (content) {
           void (async () => {
             try {
-              const senderIdentity = msg.from.identity;
+              const senderIdentity = msg.from?.identity;
+              if (!senderIdentity) return;
+
               // Guard: only query participantes_sala with valid UUIDs (guests use non-UUID IDs like "guest_xxx")
               const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(senderIdentity);
-              
+
               let resolvedUserId: string | null = null;
               if (isValidUUID) {
-                const { data: remoteUser } = await supabase
-                  .from('participantes_sala')
-                  .select('usuario_id')
-                  .eq('sala_id', salaId)
-                  .eq('usuario_id', senderIdentity)
-                  .maybeSingle();
-                resolvedUserId = remoteUser?.usuario_id || null;
+                resolvedUserId = await gestionarChat.resolverParticipante(salaId, senderIdentity);
               }
 
               // Only insert if we have a valid user ID (guests can't write to mensajes_chat)
               if (resolvedUserId) {
-                await supabase.from('mensajes_chat').insert({
+                await gestionarChat.enviarMensaje({
                   grupo_id: meetingGroupId,
                   usuario_id: resolvedUserId,
                   contenido: content,
                   tipo: 'texto',
                 });
               }
-            } catch {
-              // Silently ignore persistence errors for remote messages
+            } catch (err) {
+              log.debug('Failed to persist remote participant message', { error: err });
             }
           })();
         }
@@ -501,7 +494,7 @@ export const useMeetingRealtimeState = ({
     }) ?? false;
 
     if (!sent) {
-      console.warn('⚠️ No se pudo publicar la reacción porque la sala aún no está conectada');
+      log.warn('Failed to publish reaction - room not connected');
       return;
     }
 
@@ -572,10 +565,10 @@ export const useMeetingRealtimeState = ({
           if (currentMeta.avatarUrl !== userAvatar) {
             const newMeta = { ...currentMeta, avatarUrl: userAvatar };
             await localParticipant.setMetadata(JSON.stringify(newMeta));
-            console.log('📸 Avatar publicado en metadata:', userAvatar);
+            log.debug('Avatar published in metadata', { avatarUrl: userAvatar });
           }
         } catch (e) {
-          console.error('Error actualizando metadata:', e);
+          log.error('Failed to update metadata', { error: e });
         }
       };
 
@@ -665,7 +658,7 @@ export const useMeetingRealtimeState = ({
 
     const localIdentity = room?.localParticipant?.identity;
 
-    chatMessages.forEach((message) => {
+    chatMessages.forEach((message: MeetingChatMessage) => {
       if (!message.id || processedChatMessageIdsRef.current.has(message.id)) {
         return;
       }
@@ -730,6 +723,7 @@ export const useMeetingRealtimeState = ({
     [
       { source: Track.Source.Camera, withPlaceholder: true },
       { source: Track.Source.ScreenShare, withPlaceholder: false },
+      { source: Track.Source.ScreenShareAudio, withPlaceholder: false },
     ],
     { onlySubscribed: false },
   );
@@ -741,19 +735,26 @@ export const useMeetingRealtimeState = ({
 
   const screenShareTrack = useMemo(() => {
     const found = tracks.find((track) => track.source === Track.Source.ScreenShare && track.publication?.track);
-    // Fallback: also detect screen share tracks that haven't been subscribed yet but exist
     if (found) return found;
     return tracks.find((track) => track.source === Track.Source.ScreenShare && track.publication) ?? undefined;
   }, [tracks]);
 
-  // Auto-subscribe to screen share track when detected (ensures all participants see it)
+  const screenShareAudioTrack = useMemo(
+    () => tracks.find((track) => track.source === Track.Source.ScreenShareAudio && track.publication?.track) ?? undefined,
+    [tracks],
+  );
+
+  // Auto-subscribe to screen share video and audio tracks when detected
   useEffect(() => {
-    if (!screenShareTrack?.publication) return;
-    const pub = screenShareTrack.publication;
-    if ('isSubscribed' in pub && !pub.isSubscribed && 'setSubscribed' in pub) {
-      (pub as any).setSubscribed(true);
+    const tracksToSubscribe = [screenShareTrack, screenShareAudioTrack];
+    for (const trackRef of tracksToSubscribe) {
+      if (!trackRef?.publication) continue;
+      const pub = trackRef.publication;
+      if (pub instanceof RemoteTrackPublication && !pub.isSubscribed) {
+        pub.setSubscribed(true);
+      }
     }
-  }, [screenShareTrack]);
+  }, [screenShareTrack, screenShareAudioTrack]);
 
   const validTracks = useMemo(
     () => tracks.filter((track) => track.participant && (track.publication?.track || track.source === Track.Source.Camera)),
@@ -900,18 +901,16 @@ export const useMeetingRealtimeState = ({
       return;
     }
 
-    const { error } = await supabase.functions.invoke('livekit-moderate-participant', {
-      body: {
+    try {
+      await obtenerAcceso.moderar({
         action: 'mute_microphone',
         room_name: room.name,
         participant_identity: participant.identity,
         track_sid: trackSid,
         token_invitacion: tokenInvitacion,
-      },
-    });
-
-    if (error) {
-      console.error('No se pudo silenciar el micrófono remoto:', error);
+      });
+    } catch (err) {
+      log.error('Failed to mute remote participant', { error: err });
       return;
     }
 
@@ -975,10 +974,10 @@ export const useMeetingRealtimeState = ({
       by: room.localParticipant?.name || 'Anfitrión',
     }).then((sent) => {
       if (!sent) {
-        console.warn('⚠️ No se pudo enviar estado de grabación (room no lista)');
+        log.warn('Failed to send recording status - room not ready');
       }
-    }).catch(() => {
-      console.warn('⚠️ No se pudo enviar estado de grabación (room no lista)');
+    }).catch((err) => {
+      log.warn('Failed to send recording status', { error: err });
     });
   }, [isRecording, room]);
 
@@ -995,13 +994,13 @@ export const useMeetingRealtimeState = ({
       guestEmail,
     }).then((sent) => {
       if (!sent) {
-        console.warn('⚠️ No se pudo enviar solicitud de consentimiento');
+        log.warn('Failed to send consent request');
       }
-    }).catch(() => {
-      console.warn('⚠️ No se pudo enviar solicitud de consentimiento');
+    }).catch((err) => {
+      log.warn('Failed to send consent request', { error: err });
     });
 
-    console.log('📨 Solicitud de consentimiento enviada via DataChannel a:', guestName);
+    log.debug('Consent request sent via DataChannel', { guestName });
   }, [room]);
 
   const handleGuestConsentResponse = useCallback((accepted: boolean) => {
@@ -1016,13 +1015,13 @@ export const useMeetingRealtimeState = ({
       by: room.localParticipant?.name || 'Invitado',
     }).then((sent) => {
       if (!sent) {
-        console.warn('⚠️ No se pudo enviar respuesta de consentimiento');
+        log.warn('Failed to send consent response');
       }
-    }).catch(() => {
-      console.warn('⚠️ No se pudo enviar respuesta de consentimiento');
+    }).catch((err) => {
+      log.warn('Failed to send consent response', { error: err });
     });
 
-    console.log(accepted ? '✅ Consentimiento aceptado' : '❌ Consentimiento rechazado');
+    log.info('Consent response sent', { accepted });
     setGuestConsentRequest(null);
   }, [room, guestConsentRequest]);
 
@@ -1059,7 +1058,7 @@ export const useMeetingRealtimeState = ({
 
     const offConsentRequest = eventBus.on('consent_request', ({ packet }) => {
       if (!isExternalGuest) return;
-      console.log('📋 Solicitud de consentimiento recibida de:', packet.payload.by);
+      log.info('Consent request received', { from: packet.payload.by });
       setGuestConsentRequest({
         by: packet.payload.by,
         grabacionId: packet.payload.grabacionId,
@@ -1079,20 +1078,25 @@ export const useMeetingRealtimeState = ({
       const participantName = (participantIdentity && room?.getParticipantByIdentity(participantIdentity)?.name)
         || participantIdentity
         || 'Invitado';
-      console.log(`📋 Respuesta consentimiento de ${participantName}: ${packet.payload.accepted ? 'ACEPTADO' : 'RECHAZADO'}`);
+      log.info('Consent response received', { from: participantName, accepted: packet.payload.accepted });
+
       if (packet.payload.grabacionId) {
-        void supabase
-          .from('grabaciones')
-          .update({
-            consentimiento_evaluado: packet.payload.accepted,
-            consentimiento_evaluado_fecha: new Date().toISOString(),
-          })
-          .eq('id', packet.payload.grabacionId)
-          .then(({ error }) => {
-            if (error) console.warn('⚠️ Error actualizando consentimiento:', error);
-            else console.log('✅ Consentimiento actualizado en BD');
-          });
+        void (async () => {
+          try {
+            await gestionarGrabacion.actualizarConsentimiento(
+              packet.payload.grabacionId,
+              {
+                consentimiento_evaluado: packet.payload.accepted,
+                consentimiento_evaluado_fecha: new Date().toISOString(),
+              }
+            );
+            log.info('Consent updated in database', { grabacionId: packet.payload.grabacionId });
+          } catch (err) {
+            log.warn('Failed to update consent in database', { error: err });
+          }
+        })();
       }
+
       telemetryRef.current.record({
         category: 'meeting_realtime',
         name: 'meeting_consent_response_received',
@@ -1197,6 +1201,7 @@ export const useMeetingRealtimeState = ({
     validTracks: optimizacion.pistasVisibles,
     videoTracks,
     screenShareTrack,
+    screenShareAudioTrack,
     speakerIdentity: optimizacion.featuredParticipantId ?? speakerIdentity,
     speakerBubbleParticipant,
     optimizacion,

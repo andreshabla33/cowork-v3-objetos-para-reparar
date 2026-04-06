@@ -1,9 +1,27 @@
+/**
+ * @module components/invitaciones/ModalInvitarUsuario
+ * UI para crear y enviar invitaciones a un espacio de trabajo.
+ *
+ * Clean Architecture (REMEDIATION-007b — 2026-03-30):
+ *  - Eliminado import directo de `supabase`, `SUPABASE_URL` y `SUPABASE_ANON_KEY`.
+ *  - Toda la lógica de negocio delegada a EnviarInvitacionUseCase.
+ *  - El componente solo gestiona estado UI (email, nombre, rol, errores visuales).
+ *  - Singleton de Use Case instanciado a nivel módulo para evitar re-creación por render.
+ */
 import React, { useState } from 'react';
 import { Mail, User, Shield, Users, Crown, X, Send, CheckCircle, AlertTriangle } from 'lucide-react';
-import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../lib/supabase';
 import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
+import { EnviarInvitacionUseCase } from '../../src/core/application/usecases/EnviarInvitacionUseCase';
+import { EnviarInvitacionSupabaseRepository } from '../../src/core/infrastructure/adapters/EnviarInvitacionSupabaseRepository';
+import type { RolInvitacion } from '../../src/core/domain/ports/IEnviarInvitacionRepository';
+
+// Singleton: mismo ciclo de vida que el módulo, no por render
+const _repo = new EnviarInvitacionSupabaseRepository();
+const _useCase = new EnviarInvitacionUseCase(_repo);
+
+// ─── Tipos ───────────────────────────────────────────────────────────────────
 
 interface Props {
   espacioId: string;
@@ -13,95 +31,77 @@ interface Props {
   onExito?: () => void;
 }
 
-const ROLES = [
-  { id: 'miembro', label: 'Miembro', desc: 'Acceso estándar al espacio', icon: Users, color: 'violet' },
-  { id: 'moderador', label: 'Moderador', desc: 'Puede moderar chats y usuarios', icon: Shield, color: 'cyan' },
-  { id: 'admin', label: 'Administrador', desc: 'Control total del espacio', icon: Crown, color: 'amber' },
+interface RolConfig {
+  id: RolInvitacion;
+  label: string;
+  desc: string;
+  icon: React.ElementType;
+  color: 'violet' | 'cyan' | 'amber';
+}
+
+// ─── Configuración de roles ───────────────────────────────────────────────────
+
+const ROLES: RolConfig[] = [
+  { id: 'miembro',    label: 'Miembro',         desc: 'Acceso estándar al espacio',    icon: Users, color: 'violet' },
+  { id: 'moderador',  label: 'Moderador',        desc: 'Puede moderar chats y usuarios', icon: Shield, color: 'cyan'   },
+  { id: 'admin',      label: 'Administrador',    desc: 'Control total del espacio',      icon: Crown, color: 'amber'  },
 ];
 
-export const ModalInvitarUsuario: React.FC<Props> = ({ 
-  espacioId, 
-  espacioNombre, 
-  abierto, 
+const COLOR_MAP: Record<'violet' | 'cyan' | 'amber', { bg: string; border: string; text: string; glow: string; dot: string }> = {
+  violet: { bg: 'bg-violet-500/10', border: 'border-violet-500/50', text: 'text-violet-400', glow: 'shadow-violet-500/20', dot: 'bg-violet-400' },
+  cyan:   { bg: 'bg-cyan-500/10',   border: 'border-cyan-500/50',   text: 'text-cyan-400',   glow: 'shadow-cyan-500/20',   dot: 'bg-cyan-400'   },
+  amber:  { bg: 'bg-amber-500/10',  border: 'border-amber-500/50',  text: 'text-amber-400',  glow: 'shadow-amber-500/20',  dot: 'bg-amber-400'  },
+};
+
+// ─── Componente ───────────────────────────────────────────────────────────────
+
+export const ModalInvitarUsuario: React.FC<Props> = ({
+  espacioId,
+  espacioNombre,
+  abierto,
   onCerrar,
-  onExito 
+  onExito,
 }) => {
-  const [email, setEmail] = useState('');
-  const [nombre, setNombre] = useState('');
-  const [rol, setRol] = useState('miembro');
+  const [email, setEmail]     = useState('');
+  const [nombre, setNombre]   = useState('');
+  const [rol, setRol]         = useState<RolInvitacion>('miembro');
   const [enviando, setEnviando] = useState(false);
-  const [error, setError] = useState('');
-  const [exito, setExito] = useState(false);
+  const [error, setError]     = useState('');
+  const [exito, setExito]     = useState(false);
 
   const handleEnviar = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setError('');
     setExito(false);
-
-    if (!email || !email.includes('@')) {
-      setError('Ingresa un correo válido');
-      return;
-    }
-
     setEnviando(true);
 
     try {
-      // Obtener token fresco directamente del cliente Supabase
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
-      if (sessionError || !accessToken) {
-        throw new Error('No hay sesión activa. Por favor, inicia sesión nuevamente.');
-      }
-
-      const response = await fetch(`${SUPABASE_URL}/functions/v1/enviar-invitacion`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-          'apikey': SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          espacio_id: espacioId,
-          rol,
-          nombre_invitado: nombre.trim() || undefined,
-        }),
+      const result = await _useCase.ejecutar({
+        email,
+        espacioId,
+        rol,
+        nombreInvitado: nombre || undefined,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        const msg = [data.error, data.detail].filter(Boolean).join(' — ');
-        throw new Error(msg || `Error ${response.status}`);
-      }
-      if (data?.error) {
-        const msg = [data.error, data.detail].filter(Boolean).join(' — ');
-        throw new Error(msg);
+      if (!result.exito) {
+        setError(result.mensaje ?? 'Error al enviar la invitación.');
+        return;
       }
 
       setExito(true);
       setEmail('');
       setNombre('');
       setRol('miembro');
-      
+
       setTimeout(() => {
         onExito?.();
         onCerrar();
         setExito(false);
       }, 2000);
-
-    } catch (err: any) {
-      if (err.name === 'AbortError') {
-        setError('Tiempo de espera agotado. Intenta de nuevo.');
-      } else {
-        setError(err.message || 'Error al enviar la invitación');
-      }
     } finally {
       setEnviando(false);
     }
   };
-
-  const rolActual = ROLES.find(r => r.id === rol);
 
   return (
     <Modal
@@ -112,6 +112,7 @@ export const ModalInvitarUsuario: React.FC<Props> = ({
       subtitle={espacioNombre}
     >
       <form onSubmit={handleEnviar} className="p-6 lg:p-5 space-y-5 lg:space-y-4">
+
         {/* Email */}
         <Input
           label="Correo electrónico *"
@@ -139,15 +140,10 @@ export const ModalInvitarUsuario: React.FC<Props> = ({
             Rol de acceso
           </label>
           <div className="grid grid-cols-3 gap-2 lg:gap-1.5">
-            {ROLES.map(r => {
+            {ROLES.map((r) => {
               const Icon = r.icon;
               const isSelected = rol === r.id;
-              const colorMap: Record<string, { bg: string; border: string; text: string; glow: string }> = {
-                violet: { bg: 'bg-violet-500/10', border: 'border-violet-500/50', text: 'text-violet-400', glow: 'shadow-violet-500/20' },
-                cyan: { bg: 'bg-cyan-500/10', border: 'border-cyan-500/50', text: 'text-cyan-400', glow: 'shadow-cyan-500/20' },
-                amber: { bg: 'bg-amber-500/10', border: 'border-amber-500/50', text: 'text-amber-400', glow: 'shadow-amber-500/20' },
-              };
-              const c = colorMap[r.color];
+              const c = COLOR_MAP[r.color];
 
               return (
                 <button
@@ -160,17 +156,11 @@ export const ModalInvitarUsuario: React.FC<Props> = ({
                       : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.1]'
                   }`}
                 >
-                  <div className={`p-2.5 lg:p-2 rounded-xl lg:rounded-lg transition-colors ${
-                    isSelected ? c.bg : 'bg-white/[0.03]'
-                  }`}>
-                    <Icon className={`w-5 h-5 transition-colors ${
-                      isSelected ? c.text : 'text-zinc-500'
-                    }`} />
+                  <div className={`p-2.5 lg:p-2 rounded-xl lg:rounded-lg transition-colors ${isSelected ? c.bg : 'bg-white/[0.03]'}`}>
+                    <Icon className={`w-5 h-5 transition-colors ${isSelected ? c.text : 'text-zinc-500'}`} />
                   </div>
                   <div className="text-center">
-                    <p className={`text-[10px] lg:text-[9px] font-black uppercase tracking-wider transition-colors ${
-                      isSelected ? 'text-white' : 'text-zinc-400'
-                    }`}>
+                    <p className={`text-[10px] lg:text-[9px] font-black uppercase tracking-wider transition-colors ${isSelected ? 'text-white' : 'text-zinc-400'}`}>
                       {r.label}
                     </p>
                     <p className="text-[8px] lg:text-[7px] text-zinc-600 mt-0.5 leading-tight">
@@ -178,9 +168,7 @@ export const ModalInvitarUsuario: React.FC<Props> = ({
                     </p>
                   </div>
                   {isSelected && (
-                    <div className={`absolute top-2 right-2 w-2 h-2 rounded-full ${
-                      r.color === 'violet' ? 'bg-violet-400' : r.color === 'cyan' ? 'bg-cyan-400' : 'bg-amber-400'
-                    }`} />
+                    <div className={`absolute top-2 right-2 w-2 h-2 rounded-full ${c.dot}`} />
                   )}
                 </button>
               );
@@ -202,15 +190,9 @@ export const ModalInvitarUsuario: React.FC<Props> = ({
           </div>
         )}
 
-        {/* Actions */}
+        {/* Acciones */}
         <div className="flex gap-3 pt-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="lg"
-            fullWidth
-            onClick={onCerrar}
-          >
+          <Button type="button" variant="ghost" size="lg" fullWidth onClick={onCerrar}>
             Cancelar
           </Button>
           <Button
@@ -225,6 +207,7 @@ export const ModalInvitarUsuario: React.FC<Props> = ({
             Enviar
           </Button>
         </div>
+
       </form>
     </Modal>
   );

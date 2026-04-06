@@ -1,5 +1,6 @@
 import type { User } from '@/types';
 import type { InviteDataPacket, NudgeDataPacket, WaveDataPacket } from '../domain/types';
+import type { AccionXP } from '@/lib/gamificacion';
 
 export interface SpaceInteractionCoordinatorState {
   selectedRemoteUser: User | null;
@@ -17,7 +18,7 @@ export interface SpaceInteractionCoordinatorRuntime {
     profilePhoto: string | null;
   };
   sendInteraction: (packet: WaveDataPacket | NudgeDataPacket | InviteDataPacket) => void;
-  grantXP: (action: string, cooldownMs?: number) => void;
+  grantXP: (action: AccionXP, cooldownMs?: number) => void;
   setTeleportTarget: (target: { x: number; z: number } | null) => void;
   setMoveTarget: (target: { x: number; z: number } | null) => void;
   hapticFeedback: (type: 'light' | 'medium' | 'heavy') => void;

@@ -12,36 +12,11 @@ import type { Avatar3DConfig } from './avatar3d/shared';
 import { UserAvatar } from './UserAvatar';
 import { AvatarCard } from './AvatarCard';
 import { ObjectCard } from './ObjectCard';
-import { supabase } from '../lib/supabase';
+import { useAvatarCatalog } from '../hooks/customizer/useAvatarCatalog';
+import { useProfileEditor } from '../hooks/customizer/useProfileEditor';
 import { glass, colors, composites, typography, radius, animation } from '@/styles/design-tokens';
 import { GeometriaProceduralObjeto3D } from './3d/GeometriaProceduralObjeto3D';
 import { esObjetoArquitectonicoProcedural } from '@/src/core/domain/entities/objetosArquitectonicos';
-
-const previewAvatarConfigCache = new Map<string, Promise<Avatar3DConfig>>();
-const preloadedImageUrls = new Set<string>();
-
-const createBasePreviewAvatarConfig = (avatar: {
-  id: string;
-  nombre: string;
-  modelo_url: string;
-  escala: string;
-  textura_url?: string | null;
-}): Avatar3DConfig => ({
-  id: avatar.id,
-  nombre: avatar.nombre,
-  modelo_url: avatar.modelo_url,
-  escala: parseFloat(avatar.escala) || 1,
-  textura_url: avatar.textura_url || null,
-});
-
-const preloadImageAsset = (url?: string | null) => {
-  if (!url || typeof Image === 'undefined' || preloadedImageUrls.has(url)) return;
-  preloadedImageUrls.add(url);
-  const img = new Image();
-  img.decoding = 'async';
-  img.loading = 'eager';
-  img.src = url;
-};
 
 const PreviewCaptureBridge = ({ captureToken, onCapture }: { captureToken: number | null; onCapture: (blob: Blob) => void }) => {
   const { gl, scene, camera } = useThree();
@@ -102,11 +77,11 @@ const BuiltInObjectPreview: React.FC<{ objeto: CatalogoObjeto3D }> = ({ objeto }
   const ancho = Number(objeto.ancho) || 1;
   const alto = Number(objeto.alto) || 1;
   const profundidad = Number(objeto.profundidad) || 0.15;
-  
+
   const maxDim = Math.max(ancho, alto, profundidad);
   const escala = 1.8 / maxDim;
   const dimensiones: [number, number, number] = [ancho * escala, alto * escala, profundidad * escala];
-  
+
   const esProcedural = esObjetoArquitectonicoProcedural({
     built_in_geometry: objeto.built_in_geometry,
     built_in_color: objeto.built_in_color,
@@ -116,7 +91,7 @@ const BuiltInObjectPreview: React.FC<{ objeto: CatalogoObjeto3D }> = ({ objeto }
     profundidad,
     configuracion_geometria: objeto.configuracion_geometria,
   });
-  
+
   if (esProcedural) {
     return (
       <group position={[0, (alto * escala) / 2, 0]}>
@@ -137,14 +112,14 @@ const BuiltInObjectPreview: React.FC<{ objeto: CatalogoObjeto3D }> = ({ objeto }
       </group>
     );
   }
-  
+
   return (
     <group position={[0, (alto * escala) / 2, 0]}>
       <mesh castShadow receiveShadow>
         <boxGeometry args={dimensiones} />
-        <meshStandardMaterial 
-          color={objeto.built_in_color || '#94a3b8'} 
-          roughness={0.6} 
+        <meshStandardMaterial
+          color={objeto.built_in_color || '#94a3b8'}
+          roughness={0.6}
           metalness={0.05}
         />
       </mesh>
@@ -172,8 +147,7 @@ class ObjectPreviewErrorBoundary extends React.Component<ObjectPreviewErrorBound
     return { hasError: true };
   }
 
-  componentDidCatch(error: unknown) {
-    console.error('❌ Error cargando preview 3D del objeto:', error);
+  componentDidCatch() {
     this.props.onError?.();
   }
 
@@ -186,7 +160,6 @@ class ObjectPreviewErrorBoundary extends React.Component<ObjectPreviewErrorBound
   }
 }
 
-// Componente para previsualizar el modelo 3D del objeto con auto-ajuste
 const Object3DPreview = ({ modelUrl, onReady }: { modelUrl: string; onReady?: () => void }) => {
   const { scene } = useGLTF(modelUrl);
   const disposableMaterialsRef = useRef<THREE.Material[]>([]);
@@ -194,40 +167,40 @@ const Object3DPreview = ({ modelUrl, onReady }: { modelUrl: string; onReady?: ()
   useEffect(() => {
     useGLTF.preload(modelUrl);
   }, [modelUrl]);
-  
+
   const clonedScene = useMemo(() => {
     const clone = scene.clone(true);
     const nextDisposableMaterials: THREE.Material[] = [];
-    
-    // Centrar y escalar automáticamente
+
     const box = new THREE.Box3().setFromObject(clone);
     const size = new THREE.Vector3();
     box.getSize(size);
     const center = new THREE.Vector3();
     box.getCenter(center);
-    
+
     const maxDim = Math.max(size.x, size.y, size.z);
-    const scale = 1.5 / (maxDim || 1); // Evitar división por cero
-    
+    const scale = 1.5 / (maxDim || 1);
+
     clone.scale.setScalar(scale);
     clone.position.set(
       -center.x * scale,
       -box.min.y * scale + 0.02,
       -center.z * scale
     );
-    clone.traverse((child: any) => {
-      if (child.isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
-        if (child.material) {
-          const materials = Array.isArray(child.material)
-            ? child.material.map((m: any) => m.clone())
-            : [child.material.clone()];
-          materials.forEach((m: any) => {
+    clone.traverse((child) => {
+      const mesh = child as THREE.Mesh;
+      if (mesh.isMesh) {
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        if (mesh.material) {
+          const materials = Array.isArray(mesh.material)
+            ? mesh.material.map((m) => m.clone())
+            : [mesh.material.clone()];
+          materials.forEach((m) => {
             m.side = THREE.DoubleSide;
             nextDisposableMaterials.push(m);
           });
-          child.material = Array.isArray(child.material) ? materials : materials[0];
+          mesh.material = Array.isArray(mesh.material) ? materials : materials[0];
         }
       }
     });
@@ -245,7 +218,7 @@ const Object3DPreview = ({ modelUrl, onReady }: { modelUrl: string; onReady?: ()
       disposableMaterialsRef.current = [];
     };
   }, [clonedScene]);
-  
+
   return <primitive object={clonedScene} />;
 };
 
@@ -355,9 +328,9 @@ const AvatarPreviewScene: React.FC<{ avatarConfig: Avatar3DConfig | null }> = ({
     <OrbitControls enablePan={false} enableZoom={true} enableDamping dampingFactor={0.08} rotateSpeed={0.85} minDistance={2} maxDistance={5} />
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.05, 0]} receiveShadow>
       <circleGeometry args={[2.5, 64]} />
-      <meshStandardMaterial 
-        color="#3d4452" 
-        roughness={0.4} 
+      <meshStandardMaterial
+        color="#3d4452"
+        roughness={0.4}
         metalness={0.1}
         transparent={true}
         opacity={0.6}
@@ -396,9 +369,9 @@ const ObjectPreviewScene: React.FC<{
         <OrbitControls enablePan={false} enableZoom={true} enableDamping dampingFactor={0.08} rotateSpeed={0.85} minDistance={1} maxDistance={6} target={[0, 0.65, 0]} />
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
           <circleGeometry args={[1.5, 64]} />
-          <meshStandardMaterial 
-            color="#3d4452" 
-            roughness={0.5} 
+          <meshStandardMaterial
+            color="#3d4452"
+            roughness={0.5}
             transparent={true}
             opacity={0.4}
           />
@@ -427,21 +400,6 @@ interface AvatarCustomizer3DProps {
   modoReemplazoActivo?: boolean;
 }
 
-interface AvatarModel {
-  id: string;
-  nombre: string;
-  descripcion: string | null;
-  modelo_url: string;
-  modelo_url_medium?: string | null;
-  modelo_url_low?: string | null;
-  textura_url?: string | null;
-  textura_url_medium?: string | null;
-  textura_url_low?: string | null;
-  thumbnail_url: string | null;
-  escala: string;
-  premium?: boolean;
-}
-
 const CATEGORY_LABELS: Record<string, string> = {
   todos: 'Todos',
   mobiliario: 'Mobiliario',
@@ -466,7 +424,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   otro: '📦',
 };
 
-const reorderAvatars = (avatars: AvatarModel[], equippedAvatarId: string | null) => {
+const reorderAvatars = <T extends { id: string }>(avatars: T[], equippedAvatarId: string | null): T[] => {
   if (!equippedAvatarId) return avatars;
   const equipped = avatars.find((avatar) => avatar.id === equippedAvatarId);
   if (!equipped) return avatars;
@@ -474,206 +432,46 @@ const reorderAvatars = (avatars: AvatarModel[], equippedAvatarId: string | null)
 };
 
 export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact = false, onClose, onPrepararObjeto, modoColocacionActivo = false, modoReemplazoActivo = false }) => {
-  const { currentUser, session } = useStore();
+  const { currentUser } = useStore();
   const { avatarConfig } = useAvatar3D(currentUser?.id);
-  const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'avatares' | 'objetos'>('profile');
-  const [availableAvatars, setAvailableAvatars] = useState<AvatarModel[]>([]);
-  const [availableObjects, setAvailableObjects] = useState<CatalogoObjeto3D[]>([]);
-  const [selectedAvatarId, setSelectedAvatarId] = useState<string>('');
-  const [equippedAvatarId, setEquippedAvatarId] = useState<string>('');
-  const [selectedObjectId, setSelectedObjectId] = useState<string>('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('todos');
-  const [loadingAvatars, setLoadingAvatars] = useState(false);
-  const [loadingObjects, setLoadingObjects] = useState(false);
-  const [avatarSaved, setAvatarSaved] = useState(false);
-  const [previewConfig, setPreviewConfig] = useState<Avatar3DConfig | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [profilePhoto, setProfilePhoto] = useState(currentUser.profilePhoto || '');
-  const [displayName, setDisplayName] = useState(currentUser.name || '');
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const selectedAvatarIdRef = useRef('');
 
+  // Cargar catálogos y gestionar estado
+  const catalog = useAvatarCatalog();
+
+  // Gestionar perfil del usuario
+  const profile = useProfileEditor({ onClose });
+
+  // Estados locales para la captura de thumbnails
+  const [captureRequest, setCaptureRequest] = useState<{ kind: 'avatar' | 'object'; token: number } | null>(null);
+
+  // Cargar catálogos al montar el componente
   useEffect(() => {
-    selectedAvatarIdRef.current = selectedAvatarId;
-  }, [selectedAvatarId]);
-
-  const buildPreviewAvatarConfig = useCallback(async (avatar: AvatarModel): Promise<Avatar3DConfig> => {
-    if (avatarConfig?.id === avatar.id) {
-      return {
-        ...createBasePreviewAvatarConfig(avatar),
-        animaciones: avatarConfig.animaciones || [],
-      };
-    }
-
-    const cacheKey = [avatar.id, avatar.modelo_url, avatar.textura_url || ''].join('|');
-    const cached = previewAvatarConfigCache.get(cacheKey);
-    if (cached) {
-      return cached;
-    }
-
-    const pending = (async () => {
-      let anims: any[] | null = null;
-      let isFallback = false;
-
-      const { data: avatarAnims } = await supabase
-        .from('avatar_animaciones')
-        .select('id, nombre, url, loop, orden, strip_root_motion')
-        .eq('avatar_id', avatar.id)
-        .eq('activo', true)
-        .order('orden', { ascending: true });
-
-      anims = avatarAnims;
-
-      if (!anims || anims.length === 0) {
-        const { data: universalAnims } = await supabase
-          .from('avatar_animaciones')
-          .select('id, nombre, url, loop, orden, strip_root_motion')
-          .eq('es_universal', true)
-          .eq('activo', true)
-          .order('orden', { ascending: true });
-
-        if (universalAnims && universalAnims.length > 0) {
-          anims = universalAnims;
-          isFallback = true;
-        }
-      }
-
-      return {
-        ...createBasePreviewAvatarConfig(avatar),
-        animaciones: anims?.map((anim: any) => ({
-          id: anim.id,
-          nombre: anim.nombre,
-          url: anim.url,
-          loop: anim.loop ?? false,
-          orden: anim.orden ?? 0,
-          strip_root_motion: anim.strip_root_motion ?? false,
-          es_fallback: isFallback,
-        })) || [],
-      };
-    })().catch((error) => {
-      previewAvatarConfigCache.delete(cacheKey);
-      throw error;
-    });
-
-    previewAvatarConfigCache.set(cacheKey, pending);
-    return pending;
-  }, [avatarConfig]);
-
-  // Cargar catálogo de avatares
-  useEffect(() => {
-    let cancelled = false;
-    const loadCatalog = async () => {
-      setLoadingAvatars(true);
-      setLoadingObjects(true);
-      try {
-        const [avatarsRes, objectsRes, userRes] = await Promise.all([
-          supabase
-            .from('avatares_3d')
-            .select('id, nombre, descripcion, modelo_url, textura_url, thumbnail_url, escala')
-            .eq('activo', true)
-            .order('orden', { ascending: true }),
-          supabase
-            .from('catalogo_objetos_3d')
-            .select('id, nombre, descripcion, categoria, tipo, modelo_url, thumbnail_url, built_in_geometry, built_in_color, ancho, profundidad, alto, es_sentable, es_interactuable, premium, configuracion_geometria')
-            .eq('activo', true)
-            .order('orden', { ascending: true }),
-          session?.user?.id
-            ? supabase.from('usuarios').select('avatar_3d_id').eq('id', session.user.id).maybeSingle()
-            : Promise.resolve({ data: null, error: null } as any),
-        ]);
-
-        if (!cancelled) {
-          if (avatarsRes.error) {
-            console.error('🎭 Error cargando avatares:', avatarsRes.error);
-          } else if (avatarsRes.data) {
-            const equippedId = userRes.data?.avatar_3d_id || avatarsRes.data[0]?.id || '';
-            const orderedAvatars = reorderAvatars(avatarsRes.data, equippedId);
-            setAvailableAvatars(orderedAvatars);
-            setEquippedAvatarId(equippedId);
-            orderedAvatars.slice(0, 4).forEach((avatar) => {
-              useGLTF.preload(avatar.modelo_url);
-              preloadImageAsset(avatar.textura_url);
-              preloadImageAsset(avatar.thumbnail_url);
-              void buildPreviewAvatarConfig(avatar).catch(() => undefined);
-            });
-            if (orderedAvatars.length > 0) {
-              const firstAvatar = orderedAvatars[0];
-              setSelectedAvatarId(firstAvatar.id);
-              setPreviewConfig(createBasePreviewAvatarConfig(firstAvatar));
-              void buildPreviewAvatarConfig(firstAvatar).then((initialPreviewConfig) => {
-                if (!cancelled && selectedAvatarIdRef.current === firstAvatar.id) {
-                  setPreviewConfig(initialPreviewConfig);
-                }
-              }).catch((error) => {
-                console.error('🎭 Error enriqueciendo preview inicial del avatar:', error);
-              });
-            }
-          }
-
-          if (objectsRes.error) {
-            console.error('📦 Error cargando objetos:', objectsRes.error);
-          } else if (objectsRes.data) {
-            setAvailableObjects(objectsRes.data as CatalogoObjeto3D[]);
-            if (objectsRes.data.length > 0) {
-              setSelectedObjectId(objectsRes.data[0].id);
-            }
-          }
-        }
-      } catch (error) {
-        console.error(' Error inesperado loading catalogs:', error);
-      } finally {
-        if (!cancelled) {
-          setLoadingAvatars(false);
-          setLoadingObjects(false);
-        }
-      }
-    };
-    loadCatalog();
-    return () => { cancelled = true; };
-  }, [buildPreviewAvatarConfig, session?.user?.id]);
-
-  useEffect(() => {
-    if (!avatarConfig?.id || avatarConfig.id !== selectedAvatarId) return;
-    setPreviewConfig((prev) => {
-      if (
-        prev?.id === avatarConfig.id &&
-        prev.textura_url === avatarConfig.textura_url &&
-        (prev.animaciones?.length || 0) === (avatarConfig.animaciones?.length || 0)
-      ) {
-        return prev;
-      }
-
-      return avatarConfig;
-    });
-  }, [avatarConfig, selectedAvatarId]);
-
-  useEffect(() => {
-    setProfilePhoto(currentUser.profilePhoto || '');
-    setDisplayName(currentUser.name || '');
-  }, [currentUser.name, currentUser.profilePhoto]);
+    void catalog.loadCatalogs();
+  }, []);
 
   const objectCategories = useMemo(() => {
-    const categories = Array.from(new Set(availableObjects.map((object) => object.categoria).filter(Boolean)));
+    const categories = Array.from(new Set(catalog.availableObjects.map((object) => object.categoria).filter(Boolean)));
     return ['todos', ...categories];
-  }, [availableObjects]);
+  }, [catalog.availableObjects]);
 
   const filteredObjects = useMemo(() => {
-    if (selectedCategory === 'todos') return availableObjects;
-    return availableObjects.filter((object) => object.categoria === selectedCategory);
-  }, [availableObjects, selectedCategory]);
+    if (catalog.selectedCategory === 'todos') return catalog.availableObjects;
+    return catalog.availableObjects.filter((object) => object.categoria === catalog.selectedCategory);
+  }, [catalog.availableObjects, catalog.selectedCategory]);
 
+  // Actualizar selección de objeto si la categoría actual no tiene objetos
   useEffect(() => {
     if (filteredObjects.length === 0) return;
-    const existeSeleccion = filteredObjects.some((object) => object.id === selectedObjectId);
-    if (!existeSeleccion) {
-      setSelectedObjectId(filteredObjects[0].id);
+    const existeSeleccion = filteredObjects.some((object) => object.id === catalog.selectedObjectId);
+    if (!existeSeleccion && filteredObjects.length > 0) {
+      catalog.selectObject(filteredObjects[0].id);
     }
-  }, [filteredObjects, selectedObjectId]);
+  }, [filteredObjects, catalog.selectedObjectId]);
 
   const selectedObject = useMemo(
-    () => availableObjects.find((object) => object.id === selectedObjectId) || null,
-    [availableObjects, selectedObjectId]
+    () => catalog.availableObjects.find((object) => object.id === catalog.selectedObjectId) || null,
+    [catalog.availableObjects, catalog.selectedObjectId]
   );
 
   useEffect(() => {
@@ -681,8 +479,6 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
       useGLTF.preload(selectedObject.modelo_url);
     }
   }, [selectedObject]);
-
-  const [invalidObjectModelIds, setInvalidObjectModelIds] = useState<Record<string, true>>({});
 
   const handlePrepararObjeto = useCallback(() => {
     if (!selectedObject || !onPrepararObjeto) return;
@@ -693,265 +489,63 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
   const handleObjectDragStart = useCallback((e: React.DragEvent, data: CatalogoObjeto3D) => {
     e.dataTransfer.setData('application/json', JSON.stringify(data));
     e.dataTransfer.effectAllowed = 'move';
-    // Cerrar modal al iniciar drag para ver la escena (estilo Gather)
     if (onClose) setTimeout(() => onClose(), 150);
   }, [onClose]);
 
-  const handleUploadPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !session?.user?.id) return;
-    const maxSize = 5 * 1024 * 1024;
-    if (file.size > maxSize) { alert('La imagen no puede superar 5MB'); return; }
-    if (!file.type.startsWith('image/')) { alert('Solo se permiten archivos de imagen'); return; }
-
-    setUploading(true);
-    try {
-      const ext = file.name.split('.').pop();
-      const fileName = `${session.user.id}/profile.${ext}`;
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { upsert: true });
-      if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(fileName);
-      const photoUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-      await supabase.from('usuarios').update({ avatar_url: photoUrl }).eq('id', session.user.id);
-      setProfilePhoto(photoUrl);
-      useStore.setState((state) => ({ currentUser: { ...state.currentUser, profilePhoto: photoUrl } }));
-    } catch (err) {
-      console.error('Error uploading photo:', err);
-      alert('Error al subir la foto. Intenta de nuevo.');
-    }
-    setUploading(false);
-  };
-
-  const handleRemovePhoto = async () => {
-    if (!session?.user?.id) return;
-    setUploading(true);
-    try {
-      await supabase.from('usuarios').update({ avatar_url: null }).eq('id', session.user.id);
-      setProfilePhoto('');
-      useStore.setState((state) => ({ currentUser: { ...state.currentUser, profilePhoto: '' } }));
-    } catch (err) { console.error('Error removing photo:', err); }
-    setUploading(false);
-  };
-
-  const handleSaveName = async () => {
-    if (!session?.user?.id || !displayName.trim()) return;
-    try {
-      await supabase.from('usuarios').update({ nombre: displayName.trim() }).eq('id', session.user.id);
-      useStore.setState((state) => ({ currentUser: { ...state.currentUser, name: displayName.trim() } }));
-      setSaved(true);
-      setTimeout(() => { setSaved(false); if (onClose) onClose(); }, 1200);
-    } catch (err) { console.error('Error updating name:', err); }
-  };
-
-  const handleAvatarChange = async (avatarId: string) => {
-    setSelectedAvatarId(avatarId);
-    selectedAvatarIdRef.current = avatarId;
-    const selected = availableAvatars.find(a => a.id === avatarId);
-    if (selected) {
-      useGLTF.preload(selected.modelo_url);
-      preloadImageAsset(selected.textura_url);
-      preloadImageAsset(selected.thumbnail_url);
-      setPreviewConfig(createBasePreviewAvatarConfig(selected));
-    }
-    const nextPreviewConfigPromise = selected ? buildPreviewAvatarConfig(selected) : null;
-
-    if (nextPreviewConfigPromise) {
-      void nextPreviewConfigPromise.then((nextPreviewConfig) => {
-        if (selectedAvatarIdRef.current === avatarId) {
-          setPreviewConfig(nextPreviewConfig);
-        }
-      }).catch((error) => {
-        console.error('🎭 Error enriqueciendo preview del avatar seleccionado:', error);
-      });
-    }
-
-    if (!session?.user?.id) return;
-    try {
-      const { error } = await supabase.from('usuarios').update({ avatar_3d_id: avatarId }).eq('id', session.user.id);
-      if (error) {
-        console.error('Error updating avatar:', error);
-      } else {
-        if (selected) {
-          const nextPreviewConfig = nextPreviewConfigPromise ? await nextPreviewConfigPromise : null;
-
-          const orderedAvatars = reorderAvatars(availableAvatars, avatarId);
-          setAvailableAvatars(orderedAvatars);
-          setEquippedAvatarId(avatarId);
-          if (nextPreviewConfig) {
-            useStore.getState().setAvatar3DConfig(nextPreviewConfig);
-          }
-        }
-        setAvatarSaved(true);
-        setTimeout(() => setAvatarSaved(false), 2000);
-      }
-    } catch (err) { console.error('Error changing avatar:', err); }
-  };
-
   const handleObjectModelError = useCallback(async (objectId: string, modelUrl?: string | null) => {
     if (!objectId) return;
+    await catalog.reportInvalidObjectModel(objectId, !catalog.availableObjects.find((o) => o.id === objectId)?.built_in_geometry);
+  }, [catalog]);
 
-    setInvalidObjectModelIds((prev) => prev[objectId] ? prev : { ...prev, [objectId]: true });
-
-    const brokenObject = availableObjects.find((object) => object.id === objectId);
-    const shouldDeactivate = !brokenObject?.built_in_geometry;
-
-    setAvailableObjects((prev) => shouldDeactivate
-      ? prev.filter((object) => object.id !== objectId)
-      : prev.map((object) => object.id === objectId ? { ...object, modelo_url: null } : object)
-    );
-
-    try {
-      const payload: Record<string, unknown> = shouldDeactivate
-        ? { modelo_url: null, thumbnail_url: null, activo: false }
-        : { modelo_url: null };
-
-      const { error } = await supabase
-        .from('catalogo_objetos_3d')
-        .update(payload)
-        .eq('id', objectId);
-
-      if (error) throw error;
-    } catch (err) {
-      console.error('❌ Error limpiando modelo 3D inválido en catálogo:', { objectId, modelUrl, err });
-    }
-  }, [availableObjects]);
-
-  // ===== Tabs config =====
+  // Tabs config
   const tabs = [
     { key: 'profile' as const, label: 'Perfil', icon: '👤' },
     { key: 'avatares' as const, label: 'Avatares', icon: '🧍' },
     { key: 'objetos' as const, label: 'Objetos', icon: '📦' },
   ];
 
-  const [isCapturing, setIsCapturing] = useState(false);
-  const [captureRequest, setCaptureRequest] = useState<{ kind: 'avatar' | 'object'; token: number } | null>(null);
-
-  // Lógica para capturar y subir el thumbnail de avatares
-  const handleCaptureThumbnail = useCallback(async (blob: Blob) => {
-    if (!selectedAvatarId || isCapturing) return;
-    
-    setIsCapturing(true);
-    try {
-      const fileName = `thumbnails/${selectedAvatarId}_${Date.now()}.png`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, blob, { contentType: 'image/png', upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      const { error: updateError } = await supabase.from('avatares_3d')
-        .update({ thumbnail_url: publicUrl })
-        .eq('id', selectedAvatarId);
-
-      if (updateError) throw updateError;
-
-      // Actualizar estado local
-      setAvailableAvatars(prev => prev.map(a => 
-        a.id === selectedAvatarId ? { ...a, thumbnail_url: publicUrl } : a
-      ));
-      
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (err) {
-      console.error('📸 Error capturando thumbnail:', err);
-      alert('Error al guardar la miniatura');
-    } finally {
-      setIsCapturing(false);
-    }
-  }, [selectedAvatarId, isCapturing]);
-
-  // Lógica para capturar y subir el thumbnail de objetos
-  const handleCaptureObjectThumbnail = useCallback(async (blob: Blob) => {
-    if (!selectedObjectId || isCapturing) return;
-    
-    setIsCapturing(true);
-    try {
-      const fileName = `object_thumbnails/${selectedObjectId}_${Date.now()}.png`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('avatars') // Usamos el mismo bucket por simplicidad o uno de objetos si existe
-        .upload(fileName, blob, { contentType: 'image/png', upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      const { error: updateError } = await supabase.from('catalogo_objetos_3d')
-        .update({ thumbnail_url: publicUrl })
-        .eq('id', selectedObjectId);
-
-      if (updateError) throw updateError;
-
-      // Actualizar estado local
-      setAvailableObjects(prev => prev.map(o => 
-        o.id === selectedObjectId ? { ...o, thumbnail_url: publicUrl } : o
-      ));
-      
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (err) {
-      console.error('📸 Error capturando thumbnail de objeto:', err);
-      alert('Error al guardar la miniatura del objeto');
-    } finally {
-      setIsCapturing(false);
-    }
-  }, [selectedObjectId, isCapturing]);
-
   const handlePreviewCapture = useCallback((blob: Blob) => {
     const kind = captureRequest?.kind;
     setCaptureRequest(null);
     if (!kind) return;
-
-    if (kind === 'avatar') {
-      void handleCaptureThumbnail(blob);
-      return;
-    }
-
-    void handleCaptureObjectThumbnail(blob);
-  }, [captureRequest?.kind, handleCaptureObjectThumbnail, handleCaptureThumbnail]);
+    void catalog.captureThumbnail(blob);
+  }, [captureRequest?.kind, catalog]);
 
   const requestAvatarCapture = useCallback(() => {
-    if (isCapturing) return;
+    if (catalog.isCapturing) return;
     setCaptureRequest({ kind: 'avatar', token: Date.now() });
-  }, [isCapturing]);
+  }, [catalog.isCapturing]);
 
   const requestObjectCapture = useCallback(() => {
-    if (isCapturing) return;
+    if (catalog.isCapturing) return;
     setCaptureRequest({ kind: 'object', token: Date.now() });
-  }, [isCapturing]);
+  }, [catalog.isCapturing]);
 
-  // ===== 3D Preview Panel =====
+  // 3D Preview Panel
   const renderPreviewPanel = () => {
     if (activeTab === 'objetos' && selectedObject) {
-      const hasModel = !!selectedObject.modelo_url && !invalidObjectModelIds[selectedObject.id];
+      const hasModel = !!selectedObject.modelo_url && !catalog.invalidObjectModelIds.has(selectedObject.id);
       const hasPreview3D = hasModel || !!selectedObject.built_in_geometry;
-      
+
       return (
         <>
-          {/* Botón de captura para objetos */}
           {hasModel && (
             <div className="absolute top-3 left-3 z-20 flex flex-col gap-2">
               <button
                 onClick={requestObjectCapture}
-                disabled={isCapturing}
+                disabled={catalog.isCapturing}
                 title="Capturar miniatura del objeto"
                 className={`
                   w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300
-                  ${isCapturing ? 'bg-zinc-800 cursor-not-allowed' : 'bg-[#c8aa6e]/20 hover:bg-[#c8aa6e] text-[#c8aa6e] hover:text-[#0a0a0c] border border-[#c8aa6e]/30'}
+                  ${catalog.isCapturing ? 'bg-zinc-800 cursor-not-allowed' : 'bg-[#c8aa6e]/20 hover:bg-[#c8aa6e] text-[#c8aa6e] hover:text-[#0a0a0c] border border-[#c8aa6e]/30'}
                 `}
               >
-                {isCapturing ? <div className="w-3 h-3 border-2 border-[#c8aa6e] border-t-transparent rounded-full animate-spin" /> : '📸'}
+                {catalog.isCapturing ? <div className="w-3 h-3 border-2 border-[#c8aa6e] border-t-transparent rounded-full animate-spin" /> : '📸'}
               </button>
             </div>
           )}
 
           <div className="absolute inset-0 flex flex-col justify-between p-4 sm:p-3 pointer-events-none">
-            {/* Object info overlay */}
             <div className="flex items-start justify-between gap-3 z-10">
               <div>
                 {!selectedObject.premium && (
@@ -971,7 +565,6 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
               )}
             </div>
 
-            {/* Central preview — 3D Canvas para objetos */}
             <div className="relative flex flex-1 items-center justify-center overflow-hidden my-2 pointer-events-auto">
               {hasPreview3D ? (
                 <PreviewCanvas
@@ -997,7 +590,6 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
               )}
             </div>
 
-            {/* Action bar compacto */}
             <div className="flex items-center gap-2 z-10 pointer-events-auto">
               <p className="flex-1 text-[9px] text-[#a09b8c] font-medium truncate">
                 {selectedObject.descripcion || 'Arrastra al espacio o haz clic en Colocar.'}
@@ -1006,8 +598,8 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
                 onClick={handlePrepararObjeto}
                 disabled={!onPrepararObjeto}
                 className={`flex-shrink-0 px-4 py-2 text-[9px] font-black uppercase tracking-widest rounded transition-all duration-300 ${
-                  !onPrepararObjeto 
-                    ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700' 
+                  !onPrepararObjeto
+                    ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700'
                     : 'bg-[#0397ab] text-white border border-[#04c8e0] shadow-[0_0_15px_rgba(4,200,224,0.4)] hover:shadow-[0_0_25px_rgba(4,200,224,0.6)] hover:bg-[#04c8e0]'
                 }`}
               >
@@ -1025,14 +617,14 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
         <div className="absolute top-3 left-3 z-20 flex flex-col gap-2">
            <button
              onClick={requestAvatarCapture}
-             disabled={isCapturing}
+             disabled={catalog.isCapturing}
              title="Capturar miniatura"
              className={`
                w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300
-               ${isCapturing ? 'bg-zinc-800 cursor-not-allowed' : 'bg-[#c8aa6e]/20 hover:bg-[#c8aa6e] text-[#c8aa6e] hover:text-[#0a0a0c] border border-[#c8aa6e]/30'}
+               ${catalog.isCapturing ? 'bg-zinc-800 cursor-not-allowed' : 'bg-[#c8aa6e]/20 hover:bg-[#c8aa6e] text-[#c8aa6e] hover:text-[#0a0a0c] border border-[#c8aa6e]/30'}
              `}
            >
-             {isCapturing ? <div className="w-3 h-3 border-2 border-[#c8aa6e] border-t-transparent rounded-full animate-spin" /> : '📸'}
+             {catalog.isCapturing ? <div className="w-3 h-3 border-2 border-[#c8aa6e] border-t-transparent rounded-full animate-spin" /> : '📸'}
            </button>
         </div>
 
@@ -1046,9 +638,8 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
           pixelRatio={[1, 1.5]}
           shadows={false}
         >
-          <AvatarPreviewScene avatarConfig={previewConfig || avatarConfig} />
+          <AvatarPreviewScene avatarConfig={catalog.previewConfig || avatarConfig} />
         </PreviewCanvas>
-        {/* Hint */}
         <div className="absolute bottom-3 left-3 text-[9px] text-white/30 pointer-events-none">
           Arrastra para rotar · Scroll para zoom
         </div>
@@ -1069,9 +660,8 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
         overflow-hidden relative
       `}>
         {renderPreviewPanel()}
-        
-        {/* Toast guardado */}
-        {saved && (
+
+        {(profile.saved || catalog.avatarSaved) && (
           <div className="absolute top-3 right-3 bg-emerald-500/90 text-white text-[10px] font-bold px-3 py-1.5 rounded-full animate-in fade-in shadow-lg shadow-emerald-500/30">
             ✓ Guardado
           </div>
@@ -1079,9 +669,9 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
 
         {/* User info chip */}
         <div className={`absolute bottom-3 right-3 flex items-center gap-2 ${glass.card} rounded-xl p-1.5 pr-3`}>
-          <UserAvatar name={currentUser.name} profilePhoto={profilePhoto} size="xs" showStatus status={currentUser.status} />
+          <UserAvatar name={currentUser.name} profilePhoto={profile.profilePhoto || ''} size="xs" showStatus status={currentUser.status} />
           <div>
-            <p className="text-[9px] font-bold text-white/80 leading-tight">{displayName || currentUser.name}</p>
+            <p className="text-[9px] font-bold text-white/80 leading-tight">{profile.displayName || currentUser.name}</p>
             <p className="text-[7px] text-white/30">{currentUser.cargo || 'Colaborador'}</p>
           </div>
         </div>
@@ -1089,7 +679,7 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
 
       {/* ====== Panel derecho: Personalización ====== */}
       <div className={`${compact ? 'flex-1 min-h-0' : 'lg:w-[380px] xl:w-[420px]'} flex flex-col gap-3 min-h-0`}>
-        {/* Tabs - estilo LOL/Hextech */}
+        {/* Tabs */}
         <div className="flex gap-1 bg-[#0a0a0c] border border-[#1e2328] p-1 rounded-md flex-shrink-0 relative">
           {tabs.map((tab) => (
             <button
@@ -1121,13 +711,23 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
               {/* Foto de perfil */}
               <section className="flex flex-col items-center gap-3">
                 <div className="relative group">
-                  <UserAvatar name={currentUser.name} profilePhoto={profilePhoto} size="xl" />
+                  <UserAvatar name={currentUser.name} profilePhoto={profile.profilePhoto || ''} size="xl" />
                   <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.onchange = (e: Event) => {
+                        const target = e.target as HTMLInputElement;
+                        const file = target.files?.[0];
+                        if (file) void profile.uploadProfilePhoto(file);
+                      };
+                      input.click();
+                    }}
+                    disabled={profile.uploading}
                     className="absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                   >
-                    {uploading ? (
+                    {profile.uploading ? (
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                     ) : (
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1136,20 +736,29 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
                       </svg>
                     )}
                   </button>
-                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleUploadPhoto} className="hidden" />
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.onchange = (e: Event) => {
+                        const target = e.target as HTMLInputElement;
+                        const file = target.files?.[0];
+                        if (file) void profile.uploadProfilePhoto(file);
+                      };
+                      input.click();
+                    }}
+                    disabled={profile.uploading}
                     className={`px-3 py-1.5 ${composites.buttonPrimary} text-[9px] rounded-lg`}
                   >
-                    {profilePhoto ? 'Cambiar foto' : 'Subir foto'}
+                    {profile.profilePhoto ? 'Cambiar foto' : 'Subir foto'}
                   </button>
-                  {profilePhoto && (
+                  {profile.profilePhoto && (
                     <button
-                      onClick={handleRemovePhoto}
-                      disabled={uploading}
+                      onClick={() => void profile.removeProfilePhoto()}
+                      disabled={profile.uploading}
                       className="px-3 py-1.5 bg-red-500/15 hover:bg-red-500/25 rounded-lg text-[9px] font-bold text-red-400 transition-all border border-red-500/20"
                     >
                       Eliminar
@@ -1167,14 +776,23 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
+                    value={profile.displayName}
+                    onChange={(e) => {
+                      const newName = e.target.value;
+                      // Update local state directly without calling hook - hook will sync on blur
+                      const input = e.currentTarget;
+                      setTimeout(() => {
+                        if (input.value === newName) {
+                          void profile.updateDisplayName(newName);
+                        }
+                      }, 300);
+                    }}
                     className={`flex-1 ${composites.inputBase} px-3 py-2 text-xs ${radius.input}`}
                     placeholder="Tu nombre"
                   />
                   <button
-                    onClick={handleSaveName}
-                    disabled={displayName.trim() === currentUser.name}
+                    onClick={() => void profile.updateDisplayName(profile.displayName)}
+                    disabled={profile.displayName.trim() === currentUser.name}
                     className={`px-3 py-2 ${composites.buttonPrimary} text-[9px] ${radius.button} disabled:opacity-30`}
                   >
                     Guardar
@@ -1186,9 +804,9 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
               <section className={`${glass.card} ${radius.card} p-3`}>
                 <label className={`${typography.label.xs} text-violet-400 mb-2 block`}>Vista previa en chat</label>
                 <div className="flex items-center gap-2.5 p-2.5 bg-black/30 rounded-xl">
-                  <UserAvatar name={currentUser.name} profilePhoto={profilePhoto} size="sm" showStatus status={currentUser.status} />
+                  <UserAvatar name={currentUser.name} profilePhoto={profile.profilePhoto || ''} size="sm" showStatus status={currentUser.status} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-white truncate">{displayName || currentUser.name}</p>
+                    <p className="text-xs font-bold text-white truncate">{profile.displayName || currentUser.name}</p>
                     <p className="text-[9px] text-white/35">{currentUser.cargo || 'Colaborador'}</p>
                   </div>
                   <span className="text-[8px] text-white/25">12:00</span>
@@ -1204,8 +822,8 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
           {activeTab === 'avatares' && (
             <div className="space-y-2 animate-in fade-in duration-200">
               {/* Info del avatar seleccionado */}
-              {selectedAvatarId && (() => {
-                const sel = availableAvatars.find(a => a.id === selectedAvatarId);
+              {catalog.selectedAvatarId && (() => {
+                const sel = catalog.availableAvatars.find(a => a.id === catalog.selectedAvatarId);
                 return sel ? (
                   <div className="bg-[#0a0a0c] border border-[#1e2328] rounded-md p-2.5 relative">
                     <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#c8aa6e] opacity-50" />
@@ -1215,37 +833,37 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
                         <h3 className="text-xs font-black text-[#f0e6d2] uppercase tracking-wide truncate">{sel.nombre}</h3>
                         <p className="text-[9px] text-[#a09b8c] mt-0.5">{sel.descripcion || 'Avatar 3D listo para el espacio virtual.'}</p>
                       </div>
-                      {equippedAvatarId === sel.id && (
+                      {catalog.equippedAvatarId === sel.id && (
                         <span className="flex-shrink-0 rounded bg-[#c8aa6e]/90 px-2 py-0.5 text-[8px] font-black uppercase text-[#0a0a0c]">✓ Equipado</span>
                       )}
                     </div>
                   </div>
                 ) : null;
               })()}
-              
-              {loadingAvatars ? (
+
+              {catalog.loadingAvatars ? (
                 <div className="flex items-center justify-center gap-2 text-zinc-500 text-xs py-8">
                   <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
                   Cargando modelos...
                 </div>
               ) : (
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))] gap-2.5 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar pb-4">
-                  {availableAvatars.map((avatar) => (
+                  {catalog.availableAvatars.map((avatar) => (
                     <AvatarCard
                       key={avatar.id}
-                      onClick={() => handleAvatarChange(avatar.id)}
+                      onClick={() => void catalog.changeEquippedAvatar(avatar.id)}
                       nombre={avatar.nombre}
                       descripcion={avatar.descripcion}
                       thumbnailUrl={avatar.thumbnail_url}
-                      seleccionado={selectedAvatarId === avatar.id}
-                      equipado={equippedAvatarId === avatar.id}
+                      seleccionado={catalog.selectedAvatarId === avatar.id}
+                      equipado={catalog.equippedAvatarId === avatar.id}
                       isPremium={avatar.premium || false}
                     />
                   ))}
                 </div>
               )}
 
-              {avatarSaved && (
+              {catalog.avatarSaved && (
                 <div className="rounded border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-bold text-emerald-300 text-center">
                   ✓ Avatar equipado correctamente.
                 </div>
@@ -1261,10 +879,10 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
                 {objectCategories.map((category) => (
                   <button
                     key={category}
-                    onClick={() => setSelectedCategory(category)}
+                    onClick={() => catalog.selectCategory(category)}
                     className={`
                       flex-shrink-0 rounded px-2 py-1.5 text-[8px] font-black uppercase tracking-[0.12em] transition-all duration-200
-                      ${selectedCategory === category
+                      ${catalog.selectedCategory === category
                         ? `bg-[#0397ab] text-white shadow-[0_0_10px_rgba(3,151,171,0.4)] border border-[#04c8e0]`
                         : `bg-[#0a0a0c] text-[#a09b8c] hover:bg-[#1e2328] hover:text-[#f0e6d2] border border-[#1e2328]`
                       }
@@ -1291,8 +909,8 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
                       onClick={handlePrepararObjeto}
                       disabled={!onPrepararObjeto}
                       className={`flex-shrink-0 px-3 py-1.5 text-[8px] font-black uppercase tracking-wider transition-all duration-200 rounded ${
-                        !onPrepararObjeto 
-                          ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700' 
+                        !onPrepararObjeto
+                          ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700'
                           : modoColocacionActivo
                             ? 'bg-emerald-600 text-white border border-emerald-400'
                             : 'bg-[#0397ab] text-white border border-[#04c8e0] hover:bg-[#04c8e0]'
@@ -1304,8 +922,8 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
                 </div>
               )}
 
-              {/* Objects grid — responsive auto-fit */}
-              {loadingObjects ? (
+              {/* Objects grid */}
+              {catalog.loadingObjects ? (
                 <div className="flex items-center justify-center gap-2 text-zinc-500 text-xs py-8">
                   <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
                   Cargando objetos...
@@ -1320,9 +938,9 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
                       thumbnailUrl={object.thumbnail_url}
                       interactuable={object.es_interactuable}
                       sentable={object.es_sentable}
-                      seleccionado={selectedObjectId === object.id}
+                      seleccionado={catalog.selectedObjectId === object.id}
                       isPremium={object.premium || false}
-                      onClick={() => setSelectedObjectId(object.id)}
+                      onClick={() => catalog.selectObject(object.id)}
                       builtInColor={object.built_in_color}
                       builtInGeometry={object.built_in_geometry}
                       catalogData={object}

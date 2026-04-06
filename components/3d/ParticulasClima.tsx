@@ -114,12 +114,14 @@ export const ParticulasClima: React.FC<ParticulasClimaProps> = ({ tipo: tipoProp
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
+          args={[positions, 3]}
           count={cantidad}
           array={positions}
           itemSize={3}
         />
         <bufferAttribute
           attach="attributes-color"
+          args={[colors, 3]}
           count={cantidad}
           array={colors}
           itemSize={3}

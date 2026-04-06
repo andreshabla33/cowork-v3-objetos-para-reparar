@@ -6,21 +6,23 @@
 
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type { User } from '@/types';
+import type { Session } from '@supabase/supabase-js';
 import type { EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
 import { obtenerEstadoUsuarioEcs } from '@/lib/ecs/espacioEcs';
 import { hapticFeedback } from '@/lib/mobileDetect';
 import type { DataPacketContract } from '@/modules/realtime-room';
+import type { AccionXP } from '@/lib/gamificacion';
 import { SpaceInteractionCoordinator } from '@/modules/realtime-room';
 import { type UseGatherInteractionsReturn } from './types';
 
 export function useGatherInteractions(params: {
-  session: any;
+  session: Session | null;
   currentUser: User;
   currentUserEcs: User;
   usuariosEnChunks: User[];
   ecsStateRef: React.MutableRefObject<EstadoEcsEspacio>;
   enviarDataLivekit: (mensaje: DataPacketContract, reliable?: boolean) => boolean;
-  grantXP: (accion: string, cooldownMs?: number) => void;
+  grantXP: (accion: AccionXP, cooldownMs?: number) => void;
   setTeleportTarget: React.Dispatch<React.SetStateAction<{ x: number; z: number } | null>>;
   setMoveTarget: React.Dispatch<React.SetStateAction<{ x: number; z: number } | null>>;
   setIncomingNudge: React.Dispatch<React.SetStateAction<{ from: string; fromName: string } | null>>;

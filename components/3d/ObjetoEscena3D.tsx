@@ -6,11 +6,14 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useStore } from '@/store/useStore';
 import { hapticFeedback } from '@/lib/mobileDetect';
+import { logger } from '@/lib/logger';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import type { ObjetoPreview3D } from '@/types/objetos3d';
 import { esObjetoArquitectonicoProcedural } from '@/src/core/domain/entities/objetosArquitectonicos';
 import { esObjetoInteractuable, obtenerDimensionesObjetoRuntime, obtenerEmojiInteraccionObjeto, obtenerEtiquetaInteraccionObjeto, obtenerRadioInteraccionObjeto } from '../space3d/objetosRuntime';
 import { GeometriaProceduralObjeto3D } from './GeometriaProceduralObjeto3D';
+
+const log = logger.child('ObjetoEscena3D');
 
 interface ObjetoEscena3DProps {
   objeto: EspacioObjeto;
@@ -33,7 +36,7 @@ const NOOP = () => {};
 
 const ajustarAGrilla = (valor: number, paso = PASO_GRILLA) => Math.round(valor / paso) * paso;
 
-const normalizarEscala = (objeto: any) => {
+const normalizarEscala = (objeto: EspacioObjeto | ObjetoPreview3D) => {
   const dimensiones = obtenerDimensionesObjetoRuntime(objeto);
   const escalaMinima = 0.05;
   return [
@@ -195,7 +198,7 @@ const normalizarUrlGLTF = (url: string) => {
 class ErrorBoundaryGLTF extends React.Component<{ children: React.ReactNode; fallback: React.ReactNode }, { error: boolean }> {
   state = { error: false };
   static getDerivedStateFromError() { return { error: true }; }
-  componentDidCatch(error: unknown) { console.warn('[GLTF] Error cargando modelo:', error); }
+  componentDidCatch(error: unknown) { log.warn('Error cargando modelo GLTF', { error: String(error) }); }
   render() { return this.state.error ? this.props.fallback : this.props.children; }
 }
 
@@ -210,23 +213,25 @@ const ModeloGLTFObjeto: React.FC<{
 
   const clon = useMemo(() => {
     const escenaClonada = scene.clone(true);
-    escenaClonada.traverse((child: any) => {
-      if ((child.isMesh || child.isSkinnedMesh) && child.material) {
+    escenaClonada.traverse((child: THREE.Object3D) => {
+      if ((child instanceof THREE.Mesh || child instanceof THREE.SkinnedMesh) && child.material) {
         child.material = Array.isArray(child.material)
-          ? child.material.map((material: any) => material.clone())
+          ? child.material.map((material: THREE.Material) => material.clone())
           : child.material.clone();
         const materiales = Array.isArray(child.material) ? child.material : [child.material];
-        materiales.forEach((material: any) => {
+        materiales.forEach((material: THREE.Material) => {
           material.transparent = transparente;
           material.opacity = opacidad;
           material.depthWrite = !transparente;
           material.side = THREE.DoubleSide;
-          if (transparente && material.color) {
+          if (transparente && 'color' in material && material.color) {
             material.color = new THREE.Color('#67e8f9');
           }
-          if (transparente && material.emissive) {
+          if (transparente && 'emissive' in material && material.emissive) {
             material.emissive = new THREE.Color('#818cf8');
-            material.emissiveIntensity = 0.75;
+            if ('emissiveIntensity' in material) {
+              material.emissiveIntensity = 0.75;
+            }
           }
           material.needsUpdate = true;
         });
@@ -239,8 +244,8 @@ const ModeloGLTFObjeto: React.FC<{
   const outlineClone = useMemo(() => {
     if (!transparente) return null;
     const escenaOutline = scene.clone(true);
-    escenaOutline.traverse((child: any) => {
-      if (child.isMesh || child.isSkinnedMesh) {
+    escenaOutline.traverse((child: THREE.Object3D) => {
+      if (child instanceof THREE.Mesh || child instanceof THREE.SkinnedMesh) {
         child.material = new THREE.MeshBasicMaterial({
           color: '#a5b4fc',
           transparent: true,
@@ -503,14 +508,14 @@ const _ObjetoEscena3D: React.FC<ObjetoEscena3DProps> = ({
         onPointerDown={(e) => {
           if (isEditMode && isSelected) {
             e.stopPropagation();
-            (e.target as any).setPointerCapture(e.pointerId);
+            (e.target as Element).setPointerCapture(e.pointerId);
             setIsDragging(true);
           }
         }}
         onPointerUp={(e) => {
           if (isEditMode && isSelected) {
             e.stopPropagation();
-            (e.target as any).releasePointerCapture(e.pointerId);
+            (e.target as Element).releasePointerCapture(e.pointerId);
             setIsDragging(false);
           }
         }}

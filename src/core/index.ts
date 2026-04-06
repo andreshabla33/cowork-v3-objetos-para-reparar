@@ -1,46 +1,44 @@
 /**
  * @module core/index
- * Barrel exports para el módulo core con Clean Architecture.
- * 
- * Domain Layer
+ * Barrel exports del módulo core — Clean Architecture.
+ *
+ * Capas expuestas:
+ *   Domain      → Puertos (interfaces y tipos)
+ *   Application → Use Cases
+ *   Infrastructure → Adaptadores y detectores
+ *
+ * Background processing migrado al patrón oficial LiveKit keep-alive.
+ * Toda la lógica de segmentación delegada a @livekit/track-processors v0.7.x.
  */
-export type {
-  IBackgroundSegmenter,
-  SegmenterConfig,
-  SegmentationMask,
-} from './domain/ports/IBackgroundSegmenter';
+
+// ════════════════════════════════════════════════════════════════
+// Domain Layer — Puertos
+// ════════════════════════════════════════════════════════════════
 
 export type {
-  IBackgroundCompositor,
-  CompositorConfig,
   EffectType,
-} from './domain/ports/IBackgroundCompositor';
-
-export type {
   IVideoTrackProcessor,
   VideoTrackProcessorConfig,
-  ProcessedVideoTrack,
 } from './domain/ports/IVideoTrackProcessor';
 
-/**
- * Application Layer
- */
+// ════════════════════════════════════════════════════════════════
+// Application Layer — Use Cases
+// ════════════════════════════════════════════════════════════════
+
+export { GestionarBackgroundVideoUseCase } from './application/usecases/GestionarBackgroundVideoUseCase';
+
+// ════════════════════════════════════════════════════════════════
+// Infrastructure Layer — Adaptadores y detección de browser
+// ════════════════════════════════════════════════════════════════
+
 export {
-  VideoTrackProcessorService,
-  videoTrackProcessor,
-} from './application/VideoTrackProcessorService';
+  LiveKitOfficialBackgroundAdapter,
+  getLiveKitBackgroundAdapter,
+} from './infrastructure/adapters/LiveKitOfficialBackgroundAdapter';
 
-/**
- * Infrastructure Layer
- */
-export { MediaPipeSegmenterAdapter } from './infrastructure/adapters/MediaPipeSegmenterAdapter';
-export { WebGLBackgroundCompositorAdapter } from './infrastructure/adapters/WebGLBackgroundCompositorAdapter';
-export { acquireWebGLContext, releaseWebGLContext, isWebGLAvailable } from './infrastructure/browser/WebGLContextManager';
-export { acquireSegmenter, releaseSegmenter } from './infrastructure/browser/SegmenterSingleton';
-
-/**
- * Presentation Layer
- */
-export { useVideoTrackProcessor, useStableProcessedTrack } from './presentation/hooks/useVideoTrackProcessor';
-export { VideoTrackProcessorView, type VideoTrackProcessorViewProps } from './presentation/components/VideoTrackProcessorView';
-export type { BackgroundEffectType } from './presentation/hooks/useVideoTrackProcessor';
+export {
+  getBackgroundCapability,
+  detectBackgroundCapability,
+  type BackgroundCapability,
+  type BackgroundCapabilityLevel,
+} from './infrastructure/browser/BackgroundCapabilityDetector';

@@ -1,29 +1,48 @@
 /**
  * SpaceRealtimeCoordinator - Application layer coordinator for LiveKit/WebRTC realtime communication
- * Extracted from useLiveKit logic to provide clean separation of concerns
+ * Extracted from useLiveKit logic to provide clean separation of concerns.
+ *
+ * REMEDIATION-004b: Soporte de credenciales TURN dinámicas vía iceServerProvider.
+ * @see https://docs.livekit.io/reference/client-sdk-js/interfaces/connectoptions.html
+ *   RoomConnectOptions.rtcConfig.iceServers — array de RTCIceServer que se fusiona
+ *   con los ICE servers provistos por el SFU durante el handshake.
  */
 
-import { Room, RoomEvent, Track, TrackPublication, RemoteParticipant, LocalTrack, LocalTrackPublication } from 'livekit-client';
+import { Room, RoomConnectOptions, RoomEvent, Track, TrackPublication, RemoteParticipant, LocalTrack, LocalTrackPublication } from 'livekit-client';
+import { logger } from '@/lib/logger';
 import {
   PreflightError,
   DataPacketContract,
-  parseDataPacketContract,
   type RaiseHandPayload,
-  ConsentRequestPayload,
-  ConsentResponsePayload,
-  createConsentRequestDataPacket,
-  createConsentResponseDataPacket,
-  createPinParticipantDataPacket,
-  createRaiseHandDataPacket,
-  createReactionDataPacket,
-  createRecordingStatusDataPacket,
+  type ConsentRequestPayload,
+  type ConsentResponsePayload,
+  type SpeakerHintPayload,
+  type ModerationNoticePayload,
 } from '../domain/types';
 import { RealtimeEventBus } from './RealtimeEventBus';
+import { RealtimeDataPublisher } from './RealtimeDataPublisher';
+import { RealtimeEventParser } from './RealtimeEventParser';
 import { crearOpcionesPublicacionTrackLiveKit, crearOpcionesSalaLiveKit } from './PoliticaTransporteLiveKit';
 
 export interface SpaceRealtimeCoordinatorOptions {
   serverUrl: string;
   token: string;
+
+  /**
+   * Proveedor asíncrono de ICE servers (STUN + TURN dinámicos).
+   * REMEDIATION-004b: Reemplaza los ICE servers estáticos de env.ts.
+   * Cuando se provee, se llama antes de cada connect() para obtener
+   * credenciales TURN frescas con TTL corto.
+   *
+   * Justificación (LiveKit JS SDK docs):
+   *   RoomConnectOptions.rtcConfig.iceServers se fusiona con los ICE
+   *   servers provistos por el SFU — no los reemplaza completamente.
+   *   Esto permite añadir TURN privados sin perder los STUN del servidor.
+   *
+   * @see https://docs.livekit.io/reference/client-sdk-js/interfaces/connectoptions.html
+   */
+  iceServerProvider?: () => Promise<RTCIceServer[]>;
+
   onConnectionChange?: (connected: boolean) => void;
   onTrackPublished?: (track: LocalTrack, publication: LocalTrackPublication) => void;
   onTrackUnpublished?: (publication: LocalTrackPublication) => void;
@@ -33,6 +52,7 @@ export interface SpaceRealtimeCoordinatorOptions {
   onSpeakerChange?: (speakingParticipants: string[]) => void;
   onParticipantConnected?: (participant: RemoteParticipant) => void;
   onParticipantDisconnected?: (participant: RemoteParticipant) => void;
+  onConnectionQualityChanged?: (participantId: string, quality: string) => void;
   onStateChange?: (state: SpaceRealtimeCoordinatorState) => void;
   onError?: (error: PreflightError) => void;
 }
@@ -48,10 +68,19 @@ export interface SpaceRealtimeCoordinatorState {
   remoteTrackSubscriptions: Track[];
 }
 
+/** Timeout en ms para forzar reconexión si el estado es "Reconnecting" */
+const RECONNECTING_TIMEOUT_MS = 60_000;
+
 export class SpaceRealtimeCoordinator {
   private room: Room | null = null;
   private options: SpaceRealtimeCoordinatorOptions;
   private eventBus = new RealtimeEventBus();
+  private log = logger.child('space-realtime-coordinator');
+
+  /** Servicio compuesto — publicación de datos (elimina duplicación con Gateway) */
+  private readonly dataPublisher: RealtimeDataPublisher;
+  /** Servicio compuesto — parsing de DataReceived (elimina duplicación con Gateway) */
+  private eventParser: RealtimeEventParser;
 
   // State
   private connected = false;
@@ -59,8 +88,17 @@ export class SpaceRealtimeCoordinator {
   private remoteTrackSubscriptions: Map<string, Track> = new Map();
   private speakingParticipants: Set<string> = new Set();
 
+  /**
+   * Timer de heartbeat: si la sala permanece en "Reconnecting" más de
+   * RECONNECTING_TIMEOUT_MS (60s), fuerza disconnect() + reconexión limpia.
+   * Roadmap REMEDIATION-005: evita que el cliente quede zombie indefinidamente.
+   */
+  private _reconnectingTimer: ReturnType<typeof setTimeout> | null = null;
+
   constructor(options: SpaceRealtimeCoordinatorOptions) {
     this.options = options;
+    this.dataPublisher = new RealtimeDataPublisher(() => this.room);
+    this.eventParser = new RealtimeEventParser(this.eventBus, options.onDataReceived);
   }
 
   /**
@@ -69,26 +107,36 @@ export class SpaceRealtimeCoordinator {
   async connect(): Promise<boolean> {
     try {
       if (this.room?.state === 'connected') {
-        console.log('[SpaceRealtimeCoordinator] Already connected');
+        this.log.info('Already connected');
         return true;
       }
 
       this.room = new Room(crearOpcionesSalaLiveKit());
-
-      // Setup event handlers
       this.setupEventHandlers();
 
-      // Connect
-      await this.room.connect(this.options.serverUrl, this.options.token);
+      // REMEDIATION-004b: Obtener ICE servers dinámicos antes de conectar.
+      // LiveKit JS SDK: RoomConnectOptions.rtcConfig.iceServers se FUSIONA con
+      // los ICE servers del SFU (no los reemplaza). Fuente oficial:
+      // https://docs.livekit.io/reference/client-sdk-js/interfaces/connectoptions.html
+      const connectOpts: RoomConnectOptions = {};
+      if (this.options.iceServerProvider) {
+        const dynamicIceServers = await this.options.iceServerProvider();
+        if (dynamicIceServers.length > 0) {
+          connectOpts.rtcConfig = { iceServers: dynamicIceServers };
+          this.log.info('Using dynamic TURN servers', { count: dynamicIceServers.length });
+        }
+      }
+
+      await this.room.connect(this.options.serverUrl, this.options.token, connectOpts);
       this.connected = true;
 
-      console.log('[SpaceRealtimeCoordinator] Connected to room:', this.room.name);
+      this.log.info('Connected to room', { roomName: this.room.name });
       this.options.onConnectionChange?.(true);
       this.notifyStateChange();
 
       return true;
     } catch (error) {
-      console.error('[SpaceRealtimeCoordinator] Failed to connect:', error);
+      this.log.error('Failed to connect', { error });
       this.options.onError?.({
         type: 'track-error',
         message: 'Error al conectar con la sala de reunión',
@@ -102,19 +150,24 @@ export class SpaceRealtimeCoordinator {
    * Disconnect from room
    */
   disconnect(): void {
+    // Cancelar heartbeat timer al desconectar manualmente
+    this._clearReconnectingTimer();
+
     if (this.room) {
       // Unpublish all tracks first
       this.localTrackPublications.forEach((pub) => {
         if (pub.track) {
-          this.room?.localParticipant.unpublishTrack(pub.track as LocalTrack);
-          if (typeof (pub.track as LocalTrack).stop === 'function') {
-            (pub.track as LocalTrack).stop();
+          const localTrack = pub.track;
+          if (localTrack instanceof LocalTrack) {
+            this.room?.localParticipant.unpublishTrack(localTrack);
+            if (typeof localTrack.stop === 'function') {
+              localTrack.stop();
+            }
           }
         }
       });
       this.localTrackPublications.clear();
 
-      // Disconnect
       this.room.disconnect();
       this.room = null;
     }
@@ -126,12 +179,20 @@ export class SpaceRealtimeCoordinator {
     this.notifyStateChange();
   }
 
+  /** Cancela el heartbeat timer de reconexión si está activo */
+  private _clearReconnectingTimer(): void {
+    if (this._reconnectingTimer !== null) {
+      clearTimeout(this._reconnectingTimer);
+      this._reconnectingTimer = null;
+    }
+  }
+
   /**
    * Publish local track
    */
   async publishTrack(track: MediaStreamTrack, source: 'camera' | 'microphone' | 'screen_share'): Promise<LocalTrackPublication | null> {
     if (!this.room || this.room.state !== 'connected') {
-      console.warn('[SpaceRealtimeCoordinator] Cannot publish track - not connected');
+      this.log.warn('Cannot publish track - not connected');
       return null;
     }
 
@@ -144,10 +205,10 @@ export class SpaceRealtimeCoordinator {
       this.options.onTrackPublished?.(publication.track as LocalTrack, publication);
       this.notifyStateChange();
 
-      console.log('[SpaceRealtimeCoordinator] Published track:', publication.trackSid, source);
+      this.log.info('Published track', { trackSid: publication.trackSid, source });
       return publication;
     } catch (error) {
-      console.error('[SpaceRealtimeCoordinator] Failed to publish track:', error);
+      this.log.error('Failed to publish track', { error });
       return null;
     }
   }
@@ -166,17 +227,20 @@ export class SpaceRealtimeCoordinator {
         return false;
       }
 
-      await this.room.localParticipant.unpublishTrack(publication.track as LocalTrack);
-      if (typeof (publication.track as LocalTrack).stop === 'function') {
-        (publication.track as LocalTrack).stop();
+      const localTrack = publication.track;
+      if (localTrack instanceof LocalTrack) {
+        await this.room.localParticipant.unpublishTrack(localTrack);
+        if (typeof localTrack.stop === 'function') {
+          localTrack.stop();
+        }
       }
       this.localTrackPublications.delete(trackSid);
       this.notifyStateChange();
 
-      console.log('[SpaceRealtimeCoordinator] Unpublished track:', trackSid);
+      this.log.info('Unpublished track', { trackSid });
       return true;
     } catch (error) {
-      console.error('[SpaceRealtimeCoordinator] Failed to unpublish track:', error);
+      this.log.error('Failed to unpublish track', { trackSid, error });
       return false;
     }
   }
@@ -210,8 +274,8 @@ export class SpaceRealtimeCoordinator {
       return !!(await this.publishTrack(newTrack, source));
     }
 
-    const currentTrack = publication.track as LocalTrack | undefined;
-    if ((currentTrack as LocalTrack & { mediaStreamTrack?: MediaStreamTrack } | undefined)?.mediaStreamTrack?.id === newTrack.id) {
+    const currentTrack = publication.track;
+    if (currentTrack instanceof LocalTrack && 'mediaStreamTrack' in currentTrack && currentTrack.mediaStreamTrack?.id === newTrack.id) {
       return true;
     }
 
@@ -228,17 +292,17 @@ export class SpaceRealtimeCoordinator {
 
     try {
       const publication = this.localTrackPublications.get(trackSid);
-      const localTrack = publication?.track as LocalTrack | undefined;
-      if (!localTrack || typeof localTrack.replaceTrack !== 'function') {
+      const trackToReplace = publication?.track;
+      if (!trackToReplace || !(trackToReplace instanceof LocalTrack) || typeof trackToReplace.replaceTrack !== 'function') {
         return false;
       }
 
-      await localTrack.replaceTrack(newTrack);
-      console.log('[SpaceRealtimeCoordinator] Replaced track:', trackSid);
+      await trackToReplace.replaceTrack(newTrack);
+      this.log.info('Replaced track', { trackSid });
       this.notifyStateChange();
       return true;
     } catch (error) {
-      console.error('[SpaceRealtimeCoordinator] Failed to replace track:', error);
+      this.log.error('Failed to replace track', { trackSid, error });
       return false;
     }
   }
@@ -269,68 +333,49 @@ export class SpaceRealtimeCoordinator {
     return true;
   }
 
-  /**
-   * Publish data message
-   */
-  async publishData(data: DataPacketContract, reliable: boolean = true): Promise<boolean> {
-    if (!this.room || this.room.state !== 'connected') {
-      console.warn('[SpaceRealtimeCoordinator] Cannot publish data - not connected');
-      return false;
-    }
+  // ─── Data Publishing (delegado a RealtimeDataPublisher) ──────────
 
-    try {
-      const encoder = new TextEncoder();
-      const payload = encoder.encode(JSON.stringify(data));
-      
-      await this.room.localParticipant.publishData(payload, { reliable });
-      return true;
-    } catch (error) {
-      console.error('[SpaceRealtimeCoordinator] Failed to publish data:', error);
-      return false;
-    }
+  /**
+   * Publica un paquete de datos en la sala LiveKit.
+   * Delegado a RealtimeDataPublisher que resuelve automáticamente lossy/reliable.
+   */
+  async publishData(data: DataPacketContract, reliableOverride?: boolean): Promise<boolean> {
+    return this.dataPublisher.publish(data, reliableOverride);
   }
 
-  /**
-   * Send a reaction
-   */
   async sendReaction(emoji: string): Promise<boolean> {
-    return this.publishData(createReactionDataPacket({ emoji }));
+    return this.dataPublisher.sendReaction({ emoji });
   }
 
-  /**
-   * Send recording status
-   */
   async sendRecordingStatus(isRecording: boolean, by: string): Promise<boolean> {
-    return this.publishData(createRecordingStatusDataPacket({ isRecording, by }));
+    return this.dataPublisher.sendRecordingStatus({ isRecording, by });
   }
 
-  /**
-   * Send consent request
-   */
   async sendConsentRequest(payload: ConsentRequestPayload): Promise<boolean> {
-    return this.publishData(createConsentRequestDataPacket(payload));
+    return this.dataPublisher.sendConsentRequest(payload);
   }
 
-  /**
-   * Send consent response
-   */
   async sendConsentResponse(payload: ConsentResponsePayload): Promise<boolean> {
-    return this.publishData(createConsentResponseDataPacket(payload));
+    return this.dataPublisher.sendConsentResponse(payload);
   }
 
-  /**
-   * Send raise hand
-   */
   async sendRaiseHand(payload: RaiseHandPayload): Promise<boolean> {
-    return this.publishData(createRaiseHandDataPacket(payload));
+    return this.dataPublisher.sendRaiseHand(payload);
   }
 
-  /**
-   * Send pin participant
-   */
   async sendPinParticipant(participantId: string | null, pinned: boolean): Promise<boolean> {
     const by = this.room?.localParticipant?.name || 'Anonymous';
-    return this.publishData(createPinParticipantDataPacket({ participantId, pinned, by }));
+    return this.dataPublisher.sendPinParticipant({ participantId, pinned, by });
+  }
+
+  /** Nuevo: speaker hint (antes solo disponible en Gateway) */
+  async sendSpeakerHint(payload: SpeakerHintPayload): Promise<boolean> {
+    return this.dataPublisher.sendSpeakerHint(payload);
+  }
+
+  /** Nuevo: moderation notice (antes solo disponible en Gateway) */
+  async sendModerationNotice(payload: ModerationNoticePayload): Promise<boolean> {
+    return this.dataPublisher.sendModerationNotice(payload);
   }
 
   getState(): SpaceRealtimeCoordinatorState {
@@ -366,25 +411,46 @@ export class SpaceRealtimeCoordinator {
 
     // Connection events
     this.room.on(RoomEvent.Connected, () => {
-      console.log('[SpaceRealtimeCoordinator] Room connected');
+      this.log.info('Room connected');
       this.connected = true;
       this.options.onConnectionChange?.(true);
       this.notifyStateChange();
     });
 
     this.room.on(RoomEvent.Disconnected, (reason) => {
-      console.log('[SpaceRealtimeCoordinator] Room disconnected:', reason);
+      this.log.info('Room disconnected', { reason });
       this.connected = false;
       this.options.onConnectionChange?.(false);
       this.notifyStateChange();
     });
 
     this.room.on(RoomEvent.Reconnecting, () => {
-      console.log('[SpaceRealtimeCoordinator] Room reconnecting');
+      this.log.info('Room reconnecting — heartbeat timeout started', {
+        timeoutMs: RECONNECTING_TIMEOUT_MS,
+      });
+
+      // Inicia el timer de heartbeat: si en 60s no reconecta → fuerza reconexión limpia
+      this._clearReconnectingTimer();
+      this._reconnectingTimer = setTimeout(async () => {
+        this.log.warn('Reconnecting timeout reached — forcing clean reconnect', {
+          timeoutMs: RECONNECTING_TIMEOUT_MS,
+        });
+        try {
+          await this.room?.disconnect();
+        } catch {
+          // Ignorar errores de disconnect durante estado degradado
+        }
+        // La lógica de re-connect con token fresco queda en manos del llamador
+        // (el store/hook detectará la desconexión y obtendrá un nuevo token)
+        this.connected = false;
+        this.options.onConnectionChange?.(false);
+        this.notifyStateChange();
+      }, RECONNECTING_TIMEOUT_MS);
     });
 
     this.room.on(RoomEvent.Reconnected, () => {
-      console.log('[SpaceRealtimeCoordinator] Room reconnected');
+      this.log.info('Room reconnected — heartbeat timer cleared');
+      this._clearReconnectingTimer();
       this.connected = true;
       this.options.onConnectionChange?.(true);
       this.notifyStateChange();
@@ -392,25 +458,25 @@ export class SpaceRealtimeCoordinator {
 
     // Track events
     this.room.on(RoomEvent.LocalTrackPublished, (publication) => {
-      console.log('[SpaceRealtimeCoordinator] Local track published:', publication.trackSid);
+      this.log.info('Local track published', { trackSid: publication.trackSid });
     });
 
     this.room.on(RoomEvent.LocalTrackUnpublished, (publication) => {
-      console.log('[SpaceRealtimeCoordinator] Local track unpublished:', publication.trackSid);
+      this.log.info('Local track unpublished', { trackSid: publication.trackSid });
       this.localTrackPublications.delete(publication.trackSid);
       this.options.onTrackUnpublished?.(publication);
       this.notifyStateChange();
     });
 
     this.room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
-      console.log('[SpaceRealtimeCoordinator] Remote track subscribed:', track.sid, 'from', participant.identity);
+      this.log.info('Remote track subscribed', { trackSid: track.sid, participantId: participant.identity });
       this.remoteTrackSubscriptions.set(track.sid, track);
       this.options.onRemoteTrackSubscribed?.(track, publication, participant);
       this.notifyStateChange();
     });
 
     this.room.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
-      console.log('[SpaceRealtimeCoordinator] Remote track unsubscribed:', track.sid, 'from', participant.identity);
+      this.log.info('Remote track unsubscribed', { trackSid: track.sid, participantId: participant.identity });
       this.remoteTrackSubscriptions.delete(track.sid);
       this.options.onRemoteTrackUnsubscribed?.(track, publication, participant);
       this.notifyStateChange();
@@ -418,13 +484,13 @@ export class SpaceRealtimeCoordinator {
 
     // Participant events
     this.room.on(RoomEvent.ParticipantConnected, (participant) => {
-      console.log('[SpaceRealtimeCoordinator] Participant connected:', participant.identity);
+      this.log.info('Participant connected', { participantId: participant.identity });
       this.options.onParticipantConnected?.(participant);
       this.notifyStateChange();
     });
 
     this.room.on(RoomEvent.ParticipantDisconnected, (participant) => {
-      console.log('[SpaceRealtimeCoordinator] Participant disconnected:', participant.identity);
+      this.log.info('Participant disconnected', { participantId: participant.identity });
       this.options.onParticipantDisconnected?.(participant);
       this.notifyStateChange();
     });
@@ -437,22 +503,19 @@ export class SpaceRealtimeCoordinator {
       this.notifyStateChange();
     });
 
-    // Data events
-    this.room.on(RoomEvent.DataReceived, (payload, participant) => {
-      try {
-        const decoder = new TextDecoder();
-        const raw = JSON.parse(decoder.decode(payload));
-        const data = parseDataPacketContract(raw);
-        if (!data) {
-          console.warn('[SpaceRealtimeCoordinator] Ignoring invalid data packet');
-          return;
-        }
-        console.log('[SpaceRealtimeCoordinator] Data received:', data.type, 'from', participant?.identity);
-        this.eventBus.emit(data, participant?.identity);
-        this.options.onDataReceived?.(data, participant);
-      } catch (error) {
-        console.warn('[SpaceRealtimeCoordinator] Failed to parse received data:', error);
-      }
+    // Connection quality monitoring
+    this.room.on(RoomEvent.ConnectionQualityChanged, (quality, participant) => {
+      this.log.debug('Connection quality changed', {
+        participantId: participant.identity,
+        quality,
+        isLocal: participant === this.room?.localParticipant,
+      });
+      this.options.onConnectionQualityChanged?.(participant.identity, quality);
+    });
+
+    // Data events — delegado a RealtimeEventParser
+    this.room.on(RoomEvent.DataReceived, (payload: Uint8Array, participant?: RemoteParticipant) => {
+      this.eventParser.handleRawPayload(payload, participant);
     });
   }
 }

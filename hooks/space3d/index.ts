@@ -6,7 +6,7 @@
 
 export * from './types';
 export { useUserSettings } from './useUserSettings';
-export { useRecording } from './useRecording';
+export { useEstadoGrabacion, useRecording } from './useEstadoGrabacion';
 export { useNotifications } from './useNotifications';
 export { useChunkSystem } from './useChunkSystem';
 export { useMediaStream } from './useMediaStream';

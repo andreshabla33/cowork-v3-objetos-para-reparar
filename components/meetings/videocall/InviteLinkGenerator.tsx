@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase';
 import { useStore } from '@/store/useStore';
 
@@ -16,6 +17,8 @@ interface EnlaceGenerado {
   enlace: string;
   descripcion: string;
 }
+
+const log = logger.child('InviteLinkGenerator');
 
 export const InviteLinkGenerator: React.FC<InviteLinkGeneratorProps> = ({
   salaId,
@@ -104,7 +107,7 @@ export const InviteLinkGenerator: React.FC<InviteLinkGeneratorProps> = ({
         },
       ]);
     } catch (err: any) {
-      console.error('Error generando enlaces:', err);
+      log.error('Error generando enlaces', { error: err instanceof Error ? err.message : String(err) });
       setError(err.message || 'Error al generar enlaces');
     } finally {
       setLoading(false);
@@ -118,7 +121,7 @@ export const InviteLinkGenerator: React.FC<InviteLinkGeneratorProps> = ({
       setCopied(etiqueta);
       setTimeout(() => setCopied(null), 2000);
     } catch (err) {
-      console.error('Error copiando:', err);
+      log.error('Error copiando enlace', { error: err instanceof Error ? err.message : String(err) });
     }
   };
 

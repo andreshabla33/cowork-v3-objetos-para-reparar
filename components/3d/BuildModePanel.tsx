@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
-import { supabase } from '@/lib/supabase';
+import React, { useState, useMemo } from 'react';
 import type { CatalogoObjeto3D } from '@/types/objetos3d';
 import { ObjectCard } from '../ObjectCard';
+import { useBuildMode } from '@/hooks/space3d/useBuildMode';
 
 interface BuildModePanelProps {
   onClose: () => void;
@@ -23,26 +23,8 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export const BuildModePanel: React.FC<BuildModePanelProps> = ({ onClose, onPrepararObjeto }) => {
-  const [availableObjects, setAvailableObjects] = useState<CatalogoObjeto3D[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { availableObjects, loading } = useBuildMode();
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
-
-  useEffect(() => {
-    const fetchCatalog = async () => {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('catalogo_objetos_3d')
-        .select('*')
-        .eq('activo', true)
-        .order('orden', { ascending: true });
-        
-      if (!error && data) {
-        setAvailableObjects(data as CatalogoObjeto3D[]);
-      }
-      setLoading(false);
-    };
-    fetchCatalog();
-  }, []);
 
   const objectCategories = useMemo(() => {
     const categories = Array.from(new Set(availableObjects.map((object) => object.categoria).filter(Boolean)));

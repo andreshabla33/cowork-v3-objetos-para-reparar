@@ -8,7 +8,7 @@ import { resolverPerfilVisualArquitectonico } from '@/src/core/domain/entities/e
 import {
   crearMaterialMarcoArquitectonico,
   crearMaterialPBRArquitectonico,
-} from '@/src/core/infrastructure/fabricaMaterialesArquitectonicos';
+} from '@/lib/rendering/fabricaMaterialesArquitectonicos';
 
 interface ObjetoProceduralLike {
   built_in_geometry?: string | null;

@@ -1,9 +1,20 @@
 /**
  * DeviceManager - Unified device management for media devices
  * Handles enumeration, selection, and hot-swapping of audio/video devices
+ *
+ * Phase 4 — Room.getLocalDevices() alignment:
+ * enumerateDevices() usa Room.getLocalDevices() de livekit-client cuando está
+ * disponible. Room.getLocalDevices() filtra dummy devices, solicita permisos
+ * automáticamente si es necesario, y sigue las mejores prácticas del SDK de LiveKit.
+ *
+ * @see https://docs.livekit.io/client-sdk-js/classes/Room.html#getLocalDevices
  */
 
+import { Room } from 'livekit-client';
+import { logger } from '@/lib/logger';
 import { DeviceInfo } from '../../domain/types';
+
+const log = logger.child('device-manager');
 
 export interface DeviceManagerOptions {
   onDevicesChanged?: (devices: DeviceInfo[]) => void;
@@ -27,17 +38,32 @@ export class DeviceManager {
   }
 
   /**
-   * Enumerate all available media devices
-   * Requires prior permission grant for meaningful labels
+   * Enumera todos los dispositivos de media disponibles.
+   *
+   * Phase 4 — Usa Room.getLocalDevices() de livekit-client para:
+   *   - Filtrar automáticamente dummy devices (deviceId vacío o 'default' duplicado)
+   *   - Solicitar permisos si `requestPermissions=false` y los labels están vacíos
+   *   - Seguir las mejores prácticas del SDK de LiveKit para device management
+   *
+   * Fallback a navigator.mediaDevices.enumerateDevices() si Room no está disponible.
    */
   async enumerateDevices(): Promise<DeviceInfo[]> {
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
       return [];
     }
 
     try {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const mappedDevices: DeviceInfo[] = devices.map((device, index) => ({
+      // Phase 4: Room.getLocalDevices() por tipo — agrupa los 3 tipos de devices
+      // requestPermissions=false: no pedir permisos aquí, solo enumerar lo disponible
+      const [audioInputs, videoInputs, audioOutputs] = await Promise.all([
+        Room.getLocalDevices('audioinput', false).catch(() => []),
+        Room.getLocalDevices('videoinput', false).catch(() => []),
+        Room.getLocalDevices('audiooutput', false).catch(() => []),
+      ]);
+
+      const allDevices: MediaDeviceInfo[] = [...audioInputs, ...videoInputs, ...audioOutputs];
+
+      const mappedDevices: DeviceInfo[] = allDevices.map((device, index) => ({
         id: device.deviceId,
         label: device.label || this.getDefaultLabel(device.kind, index),
         kind: device.kind as DeviceInfo['kind'],
@@ -49,29 +75,57 @@ export class DeviceManager {
 
       return mappedDevices;
     } catch (error) {
-      console.error('[DeviceManager] Failed to enumerate devices:', error);
+      log.error('Failed to enumerate devices', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       this.options.onDeviceError?.(error as Error);
       return [];
     }
   }
 
   /**
-   * Request initial permission to access devices
-   * This populates device labels in subsequent enumerate calls
+   * Request initial permission to access devices.
+   * Populates device labels en llamadas posteriores a enumerateDevices().
+   *
+   * Phase 4 — Usa Room.getLocalDevices() con requestPermissions=true.
+   * Esto solicita permisos de forma integrada con el SDK de LiveKit,
+   * sin necesidad de getUserMedia() + stop() inmediato que puede causar doble prompt.
+   *
+   * Si Room.getLocalDevices() falla (ej. browser muy antiguo), hace fallback
+   * a getUserMedia() clásico.
    */
   async requestInitialPermissions(constraints: MediaStreamConstraints = { audio: true, video: true }): Promise<boolean> {
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices) {
       return false;
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      // Immediately stop all tracks - we just needed the permission
-      stream.getTracks().forEach(track => track.stop());
+      // Phase 4: usar Room.getLocalDevices(kind, requestPermissions=true)
+      // Solicita permisos y filtra dummy devices en una sola llamada
+      const kinds: MediaDeviceKind[] = [];
+      if (constraints.video) kinds.push('videoinput');
+      if (constraints.audio) kinds.push('audioinput');
+
+      await Promise.all(
+        kinds.map((kind) => Room.getLocalDevices(kind, true).catch(() => [])),
+      );
       return true;
     } catch (error) {
-      console.error('[DeviceManager] Failed to get initial permissions:', error);
-      return false;
+      // Fallback: getUserMedia clásico si Room.getLocalDevices no funciona
+      log.warn('Room.getLocalDevices permission request failed, falling back to getUserMedia', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      try {
+        if (!navigator.mediaDevices.getUserMedia) return false;
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        stream.getTracks().forEach(track => track.stop());
+        return true;
+      } catch (fallbackError) {
+        log.error('Failed to get initial permissions', {
+          error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+        });
+        return false;
+      }
     }
   }
 
@@ -98,7 +152,10 @@ export class DeviceManager {
       const stream = await this.requestUserMediaWithRetry(primaryConstraints, kind, deviceId, false);
       return stream;
     } catch (error) {
-      console.error(`[DeviceManager] Failed to get ${kind} stream:`, error);
+      log.error(`Failed to get ${kind} stream`, {
+        error: error instanceof Error ? error.message : String(error),
+        kind,
+      });
 
       if (kind === 'audio') {
         // Some desktop drivers fail with advanced audio constraints.
@@ -107,18 +164,23 @@ export class DeviceManager {
           const relaxedAudioStream = await this.requestUserMediaWithRetry({ audio: true }, kind, null, true);
           return relaxedAudioStream;
         } catch (relaxedError) {
-          console.error('[DeviceManager] Relaxed audio fallback failed:', relaxedError);
+          log.error('Relaxed audio fallback failed', {
+            error: relaxedError instanceof Error ? relaxedError.message : String(relaxedError),
+          });
         }
       }
 
       // Try fallback to default device
       if (deviceId) {
-        console.log(`[DeviceManager] Trying fallback for ${kind}...`);
+        log.info(`Trying fallback for ${kind}`, { kind });
         try {
           const fallbackConstraints = this.buildConstraints(kind, null, options, true);
           return await this.requestUserMediaWithRetry(fallbackConstraints, kind, null, true);
         } catch (fallbackError) {
-          console.error(`[DeviceManager] Fallback failed for ${kind}:`, fallbackError);
+          log.error(`Fallback failed for ${kind}`, {
+            error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+            kind,
+          });
         }
       }
 
@@ -161,7 +223,10 @@ export class DeviceManager {
 
       return newTrack;
     } catch (error) {
-      console.error(`[DeviceManager] Hot-swap failed for ${kind}:`, error);
+      log.error(`Hot-swap failed for ${kind}`, {
+        error: error instanceof Error ? error.message : String(error),
+        kind,
+      });
       return null;
     }
   }
@@ -199,7 +264,9 @@ export class DeviceManager {
       const stream = await navigator.mediaDevices.getDisplayMedia(constraints);
       return stream;
     } catch (error) {
-      console.error('[DeviceManager] Failed to get screen share:', error);
+      log.error('Failed to get screen share', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       return null;
     }
   }
@@ -237,7 +304,7 @@ export class DeviceManager {
     }
 
     this.deviceChangeHandler = async () => {
-      console.log('[DeviceManager] Device change detected');
+      log.info('Device change detected');
       const devices = await this.enumerateDevices();
       this.options.onDevicesChanged?.(devices);
     };
@@ -318,7 +385,10 @@ export class DeviceManager {
           throw error;
         }
 
-        console.warn(`[DeviceManager] Retryable ${kind} error on attempt ${attempt + 1}:`, errorName, {
+        log.warn(`Retryable ${kind} error on attempt ${attempt + 1}`, {
+          errorName,
+          kind,
+          attempt: attempt + 1,
           deviceId,
           preferRelaxedVideo,
         });

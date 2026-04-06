@@ -43,7 +43,6 @@ export interface VideoHUDProps {
   isPrivate: boolean;
   layoutSnapshot: SpaceVideoHudLayoutModel<User>;
   stream: MediaStream | null;
-  effectiveStream?: MediaStream | null;
   screenStream: MediaStream | null;
   remoteReaction: { emoji: string; from: string; fromName: string } | null;
   onWaveUser: (userId: string) => void;
@@ -64,7 +63,6 @@ export const VideoHUD: React.FC<VideoHUDProps> = ({
   isPrivate,
   layoutSnapshot,
   stream,
-  effectiveStream,
   screenStream,
   remoteReaction,
   onWaveUser,
@@ -80,7 +78,10 @@ export const VideoHUD: React.FC<VideoHUDProps> = ({
   const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
   const [waveAnimation, setWaveAnimation] = useState<string | null>(null);
   const [useGridLayout, setUseGridLayout] = useState(false);
-  const localExpandedStream = (cameraSettings.backgroundEffect !== 'none' ? (effectiveStream ?? stream) : stream) ?? stream;
+  // El processor se aplica in-place sobre el track via track.setProcessor()
+  // (gestionado por useBackgroundProcessor). El stream base ya contiene
+  // el output procesado — no se necesita un effectiveStream separado.
+  const localExpandedStream = stream;
   const localExpandedClass = `w-full h-full object-contain ${cameraSettings.backgroundEffect === 'none' && cameraSettings.mirrorVideo ? 'mirror' : ''}`;
   const localBubbleStream = localExpandedStream;
   const localBubbleClass = `w-full h-full object-cover block ${cameraSettings.backgroundEffect === 'none' && cameraSettings.mirrorVideo ? 'mirror' : ''}`;

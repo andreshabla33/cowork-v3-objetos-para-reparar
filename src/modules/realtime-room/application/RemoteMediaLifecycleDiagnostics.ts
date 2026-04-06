@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logger';
+
 export type RemoteMediaLifecycleEvent =
   | 'track_subscribed'
   | 'track_subscription_skipped'
@@ -25,6 +27,7 @@ export interface RemoteMediaLifecycleDiagnosticsOptions {
 export class RemoteMediaLifecycleDiagnostics {
   private enabled: boolean;
   private scope: string;
+  private log = logger.child('remote-media-lifecycle');
 
   constructor(options: RemoteMediaLifecycleDiagnosticsOptions = {}) {
     this.enabled = options.enabled ?? false;
@@ -33,11 +36,19 @@ export class RemoteMediaLifecycleDiagnostics {
 
   log(event: RemoteMediaLifecycleEvent, payload: RemoteMediaLifecycleDiagnosticsPayload = {}): void {
     if (!this.enabled) return;
-    console.log(`[${this.scope}] ${event}`, payload);
+    this.log.debug('Remote media lifecycle event', {
+      event,
+      scope: this.scope,
+      payload,
+    });
   }
 
   warn(event: RemoteMediaLifecycleEvent, payload: RemoteMediaLifecycleDiagnosticsPayload = {}): void {
     if (!this.enabled) return;
-    console.warn(`[${this.scope}] ${event}`, payload);
+    this.log.warn('Remote media lifecycle event', {
+      event,
+      scope: this.scope,
+      payload,
+    });
   }
 }

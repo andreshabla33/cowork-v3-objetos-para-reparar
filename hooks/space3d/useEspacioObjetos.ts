@@ -6,61 +6,16 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { CatalogoObjeto3D, InteraccionConfigObjeto3D } from '@/types/objetos3d';
-import type { ConfiguracionGeometricaObjeto } from '@/src/core/domain/entities/objetosArquitectonicos';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import { logger } from '@/lib/logger';
+import type { CatalogoObjeto3D } from '@/types/objetos3d';
 import { obtenerPlantillaZona } from '@/src/core/domain/entities/plantillasEspacio';
 
-// Tipos para objetos 3D persistentes
-export interface EspacioObjeto {
-  id: string;
-  espacio_id: string;
-  catalogo_id?: string | null;
-  modelo_url: string;
-  tipo: string;
-  nombre: string | null;
-  posicion_x: number;
-  posicion_y: number;
-  posicion_z: number;
-  rotacion_x: number;
-  rotacion_y: number;
-  rotacion_z: number;
-  escala_x: number;
-  escala_y: number;
-  escala_z: number;
-  empresa_id?: string | null;
-  es_de_plantilla?: boolean;
-  owner_id: string | null;
-  plantilla_origen?: string | null;
-  creado_en: string;
-  actualizado_en: string;
-  interactuable?: boolean;
-  built_in_geometry?: string | null;
-  built_in_color?: string | null;
-  ancho?: number | string | null;
-  alto?: number | string | null;
-  profundidad?: number | string | null;
-  es_sentable?: boolean;
-  sit_offset_x?: number | string | null;
-  sit_offset_y?: number | string | null;
-  sit_offset_z?: number | string | null;
-  sit_rotation_y?: number | string | null;
-  es_interactuable?: boolean;
-  interaccion_tipo?: string | null;
-  interaccion_radio?: number | string | null;
-  interaccion_emoji?: string | null;
-  interaccion_label?: string | null;
-  interaccion_config?: InteraccionConfigObjeto3D | null;
-  configuracion_geometria?: ConfiguracionGeometricaObjeto | null;
-  es_reclamable?: boolean;
-  premium?: boolean;
-  escala_normalizacion?: number | null;
-  catalogo?: {
-    ancho: number;
-    alto: number;
-    profundidad: number;
-    escala_normalizacion?: number;
-  };
-}
+// ─── Tipo canónico desde dominio ──────────────────────────────────────────────
+// CLEAN-ARCH-F1: EspacioObjeto es una entidad de dominio, no un detalle del hook.
+// La definición canónica vive en src/core/domain/entities/espacio3d/ObjetoEspacio3D.ts
+import type { ObjetoEspacio3D as EspacioObjeto } from '@/src/core/domain/entities/espacio3d';
+export type { EspacioObjeto };
 
 export interface SpawnPersonal {
   spawn_x: number | null;
@@ -163,7 +118,8 @@ const crearIndiceCatalogo = (catalogo: CatalogoObjeto3DRuntime[]) => {
 };
 
 const resolverSlugCatalogoPlantilla = (objeto: EspacioObjeto) => {
-  const metaPlantilla = (objeto.configuracion_geometria as any)?.meta_plantilla_zona;
+  const configGeometria = objeto.configuracion_geometria as Record<string, unknown> | null;
+  const metaPlantilla = configGeometria?.meta_plantilla_zona as { slug_catalogo?: string; plantilla_id?: string; clave_instancia?: string } | undefined;
   const slugDirecto = typeof metaPlantilla?.slug_catalogo === 'string' ? metaPlantilla.slug_catalogo.trim().toLowerCase() : '';
   if (slugDirecto) {
     return slugDirecto;
@@ -251,10 +207,11 @@ export function useEspacioObjetos(
   userId: string | null,
   empresaId: string | null = null
 ): UseEspacioObjetosReturn {
+  const log = logger.child('useEspacioObjetos');
   const [objetos, setObjetos] = useState<EspacioObjeto[]>([]);
   const [loading, setLoading] = useState(true);
   const [spawnPersonal, setSpawnPersonal] = useState<SpawnPersonal>({ spawn_x: null, spawn_z: null });
-  const subscriptionRef = useRef<any>(null);
+  const subscriptionRef = useRef<RealtimeChannel | null>(null);
   const catalogoIndiceRef = useRef<ReturnType<typeof crearIndiceCatalogo>>(crearIndiceCatalogo([]));
   const objetosRef = useRef<EspacioObjeto[]>(objetos);
   objetosRef.current = objetos;
@@ -280,13 +237,13 @@ export function useEspacioObjetos(
     if (!catalogoError && catalogoData) {
       catalogoIndiceRef.current = crearIndiceCatalogo(catalogoData as CatalogoObjeto3DRuntime[]);
     } else if (catalogoError) {
-      console.error('[useEspacioObjetos] Error fetching catálogo:', catalogoError);
+      log.error('Error fetching catálogo', { error: catalogoError instanceof Error ? catalogoError.message : String(catalogoError) });
     }
 
     if (!error && data) {
       setObjetos((data as EspacioObjeto[]).map((objeto) => enriquecerObjetoEspacio(objeto, catalogoIndiceRef.current)));
     } else {
-      console.error('[useEspacioObjetos] Error fetching objetos:', error);
+      log.error('Error fetching objetos', { error: error instanceof Error ? error.message : String(error) });
     }
 
     setLoading(false);
@@ -323,7 +280,7 @@ export function useEspacioObjetos(
               prev.map((obj) => (obj.id === (payload.new as EspacioObjeto).id ? enriquecerObjetoEspacio(payload.new as EspacioObjeto, catalogoIndiceRef.current) : obj))
             );
           } else if (payload.eventType === 'DELETE') {
-            const eliminadoId = (payload.old as any).id;
+            const eliminadoId = (payload.old as Record<string, unknown>)?.id as string;
             setObjetos((prev) => prev.filter((obj) => obj.id !== eliminadoId));
           }
         }
@@ -403,7 +360,7 @@ export function useEspacioObjetos(
       .single();
 
     if (error) {
-      console.error('[useEspacioObjetos] Error creando objeto desde catálogo:', error);
+      log.error('Error creando objeto desde catálogo', { error: error instanceof Error ? error.message : String(error) });
       return null;
     }
 
@@ -473,7 +430,7 @@ export function useEspacioObjetos(
       .single();
 
     if (error) {
-      console.error('[useEspacioObjetos] Error reemplazando objeto desde catálogo:', error);
+      log.error('Error reemplazando objeto desde catálogo', { error: error instanceof Error ? error.message : String(error) });
       setObjetos((prev) => prev.map((obj) => (obj.id === objetoId ? objetoPrevio : obj)));
       return null;
     }
@@ -486,13 +443,13 @@ export function useEspacioObjetos(
   // Reclamar un objeto (escritorio libre → asignar owner_id)
   // Enforce: un solo escritorio por usuario — libera el anterior si existe
   const reclamarObjeto = useCallback(async (objetoId: string): Promise<boolean> => {
-    console.log('[useEspacioObjetos] reclamarObjeto', { objetoId, userId, espacioId });
-    if (!userId) { console.warn('[useEspacioObjetos] userId es null'); return false; }
+    log.info('reclamarObjeto', { objetoId, userId, espacioId });
+    if (!userId) { log.warn('userId es null'); return false; }
 
     // Si ya tiene un escritorio, liberarlo primero
     const escritorioActual = objetosRef.current.find((o) => o.owner_id === userId);
     if (escritorioActual && escritorioActual.id !== objetoId) {
-      console.log('[useEspacioObjetos] Liberando escritorio anterior:', escritorioActual.id);
+      log.info('Liberando escritorio anterior', { escritorioId: escritorioActual.id });
       await supabase
         .from('espacio_objetos')
         .update({ owner_id: null })
@@ -507,15 +464,15 @@ export function useEspacioObjetos(
       .is('owner_id', null)
       .select();
 
-    console.log('[useEspacioObjetos] Resultado reclamar:', { data, error });
+    log.debug('Resultado reclamar', { dataLength: data?.length ?? 0, hasError: !!error });
 
     if (error) {
-      console.error('[useEspacioObjetos] Error reclamando:', error);
+      log.error('Error reclamando', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
 
     if (!data || data.length === 0) {
-      console.warn('[useEspacioObjetos] No se reclamó — RLS o ya ocupado');
+      log.warn('No se reclamó — RLS o ya ocupado');
       return false;
     }
 
@@ -530,8 +487,8 @@ export function useEspacioObjetos(
 
   // Liberar un objeto (quitar owner_id)
   const liberarObjeto = useCallback(async (objetoId: string): Promise<boolean> => {
-    console.log('[useEspacioObjetos] liberarObjeto', { objetoId, userId });
-    if (!userId) { console.warn('[useEspacioObjetos] userId null en liberar'); return false; }
+    log.info('liberarObjeto', { objetoId, userId });
+    if (!userId) { log.warn('userId null en liberar'); return false; }
 
     const { data, error } = await supabase
       .from('espacio_objetos')
@@ -540,10 +497,10 @@ export function useEspacioObjetos(
       .eq('owner_id', userId)
       .select();
 
-    console.log('[useEspacioObjetos] Resultado liberar:', { data, error });
+    log.debug('Resultado liberar', { dataLength: data?.length ?? 0, hasError: !!error });
 
     if (error) {
-      console.error('[useEspacioObjetos] Error liberando:', error);
+      log.error('Error liberando', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
 
@@ -563,7 +520,7 @@ export function useEspacioObjetos(
   const actualizarTransformacionObjeto = useCallback(async (objetoId: string, cambios: TransformacionObjetoInput): Promise<boolean> => {
     const objetoPrevio = objetosRef.current.find((obj) => obj.id === objetoId);
     if (!objetoPrevio) {
-      console.warn('[useEspacioObjetos] Objeto no encontrado para transformar:', objetoId);
+      log.warn('Objeto no encontrado para transformar', { objetoId });
       return false;
     }
 
@@ -588,7 +545,7 @@ export function useEspacioObjetos(
       .eq('id', objetoId);
 
     if (error) {
-      console.error('[useEspacioObjetos] Error actualizando transformación:', error);
+      log.error('Error actualizando transformación', { error: error instanceof Error ? error.message : String(error) });
       setObjetos((prev) => prev.map((obj) => (obj.id === objetoId ? objetoPrevio : obj)));
       return false;
     }
@@ -624,7 +581,7 @@ export function useEspacioObjetos(
       .eq('id', objetoId);
 
     if (error) {
-      console.error('[useEspacioObjetos] Error eliminando objeto:', error);
+      log.error('Error eliminando objeto', { error: error instanceof Error ? error.message : String(error) });
       if (objetoPrevio) {
         setObjetos((prev) => {
           if (prev.some((obj) => obj.id === objetoPrevio.id)) return prev;
@@ -670,7 +627,7 @@ export function useEspacioObjetos(
       .select();
 
     if (error) {
-      console.error('[useEspacioObjetos] Error duplicando objetos:', error);
+      log.error('Error duplicando objetos', { error: error instanceof Error ? error.message : String(error) });
       return [];
     }
 
@@ -731,7 +688,7 @@ export function useEspacioObjetos(
       .single();
 
     if (error) {
-      console.error('[useEspacioObjetos] Error restaurando objeto:', error);
+      log.error('Error restaurando objeto', { error: error instanceof Error ? error.message : String(error) });
       setObjetos(snapshotPrevio);
       return null;
     }
@@ -759,7 +716,7 @@ export function useEspacioObjetos(
       .eq('usuario_id', userId);
 
     if (error) {
-      console.error('[useEspacioObjetos] Error guardando spawn:', error);
+      log.error('Error guardando spawn', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
 

@@ -4,6 +4,8 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { OrthographicCamera, PerspectiveCamera, Grid, Text, Html, PerformanceMonitor, useGLTF } from '@react-three/drei';
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
+import { logger } from '@/lib/logger';
+import type { AccionXP } from '@/lib/gamificacion';
 import { User, PresenceStatus, ZonaEmpresa } from '@/types';
 import { GLTFAvatar } from '../avatar3d/GLTFAvatar';
 import { useAvatarControls } from '../avatar3d/useAvatarControls';
@@ -40,6 +42,8 @@ import { Avatar, type AvatarProps } from './Avatar3DScene';
 import { TeleportEffect } from './Avatar3DScene';
 import { useSeatDetection } from '@/hooks/space3d/useSeatDetection';
 
+const log = logger.child('Player3D');
+
 // --- Player ---
 export interface PlayerProps {
   currentUser: User;
@@ -65,7 +69,7 @@ export interface PlayerProps {
   empresasAutorizadas?: string[];
   usersInCallIds?: Set<string>;
   mobileInputRef?: React.MutableRefObject<JoystickInput>;
-  onXPEvent?: (accion: string, cooldownMs?: number) => void;
+  onXPEvent?: (accion: AccionXP, cooldownMs?: number) => void;
   espacioObjetos?: EspacioObjeto[];
   asientos?: AsientoRuntime3D[];
   ocupacionesAsientosPorObjetoId?: Map<string, OcupacionAsientoReal>;
@@ -333,7 +337,7 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     const debugKey = `${fase}:${JSON.stringify(payload)}`;
     if (lastSitDebugKeyRef.current === debugKey) return;
     lastSitDebugKeyRef.current = debugKey;
-    console.log('[SIT_DEBUG][player]', fase, payload);
+    log.info('SIT_DEBUG[player]', { fase, ...payload });
   }, []);
 
   const handleAvatarHeightComputed = useCallback((height: number) => {
@@ -351,7 +355,7 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     }
     if (metricas.alturaCaderaSentada != null && metricas.alturaCaderaSentada > 0.1) {
       avatarSitHipHeightRef.current = metricas.alturaCaderaSentada;
-      console.log('[SIT_DEBUG][player] pelvis_sentada_recibida', {
+      log.info('SIT_DEBUG[player] pelvis_sentada_recibida', {
         alturaCaderaSentada: Number(metricas.alturaCaderaSentada.toFixed(4)),
       });
     }
@@ -927,7 +931,7 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
         sitDownStartTimeRef.current = Date.now();
       }
       if (sentadoActivo && currentSeatRuntime && (Date.now() - sitDownStartTimeRef.current) < 3000 && (Date.now() - sitDownStartTimeRef.current) % 500 < 20) {
-        console.log('[SIT_Y_DEBUG]', {
+        log.info('SIT_Y_DEBUG', {
           seatPosY: +currentSeatRuntime.posicion.y.toFixed(4),
           targetY: +targetY.toFixed(4),
           currentGroupY: +groupRef.current.position.y.toFixed(4),

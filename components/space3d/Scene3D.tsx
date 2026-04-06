@@ -4,6 +4,8 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { OrthographicCamera, PerspectiveCamera, Grid, Text, OrbitControls, Html, PerformanceMonitor, useGLTF } from '@react-three/drei';
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
+import { logger } from '@/lib/logger';
+import type { AccionXP } from '@/lib/gamificacion';
 import { User, PresenceStatus, ZonaEmpresa } from '@/types';
 import { GLTFAvatar } from '../avatar3d/GLTFAvatar';
 import { useAvatarControls } from '../avatar3d/useAvatarControls';
@@ -27,7 +29,12 @@ import { useStore } from '@/store/useStore';
 import type { ModoEdicionObjeto, PlantillaZonaEnColocacion } from '@/store/slices';
 import { FloorType, calcularNivelAnidamientoRectangulo, detectarSolapamientoSubzona, zonaDbAMundo, type RectanguloZona, resolverTipoSubsueloZona } from '@/src/core/domain/entities';
 import { obtenerPlantillaZona } from '@/src/core/domain/entities/plantillasEspacio';
-import { crearPropsMaterialSueloPbr } from '@/src/core/infrastructure/textureRegistry';
+import { crearPropsMaterialSueloPbr } from '@/lib/rendering/textureRegistry';
+import { SceneEnvironment } from './SceneEnvironment';
+import { SceneCamera } from './SceneCamera';
+import { SceneZonas } from './SceneZonas';
+// FASE 5: Geometry cache para eliminar fluctuación 312↔567 en renderer-metrics
+import { geoPlano, geoSueloRaycast, geoCajaUnitaria } from '@/lib/rendering/geometriaCache';
 import { type CameraSettings } from '@/modules/realtime-room';
 import { obtenerEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
 import { type JoystickInput } from '../3d/MobileJoystick';
@@ -46,6 +53,8 @@ import { obtenerDimensionesObjetoRuntime } from './objetosRuntime';
 import { statusColors, STATUS_LABELS, type VirtualSpace3DProps } from './spaceTypes';
 import { Player, type PlayerProps } from './Player3D';
 import { RemoteUsers, TeleportEffect, CameraFollow, type AvatarProps } from './Avatar3DScene';
+
+const log = logger.child('Scene3D');
 
 // --- Scene ---
 export interface SceneProps {
@@ -90,7 +99,7 @@ export interface SceneProps {
   empresasAutorizadas?: string[];
   mobileInputRef?: React.MutableRefObject<JoystickInput>;
   enableDayNightCycle?: boolean;
-  onXPEvent?: (accion: string, cooldownMs?: number) => void;
+  onXPEvent?: (accion: AccionXP, cooldownMs?: number) => void;
   onClickRemoteAvatar?: (userId: string) => void;
   avatarInteractions?: AvatarProps['avatarInteractions'];
   espacioObjetos?: EspacioObjeto[];
@@ -150,14 +159,17 @@ const PreviewZonaMesh: React.FC<{
     };
   }, [pbrMaterialProps]);
 
+  // FASE 5: Usar geometrías cacheadas para evitar fluctuación en renderer-metrics
+  const geoPreview = React.useMemo(() => geoPlano(rect.ancho, rect.alto), [rect.ancho, rect.alto]);
+
   return (
     <>
       <mesh
         position={[rect.centroX, elevacionY, rect.centroZ]}
         rotation={[-Math.PI / 2, 0, 0]}
         renderOrder={10}
+        geometry={geoPreview}
       >
-        <planeGeometry args={[rect.ancho, rect.alto]} />
         {overlap ? (
           <meshBasicMaterial
             color="#ef4444"
@@ -179,8 +191,8 @@ const PreviewZonaMesh: React.FC<{
         position={[rect.centroX, elevacionY + 0.008, rect.centroZ]}
         rotation={[-Math.PI / 2, 0, 0]}
         renderOrder={11}
+        geometry={geoPreview}
       >
-        <planeGeometry args={[rect.ancho, rect.alto]} />
         <meshBasicMaterial
           color={overlap ? '#ef4444' : '#ffffff'}
           opacity={overlap ? 0.5 : 0.28}
@@ -606,7 +618,7 @@ export const Scene: React.FC<SceneProps> = ({
       const cz = minZ + alto / 2;
       const nueva: RectanguloZona = { x: cx, z: cz, ancho, alto };
       if (detectarSolapamientoSubzona(nueva, zonasExistentesMundo)) {
-        console.warn('[Zone] Subsuelo bloqueado: solapa con otra zona existente');
+        log.warn('Zone Subsuelo bloqueado: solapa con otra zona existente');
         addNotification('No puedes solapar este subsuelo con otro existente. Puedes anidarlo como decoración, pero sin cruces parciales.', 'info');
       } else {
         onDrawZoneEnd?.({ ancho, alto, x: cx, z: cz, tipoSuelo: paintFloorType, nivelAnidamiento: calcularNivelAnidamientoRectangulo(nueva, zonasExistentesMundo) });
@@ -752,27 +764,31 @@ export const Scene: React.FC<SceneProps> = ({
         />
       </group>
 
-      {/* Suelo base invisible para Raycast (eventos de clic/tap) — Restaurado para mantener estabilidad de colisiones y coordenadas */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}
+      {/* Suelo base invisible para Raycast — FASE 5: geometría cacheada (no crea nueva en cada mount) */}
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, -0.01, 0]}
+        geometry={geoSueloRaycast()}
         onClick={handleFloorClick}
         onDoubleClick={handleFloorDoubleClick}
         onPointerDown={plantillaZonaEnColocacion ? handlePlantillaPointerDown : handleZoneDrawStart}
         onPointerUp={plantillaZonaEnColocacion ? handlePlantillaPointerUp : handleZoneDrawEnd}
         onPointerMove={handlePointerMove}
       >
-        <planeGeometry args={[1000, 1000]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
 
-      {/* Plano Atrapa-Eventos para Modo Construcción / Dibujo (Garantiza raycast perfecto sin importar qué haya debajo) */}
+      {/* Plano Atrapa-Eventos para Modo Construcción / Dibujo — FASE 5: geometría cacheada */}
       {(objetoEnColocacion || plantillaZonaEnColocacion || isDrawingZone || isDragging) && (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.5, 0]}
+        <mesh
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[0, 0.5, 0]}
+          geometry={geoSueloRaycast()}
           onClick={handleFloorClick}
           onPointerDown={plantillaZonaEnColocacion ? handlePlantillaPointerDown : handleZoneDrawStart}
           onPointerUp={plantillaZonaEnColocacion ? handlePlantillaPointerUp : handleZoneDrawEnd}
           onPointerMove={handlePointerMove}
         >
-          <planeGeometry args={[1000, 1000]} />
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />
         </mesh>
       )}
@@ -1008,7 +1024,7 @@ export const Scene: React.FC<SceneProps> = ({
       <CameraFollow controlsRef={orbitControlsRef} zonasEmpresa={zonasEmpresa} empresaId={currentUser.empresa_id} espacioObjetos={espacioObjetos} usersInCallIds={usersInCallIds} usersInAudioRangeIds={usersInAudioRangeIds} />
 
       {/* Usuarios remotos */}
-      <RemoteUsers users={remoteUsers} remoteStreams={remoteStreams} showVideoBubble={showVideoBubbles} usersInCallIds={usersInCallIds} usersInAudioRangeIds={usersInAudioRangeIds} remoteMessages={remoteMessages} remoteReaction={remoteReaction} realtimePositionsRef={realtimePositionsRef} interpolacionWorkerRef={interpolacionWorkerRef} posicionesInterpoladasRef={posicionesInterpoladasRef} ecsStateRef={ecsStateRef} zonasEmpresa={zonasEmpresa} frustumRef={frustumRef} onClickRemoteAvatar={onClickRemoteAvatar} avatarInteractions={avatarInteractions} />
+      <RemoteUsers users={remoteUsers} remoteStreams={remoteStreams} showVideoBubble={showVideoBubbles} usersInCallIds={usersInCallIds} usersInAudioRangeIds={usersInAudioRangeIds} remoteMessages={remoteMessages} remoteReaction={remoteReaction ?? null} realtimePositionsRef={realtimePositionsRef} interpolacionWorkerRef={interpolacionWorkerRef} posicionesInterpoladasRef={posicionesInterpoladasRef} ecsStateRef={ecsStateRef} zonasEmpresa={zonasEmpresa} frustumRef={frustumRef} onClickRemoteAvatar={onClickRemoteAvatar} avatarInteractions={avatarInteractions} />
 
       {/* Objetos interactivos — ocultos hasta tener modelos GLB reales
       <ObjetosInteractivos

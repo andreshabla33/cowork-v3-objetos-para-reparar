@@ -8,6 +8,39 @@ on:
   pull_request:
 
 jobs:
+  # ─── Security Scanning ─────────────────────────────────────────────────
+  security:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Audit dependencies for vulnerabilities
+        run: npm audit --audit-level=high || true
+
+      - name: Check for leaked secrets (GitLeaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:javascript-typescript
+
+  # ─── Build & Typecheck ─────────────────────────────────────────────────
   validar:
     runs-on: ubuntu-latest
     steps:
@@ -17,14 +50,15 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-          - run: npm run typecheck
-          - run: npm run test:unit
-          - run: npm run build
-          - run: npm run check:bundle-budget
+      - run: npm run typecheck
+      - run: npm run test:unit
+      - run: npm run build
+      - run: npm run check:bundle-budget
 
+  # ─── Smoke Tests ───────────────────────────────────────────────────────
   test-smoke:
     runs-on: ubuntu-latest
-    needs: validar
+    needs: [validar, security]
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
@@ -46,6 +80,7 @@ jobs:
           path: playwright-report/
           retention-days: 14
 
+  # ─── E2E Tests ─────────────────────────────────────────────────────────
   test-e2e:
     runs-on: ubuntu-latest
     needs: test-smoke
@@ -70,6 +105,7 @@ jobs:
           path: playwright-report/
           retention-days: 14
 
+  # ─── Full QA (main only) ───────────────────────────────────────────────
   test-full:
     runs-on: ubuntu-latest
     needs: test-smoke

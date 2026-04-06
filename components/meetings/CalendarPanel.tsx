@@ -1,20 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React from 'react';
 import { useStore } from '../../store/useStore';
-import { supabase, APP_URL } from '../../lib/supabase';
 import { ScheduledMeeting } from '../../types';
-import { googleCalendar, GoogleCalendarEvent } from '../../lib/googleCalendar';
-import { getSettingsSection } from '../../lib/userSettings';
 import { MeetingRoom, InviteLinkGenerator } from './videocall';
-import { CargoLaboral } from './recording/types/analysis';
-import { 
-  TipoReunionUnificado, 
+import {
+  TipoReunionUnificado,
   TIPOS_REUNION_CONFIG,
   getTiposReunionPorCargo,
   InvitadoExterno,
   validarInvitadoExterno,
-  crearConfiguracionSala,
-  MAPEO_TIPO_GRABACION
 } from '../../types/meeting-types';
+import { useCalendarPanel } from '@/hooks/meetings/useCalendarPanel';
 
 interface CalendarPanelProps {
   onJoinMeeting?: (salaId: string) => void;
@@ -26,678 +21,72 @@ interface ActiveMeeting {
 }
 
 export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) => {
-  const { currentUser, activeWorkspace, theme } = useStore();
-  const [meetings, setMeetings] = useState<ScheduledMeeting[]>([]);
-  const [googleEvents, setGoogleEvents] = useState<GoogleCalendarEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'scheduled' | 'notes'>('scheduled');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [miembrosEspacio, setMiembrosEspacio] = useState<any[]>([]);
-  const [googleConnected, setGoogleConnected] = useState(googleCalendar.isConnected());
-  const [syncingGoogle, setSyncingGoogle] = useState(false);
-  
-  // Estados para videollamadas
-  const [activeMeeting, setActiveMeeting] = useState<ActiveMeeting | null>(null);
-  const [showInviteModal, setShowInviteModal] = useState<string | null>(null);
-  const [copiedLink, setCopiedLink] = useState<string | null>(null);
-  const [selectedMeeting, setSelectedMeeting] = useState<ScheduledMeeting | null>(null);
-  const creatingMeetingRef = React.useRef(false);
+  const { theme } = useStore();
+
+  // Use the hook for all state and business logic
+  const {
+    loading,
+    activeTab,
+    searchQuery,
+    showScheduleModal,
+    showInviteModal,
+    copiedLink,
+    selectedDate,
+    selectedMeeting,
+    activeMeeting,
+    googleConnected,
+    syncingGoogle,
+    showroomHabilitado,
+    showroomDuracion,
+    cargoUsuario,
+    meetings,
+    googleEvents,
+    miembrosEspacio,
+    newMeeting,
+    invitadosExternos,
+    nuevoInvitado,
+    erroresInvitado,
+    setActiveTab,
+    setSearchQuery,
+    setShowScheduleModal,
+    setShowInviteModal,
+    setCopiedLink,
+    setSelectedDate,
+    setSelectedMeeting,
+    setActiveMeeting,
+    setShowroomHabilitado,
+    setShowroomDuracion,
+    setNewMeeting,
+    setInvitadosExternos,
+    setNuevoInvitado,
+    setErroresInvitado,
+    loadMeetings,
+    createMeeting,
+    respondToMeeting,
+    deleteMeeting,
+    connectGoogleCalendar,
+    disconnectGoogleCalendar,
+    syncGoogleEvents,
+    copyMeetingLink,
+    toggleParticipant,
+    resetNewMeeting,
+    filteredMeetings,
+    visibleGoogleEvents,
+    tiposReunionDisponibles,
+    configTipoActual,
+    getDaysInMonth,
+    getMeetingsForDate,
+    formatTime,
+    formatDate,
+    formatDateShort,
+    isCreator,
+    getMyParticipation,
+    isMeetingNow,
+    isMeetingSoon,
+    currentUserId,
+  } = useCalendarPanel();
 
-  // Función para copiar link de reunión
-  const copyMeetingLink = async (meetingLink: string, meetingId: string) => {
-    try {
-      await navigator.clipboard.writeText(meetingLink);
-      setCopiedLink(meetingId);
-      setTimeout(() => setCopiedLink(null), 2000);
-    } catch (err) {
-      console.error('Error copiando link:', err);
-      alert('No se pudo copiar el link. Intenta de nuevo.');
-    }
-  };
 
-  const [newMeeting, setNewMeeting] = useState({
-    titulo: '',
-    descripcion: '',
-    fecha: '',
-    hora_inicio: '',
-    hora_fin: '',
-    participantes: [] as string[],
-    recordatorio_minutos: 15,
-    tipo_reunion: 'equipo' as TipoReunionUnificado
-  });
-
-  // Estado para invitados externos (cliente/candidato)
-  const [invitadosExternos, setInvitadosExternos] = useState<InvitadoExterno[]>([]);
-  const [nuevoInvitado, setNuevoInvitado] = useState<Partial<InvitadoExterno>>({
-    email: '',
-    nombre: '',
-    empresa: '',
-    puesto_aplicado: ''
-  });
-  const [erroresInvitado, setErroresInvitado] = useState<string[]>([]);
-  const [showroomHabilitado, setShowroomHabilitado] = useState(false);
-  const [showroomDuracion, setShowroomDuracion] = useState(5);
-
-  // Obtener cargo del usuario actual (desde miembros_espacio o default)
-  const [cargoUsuario, setCargoUsuario] = useState<CargoLaboral>('colaborador');
-
-  // RBAC: Obtener tipos de reunión disponibles según cargo
-  const tiposReunionDisponibles = useMemo(() => 
-    getTiposReunionPorCargo(cargoUsuario),
-    [cargoUsuario]
-  );
-
-  // Configuración del tipo seleccionado
-  const configTipoActual = useMemo(() => 
-    TIPOS_REUNION_CONFIG[newMeeting.tipo_reunion],
-    [newMeeting.tipo_reunion]
-  );
-
-  const loadMeetings = async () => {
-    if (!activeWorkspace?.id) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-
-    const { data, error } = await supabase
-      .from('reuniones_programadas')
-      .select('*')
-      .eq('espacio_id', activeWorkspace.id)
-      .order('fecha_inicio', { ascending: true });
-
-    console.log('Reuniones cargadas:', data, 'Error:', error);
-    
-    if (!error && data) {
-      setMeetings(data as any);
-    } else if (error) {
-      console.error('Error cargando reuniones:', error);
-    }
-    setLoading(false);
-  };
-
-  const loadMiembros = async () => {
-    if (!activeWorkspace?.id || !currentUser?.id) return;
-    
-    const { data } = await supabase
-      .from('miembros_espacio')
-      .select('usuario_id, rol')
-      .eq('espacio_id', activeWorkspace.id)
-      .eq('aceptado', true);
-
-    if (data) {
-      const ids = data.map((m: any) => m.usuario_id);
-      const { data: usuarios } = await supabase
-        .from('usuarios')
-        .select('id, nombre')
-        .in('id', ids);
-      
-      if (usuarios) setMiembrosEspacio(usuarios);
-
-      const { data: miembroData } = await supabase
-        .from('miembros_espacio')
-        .select('cargo_id, cargo_ref:cargos!cargo_id(clave)')
-        .eq('usuario_id', currentUser.id)
-        .eq('espacio_id', activeWorkspace.id)
-        .single();
-      
-      const clave = (miembroData?.cargo_ref as any)?.clave;
-      if (clave) {
-        console.log('📋 Cargo del usuario (CalendarPanel):', clave);
-        setCargoUsuario(clave as CargoLaboral);
-      }
-    }
-  };
-
-  useEffect(() => {
-    loadMeetings();
-    loadMiembros();
-
-    if (!activeWorkspace?.id) return;
-    
-    const channel = supabase.channel(`calendar_${activeWorkspace.id}`)
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'reuniones_programadas',
-        filter: `espacio_id=eq.${activeWorkspace.id}`
-      }, () => loadMeetings())
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeWorkspace?.id, currentUser?.id]);
-
-  const createMeeting = async () => {
-    console.log('🔵 createMeeting llamado', { newMeeting, activeWorkspace: activeWorkspace?.id, currentUser: currentUser?.id });
-    
-    if (!newMeeting.titulo.trim() || !newMeeting.fecha || !newMeeting.hora_inicio || !activeWorkspace?.id) {
-      console.log('❌ Validación falló:', { titulo: newMeeting.titulo, fecha: newMeeting.fecha, hora_inicio: newMeeting.hora_inicio, workspace: activeWorkspace?.id });
-      return;
-    }
-
-    // Guard anti double-click
-    if (creatingMeetingRef.current) {
-      console.log('⚠️ Creación en progreso, ignorando doble clic');
-      return;
-    }
-    creatingMeetingRef.current = true;
-    
-    console.log('✅ Validación OK, creando reunión...');
-
-    try {
-
-    const fechaInicio = new Date(`${newMeeting.fecha}T${newMeeting.hora_inicio}`);
-    const fechaFin = newMeeting.hora_fin 
-      ? new Date(`${newMeeting.fecha}T${newMeeting.hora_fin}`)
-      : new Date(fechaInicio.getTime() + 60 * 60 * 1000);
-
-    console.log('📅 Fechas:', { fechaInicio: fechaInicio.toISOString(), fechaFin: fechaFin.toISOString() });
-
-    // Generar link de meeting único (se actualizará con Google Meet si está conectado)
-    const meetingCode = Math.random().toString(36).substring(2, 10);
-    let meetingLink = `${APP_URL}/meet/${meetingCode}`;
-    let googleEventId: string | null = null;
-
-    // Obtener emails de participantes para invitaciones
-    let participantesEmails: string[] = [];
-    if (newMeeting.participantes.length > 0) {
-      console.log('👥 Obteniendo emails de', newMeeting.participantes.length, 'participantes...');
-      const { data: usuariosData, error: emailError } = await supabase
-        .from('usuarios')
-        .select('id, email')
-        .in('id', newMeeting.participantes);
-      
-      if (emailError) console.error('❌ Error obteniendo emails:', emailError);
-      if (usuariosData) {
-        participantesEmails = usuariosData
-          .map(u => u.email)
-          .filter((email): email is string => !!email);
-      }
-    }
-
-    console.log('📧 Emails participantes:', participantesEmails.length);
-
-    // Crear evento en Google Calendar si está conectado Y el setting lo permite
-    const calSettings = getSettingsSection('calendar');
-    const shouldCreateGoogle = calSettings.autoCreateGoogleEvent !== false;
-    console.log('📆 Google Calendar:', { googleConnected, shouldCreateGoogle });
-    if (googleConnected && shouldCreateGoogle) {
-      try {
-        const googleEvent = await googleCalendar.createEvent({
-          summary: newMeeting.titulo.trim(),
-          description: newMeeting.descripcion.trim() || 'Reunión creada en Cowork Virtual',
-          start: fechaInicio.toISOString(),
-          end: fechaFin.toISOString(),
-          attendees: participantesEmails,
-          sendUpdates: 'all',
-          meetingLink: meetingLink
-        });
-        
-        if (googleEvent) {
-          googleEventId = googleEvent.id;
-        }
-      } catch (err) {
-        console.error('Error creando evento en Google Calendar:', err);
-      }
-    }
-
-    // Mapear tipo de reunión unificado a tipo de sala en BD
-    const tipoSalaMap: Record<TipoReunionUnificado, 'general' | 'deal' | 'entrevista'> = {
-      'equipo': 'general',
-      'one_to_one': 'general',
-      'cliente': 'deal',
-      'candidato': 'entrevista'
-    };
-    const tipoSala = tipoSalaMap[newMeeting.tipo_reunion] || 'general';
-
-    // Mapear tipo unificado a tipo de BD (constraint: equipo, deal, entrevista)
-    const tipoReunionBDMap: Record<TipoReunionUnificado, 'equipo' | 'deal' | 'entrevista'> = {
-      'equipo': 'equipo',
-      'one_to_one': 'equipo',
-      'cliente': 'deal',
-      'candidato': 'entrevista'
-    };
-    const tipoReunionBD = tipoReunionBDMap[newMeeting.tipo_reunion] || 'equipo';
-
-    // Crear configuración de sala con invitados externos
-    const configuracionSala = crearConfiguracionSala(
-      newMeeting.tipo_reunion,
-      invitadosExternos.length > 0 ? invitadosExternos : undefined,
-      undefined
-    );
-
-    console.log('🏗️ Config sala creada, tipo:', tipoSala);
-
-    // Crear reunión en Supabase
-    console.log('📝 Insertando en reuniones_programadas...', { 
-      tipo_reunion_ui: newMeeting.tipo_reunion, 
-      tipo_reunion_bd: tipoReunionBD,
-      invitados: invitadosExternos.length 
-    });
-    const { data: meeting, error } = await supabase
-      .from('reuniones_programadas')
-      .insert({
-        espacio_id: activeWorkspace.id,
-        titulo: newMeeting.titulo.trim(),
-        descripcion: newMeeting.descripcion.trim() || null,
-        fecha_inicio: fechaInicio.toISOString(),
-        fecha_fin: fechaFin.toISOString(),
-        creado_por: currentUser.id,
-        recordatorio_minutos: newMeeting.recordatorio_minutos,
-        meeting_link: meetingLink,
-        google_event_id: googleEventId,
-        tipo_reunion: tipoReunionBD
-      })
-      .select()
-      .single();
-
-    console.log('📝 Resultado reunión:', { meeting, error });
-
-    if (error) {
-      console.error('❌ Error creando reunión:', error);
-      alert('Error al crear reunión: ' + error.message);
-      return;
-    }
-
-    if (meeting) {
-      // Crear sala de videollamada asociada con configuración unificada
-      console.log('🎥 Creando sala de videollamada...', { tipo: tipoSala, invitados: invitadosExternos.length });
-      const { data: sala, error: salaError } = await supabase
-        .from('salas_reunion')
-        .insert({
-          nombre: newMeeting.titulo.trim(),
-          espacio_id: activeWorkspace.id,
-          creador_id: currentUser.id,
-          tipo: tipoSala,
-          configuracion: {
-            ...configuracionSala,
-            reunion_id: meeting.id
-          }
-        })
-        .select()
-        .single();
-
-      console.log('🎥 Resultado sala:', { sala, salaError });
-
-      // Actualizar reunión con sala_id y link correcto de videollamada
-      if (sala) {
-        const videoCallLink = `${APP_URL}/sala/${sala.id}`;
-        await supabase
-          .from('reuniones_programadas')
-          .update({ 
-            sala_id: sala.id,
-            meeting_link: videoCallLink 
-          })
-          .eq('id', meeting.id);
-        meetingLink = videoCallLink; // Actualizar para emails
-        console.log('✅ Reunión actualizada con sala_id y link:', videoCallLink);
-      }
-
-      // Insertar participantes
-      if (newMeeting.participantes.length > 0) {
-        const participantesData = newMeeting.participantes.map(uid => ({
-          reunion_id: meeting.id,
-          usuario_id: uid,
-          estado: 'pendiente'
-        }));
-        await supabase.from('reunion_participantes').insert(participantesData);
-
-        // Enviar notificación por email a participantes internos
-        try {
-          const { data: participantesInfo } = await supabase
-            .from('usuarios')
-            .select('email, nombre')
-            .in('id', newMeeting.participantes);
-
-          if (participantesInfo && participantesInfo.length > 0) {
-            console.log('📧 Enviando notificación a participantes internos...', participantesInfo);
-            const { data: emailResult, error: emailError } = await supabase.functions.invoke('enviar-invitacion-reunion', {
-              body: {
-                destinatarios: participantesInfo.map(p => ({
-                  email: p.email,
-                  nombre: p.nombre || p.email
-                })),
-                reunion: {
-                  titulo: newMeeting.titulo.trim(),
-                  descripcion: newMeeting.descripcion.trim(),
-                  fecha_inicio: fechaInicio.toISOString(),
-                  fecha_fin: fechaFin.toISOString(),
-                  meeting_link: meetingLink,
-                  organizador_nombre: currentUser.name || 'Organizador',
-                  tipo_reunion: newMeeting.tipo_reunion
-                }
-              }
-            });
-            if (emailError) console.error('❌ Error notificando participantes:', emailError);
-            else console.log('✅ Participantes notificados:', emailResult);
-
-            // Marcar como notificados
-            await supabase
-              .from('reunion_participantes')
-              .update({ notificado: true })
-              .eq('reunion_id', meeting.id)
-              .in('usuario_id', newMeeting.participantes);
-          }
-        } catch (notifErr) {
-          console.error('❌ Error en notificación a participantes:', notifErr);
-        }
-      }
-
-      // Incluir invitado del formulario si tiene datos válidos pero no fue agregado
-      let todosLosInvitados = [...invitadosExternos];
-      if (nuevoInvitado.email && nuevoInvitado.nombre) {
-        const yaExiste = invitadosExternos.some(inv => inv.email === nuevoInvitado.email);
-        if (!yaExiste) {
-          todosLosInvitados.push(nuevoInvitado as InvitadoExterno);
-          console.log('📌 Incluyendo invitado del formulario:', nuevoInvitado.email);
-        }
-      }
-
-      // Crear invitaciones con tokens únicos para invitados externos (acceso sin login)
-      const invitadosConLinks: { email: string; nombre: string; link: string }[] = [];
-      if (sala && todosLosInvitados.length > 0) {
-        console.log('🔗 Generando tokens para invitados externos...');
-        for (const inv of todosLosInvitados) {
-          try {
-            // Crear participante en la sala
-            const { data: participante } = await supabase
-              .from('participantes_sala')
-              .insert({
-                sala_id: sala.id,
-                nombre_invitado: inv.nombre,
-                email_invitado: inv.email,
-                tipo_participante: inv.empresa ? 'cliente' : 'invitado',
-                estado_participante: 'invitado',
-              })
-              .select()
-              .single();
-
-            if (participante) {
-              // Crear invitación con token único
-              const { data: invitacion } = await supabase
-                .from('invitaciones_reunion')
-                .insert({
-                  sala_id: sala.id,
-                  participante_id: participante.id,
-                  email: inv.email,
-                  nombre: inv.nombre,
-                  tipo_invitado: inv.empresa ? 'cliente' : 'invitado',
-                  creado_por: currentUser.id,
-                  expira_en: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-                  showroom_habilitado: showroomHabilitado && newMeeting.tipo_reunion === 'cliente',
-                  showroom_duracion_min: showroomHabilitado ? showroomDuracion : 5,
-                })
-                .select()
-                .single();
-
-              if (invitacion?.token_unico) {
-                const linkPersonalizado = `${window.location.origin}/join/${invitacion.token_unico}`;
-                invitadosConLinks.push({ email: inv.email, nombre: inv.nombre, link: linkPersonalizado });
-                console.log(`✅ Token generado para ${inv.email}:`, linkPersonalizado);
-              }
-            }
-          } catch (err) {
-            console.error(`❌ Error creando invitación para ${inv.email}:`, err);
-            // Fallback: usar link de sala (requiere login)
-            invitadosConLinks.push({ email: inv.email, nombre: inv.nombre, link: meetingLink });
-          }
-        }
-      }
-
-      // Enviar emails a invitados externos via Resend (si no usó Google Calendar)
-      if (!googleConnected && invitadosConLinks.length > 0) {
-        try {
-          console.log('📧 Enviando invitaciones via Resend...', invitadosConLinks);
-          const { data: emailResult, error: emailError } = await supabase.functions.invoke('enviar-invitacion-reunion', {
-            body: {
-              destinatarios: invitadosConLinks.map(inv => ({
-                email: inv.email,
-                nombre: inv.nombre,
-                link_personalizado: inv.link // Link único por invitado
-              })),
-              reunion: {
-                titulo: newMeeting.titulo.trim(),
-                descripcion: newMeeting.descripcion.trim(),
-                fecha_inicio: fechaInicio.toISOString(),
-                fecha_fin: fechaFin.toISOString(),
-                meeting_link: meetingLink, // Fallback
-                organizador_nombre: currentUser.name || 'Organizador',
-                tipo_reunion: newMeeting.tipo_reunion
-              }
-            }
-          });
-          console.log('📬 Respuesta Resend:', emailResult, emailError);
-          if (emailError) {
-            console.error('❌ Error Edge Function:', emailError);
-          } else if (emailResult?.resultados) {
-            emailResult.resultados.forEach((r: any) => {
-              console.log(`📧 ${r.email}: ${r.success ? '✅' : '❌'}`, r.resend_response);
-            });
-          }
-        } catch (emailErr) {
-          console.error('❌ Error enviando emails:', emailErr);
-        }
-      }
-
-      setShowScheduleModal(false);
-      resetNewMeeting();
-      loadMeetings();
-      syncGoogleEvents();
-    }
-
-    } catch (err) {
-      console.error('❌ ERROR FATAL en createMeeting:', err);
-      alert('Error inesperado al crear reunión. Revisa la consola.');
-    } finally {
-      creatingMeetingRef.current = false;
-    }
-  };
-
-  const resetNewMeeting = () => {
-    // Establecer el primer tipo disponible según el cargo del usuario
-    const primerTipoDisponible = tiposReunionDisponibles[0] || 'equipo';
-    setNewMeeting({
-      titulo: '',
-      descripcion: '',
-      fecha: '',
-      hora_inicio: '',
-      hora_fin: '',
-      participantes: [],
-      recordatorio_minutos: getSettingsSection('calendar').defaultReminder || 15,
-      tipo_reunion: primerTipoDisponible
-    });
-    // Limpiar invitados externos
-    setInvitadosExternos([]);
-    setNuevoInvitado({ email: '', nombre: '', empresa: '', puesto_aplicado: '' });
-    setErroresInvitado([]);
-  };
-
-  const respondToMeeting = async (meetingId: string, estado: 'aceptado' | 'rechazado' | 'tentativo') => {
-    await supabase
-      .from('reunion_participantes')
-      .update({ estado })
-      .eq('reunion_id', meetingId)
-      .eq('usuario_id', currentUser.id);
-    
-    loadMeetings();
-  };
-
-  const deleteMeeting = async (meetingId: string, googleEventId?: string) => {
-    console.log('🗑️ Iniciando eliminación de reunión:', meetingId);
-    
-    // Eliminar de Google Calendar PRIMERO si está conectado y tiene ID
-    if (googleConnected && googleEventId) {
-      try {
-        await googleCalendar.deleteEvent(googleEventId, 'all');
-        console.log('✅ Evento eliminado de Google Calendar:', googleEventId);
-      } catch (err) {
-        console.error('❌ Error eliminando de Google Calendar:', err);
-      }
-    }
-    
-    // Actualización optimista: eliminar de la UI inmediatamente
-    setMeetings(prev => prev.filter(m => m.id !== meetingId));
-    
-    // Eliminar de Supabase
-    console.log('📡 Enviando DELETE a Supabase...');
-    const { error, count } = await supabase
-      .from('reuniones_programadas')
-      .delete({ count: 'exact' })
-      .eq('id', meetingId);
-    
-    console.log('📡 Respuesta DELETE:', { error, count });
-    
-    if (error) {
-      console.error('❌ Error eliminando reunión:', error);
-      loadMeetings();
-      alert('Error al eliminar la reunión: ' + error.message);
-    } else if (count === 0) {
-      console.warn('⚠️ count=0, la reunión no se eliminó (RLS?)');
-      loadMeetings();
-    } else {
-      console.log('✅ Reunión eliminada correctamente, count:', count);
-    }
-    
-    syncGoogleEvents();
-  };
-
-  const connectGoogleCalendar = () => {
-    window.location.href = googleCalendar.getAuthUrl();
-  };
-
-  const disconnectGoogleCalendar = () => {
-    googleCalendar.removeToken();
-    setGoogleConnected(false);
-    setGoogleEvents([]);
-  };
-
-  const syncGoogleEvents = async () => {
-    if (!googleCalendar.isConnected()) return;
-    
-    setSyncingGoogle(true);
-    try {
-      const events = await googleCalendar.fetchEvents();
-      setGoogleEvents(events);
-    } catch (error: any) {
-      console.error('Error sincronizando Google Calendar:', error);
-      if (error.message === 'Token expirado') {
-        setGoogleConnected(false);
-      }
-    }
-    setSyncingGoogle(false);
-  };
-
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.includes('access_token')) {
-      const token = googleCalendar.parseHashToken(hash);
-      if (token) {
-        googleCalendar.saveToken(token);
-        setGoogleConnected(true);
-        window.history.replaceState(null, '', window.location.pathname);
-        syncGoogleEvents();
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (googleConnected) {
-      syncGoogleEvents();
-      
-      // Auto-sync periódico si syncEnabled está activado
-      const calS = getSettingsSection('calendar');
-      if (calS.syncEnabled !== false) {
-        const interval = setInterval(syncGoogleEvents, 5 * 60 * 1000); // cada 5 min
-        return () => clearInterval(interval);
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [googleConnected]);
-
-  const formatTime = (dateStr: string) => {
-    return new Date(dateStr).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    if (date.toDateString() === today.toDateString()) return 'Hoy';
-    if (date.toDateString() === tomorrow.toDateString()) return 'Mañana';
-    return date.toLocaleDateString('es', { weekday: 'long', day: 'numeric', month: 'long' });
-  };
-
-  const formatDateShort = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('es', { weekday: 'short', day: 'numeric', month: 'short' });
-  };
-
-  const isCreator = (meeting: ScheduledMeeting) => meeting.creado_por === currentUser.id;
-  
-  const getMyParticipation = (meeting: ScheduledMeeting) => 
-    meeting.participantes?.find(p => p.usuario_id === currentUser.id);
-
-  const isMeetingNow = (meeting: ScheduledMeeting) => {
-    const now = new Date();
-    const start = new Date(meeting.fecha_inicio);
-    const end = new Date(meeting.fecha_fin);
-    return now >= start && now <= end;
-  };
-
-  const isMeetingSoon = (meeting: ScheduledMeeting) => {
-    const now = new Date();
-    const start = new Date(meeting.fecha_inicio);
-    const diffMinutes = (start.getTime() - now.getTime()) / (1000 * 60);
-    return diffMinutes > 0 && diffMinutes <= 15;
-  };
-
-  const toggleParticipant = (userId: string) => {
-    setNewMeeting(prev => ({
-      ...prev,
-      participantes: prev.participantes.includes(userId)
-        ? prev.participantes.filter(id => id !== userId)
-        : [...prev.participantes, userId]
-    }));
-  };
-
-  const filteredMeetings = meetings.filter(m => 
-    m.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    m.descripcion?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // Filtrar eventos de Google según setting showGoogleEvents
-  const calSettingsForFilter = getSettingsSection('calendar');
-  const visibleGoogleEvents = (calSettingsForFilter.showGoogleEvents !== false) ? googleEvents : [];
-
-  const getDaysInMonth = (date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const days = [];
-    
-    for (let i = 0; i < firstDay.getDay(); i++) {
-      days.push(null);
-    }
-    
-    for (let i = 1; i <= lastDay.getDate(); i++) {
-      days.push(new Date(year, month, i));
-    }
-    
-    return days;
-  };
-
-  const getMeetingsForDate = (date: Date) => {
-    return meetings.filter(m => {
-      const meetingDate = new Date(m.fecha_inicio);
-      return meetingDate.toDateString() === date.toDateString();
-    });
-  };
 
   const themeStyles = {
     dark: {
@@ -1379,11 +768,11 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
               <div>
                 <label className="block text-[9px] font-bold uppercase tracking-wider opacity-60 mb-1.5 lg:mb-1">Participantes</label>
                 <div className={`${s.input} border rounded-lg p-2 max-h-28 lg:max-h-24 overflow-y-auto`}>
-                  {miembrosEspacio.filter(m => m.id !== currentUser.id).length === 0 ? (
+                  {miembrosEspacio.filter(m => m.id !== currentUserId).length === 0 ? (
                     <p className="text-xs opacity-40 text-center py-1">No hay otros miembros</p>
                   ) : (
                     <div className="space-y-0.5">
-                      {miembrosEspacio.filter(m => m.id !== currentUser.id).map(member => (
+                      {miembrosEspacio.filter(m => m.id !== currentUserId).map(member => (
                         <button
                           key={member.id}
                           onClick={() => toggleParticipant(member.id)}
