@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 .env
+.env.sentry-build-plugin
 
 # Editor directories and files
 .vscode/*

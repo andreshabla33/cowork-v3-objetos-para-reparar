@@ -79,7 +79,12 @@ const LocalPreviewRenderer: React.FC<{
   );
 };
 
-export const CustomParticipantTile: React.FC<CustomParticipantTileProps> = ({
+// FIX P1-1: React.memo — evita re-renders innecesarios cuando el padre
+// (MeetingRoomContent) se reconcilia. React docs (memo): "Wrap a component
+// in memo to get a memoized version... usually not re-rendered when its
+// parent re-renders as long as its props have not changed."
+// En videollamadas (interacciones granulares), la memoización es crítica.
+export const CustomParticipantTile: React.FC<CustomParticipantTileProps> = React.memo(({
   trackRef,
   participant: participantProp,
   avatarUrl,
@@ -336,6 +341,9 @@ export const CustomParticipantTile: React.FC<CustomParticipantTileProps> = ({
       </TrackRefContextIfNeeded>
     </ParticipantContextIfNeeded>
   );
-};
+});
+
+// displayName para DevTools y stack traces de Sentry
+CustomParticipantTile.displayName = 'CustomParticipantTile';
 
 export default CustomParticipantTile;

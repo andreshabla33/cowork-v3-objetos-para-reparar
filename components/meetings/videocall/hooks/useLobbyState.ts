@@ -46,7 +46,8 @@ export const useLobbyState = ({
   onJoin,
   onError,
 }: UseLobbyStateParams) => {
-  const preferenciasIngreso = getMeetingJoinDefaults();
+  // Memoizar para evitar recalcular en cada render (P0 fix: evita cascada)
+  const preferenciasIngreso = useMemo(() => getMeetingJoinDefaults(), []);
 
   // ── Estado local ──────────────────────────────────────────────────────────
   const [nombre, setNombre] = useState('');
@@ -160,25 +161,46 @@ export const useLobbyState = ({
   }, [preflight.errors, joinMediaSummary]);
 
   // ── Sync Preflight ────────────────────────────────────────────────────────
+  //
+  // FIX P0-1: Extraer valores primitivos del preflightCheck para evitar
+  // infinite loop. React docs (Removing Effect Dependencies): "Avoid objects
+  // as Effect dependencies. Extract primitive values out of them."
+  //
+  // Antes: mediaState.preflightCheck (objeto nuevo cada emisión) y preflight
+  // (estado propio) estaban en el dependency array → bucle infinito.
+  //
+  // Ahora: se extraen los 6 campos primitivos/booleanos del snapshot, y
+  // preflight se lee vía ref (no reactivo) para evitar auto-trigger.
+  //
+  const preflightRef = useRef(preflight);
+  preflightRef.current = preflight;
+
+  // Primitivos estables del preflightCheck — no cambian de referencia entre renders
+  const pfCamera = mediaState.preflightCheck.camera;
+  const pfMicrophone = mediaState.preflightCheck.microphone;
+  const pfHasCameraDevice = mediaState.preflightCheck.hasCameraDevice;
+  const pfHasMicrophoneDevice = mediaState.preflightCheck.hasMicrophoneDevice;
+  const pfCameraTrackReady = mediaState.preflightCheck.cameraTrackReady;
+  const pfMicrophoneTrackReady = mediaState.preflightCheck.microphoneTrackReady;
+
   const syncPreflight = useCallback(
     async (overrides?: { wantAudio?: boolean; wantVideo?: boolean }) => {
       const gatekeeper = gatekeeperRef.current;
       const store = preflightStoreRef.current;
       if (!gatekeeper || !store) {
-        return { canJoin: true, errors: [] as PreflightCheck['errors'], state: preflight };
+        return { canJoin: true, errors: [] as PreflightCheck['errors'], state: preflightRef.current };
       }
 
       const wantAudio = overrides?.wantAudio ?? micEnabled;
       const wantVideo = overrides?.wantVideo ?? cameraEnabled;
-      const snapshot = mediaState.preflightCheck;
 
       store.reset();
-      store.updatePermission('camera', snapshot.camera);
-      store.updatePermission('microphone', snapshot.microphone);
-      store.updateDeviceAvailability('camera', snapshot.hasCameraDevice);
-      store.updateDeviceAvailability('microphone', snapshot.hasMicrophoneDevice);
-      store.updateTrackReady('camera', wantVideo ? snapshot.cameraTrackReady : false);
-      store.updateTrackReady('microphone', wantAudio ? snapshot.microphoneTrackReady : false);
+      store.updatePermission('camera', pfCamera);
+      store.updatePermission('microphone', pfMicrophone);
+      store.updateDeviceAvailability('camera', pfHasCameraDevice);
+      store.updateDeviceAvailability('microphone', pfHasMicrophoneDevice);
+      store.updateTrackReady('camera', wantVideo ? pfCameraTrackReady : false);
+      store.updateTrackReady('microphone', wantAudio ? pfMicrophoneTrackReady : false);
 
       gatekeeper.updateOptions({ requireAudio: wantAudio, requireVideo: wantVideo });
 
@@ -189,15 +211,22 @@ export const useLobbyState = ({
       setPreflight(nextState);
       return { canJoin: validation.canJoin, errors: validation.errors, state: nextState };
     },
-    [micEnabled, cameraEnabled, mediaState.preflightCheck, preflight],
+    [micEnabled, cameraEnabled, pfCamera, pfMicrophone, pfHasCameraDevice, pfHasMicrophoneDevice, pfCameraTrackReady, pfMicrophoneTrackReady],
   );
 
   syncPreflightRef.current = syncPreflight;
 
   // ── Effects ───────────────────────────────────────────────────────────────
+  //
+  // FIX P0-1 (continuación): El effect ahora depende solo de primitivos.
+  // Se eliminó `stream` (objeto, nueva referencia cada emisión) y
+  // `mediaState.preflightCheck` (objeto). Los 6 campos primitivos ya están
+  // en el useCallback de syncPreflight, que es estable entre renders
+  // cuando los valores no cambian realmente.
+  //
   useEffect(() => {
     void syncPreflight({ wantAudio: micEnabled, wantVideo: cameraEnabled });
-  }, [cameraEnabled, micEnabled, mediaState.preflightCheck, stream]);
+  }, [syncPreflight, cameraEnabled, micEnabled]);
 
   useEffect(() => {
     return () => { stopMediaCapture(); };

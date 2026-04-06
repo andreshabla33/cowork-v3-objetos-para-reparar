@@ -761,13 +761,20 @@ export const useMeetingRealtimeState = ({
     [tracks],
   );
 
+  // FIX P1-3: Eliminar viewMode del dependency array para romper el ciclo
+  // auto-referencial. React docs (Removing Effect Dependencies): "If your
+  // Effect sets state that's in its own dependency array, it may loop."
+  // Se usa ref para leer viewMode sin hacerlo reactivo.
+  const viewModeRef = useRef(viewMode);
+  viewModeRef.current = viewMode;
+
   useEffect(() => {
-    if (screenShareTrack && viewMode === 'gallery') {
+    if (screenShareTrack && viewModeRef.current === 'gallery') {
       setViewMode('sidebar');
-    } else if (!screenShareTrack && viewMode === 'sidebar') {
+    } else if (!screenShareTrack && viewModeRef.current === 'sidebar') {
       setViewMode('gallery');
     }
-  }, [screenShareTrack, viewMode]);
+  }, [screenShareTrack]);
 
   const activeSpeakerIdentity = room?.activeSpeakers?.[0]?.identity ?? null;
   const fallbackSpeakerIdentity = stableSpeakerIdentity || videoTracks[0]?.participant?.identity || null;

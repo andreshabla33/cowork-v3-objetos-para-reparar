@@ -1,27 +1,33 @@
 /**
  * vite.config.ts
  *
- * REMEDIATION-008b (2026-03-30):
- * - `sourcemap: 'hidden'` genera source maps pero no los referencia en el bundle.
- *   Sentry los sube durante el build; el navegador nunca los descarga.
- * - `sentryVitePlugin` sube source maps y los asocia a la release.
- *   Requiere: SENTRY_AUTH_TOKEN, VITE_SENTRY_ORG, VITE_SENTRY_PROJECT en .env.
- * - Import condicional: si el paquete no está instalado el build no falla —
- *   simplemente no se sube el source map (útil en entornos sin token).
+ * Sentry source maps (patrón oficial):
+ * @see https://docs.sentry.io/platforms/javascript/guides/react/sourcemaps/uploading/vite/
  *
- * Instalación requerida (ejecutar en la raíz del proyecto):
- *   npm install @sentry/react @sentry/vite-plugin
+ * - `sourcemap: 'hidden'` genera .map sin //# sourceMappingURL en el bundle.
+ * - `sentryVitePlugin` sube source maps y los asocia a la release.
+ *   Requiere SENTRY_AUTH_TOKEN en .env.sentry-build-plugin (leído automáticamente).
+ * - El plugin DEBE ir DESPUÉS de todos los demás plugins en el array.
+ * - Import condicional: si el paquete no está instalado, el build continúa.
  */
 import path from 'path';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
 async function resolveSentryPlugin(): Promise<Plugin[]> {
+  // Sentry Vite plugin lee SENTRY_AUTH_TOKEN desde .env.sentry-build-plugin
+  // automáticamente. org y project vienen del .env normal de Vite.
   const org     = process.env.VITE_SENTRY_ORG;
   const project = process.env.VITE_SENTRY_PROJECT;
   const token   = process.env.SENTRY_AUTH_TOKEN;
 
-  if (!org || !project || !token) return [];
+  if (!org || !project || !token) {
+    if (!token) {
+      console.info('[vite.config] SENTRY_AUTH_TOKEN no definido — source maps no se subirán.');
+      console.info('[vite.config] Crea .env.sentry-build-plugin con SENTRY_AUTH_TOKEN=sntrys_...');
+    }
+    return [];
+  }
 
   try {
     const { sentryVitePlugin } = await import('@sentry/vite-plugin');
@@ -38,8 +44,7 @@ async function resolveSentryPlugin(): Promise<Plugin[]> {
       }),
     ];
   } catch {
-    // @sentry/vite-plugin no está instalado — continuar sin upload de source maps
-    console.warn('[vite.config] @sentry/vite-plugin no encontrado. Omitiendo upload de source maps.');
+    console.warn('[vite.config] @sentry/vite-plugin no encontrado. Ejecuta: npm install @sentry/vite-plugin');
     return [];
   }
 }

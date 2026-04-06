@@ -1,4 +1,5 @@
 import React from 'react';
+import type { TrackReferenceOrPlaceholder } from '@livekit/components-react';
 import { logger } from '@/lib/logger';
 import { ChatToast } from '@/components/ChatToast';
 import { RecordingDiagnosticsService, type RecordingDiagnosticsSnapshot } from '@/modules/realtime-room';
@@ -205,6 +206,27 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
   // el track publicado (con setProcessor aplicado) vía MeetingTrackRenderer.
   const shouldShowLocalSelfViewStage = false;
   const showRecoveryBanner = recoveryState && recoveryState.phase !== 'connected';
+
+  // FIX P1-2: Memoizar renderParticipant con useCallback para mantener
+  // referencia estable. React docs (useCallback): "Caching a function with
+  // useCallback is only valuable when you pass it as a prop to a component
+  // wrapped in memo." Complementa React.memo de CustomParticipantTile.
+  const memoizedRenderParticipant = React.useCallback(
+    (track: TrackReferenceOrPlaceholder) => (
+      <CustomParticipantTile
+        trackRef={track}
+        isPinned={track.participant?.identity === pinnedParticipantId}
+        isHandRaised={Boolean(track.participant?.identity && raisedHandParticipantIds.has(track.participant.identity))}
+        onTogglePin={(participant) => handleTogglePinnedParticipant(participant.identity ?? null)}
+        onToggleRemoteMute={handleMuteRemoteParticipant}
+        canModerateAudio={true}
+        localMirrorVideo={cameraSettings.mirrorVideo}
+        localVideoProcessed={isLocalVideoProcessed}
+        localPreviewStream={localPreviewStream}
+      />
+    ),
+    [pinnedParticipantId, raisedHandParticipantIds, handleTogglePinnedParticipant, handleMuteRemoteParticipant, cameraSettings.mirrorVideo, isLocalVideoProcessed, localPreviewStream],
+  );
   const { layoutSnapshot } = useMeetingLayoutSnapshot({
     validTracks,
     localParticipantIdentity: localParticipant?.identity,
@@ -382,19 +404,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
         <VideoLayoutManager
           layoutModel={layoutSnapshot}
           optimizacion={optimizacion}
-          renderParticipant={(track) => (
-            <CustomParticipantTile
-              trackRef={track}
-              isPinned={track.participant?.identity === pinnedParticipantId}
-              isHandRaised={Boolean(track.participant?.identity && raisedHandParticipantIds.has(track.participant.identity))}
-              onTogglePin={(participant) => handleTogglePinnedParticipant(participant.identity ?? null)}
-              onToggleRemoteMute={handleMuteRemoteParticipant}
-              canModerateAudio={true}
-              localMirrorVideo={cameraSettings.mirrorVideo}
-              localVideoProcessed={isLocalVideoProcessed}
-              localPreviewStream={localPreviewStream}
-            />
-          )}
+          renderParticipant={memoizedRenderParticipant}
           renderScreenShare={(track) => (
             <MeetingTrackRenderer
               track={track?.publication && ('isSubscribed' in track.publication ? track.publication.isSubscribed : true)
