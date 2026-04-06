@@ -54,12 +54,15 @@ export const ConsentimientoPendiente: React.FC<ConsentimientoPendienteProps> = (
   useEffect(() => {
     if (!session?.user?.id) return;
 
+    /**
+     * Fetch pending consent notifications from Supabase.
+     * Called once on mount and by realtime subscription — NO polling.
+     * Supabase Realtime docs: "postgres_changes delivers INSERT/UPDATE/DELETE
+     * events in real-time; polling is only needed when realtime is unavailable."
+     */
     const cargarSolicitudesPendientes = async () => {
       if (isFetchingRef.current) return;
       isFetchingRef.current = true;
-
-      // Buscar notificaciones de consentimiento pendientes
-      console.log('🔔 Buscando para usuario:', session.user.id);
 
       try {
         const { data: notificaciones, error } = await supabase
@@ -71,11 +74,10 @@ export const ConsentimientoPendiente: React.FC<ConsentimientoPendienteProps> = (
           .order('creado_en', { ascending: false })
           .limit(1);
 
-        console.log('🔔 Resultado búsqueda:', { 
-          encontradas: notificaciones?.length || 0, 
-          error: error?.message,
-          notificaciones 
-        });
+        if (error) {
+          console.warn('[Consentimiento] Query error:', error.message);
+          return;
+        }
 
         if (notificaciones && notificaciones.length > 0) {
           const notif = notificaciones[0];
@@ -84,17 +86,12 @@ export const ConsentimientoPendiente: React.FC<ConsentimientoPendienteProps> = (
           }
 
           const datos = notif.datos_extra as any;
-          
-          console.log('📩 Notificación encontrada:', notif);
-          console.log('📦 Datos extra:', datos);
-          
+
           const { data: grabacion } = await supabase
             .from('grabaciones')
             .select('id, consentimiento_evaluado, estado')
             .eq('id', notif.entidad_id)
             .single();
-
-          console.log('📹 Estado de grabación:', grabacion);
 
           if (grabacion && !grabacion.consentimiento_evaluado) {
             lastSolicitudIdRef.current = notif.entidad_id;
@@ -106,7 +103,6 @@ export const ConsentimientoPendiente: React.FC<ConsentimientoPendienteProps> = (
               espacio_id: notif.espacio_id,
               titulo: notif.titulo,
             });
-            console.log('✅ Mostrando modal de consentimiento');
           }
         }
       } finally {
@@ -114,16 +110,10 @@ export const ConsentimientoPendiente: React.FC<ConsentimientoPendienteProps> = (
       }
     };
 
+    // Initial fetch only — no polling interval
     cargarSolicitudesPendientes();
 
-    // Polling cada 30 segundos como fallback (realtime funciona, esto es solo backup)
-    const pollingInterval = setInterval(() => {
-      if (!solicitudRef.current) {
-        cargarSolicitudesPendientes();
-      }
-    }, 30000);
-
-    // Suscribirse a nuevas notificaciones en tiempo real
+    // Realtime subscription handles all subsequent notifications
     const channel = supabase
       .channel(`consentimiento_${session.user.id}`)
       .on(
@@ -136,45 +126,35 @@ export const ConsentimientoPendiente: React.FC<ConsentimientoPendienteProps> = (
         },
         async (payload) => {
           const notif = payload.new as any;
-          console.log('🔔 Nueva notificación en tiempo real:', notif);
-          if (notif.tipo === 'consentimiento_grabacion' && !notif.leida) {
-            if (solicitudRef.current?.grabacion_id === notif.entidad_id || lastSolicitudIdRef.current === notif.entidad_id) {
-              return;
-            }
-
-            // Verificar que la grabación aún necesita consentimiento
-            const { data: grabacion } = await supabase
-              .from('grabaciones')
-              .select('consentimiento_evaluado')
-              .eq('id', notif.entidad_id)
-              .single();
-            
-            if (grabacion?.consentimiento_evaluado) {
-              console.log('⏭️ Grabación ya tiene consentimiento, ignorando');
-              return;
-            }
-            
-            const datos = notif.datos_extra as any;
-            console.log('📦 Datos extra (realtime):', datos);
-            lastSolicitudIdRef.current = notif.entidad_id;
-            setSolicitud({
-              grabacion_id: notif.entidad_id,
-              tipo_grabacion: datos?.tipo_grabacion || 'rrhh_entrevista',
-              creador_id: datos?.creador_id || '',
-              creador_nombre: datos?.creador_nombre || 'Alguien',
-              espacio_id: notif.espacio_id,
-              titulo: notif.titulo,
-            });
-            console.log('✅ Modal de consentimiento activado via realtime');
+          if (notif.tipo !== 'consentimiento_grabacion' || notif.leida) return;
+          if (solicitudRef.current?.grabacion_id === notif.entidad_id || lastSolicitudIdRef.current === notif.entidad_id) {
+            return;
           }
+
+          // Verify recording still needs consent
+          const { data: grabacion } = await supabase
+            .from('grabaciones')
+            .select('consentimiento_evaluado')
+            .eq('id', notif.entidad_id)
+            .single();
+
+          if (grabacion?.consentimiento_evaluado) return;
+
+          const datos = notif.datos_extra as any;
+          lastSolicitudIdRef.current = notif.entidad_id;
+          setSolicitud({
+            grabacion_id: notif.entidad_id,
+            tipo_grabacion: datos?.tipo_grabacion || 'rrhh_entrevista',
+            creador_id: datos?.creador_id || '',
+            creador_nombre: datos?.creador_nombre || 'Alguien',
+            espacio_id: notif.espacio_id,
+            titulo: notif.titulo,
+          });
         }
       )
-      .subscribe((status) => {
-        console.log('📡 Consentimiento realtime status:', status);
-      });
+      .subscribe();
 
     return () => {
-      clearInterval(pollingInterval);
       supabase.removeChannel(channel);
     };
   }, [session?.user?.id]);

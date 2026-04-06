@@ -10,7 +10,7 @@
  * Ref: Clean Architecture — Presentation layer depends on Application layer only.
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useStore } from '@/store/useStore';
 import { logger } from '@/lib/logger';
 import { getSettingsSection } from '@/lib/userSettings';
@@ -110,6 +110,7 @@ export interface UseCalendarPanelReturn {
   setShowroomHabilitado: (enabled: boolean) => void;
   setShowroomDuracion: (duracion: number) => void;
   setNewMeeting: (meeting: NewMeetingForm) => void;
+  updateMeetingField: <K extends keyof NewMeetingForm>(field: K, value: NewMeetingForm[K]) => void;
   setInvitadosExternos: (invitados: InvitadoExterno[]) => void;
   setNuevoInvitado: (invitado: NuevoInvitadoForm) => void;
   setErroresInvitado: (errores: string[]) => void;
@@ -242,12 +243,21 @@ export function useCalendarPanel(): UseCalendarPanelReturn {
     }
   }, [activeWorkspace?.id, currentUser?.id]);
 
+  // ─── Refs para romper dependency cycle en useEffect ─────────────────────
+  // React docs: "If your Effect uses callbacks from props/state, use refs
+  // to avoid re-running the Effect when the callback changes."
+  const loadMeetingsRef = useRef(loadMeetings);
+  loadMeetingsRef.current = loadMeetings;
+  const loadMiembrosRef = useRef(loadMiembros);
+  loadMiembrosRef.current = loadMiembros;
+
   /**
-   * Initialize: load meetings and members on mount and when workspace changes
+   * Initialize: load meetings and members on mount and when workspace changes.
+   * Uses refs for callbacks to prevent re-subscription on every render.
    */
   useEffect(() => {
-    loadMeetings();
-    loadMiembros();
+    loadMeetingsRef.current();
+    loadMiembrosRef.current();
 
     // Subscribe to realtime changes on reuniones_programadas
     if (!activeWorkspace?.id) return;
@@ -258,7 +268,7 @@ export function useCalendarPanel(): UseCalendarPanelReturn {
           activeWorkspace.id,
           () => {
             log.debug('Meetings changed via realtime, reloading');
-            loadMeetings();
+            loadMeetingsRef.current();
           }
         );
         realtimeChannelRef.current = channel;
@@ -276,7 +286,7 @@ export function useCalendarPanel(): UseCalendarPanelReturn {
         realtimeChannelRef.current = null;
       }
     };
-  }, [activeWorkspace?.id, currentUser?.id, loadMeetings, loadMiembros]);
+  }, [activeWorkspace?.id, currentUser?.id]);
 
   /**
    * Copy meeting link to clipboard
@@ -583,6 +593,18 @@ export function useCalendarPanel(): UseCalendarPanelReturn {
   }, [googleConnected, syncGoogleEvents]);
 
   /**
+   * Granular field updater — avoids recreating the entire form object.
+   * React docs: "Use functional updates when the new state depends on the
+   * previous state" — this pattern guarantees correct values without stale closures.
+   */
+  const updateMeetingField = useCallback(
+    <K extends keyof NewMeetingForm>(field: K, value: NewMeetingForm[K]) => {
+      setNewMeeting((prev) => ({ ...prev, [field]: value }));
+    },
+    []
+  );
+
+  /**
    * Toggle participant selection
    */
   const toggleParticipant = useCallback((userId: string) => {
@@ -598,19 +620,29 @@ export function useCalendarPanel(): UseCalendarPanelReturn {
   // COMPUTED VALUES
   // ============================================================
 
-  const tiposReunionDisponibles = getTiposReunionPorCargo(cargoUsuario);
+  // ─── COMPUTED VALUES (memoized to avoid recalc on unrelated state changes) ──
+  const tiposReunionDisponibles = useMemo(
+    () => getTiposReunionPorCargo(cargoUsuario),
+    [cargoUsuario]
+  );
   const configTipoActual = TIPOS_REUNION_CONFIG[newMeeting.tipo_reunion];
 
-  const filteredMeetings = meetings.filter(
-    (m) =>
-      m.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.descripcion?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredMeetings = useMemo(
+    () =>
+      meetings.filter(
+        (m) =>
+          m.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          m.descripcion?.toLowerCase().includes(searchQuery.toLowerCase())
+      ),
+    [meetings, searchQuery]
   );
 
-  const calSettingsForFilter = getSettingsSection('calendar');
-  const visibleGoogleEvents = calSettingsForFilter.showGoogleEvents !== false ? googleEvents : [];
+  const visibleGoogleEvents = useMemo(() => {
+    const calSettingsForFilter = getSettingsSection('calendar');
+    return calSettingsForFilter.showGoogleEvents !== false ? googleEvents : [];
+  }, [googleEvents]);
 
-  const getDaysInMonth = (date: Date) => {
+  const getDaysInMonth = useCallback((date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
     const firstDay = new Date(year, month, 1);
@@ -626,14 +658,14 @@ export function useCalendarPanel(): UseCalendarPanelReturn {
     }
 
     return days;
-  };
+  }, []);
 
-  const getMeetingsForDate = (date: Date) => {
+  const getMeetingsForDate = useCallback((date: Date) => {
     return meetings.filter((m) => {
       const meetingDate = new Date(m.fecha_inicio);
       return meetingDate.toDateString() === date.toDateString();
     });
-  };
+  }, [meetings]);
 
   const formatTime = (dateStr: string) => {
     return new Date(dateStr).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
@@ -712,6 +744,7 @@ export function useCalendarPanel(): UseCalendarPanelReturn {
     setShowroomHabilitado,
     setShowroomDuracion,
     setNewMeeting,
+    updateMeetingField,
     setInvitadosExternos,
     setNuevoInvitado,
     setErroresInvitado,

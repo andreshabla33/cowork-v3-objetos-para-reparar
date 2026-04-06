@@ -57,6 +57,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
     setShowroomHabilitado,
     setShowroomDuracion,
     setNewMeeting,
+    updateMeetingField,
     setInvitadosExternos,
     setNuevoInvitado,
     setErroresInvitado,
@@ -217,7 +218,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                   const handleDayClick = () => {
                     if (!isPast) {
                       const dateStr = date.toISOString().split('T')[0];
-                      setNewMeeting(prev => ({ ...prev, fecha: dateStr }));
+                      updateMeetingField('fecha', dateStr);
                       setShowScheduleModal(true);
                     }
                   };
@@ -514,7 +515,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                 <input
                   type="text"
                   value={newMeeting.titulo}
-                  onChange={e => setNewMeeting({ ...newMeeting, titulo: e.target.value })}
+                  onChange={e => updateMeetingField('titulo', e.target.value)}
                   placeholder="Ej: Daily Standup..."
                   className={`w-full ${s.input} border rounded-lg px-3 py-2 lg:py-1.5 text-sm lg:text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all`}
                 />
@@ -539,7 +540,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                         key={tipo}
                         type="button"
                         onClick={() => {
-                          setNewMeeting({ ...newMeeting, tipo_reunion: tipo });
+                          updateMeetingField('tipo_reunion', tipo);
                           // Limpiar invitados si cambia a tipo que no requiere externos
                           if (!TIPOS_REUNION_CONFIG[tipo].requiereInvitadoExterno) {
                             setInvitadosExternos([]);
@@ -713,7 +714,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                   <input
                     type="date"
                     value={newMeeting.fecha}
-                    onChange={e => setNewMeeting({ ...newMeeting, fecha: e.target.value })}
+                    onChange={e => updateMeetingField('fecha', e.target.value)}
                     min={new Date().toISOString().split('T')[0]}
                     className={`w-full ${s.input} border rounded-lg px-2 py-2 lg:py-1.5 text-xs focus:outline-none transition-all`}
                   />
@@ -723,7 +724,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                   <input
                     type="time"
                     value={newMeeting.hora_inicio}
-                    onChange={e => setNewMeeting({ ...newMeeting, hora_inicio: e.target.value })}
+                    onChange={e => updateMeetingField('hora_inicio', e.target.value)}
                     className={`w-full ${s.input} border rounded-lg px-2 py-2 lg:py-1.5 text-xs focus:outline-none transition-all`}
                   />
                 </div>
@@ -732,7 +733,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                   <input
                     type="time"
                     value={newMeeting.hora_fin}
-                    onChange={e => setNewMeeting({ ...newMeeting, hora_fin: e.target.value })}
+                    onChange={e => updateMeetingField('hora_fin', e.target.value)}
                     className={`w-full ${s.input} border rounded-lg px-2 py-2 lg:py-1.5 text-xs focus:outline-none transition-all`}
                   />
                 </div>
@@ -742,7 +743,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                 <label className="block text-[9px] font-bold uppercase tracking-wider opacity-60 mb-1.5 lg:mb-1">Descripción</label>
                 <textarea
                   value={newMeeting.descripcion}
-                  onChange={e => setNewMeeting({ ...newMeeting, descripcion: e.target.value })}
+                  onChange={e => updateMeetingField('descripcion', e.target.value)}
                   placeholder="Agenda o detalles..."
                   rows={2}
                   className={`w-full ${s.input} border rounded-lg px-3 py-2 lg:py-1.5 text-sm lg:text-xs focus:outline-none transition-all resize-none`}
@@ -753,7 +754,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                 <label className="block text-[9px] font-bold uppercase tracking-wider opacity-60 mb-1.5 lg:mb-1">Recordatorio</label>
                 <select
                   value={newMeeting.recordatorio_minutos}
-                  onChange={e => setNewMeeting({ ...newMeeting, recordatorio_minutos: parseInt(e.target.value) })}
+                  onChange={e => updateMeetingField('recordatorio_minutos', parseInt(e.target.value))}
                   className={`w-full ${s.input} border rounded-lg px-3 py-2 lg:py-1.5 text-sm lg:text-xs focus:outline-none transition-all`}
                   style={{ colorScheme: 'dark' }}
                 >

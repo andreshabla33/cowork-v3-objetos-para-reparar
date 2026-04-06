@@ -73,8 +73,11 @@ export function useBootstrapAplicacion({ initialize, setSession, setView, setAut
       const now = Date.now();
       const lastEvent = lastAuthEventRef.current;
       
-      if (lastEvent && lastEvent.event === eventKey && (now - lastEvent.timestamp) < 500) {
-        log.debug(`Auth event deduplicado`, { event, within: '500ms' });
+      // Supabase auth emits SIGNED_IN on token refresh (~every 60s) and tab focus.
+      // 500ms was too short — repeated SIGNED_IN events at 1min intervals triggered
+      // full re-initialization cascades. 5s window covers token refresh + tab refocus.
+      if (lastEvent && lastEvent.event === eventKey && (now - lastEvent.timestamp) < 5000) {
+        log.debug(`Auth event deduplicado`, { event, within: '5s' });
         return;
       }
       
