@@ -84,21 +84,54 @@ let _trackingDirty = false;
 /**
  * Generate a stable key for material grouping.
  * Same key = same BatchedMesh = 1 draw call.
+ *
+ * CRITICAL OPTIMIZATION: Materials that only differ in color (no textures)
+ * share the SAME group. Per-instance colors are applied via setColorAt().
+ * This collapses e.g. Keyboard.glb's 67 color-only meshes into 1 draw call
+ * instead of 67 separate groups.
+ *
+ * Grouping strategy:
+ *   - Textured materials: group by texture UUID (each unique texture = 1 group)
+ *   - Color-only materials: group by shader type + transparency + side
+ *   - Per-instance color: applied via setColorAt() for color-only groups
+ *
+ * Ref: Three.js r170 — setColorAt() stores per-instance colors in DataTexture,
+ *   independent of the material.color. Works with any material type.
+ *   https://github.com/mrdoob/three.js/issues/27449
  */
 function getMaterialKey(material: THREE.Material): string {
   if (material instanceof THREE.MeshStandardMaterial) {
-    const mapId = material.map?.uuid ?? 'no-map';
-    const normalId = material.normalMap?.uuid ?? 'no-normal';
-    const colorHex = material.color.getHexString();
+    const hasMap = !!material.map;
+    const hasNormal = !!material.normalMap;
     const alpha = material.transparent ? 'T' : 'O';
-    return `std_${colorHex}_${mapId}_${normalId}_${alpha}_${material.side}`;
+
+    if (hasMap || hasNormal) {
+      // Textured: group by texture identity (preserves texture in material)
+      const mapId = material.map?.uuid ?? 'no-map';
+      const normalId = material.normalMap?.uuid ?? 'no-normal';
+      return `std_tex_${mapId}_${normalId}_${alpha}_${material.side}`;
+    }
+    // Color-only: coalesce ALL colors into one group — setColorAt per-instance
+    return `std_color_${alpha}_${material.side}`;
   }
   if (material instanceof THREE.MeshBasicMaterial) {
-    const mapId = material.map?.uuid ?? 'no-map';
-    const colorHex = material.color.getHexString();
-    return `basic_${colorHex}_${mapId}`;
+    if (material.map) {
+      return `basic_tex_${material.map.uuid}`;
+    }
+    return `basic_color_${material.transparent ? 'T' : 'O'}`;
   }
   return `mat_${material.uuid}`;
+}
+
+/** Check if a material has textures (grouping uses texture identity) */
+function materialHasTextures(material: THREE.Material): boolean {
+  if (material instanceof THREE.MeshStandardMaterial) {
+    return !!(material.map || material.normalMap);
+  }
+  if (material instanceof THREE.MeshBasicMaterial) {
+    return !!material.map;
+  }
+  return false;
 }
 
 /**
@@ -315,18 +348,16 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
 
             const instanceRef = multiBatch.agregarInstancia(matKey, geoId, flatMatrix);
 
-            // Apply per-instance color for non-textured materials
-            if (
-              mat instanceof THREE.MeshStandardMaterial &&
-              !mat.map &&
-              mat.color
-            ) {
-              multiBatch.establecerColor(
-                instanceRef,
-                mat.color.r,
-                mat.color.g,
-                mat.color.b,
-              );
+            // Apply per-instance color for color-only materials (no textures).
+            // setColorAt() stores colors in a DataTexture — works independently
+            // of the material.color. For textured materials, skip to avoid
+            // color × texture multiplication in the fragment shader.
+            // Ref: Three.js r170 — setColorAt uses internal _colorsTexture
+            if (!materialHasTextures(mat) && 'color' in mat) {
+              const c = (mat as THREE.MeshStandardMaterial).color;
+              if (c) {
+                multiBatch.establecerColor(instanceRef, c.r, c.g, c.b);
+              }
             }
 
             // ─── Fase 4C: Track instance for frustum culling ─────────
