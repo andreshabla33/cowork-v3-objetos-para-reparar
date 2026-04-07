@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { useStore } from '../store/useStore';
 import { confirmPasswordReset } from '../lib/authRecoveryService';
 
 type ResetState = 'validating' | 'form' | 'success' | 'error_token';
@@ -66,15 +65,19 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({ errorF
     });
 
     // Fallback: si la sesión ya existía antes de que el listener se montara.
-    // Read synchronously from Zustand store — NO async getSession() to avoid orphaned Web Lock.
-    // onAuthStateChange already syncs session to the store.
-    const storeSession = useStore.getState().session;
-    if (storeSession) {
-      if (timeoutId !== null) { window.clearTimeout(timeoutId); }
-      setState('form');
-    } else {
-      timeoutId = window.setTimeout(marcarTokenInvalido, 2000);
-    }
+    // Guard con isMounted para evitar orphaned lock si el componente se desmonta
+    // mientras la promise está pendiente.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!isMounted) return;
+      if (session) {
+        if (timeoutId !== null) {
+          window.clearTimeout(timeoutId);
+        }
+        setState('form');
+      } else {
+        timeoutId = window.setTimeout(marcarTokenInvalido, 2000);
+      }
+    });
 
     return () => {
       isMounted = false;

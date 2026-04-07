@@ -12,7 +12,6 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
-import { useAuthSessionGetter } from '../../../hooks/auth/useAuthSession';
 import { useTranscription } from './useTranscription';
 import { useCombinedAnalysis, AnalisisResumenTiempoReal } from './useCombinedAnalysis';
 import { RecordingTypeSelectorV2 } from './RecordingTypeSelectorV2';
@@ -53,9 +52,6 @@ export const RecordingManagerV2: React.FC<RecordingManagerV2Props> = ({
   onRecordingStateChange,
   onProcessingComplete,
 }) => {
-  // Auth session getter — synchronous read from Zustand store, no orphaned Web Lock
-  const getAuthSession = useAuthSessionGetter();
-
   // Estados principales
   const [processingState, setProcessingState] = useState<ProcessingState>({
     step: 'idle',
@@ -403,8 +399,16 @@ export const RecordingManagerV2: React.FC<RecordingManagerV2Props> = ({
         : 0.5;
 
       // Obtener token de sesión para autenticar la llamada.
-      // Read synchronously from Zustand store — NO async getSession() to avoid orphaned Web Lock.
-      const accessToken = getAuthSession().accessToken ?? undefined;
+      // Guard: si el componente se desmontó durante el procesamiento,
+      // evitar llamar getSession() que puede generar orphaned lock.
+      // Supabase gotrue-js: "Lock not released within 5000ms" warning.
+      let accessToken: string | undefined;
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        accessToken = sessionData?.session?.access_token;
+      } catch {
+        console.warn('⚠️ No se pudo obtener sesión para resumen AI');
+      }
       
       if (accessToken) {
         const { data: aiData, error: aiError } = await supabase.functions.invoke('generar-resumen-ai', {

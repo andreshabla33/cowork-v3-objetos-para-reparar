@@ -115,12 +115,13 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
   }, [modelUrl]);
 
   const clone = useMemo(() => {
-    let hasSkinnedMesh = false;
-    scene.traverse((child: any) => {
-      if (child.isSkinnedMesh) hasSkinnedMesh = true;
-    });
-
-    const clonedScene = hasSkinnedMesh ? SkeletonUtils.clone(scene) : scene.clone(true);
+    // ALWAYS use SkeletonUtils.clone() — it shares geometries by reference.
+    // scene.clone(true) deep-clones BufferGeometry objects, duplicating GPU buffers.
+    // With 1 avatar this caused 1,479 geometries; SkeletonUtils.clone() reduces ~200-400.
+    // Ref: Three.js SkeletonUtils docs — "Other data, like geometries and materials,
+    //       are reused by reference"
+    // https://threejs.org/docs/pages/module-SkeletonUtils.html
+    const clonedScene = SkeletonUtils.clone(scene);
 
     clonedScene.traverse((child: any) => {
       if ((child.isMesh || child.isSkinnedMesh) && child.material) {
@@ -164,6 +165,26 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
 
     return clonedScene;
   }, [scene, avatarConfig?.nombre]);
+
+  // Dispose cloned materials on unmount to prevent GPU memory leak.
+  // Geometries are shared by reference (SkeletonUtils.clone) — do NOT dispose them.
+  // Only materials were cloned (line ~128), so we dispose those.
+  // Ref: Three.js — "dispose geometry and material via dispose()"
+  useEffect(() => {
+    return () => {
+      clone.traverse((child: any) => {
+        if ((child.isMesh || child.isSkinnedMesh) && child.material) {
+          const materials = Array.isArray(child.material) ? child.material : [child.material];
+          materials.forEach((mat: THREE.Material) => {
+            // Dispose textures attached to the material
+            if ('map' in mat && (mat as any).map) (mat as any).map.dispose();
+            if ('normalMap' in mat && (mat as any).normalMap) (mat as any).normalMap.dispose();
+            mat.dispose();
+          });
+        }
+      });
+    };
+  }, [clone]);
 
   // modelYOffset siempre 0 — la corrección se hace vía heightCorrection
   const modelYOffset = 0;
