@@ -17,6 +17,8 @@ import { ZonaEmpresa as ZonaEmpresa3D } from '../3d/ZonaEmpresa';
 import { Escritorio3D } from '../3d/Escritorio3D';
 import { FantasmaColocacion3D, ObjetoEscena3D } from '../3d/ObjetoEscena3D';
 import { ObjetosInstanciados } from '../3d/ObjetosInstanciados';
+import { StaticObjectBatcher } from '../3d/StaticObjectBatcher';
+import { useSceneOptimization } from '@/hooks/space3d/useSceneOptimization';
 import type { EspacioObjeto, SpawnPersonal, TransformacionObjetoInput } from '@/hooks/space3d/useEspacioObjetos';
 import type { OcupacionAsientoReal } from '@/hooks/space3d/useOcupacionAsientos';
 import type { ObjetoPreview3D } from '@/types/objetos3d';
@@ -344,6 +346,9 @@ export const Scene: React.FC<SceneProps> = ({
 }) => {
   const gridColor = theme === 'arcade' ? '#00ff41' : '#6366f1';
   const { camera, gl } = useThree();
+
+  // Fase 3: GPU rendering optimization services (BatchedMesh, TextureAtlas, GPUSkinning)
+  const sceneOptimization = useSceneOptimization();
   const frustumRef = useRef(new THREE.Frustum());
   const projectionRef = useRef(new THREE.Matrix4());
   const chairMeshRef = useRef<THREE.InstancedMesh>(null);
@@ -948,23 +953,46 @@ export const Scene: React.FC<SceneProps> = ({
         })}
       </Physics>
 
-      {/* PR-2: Objetos de catálogo (GLTF) — InstancedMesh, fuera de Physics */}
-      {/* Un draw call por mesh único del GLTF en lugar de uno por instancia */}
-      <ObjetosInstanciados
-        espacioObjetos={espacioObjetos.filter(obj => !!obj.catalogo_id)}
-        playerPosition={playerPositionState}
-        isEditMode={isEditMode}
-        selectedObjectId={selectedObjectId}
-        ultimoObjetoColocadoId={ultimoObjetoColocadoId}
-        onInteractuar={onInteractuarObjeto
-          ? (obj) => onInteractuarObjeto(obj, asientosPorObjetoId.get(obj.id) || null)
-          : undefined
-        }
-        onMover={onMoverObjeto}
-        onRotar={onRotarObjeto}
-        onEliminar={onEliminarObjeto}
-        onEliminarPlantillaCompleta={onEliminarPlantillaZonaCompleta}
-      />
+      {/* Fase 3: Static objects — BatchedMesh (non-edit) or InstancedMesh (edit mode) */}
+      {/* BatchedMesh collapses objects sharing same material into 1 draw call.    */}
+      {/* Edit mode needs InstancedMesh fallback for gizmos/drag interactivity.    */}
+      {!isEditMode && sceneOptimization.isReady ? (
+        <StaticObjectBatcher
+          gruposPorModelo={(() => {
+            const grupos = new Map<string, EspacioObjeto[]>();
+            for (const obj of espacioObjetos) {
+              if (obj.modelo_url && !obj.modelo_url.startsWith('builtin:') && obj.catalogo_id) {
+                const key = obj.modelo_url;
+                if (!grupos.has(key)) grupos.set(key, []);
+                grupos.get(key)!.push(obj);
+              }
+            }
+            return grupos;
+          })()}
+          services={sceneOptimization}
+          playerPosition={playerPositionState}
+          onInteractuar={onInteractuarObjeto
+            ? (obj) => onInteractuarObjeto(obj, asientosPorObjetoId.get(obj.id) || null)
+            : undefined
+          }
+        />
+      ) : (
+        <ObjetosInstanciados
+          espacioObjetos={espacioObjetos.filter(obj => !!obj.catalogo_id)}
+          playerPosition={playerPositionState}
+          isEditMode={isEditMode}
+          selectedObjectId={selectedObjectId}
+          ultimoObjetoColocadoId={ultimoObjetoColocadoId}
+          onInteractuar={onInteractuarObjeto
+            ? (obj) => onInteractuarObjeto(obj, asientosPorObjetoId.get(obj.id) || null)
+            : undefined
+          }
+          onMover={onMoverObjeto}
+          onRotar={onRotarObjeto}
+          onEliminar={onEliminarObjeto}
+          onEliminarPlantillaCompleta={onEliminarPlantillaZonaCompleta}
+        />
+      )}
 
       {/* Escritorios reclamables (sin catalogo_id) — siguen individuales */}
       {espacioObjetos
