@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Building2, Check, MapPin, Plus, RefreshCw, Send, Sparkles, XCircle, LayoutGrid, Circle, Hexagon, Eye, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useAuthSession } from '@/hooks/auth/useAuthSession';
 import type { AutorizacionEmpresa, ZonaEmpresa } from '@/types';
 import { useStore } from '@/store/useStore';
 import { obtenerPlantillaZona, PLANTILLAS_ZONA_OFICINA, type PlantillaZonaId } from '@/src/core/domain/entities/plantillasEspacio';
@@ -70,11 +71,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
   const [mostrarGeneradorCompleto, setMostrarGeneradorCompleto] = useState(false);
   const [aplicandoPlantillaCompleta, setAplicandoPlantillaCompleta] = useState(false);
 
-  const mountedRef = useRef(true);
-
-  useEffect(() => {
-    return () => { mountedRef.current = false; };
-  }, []);
+  const { userId: authUserId } = useAuthSession();
 
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -154,20 +151,11 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
     addNotification(`Mueve la plantilla ${plantilla.nombre} en el espacio y haz clic para fijarla.`, 'info');
   }, [addNotification, onCloseModal, setActiveSubTab, setIsEditMode, setPlantillaZonaEnColocacion, workspaceId]);
 
-  const cargarDatosBase = useCallback(async () => {
+  const cargarDatosBase = useCallback(async (idUsuario: string | null) => {
     setCargando(true);
     setMensajeError(null);
 
     try {
-      let idUsuario: string | null = null;
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        idUsuario = sessionData.session?.user.id ?? null;
-      } catch {
-        console.warn('⚠️ No se pudo obtener sesión en cargarDatosBase');
-      }
-      if (!mountedRef.current) return;
-
       setUsuarioId(idUsuario);
 
       if (idUsuario) {
@@ -177,7 +165,6 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
           .eq('espacio_id', workspaceId)
           .eq('usuario_id', idUsuario)
           .maybeSingle();
-        if (!mountedRef.current) return;
         setEmpresaUsuarioId(miembroData?.empresa_id ?? null);
       } else {
         setEmpresaUsuarioId(null);
@@ -188,7 +175,6 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
         .select('id, nombre, logo_url')
         .eq('espacio_id', workspaceId)
         .order('nombre');
-      if (!mountedRef.current) return;
 
       if (empresasError) {
         throw empresasError;
@@ -200,7 +186,6 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
         .select('empresa_id')
         .eq('espacio_id', workspaceId)
         .not('empresa_id', 'is', null);
-      if (!mountedRef.current) return;
 
       const conteo: Record<string, number> = {};
       (miembrosCount || []).forEach((m: { empresa_id: string | null }) => {
@@ -215,14 +200,12 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
       );
 
       const zonasData = await cargarZonasEmpresa(workspaceId);
-      if (!mountedRef.current) return;
       setZonas(zonasData);
     } catch (error: unknown) {
-      if (!mountedRef.current) return;
       console.error('Error cargando datos de zonas:', error);
       mostrarMensaje('error', error instanceof Error ? error.message : 'No se pudieron cargar las zonas');
     } finally {
-      if (mountedRef.current) setCargando(false);
+      setCargando(false);
     }
   }, [workspaceId]);
 
@@ -246,8 +229,8 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
   }, [workspaceId, empresaUsuarioId]);
 
   useEffect(() => {
-    cargarDatosBase();
-  }, [cargarDatosBase]);
+    cargarDatosBase(authUserId);
+  }, [cargarDatosBase, authUserId]);
 
   useEffect(() => {
     cargarAutorizaciones();

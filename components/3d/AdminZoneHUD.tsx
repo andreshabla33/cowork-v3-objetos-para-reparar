@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { guardarZonaEmpresa, eliminarZonaEmpresa } from '@/lib/autorizacionesEmpresa';
 import { logger } from '@/lib/logger';
@@ -6,7 +6,7 @@ import { FloorType, FLOOR_TYPE_LABELS, FLOOR_TYPE_CATEGORIES, normalizarTipoSuel
 import { normalizarConfiguracionZonaEmpresa, normalizarTipoSubsueloZona, type TipoSubsueloZona } from '../../src/core/domain/entities/cerramientosZona';
 import { TEXTURE_REGISTRY } from '../../lib/rendering/textureRegistry';
 import { ZonaEmpresa } from '@/types';
-import { supabase } from '@/lib/supabase';
+import { useAuthSessionGetter } from '@/hooks/auth/useAuthSession';
 
 interface AdminZoneHUDProps {
   workspaceId: string;
@@ -40,12 +40,8 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [mostrarSelectorSuelo, setMostrarSelectorSuelo] = useState(true);
-  const mountedRef = useRef(true);
+  const getAuthSession = useAuthSessionGetter();
   const anidamientoDecorativoForzado = (nuevaZona?.nivelAnidamiento ?? 0) >= 2;
-
-  useEffect(() => {
-    return () => { mountedRef.current = false; };
-  }, []);
 
   // Sincronizar estado cuando cambia la zona a editar
   useEffect(() => {
@@ -98,14 +94,7 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
     
     setIsDeleting(true);
     try {
-      let userId: string | null = null;
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        userId = sessionData.session?.user.id ?? null;
-      } catch {
-        log.warn('No se pudo obtener sesión para eliminar zona');
-      }
-      if (!mountedRef.current) return;
+      const { userId } = getAuthSession();
 
       const ok = await eliminarZonaEmpresa({
         zonaId: zonaAEditar.id,
@@ -113,18 +102,16 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
         usuarioId: userId,
         empresaId: zonaAEditar.empresa_id ?? currentUser.empresa_id ?? null,
       });
-      if (!mountedRef.current) return;
 
       if (!ok) throw new Error('No se pudo eliminar la zona');
 
       if (onZonaCreada) onZonaCreada();
       onLimpiarNuevaZona();
     } catch (e) {
-      if (!mountedRef.current) return;
       log.error('handleEliminar error', { error: e instanceof Error ? e.message : String(e) });
       alert('Error eliminando zona');
     } finally {
-      if (mountedRef.current) setIsDeleting(false);
+      setIsDeleting(false);
     }
   };
 
@@ -134,14 +121,7 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
     if ((!nuevaZona && !zonaAEditar) || (tipoSubsueloFinal === 'organizacional' && !nombreNormalizado)) return;
     setIsSaving(true);
     try {
-      let sessionUserId: string | null = null;
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        sessionUserId = sessionData.session?.user.id ?? null;
-      } catch {
-        log.warn('No se pudo obtener sesión para guardar zona');
-      }
-      if (!mountedRef.current) return;
+      const { userId } = getAuthSession();
 
       const empresaZonaPrivada = esComun
         ? null
@@ -164,7 +144,7 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
           ...(normalizarConfiguracionZonaEmpresa(zonaAEditar?.configuracion) || {}),
           tipo_subsuelo: tipoSubsueloFinal,
         },
-        usuarioId: sessionUserId,
+        usuarioId: userId,
       };
 
       if (zonaAEditar) {
@@ -188,7 +168,6 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
         });
       }
 
-      if (!mountedRef.current) return;
       if (onZonaCreada) onZonaCreada();
       onLimpiarNuevaZona();
       setNombre('');
@@ -197,11 +176,10 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
       setTipoSubsuelo('organizacional');
       setEsComun(false);
     } catch (e) {
-      if (!mountedRef.current) return;
       log.error('handleGuardar error', { error: e instanceof Error ? e.message : String(e) });
       alert('Error guardando zona');
     } finally {
-      if (mountedRef.current) setIsSaving(false);
+      setIsSaving(false);
     }
   };
 

@@ -9,9 +9,6 @@ const SUPABASE_URL = CONFIG_PUBLICA_APP.urlSupabase;
 const SUPABASE_ANON_KEY = CONFIG_PUBLICA_APP.claveAnonSupabase;
 const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/monica-ai-proxy`;
 
-// Cache de token para evitar adquirir el auth lock en cada mensaje
-let _cachedToken: string | null = null;
-let _cachedTokenExpiry = 0;
 
 const SYSTEM_PROMPT = (context: any) => `Eres Mónica, la asistente de IA del espacio de trabajo virtual "Cowork".
 
@@ -44,28 +41,25 @@ export interface ChatHistoryEntry {
   content: string;
 }
 
-export const generateChatResponse = async (prompt: string, context: any, history: ChatHistoryEntry[] = []) => {
+/**
+ * Genera una respuesta de Mónica AI vía Edge Function.
+ *
+ * @param prompt      Mensaje del usuario
+ * @param context     Contexto enriquecido del workspace
+ * @param history     Historial de conversación (últimos 10 turns)
+ * @param accessToken Token JWT del usuario (del store, sin llamar getSession).
+ *                    Si no se provee, se usa la anon key como fallback.
+ */
+export const generateChatResponse = async (
+  prompt: string,
+  context: Record<string, unknown>,
+  history: ChatHistoryEntry[] = [],
+  accessToken?: string | null,
+) => {
   console.log('🤖 Mónica AI: Enviando a Edge Function proxy...');
 
-  // Obtener token JWT del usuario logueado para autenticar la Edge Function
-  // Usa cache de 4 min para evitar adquirir el auth lock en cada mensaje
-  let authToken = SUPABASE_ANON_KEY;
-  const now = Date.now();
-  if (_cachedToken && now < _cachedTokenExpiry) {
-    authToken = _cachedToken;
-  } else {
-    try {
-      const { supabase } = await import('../lib/supabase');
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        authToken = session.access_token;
-        _cachedToken = session.access_token;
-        _cachedTokenExpiry = now + 4 * 60 * 1000; // 4 min cache
-      }
-    } catch {
-      console.warn('⚠️ No se pudo obtener JWT, usando anon key');
-    }
-  }
+  // Usa el token inyectado desde la capa de Presentación (sin lock)
+  const authToken = accessToken || SUPABASE_ANON_KEY;
 
   try {
     const controller = new AbortController();

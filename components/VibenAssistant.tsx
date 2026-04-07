@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { generateChatResponse, ChatHistoryEntry } from '../services/geminiService';
 import { useStore } from '../store/useStore';
 import { supabase } from '../lib/supabase';
+import { useAuthSession } from '../hooks/auth/useAuthSession';
 import { TaskStatus, Task } from '../types';
 import { loadProductivityContext, loadBehaviorContext, buildEnrichedPrompt, ProductivityContext, BehaviorContext } from '../services/monicaContextService';
 
@@ -28,6 +29,7 @@ export const VibenAssistant: React.FC<VibenAssistantProps> = ({ onClose }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { tasks, currentUser, addTask, activeWorkspace, onlineUsers } = useStore();
+  const { accessToken } = useAuthSession();
   const abortControllerRef = useRef<boolean>(false);
   const [channels, setChannels] = useState<string[]>([]);
   const [enrichedContext, setEnrichedContext] = useState<string>('');
@@ -168,7 +170,7 @@ export const VibenAssistant: React.FC<VibenAssistantProps> = ({ onClose }) => {
           content: m.text,
         }));
       
-      const response = await generateChatResponse(userMsg, context, history);
+      const response = await generateChatResponse(userMsg, context, history, accessToken);
       
       if (abortControllerRef.current) {
         setStreamingText('');

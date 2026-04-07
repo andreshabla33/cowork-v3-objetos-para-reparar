@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { useStore } from '@/store/useStore';
 import type { CargoLaboral } from '../components/onboarding/CargoSelector';
 
 interface OnboardingState {
@@ -17,8 +18,16 @@ interface UseOnboardingReturn extends OnboardingState {
   verificarOnboarding: () => Promise<void>;
 }
 
+/**
+ * Hook de capa Aplicación para gestionar el flujo de onboarding.
+ * Lee userId/email del store Zustand (alimentado por onAuthStateChange)
+ * en vez de llamar getUser() directamente → evita auth lock orphan.
+ */
 export function useOnboarding(): UseOnboardingReturn {
-  const mountedRef = useRef(true);
+  const session = useStore((s) => s.session);
+  const userId = session?.user?.id ?? null;
+  const userEmail = session?.user?.email ?? null;
+
   const [state, setState] = useState<OnboardingState>({
     isLoading: true,
     error: null,
@@ -29,26 +38,16 @@ export function useOnboarding(): UseOnboardingReturn {
     miembroId: null,
   });
 
-  useEffect(() => {
-    return () => { mountedRef.current = false; };
-  }, []);
-
   // Verificar estado de onboarding del usuario
   const verificarOnboarding = useCallback(async () => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
 
-      // Obtener usuario actual
-      let user: { id: string; email?: string } | null = null;
-      try {
-        const { data, error: authError } = await supabase.auth.getUser();
-        if (!authError) user = data.user;
-      } catch {
-        console.warn('⚠️ No se pudo obtener usuario en verificarOnboarding');
-      }
-      if (!mountedRef.current) return;
+      // Leer userId del store (síncrono, sin lock)
+      const currentUserId = useStore.getState().session?.user?.id ?? null;
+      const currentEmail = useStore.getState().session?.user?.email ?? null;
 
-      if (!user) {
+      if (!currentUserId) {
         setState(prev => ({
           ...prev,
           isLoading: false,
@@ -71,10 +70,9 @@ export function useOnboarding(): UseOnboardingReturn {
             nombre
           )
         `)
-        .eq('usuario_id', user.id)
+        .eq('usuario_id', currentUserId)
         .eq('aceptado', true)
         .single();
-      if (!mountedRef.current) return;
 
       if (miembroError && miembroError.code !== 'PGRST116') {
         console.error('Error buscando membresía:', miembroError);
@@ -87,7 +85,6 @@ export function useOnboarding(): UseOnboardingReturn {
       }
 
       if (!miembro) {
-        // Usuario sin espacio - redirigir a crear/unirse
         setState(prev => ({
           ...prev,
           isLoading: false,
@@ -100,10 +97,9 @@ export function useOnboarding(): UseOnboardingReturn {
       const { data: invitacion } = await supabase
         .from('invitaciones_pendientes')
         .select('cargo_sugerido')
-        .eq('email', user.email)
+        .eq('email', currentEmail)
         .eq('usada', true)
         .single();
-      if (!mountedRef.current) return;
 
       const espacioData = miembro.espacios_trabajo as Record<string, unknown> | null;
 
@@ -118,7 +114,6 @@ export function useOnboarding(): UseOnboardingReturn {
       });
 
     } catch (err) {
-      if (!mountedRef.current) return;
       console.error('Error en verificarOnboarding:', err);
       setState(prev => ({
         ...prev,
@@ -161,22 +156,16 @@ export function useOnboarding(): UseOnboardingReturn {
         return false;
       }
 
-      // Marcar TODAS las invitaciones pendientes de este email+espacio como usadas
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!mountedRef.current) return false;
-        if (user?.email && state.espacioId) {
-          await supabase
-            .from('invitaciones_pendientes')
-            .update({ usada: true })
-            .eq('email', user.email.toLowerCase())
-            .eq('espacio_id', state.espacioId)
-            .eq('usada', false);
-        }
-      } catch {
-        console.warn('⚠️ No se pudo obtener usuario para marcar invitaciones');
+      // Marcar invitaciones como usadas (lee email del store, sin lock)
+      const currentEmail = useStore.getState().session?.user?.email;
+      if (currentEmail && state.espacioId) {
+        await supabase
+          .from('invitaciones_pendientes')
+          .update({ usada: true })
+          .eq('email', currentEmail.toLowerCase())
+          .eq('espacio_id', state.espacioId)
+          .eq('usada', false);
       }
-      if (!mountedRef.current) return false;
 
       setState(prev => ({
         ...prev,
@@ -195,12 +184,12 @@ export function useOnboarding(): UseOnboardingReturn {
       }));
       return false;
     }
-  }, [state.miembroId]);
+  }, [state.miembroId, state.espacioId]);
 
-  // Verificar al montar
+  // Re-verificar cuando cambia el usuario autenticado
   useEffect(() => {
     verificarOnboarding();
-  }, [verificarOnboarding]);
+  }, [verificarOnboarding, userId]);
 
   return {
     ...state,
