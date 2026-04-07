@@ -22,7 +22,6 @@ import type { StateCreator } from 'zustand';
 import type { AvatarConfig } from '../../types';
 import type { StoreState } from '../state';
 import { logger } from '../../lib/logger';
-import { supabase } from '../../lib/supabase';
 
 // Atomic orchestrators
 import { ejecutarAuthBootstrap } from './bootstrap/authBootstrap';
@@ -137,4 +136,11 @@ export const createInitializeAction = (
       const msg = error instanceof Error ? error.message : String(error);
       log.error('Initialization failed', { error: msg });
       if (get().view !== 'reset_password') {
-        set({ view: 'dashboard' }
+        set({ view: 'dashboard' });
+      }
+    } finally {
+      set({ initialized: true, isInitializing: false });
+      log.info('Initialization complete');
+    }
+  };
+};

@@ -53,7 +53,7 @@ export const RecordingManagerV2: React.FC<RecordingManagerV2Props> = ({
   onRecordingStateChange,
   onProcessingComplete,
 }) => {
-  // Auth — read synchronously from store, no async getSession() lock risk
+  // Auth session getter — synchronous read from Zustand store, no orphaned Web Lock
   const getAuthSession = useAuthSessionGetter();
 
   // Estados principales
@@ -402,8 +402,8 @@ export const RecordingManagerV2: React.FC<RecordingManagerV2Props> = ({
         ? emotionFrames.reduce((sum, f) => sum + f.engagement_score, 0) / emotionFrames.length
         : 0.5;
 
-      // Read token synchronously from Zustand store — NO async getSession().
-      // Avoids orphaned Web Lock (gotrue-js issue #1594).
+      // Obtener token de sesión para autenticar la llamada.
+      // Read synchronously from Zustand store — NO async getSession() to avoid orphaned Web Lock.
       const accessToken = getAuthSession().accessToken ?? undefined;
       
       if (accessToken) {
@@ -699,4 +699,24 @@ export const RecordingManagerV2: React.FC<RecordingManagerV2Props> = ({
       )}
 
       {/* Indicador de grabación activa (esquina) */}
-      {isRecord
+      {isRecording && (
+        <div className="fixed top-4 left-4 z-[200]">
+          <div className="flex items-center gap-3 bg-red-600 px-4 py-2 rounded-full shadow-lg">
+            <span className="w-3 h-3 bg-white rounded-full animate-pulse"></span>
+            <span className="text-white font-mono font-bold">
+              {formatDuration(processingState.duration)}
+            </span>
+            <button
+              onClick={stopRecording}
+              className="ml-2 bg-white/20 hover:bg-white/30 px-2 py-1 rounded text-xs font-medium transition-colors"
+            >
+              Detener
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+export default RecordingManagerV2;
