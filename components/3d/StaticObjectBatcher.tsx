@@ -137,11 +137,35 @@ function materialHasTextures(material: THREE.Material): boolean {
 /**
  * Clone a Three.js material for use in BatchedMesh.
  * Each BatchedMesh group gets its own material instance to avoid shared state.
+ *
+ * CRITICAL: For color-only groups (no textures), the material base color
+ * MUST be white (0xffffff). setColorAt() MULTIPLIES with material.color
+ * in the shader — confirmed from Three.js r170 GLSL source:
+ *   vertex:   vColor.xyz *= batchingColor.xyz;
+ *   fragment: diffuseColor.rgb *= vColor;
+ *
+ * So: white(1,1,1) × batchColor = batchColor (correct)
+ *     red(1,0,0) × blue(0,0,1) = black(0,0,0) (WRONG)
+ *
+ * Ref: Three.js r170 — color_vertex.glsl.js, color_fragment.glsl.js
+ * Ref: Issue #30226 — "InstanceMesh setColorAt works differently than set material"
+ *
+ * @param material   Source material to clone
+ * @param forColorGroup  If true, forces base color to white for setColorAt compatibility
  */
-function cloneMaterialForBatch(material: THREE.Material): THREE.Material {
+function cloneMaterialForBatch(material: THREE.Material, forColorGroup: boolean): THREE.Material {
   const cloned = material.clone();
-  // Ensure shadows work on batched meshes
   cloned.shadowSide = THREE.FrontSide;
+
+  if (forColorGroup) {
+    // Force white base for color-only groups so setColorAt works correctly
+    if (cloned instanceof THREE.MeshStandardMaterial) {
+      cloned.color.set(0xffffff);
+    } else if (cloned instanceof THREE.MeshBasicMaterial) {
+      cloned.color.set(0xffffff);
+    }
+  }
+
   return cloned;
 }
 
@@ -284,10 +308,11 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
               }
             }
 
-            // Clone the material and assign the atlas texture
-            groupMaterial = cloneMaterialForBatch(mat);
+            // Clone textured material — keep original color (texture dominates)
+            groupMaterial = cloneMaterialForBatch(mat, false);
           } else {
-            groupMaterial = cloneMaterialForBatch(mat);
+            // Color-only group: MUST use white base (setColorAt multiplies)
+            groupMaterial = cloneMaterialForBatch(mat, true);
           }
 
           multiBatch.crearGrupoMaterial({
