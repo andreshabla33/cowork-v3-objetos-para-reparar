@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Building2, Check, MapPin, Plus, RefreshCw, Send, Sparkles, XCircle, LayoutGrid, Circle, Hexagon, Eye, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -69,6 +69,12 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
   const [plantillaCompletaSeleccionada, setPlantillaCompletaSeleccionada] = useState<string>('');
   const [mostrarGeneradorCompleto, setMostrarGeneradorCompleto] = useState(false);
   const [aplicandoPlantillaCompleta, setAplicandoPlantillaCompleta] = useState(false);
+
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -153,8 +159,15 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
     setMensajeError(null);
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const idUsuario = sessionData.session?.user.id ?? null;
+      let idUsuario: string | null = null;
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        idUsuario = sessionData.session?.user.id ?? null;
+      } catch {
+        console.warn('⚠️ No se pudo obtener sesión en cargarDatosBase');
+      }
+      if (!mountedRef.current) return;
+
       setUsuarioId(idUsuario);
 
       if (idUsuario) {
@@ -164,6 +177,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
           .eq('espacio_id', workspaceId)
           .eq('usuario_id', idUsuario)
           .maybeSingle();
+        if (!mountedRef.current) return;
         setEmpresaUsuarioId(miembroData?.empresa_id ?? null);
       } else {
         setEmpresaUsuarioId(null);
@@ -174,6 +188,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
         .select('id, nombre, logo_url')
         .eq('espacio_id', workspaceId)
         .order('nombre');
+      if (!mountedRef.current) return;
 
       if (empresasError) {
         throw empresasError;
@@ -185,26 +200,29 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
         .select('empresa_id')
         .eq('espacio_id', workspaceId)
         .not('empresa_id', 'is', null);
+      if (!mountedRef.current) return;
 
       const conteo: Record<string, number> = {};
-      (miembrosCount || []).forEach((m: any) => {
+      (miembrosCount || []).forEach((m: { empresa_id: string | null }) => {
         if (m.empresa_id) conteo[m.empresa_id] = (conteo[m.empresa_id] || 0) + 1;
       });
 
       setEmpresas(
-        (empresasData || []).map((e: any) => ({
+        (empresasData || []).map((e: { id: string; nombre: string; logo_url?: string | null }) => ({
           ...e,
           miembros_count: conteo[e.id] || 0,
         }))
       );
 
       const zonasData = await cargarZonasEmpresa(workspaceId);
+      if (!mountedRef.current) return;
       setZonas(zonasData);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      if (!mountedRef.current) return;
       console.error('Error cargando datos de zonas:', error);
-      mostrarMensaje('error', error?.message || 'No se pudieron cargar las zonas');
+      mostrarMensaje('error', error instanceof Error ? error.message : 'No se pudieron cargar las zonas');
     } finally {
-      setCargando(false);
+      if (mountedRef.current) setCargando(false);
     }
   }, [workspaceId]);
 

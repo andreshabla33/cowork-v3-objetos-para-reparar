@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import type { CargoLaboral } from '../components/onboarding/CargoSelector';
 
@@ -18,6 +18,7 @@ interface UseOnboardingReturn extends OnboardingState {
 }
 
 export function useOnboarding(): UseOnboardingReturn {
+  const mountedRef = useRef(true);
   const [state, setState] = useState<OnboardingState>({
     isLoading: true,
     error: null,
@@ -28,15 +29,26 @@ export function useOnboarding(): UseOnboardingReturn {
     miembroId: null,
   });
 
+  useEffect(() => {
+    return () => { mountedRef.current = false; };
+  }, []);
+
   // Verificar estado de onboarding del usuario
   const verificarOnboarding = useCallback(async () => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
 
       // Obtener usuario actual
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      
-      if (authError || !user) {
+      let user: { id: string; email?: string } | null = null;
+      try {
+        const { data, error: authError } = await supabase.auth.getUser();
+        if (!authError) user = data.user;
+      } catch {
+        console.warn('⚠️ No se pudo obtener usuario en verificarOnboarding');
+      }
+      if (!mountedRef.current) return;
+
+      if (!user) {
         setState(prev => ({
           ...prev,
           isLoading: false,
@@ -62,6 +74,7 @@ export function useOnboarding(): UseOnboardingReturn {
         .eq('usuario_id', user.id)
         .eq('aceptado', true)
         .single();
+      if (!mountedRef.current) return;
 
       if (miembroError && miembroError.code !== 'PGRST116') {
         console.error('Error buscando membresía:', miembroError);
@@ -90,20 +103,22 @@ export function useOnboarding(): UseOnboardingReturn {
         .eq('email', user.email)
         .eq('usada', true)
         .single();
+      if (!mountedRef.current) return;
 
-      const espacioData = miembro.espacios_trabajo as any;
-      
+      const espacioData = miembro.espacios_trabajo as Record<string, unknown> | null;
+
       setState({
         isLoading: false,
         error: null,
         espacioId: miembro.espacio_id,
-        espacioNombre: espacioData?.nombre || 'tu espacio',
+        espacioNombre: (espacioData?.nombre as string) || 'tu espacio',
         cargoSugerido: invitacion?.cargo_sugerido as CargoLaboral || null,
         onboardingCompletado: miembro.onboarding_completado || false,
         miembroId: miembro.id,
       });
 
     } catch (err) {
+      if (!mountedRef.current) return;
       console.error('Error en verificarOnboarding:', err);
       setState(prev => ({
         ...prev,
@@ -147,15 +162,21 @@ export function useOnboarding(): UseOnboardingReturn {
       }
 
       // Marcar TODAS las invitaciones pendientes de este email+espacio como usadas
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.email && state.espacioId) {
-        await supabase
-          .from('invitaciones_pendientes')
-          .update({ usada: true })
-          .eq('email', user.email.toLowerCase())
-          .eq('espacio_id', state.espacioId)
-          .eq('usada', false);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!mountedRef.current) return false;
+        if (user?.email && state.espacioId) {
+          await supabase
+            .from('invitaciones_pendientes')
+            .update({ usada: true })
+            .eq('email', user.email.toLowerCase())
+            .eq('espacio_id', state.espacioId)
+            .eq('usada', false);
+        }
+      } catch {
+        console.warn('⚠️ No se pudo obtener usuario para marcar invitaciones');
       }
+      if (!mountedRef.current) return false;
 
       setState(prev => ({
         ...prev,

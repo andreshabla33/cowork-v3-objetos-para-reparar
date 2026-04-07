@@ -9,6 +9,10 @@ const SUPABASE_URL = CONFIG_PUBLICA_APP.urlSupabase;
 const SUPABASE_ANON_KEY = CONFIG_PUBLICA_APP.claveAnonSupabase;
 const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/monica-ai-proxy`;
 
+// Cache de token para evitar adquirir el auth lock en cada mensaje
+let _cachedToken: string | null = null;
+let _cachedTokenExpiry = 0;
+
 const SYSTEM_PROMPT = (context: any) => `Eres Mónica, la asistente de IA del espacio de trabajo virtual "Cowork".
 
 Contexto del usuario actual:
@@ -44,15 +48,23 @@ export const generateChatResponse = async (prompt: string, context: any, history
   console.log('🤖 Mónica AI: Enviando a Edge Function proxy...');
 
   // Obtener token JWT del usuario logueado para autenticar la Edge Function
+  // Usa cache de 4 min para evitar adquirir el auth lock en cada mensaje
   let authToken = SUPABASE_ANON_KEY;
-  try {
-    const { supabase } = await import('../lib/supabase');
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.access_token) {
-      authToken = session.access_token;
+  const now = Date.now();
+  if (_cachedToken && now < _cachedTokenExpiry) {
+    authToken = _cachedToken;
+  } else {
+    try {
+      const { supabase } = await import('../lib/supabase');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        authToken = session.access_token;
+        _cachedToken = session.access_token;
+        _cachedTokenExpiry = now + 4 * 60 * 1000; // 4 min cache
+      }
+    } catch {
+      console.warn('⚠️ No se pudo obtener JWT, usando anon key');
     }
-  } catch (e) {
-    console.warn('⚠️ No se pudo obtener JWT, usando anon key');
   }
 
   try {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Building2, Globe, MapPin, Phone, Mail, FileText,
   Check, RefreshCw, Save, Plus, Users
@@ -49,6 +49,11 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -67,8 +72,15 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
   const fetchEmpresa = useCallback(async () => {
     setLoading(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData.session?.user.id;
+      let userId: string | undefined;
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        userId = sessionData.session?.user.id;
+      } catch {
+        console.warn('⚠️ No se pudo obtener sesión en fetchEmpresa');
+      }
+      if (!mountedRef.current) return;
+
       if (!userId) {
         setEmpresa(null);
         setLoading(false);
@@ -81,6 +93,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
         .eq('espacio_id', workspaceId)
         .eq('usuario_id', userId)
         .maybeSingle();
+      if (!mountedRef.current) return;
 
       if (miembroData?.empresa_id) {
         const { data: empresaData } = await supabase
@@ -89,6 +102,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
           .eq('id', miembroData.empresa_id)
           .eq('espacio_id', workspaceId)
           .single();
+        if (!mountedRef.current) return;
 
         if (empresaData) {
           setEmpresa(empresaData);
@@ -110,7 +124,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
     } catch (err) {
       console.error('Error cargando empresa:', err);
     }
-    setLoading(false);
+    if (mountedRef.current) setLoading(false);
   }, [workspaceId]);
 
   useEffect(() => { fetchEmpresa(); }, [fetchEmpresa]);
@@ -156,12 +170,20 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
         showMessage('Empresa actualizada correctamente', 'success');
       } else {
         // Crear nueva empresa y vincular al espacio
-        const { data: session } = await supabase.auth.getSession();
+        let creadorId: string | undefined;
+        try {
+          const { data: session } = await supabase.auth.getSession();
+          creadorId = session.session?.user.id;
+        } catch {
+          console.warn('⚠️ No se pudo obtener sesión para crear empresa');
+        }
+        if (!mountedRef.current) return;
+
         const { data: nuevaEmpresa, error: createError } = await supabase
           .from('empresas')
           .insert({
             ...empresaPayload,
-            creado_por: session.session?.user.id,
+            creado_por: creadorId,
             espacio_id: workspaceId,
           })
           .select()
@@ -172,8 +194,9 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
         showMessage('Empresa creada correctamente', 'success');
       }
       setHasChanges(false);
-    } catch (err: any) {
-      showMessage(err.message || 'Error al guardar', 'error');
+    } catch (err: unknown) {
+      if (!mountedRef.current) return;
+      showMessage(err instanceof Error ? err.message : 'Error al guardar', 'error');
     } finally {
       setSaving(false);
     }
