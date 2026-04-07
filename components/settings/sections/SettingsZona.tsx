@@ -11,8 +11,8 @@ import { obtenerPlantillaZona, PLANTILLAS_ZONA_OFICINA, type PlantillaZonaId } f
 import { normalizarConfiguracionZonaEmpresa } from '@/src/core/domain/entities/cerramientosZona';
 import { AplicarPlantillaEspacioCompletaUseCase, type IRepositorioPlantillaEspacioCompleta } from '@/src/core/application/usecases/AplicarPlantillaEspacioCompletaUseCase';
 import { AplicarPlantillaZonaUseCase } from '@/src/core/application/usecases/AplicarPlantillaZonaUseCase';
-import { RepositorioPlantillaZonaSupabase } from '@/src/core/infrastructure/RepositorioPlantillaZonaSupabase';
-import { InyectorPlantillaZona } from '@/src/core/infrastructure/InyectorPlantillaZona';
+import { RepositorioPlantillaZonaSupabase } from '@/src/core/infrastructure/adapters/RepositorioPlantillaZonaSupabaseAdapter';
+import { InyectorPlantillaZona } from '@/src/core/infrastructure/adapters/InyectorPlantillaZonaAdapter';
 import { PLANTILLAS_ESPACIO_COMPLETAS } from '@/src/core/domain/entities/plantillasEspacio';
 import {
   cargarAutorizacionesActivas,
@@ -1319,34 +1319,4 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                       <p className="text-zinc-500">Miembro editable</p>
                       <p className="text-white font-semibold mt-1">{plantillaZonaSeleccionadaData.reglas.editable_por_miembro ? 'Sí' : 'No'}</p>
                     </div>
-                    <div className="rounded-xl bg-black/20 border border-white/5 p-3">
-                      <p className="text-zinc-500">Objetos movibles</p>
-                      <p className="text-white font-semibold mt-1">{plantillaZonaSeleccionadaData.reglas.permite_mover_objetos ? 'Sí' : 'No'}</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
-                    <button
-                      onClick={() => setZonaPlantillaActiva(null)}
-                      className="px-4 py-2 rounded-xl text-sm text-zinc-400 hover:text-white transition"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={() => zonaPlantillaActiva && handleIniciarColocacionPlantillaZona(zonaPlantillaActiva, plantillaZonaSeleccionada)}
-                      className="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition"
-                    >
-                      Arrastrar en espacio
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-    </div>
-  );
-};
-
-export default SettingsZona;
+                

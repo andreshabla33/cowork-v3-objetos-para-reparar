@@ -18,6 +18,9 @@ import type { IAuthRepository } from '../../domain/ports/IAuthRepository';
 import type { IWorkspaceRepository } from '../../domain/ports/IWorkspaceRepository';
 import type { IProfileRepository } from '../../domain/ports/IProfileRepository';
 import type { IChatRepository } from '../../domain/ports/IChatRepository';
+import type { IBatchedMeshService } from '../../domain/ports/IBatchedMeshService';
+import type { ITextureAtlasService } from '../../domain/ports/ITextureAtlasService';
+import type { IGPUSkinnedInstanceService } from '../../domain/ports/IGPUSkinnedInstanceService';
 
 // ─── Tipo del contenedor ──────────────────────────────────────────────────────
 
@@ -34,6 +37,12 @@ export interface DIContainer {
   profile: IProfileRepository;
   /** Repositorio de chat */
   chat: IChatRepository;
+  /** Fase 3 — BatchedMesh para objetos estáticos (1 draw call por material) */
+  batchedMesh: IBatchedMeshService;
+  /** Fase 3 — Atlas de texturas Canvas2D (reduce texture switches) */
+  textureAtlas: ITextureAtlasService;
+  /** Fase 3 — GPU instanced skinning para 500 avatares (DataTexture RGBA32F) */
+  gpuSkinnedInstance: IGPUSkinnedInstanceService;
 }
 
 // ─── Singleton ────────────────────────────────────────────────────────────────
@@ -57,6 +66,9 @@ export async function getDIContainer(): Promise<DIContainer> {
     { WorkspaceSupabaseRepository },
     { ProfileSupabaseRepository },
     { chatRepository },
+    { getBatchedMeshAdapter },
+    { getTextureAtlasAdapter },
+    { getGPUSkinnedInstanceAdapter },
   ] = await Promise.all([
     import('../adapters/ThreeTextureFactoryAdapter'),
     import('../adapters/RenderingOptimizationAdapter'),
@@ -64,6 +76,9 @@ export async function getDIContainer(): Promise<DIContainer> {
     import('../adapters/WorkspaceSupabaseRepository'),
     import('../adapters/ProfileSupabaseRepository'),
     import('../adapters/ChatSupabaseRepository'),
+    import('../adapters/BatchedMeshThreeAdapter'),
+    import('../adapters/TextureAtlasCanvasAdapter'),
+    import('../adapters/GPUSkinnedInstanceAdapter'),
   ]);
 
   _container = {
@@ -73,6 +88,9 @@ export async function getDIContainer(): Promise<DIContainer> {
     workspace: new WorkspaceSupabaseRepository(),
     profile: new ProfileSupabaseRepository(),
     chat: chatRepository,
+    batchedMesh: getBatchedMeshAdapter(),
+    textureAtlas: getTextureAtlasAdapter(),
+    gpuSkinnedInstance: getGPUSkinnedInstanceAdapter(),
   };
 
   return _container;

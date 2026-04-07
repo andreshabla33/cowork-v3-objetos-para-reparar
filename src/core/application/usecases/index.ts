@@ -4,6 +4,14 @@
  * Simplifies imports in components and other modules.
  */
 
+// Fase 3 — GPU Rendering (BatchedMesh, TextureAtlas, GPUSkinning)
+export { GestionarBatchedMeshUseCase } from './GestionarBatchedMeshUseCase';
+export { GestionarTextureAtlasUseCase } from './GestionarTextureAtlasUseCase';
+export { GestionarGPUSkinnedInstanceUseCase } from './GestionarGPUSkinnedInstanceUseCase';
+
+// Geometry cache
+export { GestionarGeometryCacheUseCase } from './GestionarGeometryCacheUseCase';
+
 // Chat
 export { CargarGruposChatUseCase } from './CargarGruposChatUseCase';
 export { CargarMensajesChatUseCase, type ResultadoCargarMensajes } from './CargarMensajesChatUseCase';

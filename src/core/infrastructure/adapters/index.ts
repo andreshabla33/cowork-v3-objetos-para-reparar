@@ -4,6 +4,42 @@
  * Simplifies imports in use cases and other modules.
  */
 
+// Fase 3 — GPU Rendering adapters
+export {
+  BatchedMeshThreeAdapter,
+  getBatchedMeshAdapter,
+  resetBatchedMeshAdapter,
+} from './BatchedMeshThreeAdapter';
+export {
+  TextureAtlasCanvasAdapter,
+  getTextureAtlasAdapter,
+  resetTextureAtlasAdapter,
+} from './TextureAtlasCanvasAdapter';
+export {
+  GPUSkinnedInstanceAdapter,
+  getGPUSkinnedInstanceAdapter,
+  resetGPUSkinnedInstanceAdapter,
+} from './GPUSkinnedInstanceAdapter';
+export type {
+  IBatchedMeshService,
+  BatchGeometryId,
+  BatchInstanceId,
+  Matrix4Flat,
+  BatchedMeshStats,
+} from '../../domain/ports/IBatchedMeshService';
+export type {
+  ITextureAtlasService,
+  AtlasRegion,
+  UVTransform,
+  AtlasStats,
+} from '../../domain/ports/ITextureAtlasService';
+export type {
+  IGPUSkinnedInstanceService,
+  AvatarRowIndex,
+  BoneMatrices,
+  GPUSkinnedInstanceStats,
+} from '../../domain/ports/IGPUSkinnedInstanceService';
+
 // Workspace
 export { WorkspaceSupabaseRepository } from './WorkspaceSupabaseRepository';
 export type {

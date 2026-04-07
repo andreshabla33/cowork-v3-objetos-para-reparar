@@ -30,8 +30,8 @@ import { XP_POR_ACCION } from '@/lib/gamificacion';
 import { useStore } from '@/store/useStore';
 import { AplicarPlantillaZonaUseCase } from '@/src/core/application/usecases/AplicarPlantillaZonaUseCase';
 import { EliminarPlantillaZonaUseCase } from '@/src/core/application/usecases/EliminarPlantillaZonaUseCase';
-import { InyectorPlantillaZona } from '@/src/core/infrastructure/InyectorPlantillaZona';
-import { RepositorioPlantillaZonaSupabase } from '@/src/core/infrastructure/RepositorioPlantillaZonaSupabase';
+import { InyectorPlantillaZona } from '@/src/core/infrastructure/adapters/InyectorPlantillaZonaAdapter';
+import { RepositorioPlantillaZonaSupabase } from '@/src/core/infrastructure/adapters/RepositorioPlantillaZonaSupabaseAdapter';
 // GameHub ahora se importa en WorkspaceLayout
 import { EditModeHUD, EditModeToast, InspectorEdicionObjeto, PlacementHUD, PlacementToast, ToastContainer, toastEmitter } from './3d/PlacementHUD';
 import { AdminZoneHUD } from './3d/AdminZoneHUD';
