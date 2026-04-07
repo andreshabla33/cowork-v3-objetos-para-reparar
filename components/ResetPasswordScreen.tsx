@@ -42,15 +42,20 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({ errorF
     // Si ya sabemos que el hash trae un error, no hay nada que esperar
     if (errorFromHash) return;
 
-    // Escuchar el evento PASSWORD_RECOVERY de Supabase Auth
-    // Este evento se dispara cuando se procesa el hash de recovery en la URL
+    // Track mount state to prevent state updates after unmount.
+    // Supabase gotrue-js docs: "Lock was not released within 5000ms" happens
+    // when getSession() promise resolves after the component that called it
+    // has already unmounted — the lock is held but nobody releases it.
+    let isMounted = true;
     let timeoutId: number | null = null;
 
     const marcarTokenInvalido = () => {
+      if (!isMounted) return;
       setState(prev => prev === 'validating' ? 'error_token' : prev);
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (!isMounted) return;
       if (event === 'PASSWORD_RECOVERY') {
         if (timeoutId !== null) {
           window.clearTimeout(timeoutId);
@@ -59,20 +64,23 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({ errorF
       }
     });
 
-    // Fallback: si la sesión ya existía antes de que el listener se montara
+    // Fallback: si la sesión ya existía antes de que el listener se montara.
+    // Guard con isMounted para evitar orphaned lock si el componente se desmonta
+    // mientras la promise está pendiente.
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!isMounted) return;
       if (session) {
         if (timeoutId !== null) {
           window.clearTimeout(timeoutId);
         }
         setState('form');
       } else {
-        // Sin sesión: el hash de recovery fue inválido o ya fue procesado
         timeoutId = window.setTimeout(marcarTokenInvalido, 2000);
       }
     });
 
     return () => {
+      isMounted = false;
       if (timeoutId !== null) {
         window.clearTimeout(timeoutId);
       }

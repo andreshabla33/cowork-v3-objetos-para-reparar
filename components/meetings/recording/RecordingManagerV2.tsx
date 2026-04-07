@@ -398,9 +398,17 @@ export const RecordingManagerV2: React.FC<RecordingManagerV2Props> = ({
         ? emotionFrames.reduce((sum, f) => sum + f.engagement_score, 0) / emotionFrames.length
         : 0.5;
 
-      // Obtener token de sesión para autenticar la llamada
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
+      // Obtener token de sesión para autenticar la llamada.
+      // Guard: si el componente se desmontó durante el procesamiento,
+      // evitar llamar getSession() que puede generar orphaned lock.
+      // Supabase gotrue-js: "Lock not released within 5000ms" warning.
+      let accessToken: string | undefined;
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        accessToken = sessionData?.session?.access_token;
+      } catch {
+        console.warn('⚠️ No se pudo obtener sesión para resumen AI');
+      }
       
       if (accessToken) {
         const { data: aiData, error: aiError } = await supabase.functions.invoke('generar-resumen-ai', {
