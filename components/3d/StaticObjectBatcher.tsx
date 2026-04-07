@@ -82,6 +82,39 @@ function getMaterialKey(material: THREE.Material): string {
   return `mat_${material.uuid}`;
 }
 
+// ─── Geometry attribute normalization ─────────────────────────────────────────
+
+/**
+ * Three.js BatchedMesh (r170) requires ALL geometries in the same batch to
+ * have exactly the same set of vertex attributes. GLTF models vary:
+ * some lack `uv`, others lack `normal`.
+ *
+ * This function clones the geometry and ensures it has `position`, `normal`,
+ * and `uv` attributes. Missing attributes are synthesized:
+ *   - `normal`: computed via `computeVertexNormals()`
+ *   - `uv`: zero-filled Float32Array (invisible but structurally valid)
+ *
+ * @see https://threejs.org/docs/#api/en/objects/BatchedMesh
+ *   "All geometries must have consistent attributes."
+ */
+function ensureConsistentAttributes(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
+  const clone = geometry.clone();
+  const vertexCount = clone.getAttribute('position')?.count ?? 0;
+
+  if (!clone.getAttribute('normal')) {
+    clone.computeVertexNormals();
+    log.info('Generated missing normals', { vertexCount });
+  }
+
+  if (!clone.getAttribute('uv')) {
+    const uvArray = new Float32Array(vertexCount * 2); // zero-filled
+    clone.setAttribute('uv', new THREE.BufferAttribute(uvArray, 2));
+    log.info('Generated missing UVs', { vertexCount });
+  }
+
+  return clone;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const _box = new THREE.Box3();
@@ -162,7 +195,10 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
         let geoId = batchedMesh.obtenerIdGeometria(geoKey);
         if (!geoId) {
           try {
-            geoId = batchedMesh.agregarGeometria(geoKey, mesh.geometry);
+            // Normalize attributes so all geometries in the batch are consistent
+            // (BatchedMesh r170 requires identical attribute sets)
+            const normalizedGeo = ensureConsistentAttributes(mesh.geometry);
+            geoId = batchedMesh.agregarGeometria(geoKey, normalizedGeo);
             meshCount++;
           } catch (err) {
             // Capacity exceeded — silently skip
