@@ -19,6 +19,7 @@
 import type { AnimationState } from '@/components/avatar3d/shared';
 import type { AvatarConfig } from '@/types';
 import type { Avatar3DConfig } from '@/components/avatar3d/shared';
+import type { AvatarDisposeCallback, IAvatarResourceDisposer } from '@/src/core/domain/ports/IAvatarResourceDisposer';
 
 // ─── Tipos del ECS ──────────────────────────────────────────────────────────
 
@@ -76,11 +77,57 @@ export interface AvatarEntity {
  * Store singleton para todos los avatares remotos.
  * Accesible desde cualquier sistema sin pasar por React.
  */
-class AvatarStore {
+class AvatarStore implements IAvatarResourceDisposer {
   private entities = new Map<string, AvatarEntity>();
   private _dirty = false;
   /** Incrementa con cada cambio para que React sepa cuándo re-leer */
   private _version = 0;
+
+  /**
+   * Registered disposal callbacks.
+   * Infrastructure layer (renderers) registers callbacks to free GPU resources
+   * when an avatar is removed from the ECS.
+   *
+   * Ref: Three.js docs — geometry.dispose(), material.dispose(), texture.dispose()
+   *   must be called explicitly; JS GC does NOT free GPU buffers.
+   */
+  private _disposeCallbacks = new Set<AvatarDisposeCallback>();
+
+  // ── Resource Disposal (IAvatarResourceDisposer) ────────────────────────
+
+  /**
+   * Register a callback to be invoked when any avatar is removed.
+   * Returns an unsubscribe function for cleanup.
+   *
+   * @example
+   * // In InstancedAvatarRenderer:
+   * useEffect(() => {
+   *   const unsub = avatarStore.onRemove((userId) => {
+   *     disposeAvatarGPUResources(userId);
+   *   });
+   *   return unsub;
+   * }, []);
+   */
+  onRemove(callback: AvatarDisposeCallback): () => void {
+    this._disposeCallbacks.add(callback);
+    return () => { this._disposeCallbacks.delete(callback); };
+  }
+
+  /** Fire all registered callbacks for a removed avatar */
+  notifyRemoval(userId: string): void {
+    for (const cb of this._disposeCallbacks) {
+      try {
+        cb(userId);
+      } catch {
+        // Never let a dispose callback crash the ECS
+      }
+    }
+  }
+
+  /** Remove all registered callbacks (scene unmount) */
+  clearAll(): void {
+    this._disposeCallbacks.clear();
+  }
 
   // ── CRUD ────────────────────────────────────────────────────────────────
 
@@ -96,9 +143,14 @@ class AvatarStore {
     return entity;
   }
 
+  /**
+   * Remove an avatar entity and notify all dispose callbacks.
+   * This triggers GPU resource cleanup in the rendering layer.
+   */
   remove(userId: string): boolean {
     const deleted = this.entities.delete(userId);
     if (deleted) {
+      this.notifyRemoval(userId);
       this._dirty = true;
       this._version++;
     }
@@ -134,6 +186,10 @@ class AvatarStore {
   }
 
   clear(): void {
+    // Notify disposal for every entity before clearing
+    for (const userId of this.entities.keys()) {
+      this.notifyRemoval(userId);
+    }
     this.entities.clear();
     this._dirty = true;
     this._version++;

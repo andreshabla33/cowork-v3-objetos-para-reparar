@@ -3,11 +3,15 @@
  * @description Loads avatar configuration (2D + 3D) with animation fallbacks.
  * Atomic orchestrator — handles all avatar-related queries.
  *
+ * Performance (500+ avatars): The `usuarios` query is now pre-fetched by
+ * userDataLoader and injected via `UserAvatarData`, eliminating 1 RTT per boot.
+ *
  * Ref: Supabase JS v2 — .maybeSingle() for optional rows, avoids throwing on 0 results.
  */
 
 import type { AvatarConfig } from '../../../types';
 import type { Avatar3DConfig } from '../../../components/avatar3d/shared';
+import type { UserAvatarData } from './userDataLoader';
 import { supabase } from '../../../lib/supabase';
 import { logger } from '../../../lib/logger';
 
@@ -21,8 +25,16 @@ export interface AvatarLoadResult {
 /**
  * Load complete avatar configuration for a user.
  * Includes 2D config, 3D model, and animations with fallback chain.
+ *
+ * @param userId         Authenticated user ID
+ * @param defaultAvatar  Fallback 2D avatar config
+ * @param userData       Pre-fetched user data from userDataLoader (eliminates duplicate query)
  */
-export async function cargarAvatar(userId: string, defaultAvatar: AvatarConfig): Promise<AvatarLoadResult> {
+export async function cargarAvatar(
+  userId: string,
+  defaultAvatar: AvatarConfig,
+  userData?: UserAvatarData,
+): Promise<AvatarLoadResult> {
   let avatarConfig = defaultAvatar;
   let avatar3DConfig: Avatar3DConfig | null = null;
 
@@ -39,14 +51,9 @@ export async function cargarAvatar(userId: string, defaultAvatar: AvatarConfig):
   }
 
   // 2. Load 3D avatar + animations
+  //    avatar_3d_id comes from pre-fetched userDataLoader (no extra RTT)
   try {
-    const { data: usuarioAvatar } = await supabase
-      .from('usuarios')
-      .select('avatar_3d_id')
-      .eq('id', userId)
-      .maybeSingle();
-
-    let avatarId = usuarioAvatar?.avatar_3d_id || null;
+    let avatarId = userData?.avatar_3d_id ?? null;
 
     // Fallback: if no avatar assigned, pick the first active one
     if (!avatarId) {

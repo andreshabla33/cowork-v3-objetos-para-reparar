@@ -1,19 +1,31 @@
 /**
  * @module hooks/workspace/usePresenceChannels
- * @description Hook for managing Supabase Realtime presence channels with chunk-based interest management.
- * Handles presence synchronization across spatial chunks and user status updates.
+ * @description Hook for managing Supabase Realtime presence channels with
+ * adaptive interest-based subscription management.
  *
- * Architecture: This hook manages Supabase infrastructure (Realtime channels),
- * which is appropriate for infrastructure-level concerns. It still uses proper types
- * and follows error handling patterns.
+ * Performance for 500+ avatars:
+ * - Adaptive radius: baseRadius=1 (9 chunks) vs old radius=2 (25 chunks)
+ *   → 64% reduction in channel subscriptions (18 vs 50 per user)
+ * - Sync throttle: 2s minimum between channel reconciliations
+ * - Track throttle: 5s minimum between presence track() updates
+ * - Density-aware: reduces radius further when >100 nearby avatars
+ *
+ * Clean Architecture: Infrastructure hook (Supabase Realtime).
+ * Uses Application-layer policy (EvaluarPresenceSubscriptionUseCase)
+ * for subscription decisions — no business logic in this file.
+ *
+ * Ref: Supabase Realtime Pricing — $2.50/1M msgs.
+ *      Each channel.track() = 1 sent msg + N received per subscriber.
+ *      Pro plan: 500 peak connections, 5M messages/month quota.
  */
 
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect, useMemo } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
-import { obtenerChunk, obtenerChunksVecinos } from '@/lib/chunkSystem';
+import { obtenerChunk } from '@/lib/chunkSystem';
 import { getSettingsSection } from '@/lib/userSettings';
+import { EvaluarPresenceSubscriptionUseCase } from '@/src/core/application/usecases/EvaluarPresenceSubscriptionUseCase';
 import type { User, Role, PresenceStatus } from '@/types';
 import type { PresencePayload } from '@/types/workspace';
 
@@ -47,14 +59,17 @@ export function usePresenceChannels({
   sessionAccessToken,
   onOnlineUsersChange,
 }: UsePresenceChannelsProps): UsePresenceChannelsReturn {
-  const presenceChannelsRef = useRef<Map<string, RealtimeChannel>>(
-    new Map()
-  );
+  const presenceChannelsRef = useRef<Map<string, RealtimeChannel>>(new Map());
   const prevOnlineUsersRef = useRef<Set<string>>(new Set());
   const lastNotificationRef = useRef<Map<string, number>>(new Map());
   const userRef = useRef(currentUser);
+  const lastSyncRef = useRef(0);
+  const lastTrackRef = useRef(0);
 
   userRef.current = currentUser;
+
+  // Application-layer policy for subscription decisions
+  const subscriptionPolicy = useMemo(() => new EvaluarPresenceSubscriptionUseCase(), []);
 
   /**
    * Recalculate online users from all subscribed presence channels
@@ -72,10 +87,7 @@ export function usePresenceChannels({
             const nivelDetalle: 'empresa' | 'publico' =
               presence.nivel_detalle === 'publico' ? 'publico' : 'empresa';
             const nivelPrevio = detalleMap.get(presence.user_id);
-            if (
-              nivelPrevio === 'empresa' &&
-              nivelDetalle === 'publico'
-            ) {
+            if (nivelPrevio === 'empresa' && nivelDetalle === 'publico') {
               return;
             }
 
@@ -84,9 +96,7 @@ export function usePresenceChannels({
               id: presence.user_id,
               name:
                 presence.name ||
-                (nivelDetalle === 'publico'
-                  ? 'Miembro de otra empresa'
-                  : 'Usuario'),
+                (nivelDetalle === 'publico' ? 'Miembro de otra empresa' : 'Usuario'),
               role: (presence.role || 'miembro') as Role,
               avatar: presence.profilePhoto || '',
               profilePhoto: presence.profilePhoto || '',
@@ -106,8 +116,7 @@ export function usePresenceChannels({
               isMicOn: presence.isMicOn || false,
               isCameraOn: presence.isCameraOn || false,
               isScreenSharing: false,
-              isPrivate:
-                presence.isPrivate ?? nivelDetalle === 'publico',
+              isPrivate: presence.isPrivate ?? nivelDetalle === 'publico',
               status: (presence.status || 'available') as PresenceStatus,
             });
           }
@@ -121,12 +130,8 @@ export function usePresenceChannels({
       if (!prevOnlineUsersRef.current.has(userIdOnline)) {
         const lastTime = lastNotificationRef.current.get(userIdOnline) ?? 0;
         if (now - lastTime > 30000) {
-          const userName =
-            usuariosMap.get(userIdOnline)?.name || 'Usuario';
-          log.info('User connected', {
-            userId: userIdOnline,
-            userName,
-          });
+          const userName = usuariosMap.get(userIdOnline)?.name || 'Usuario';
+          log.info('User connected', { userId: userIdOnline, userName });
           lastNotificationRef.current.set(userIdOnline, now);
         }
       }
@@ -140,13 +145,8 @@ export function usePresenceChannels({
    * Track presence in a single channel
    */
   const trackPresenceEnCanal = useCallback(
-    async (
-      channel: RealtimeChannel,
-      nivelDetalle: 'publico' | 'empresa'
-    ): Promise<void> => {
-      if (!userId) {
-        return;
-      }
+    async (channel: RealtimeChannel, nivelDetalle: 'publico' | 'empresa'): Promise<void> => {
+      if (!userId) return;
 
       const privacy = getSettingsSection('privacy');
       const usuario = userRef.current;
@@ -194,55 +194,62 @@ export function usePresenceChannels({
 
       try {
         await channel.track(
-          nivelDetalle === 'empresa' ? payloadEmpresa : payloadPublico
+          nivelDetalle === 'empresa' ? payloadEmpresa : payloadPublico,
         );
       } catch (err: unknown) {
-        const message =
-          err instanceof Error ? err.message : String(err);
-        log.warn('Error tracking presence', {
-          error: message,
-          nivelDetalle,
-        });
+        const message = err instanceof Error ? err.message : String(err);
+        log.warn('Error tracking presence', { error: message, nivelDetalle });
       }
     },
-    [userId]
+    [userId],
   );
 
   /**
-   * Synchronize presence channels based on user's current chunk and nearby chunks
+   * Synchronize presence channels based on adaptive subscription policy.
+   *
+   * Key changes for 500+ avatar scalability:
+   * 1. Uses EvaluarPresenceSubscriptionUseCase for radius decisions
+   * 2. Throttled to 2s minimum between syncs (was unthrottled)
+   * 3. Adaptive radius: base=1 (9 chunks) with density expansion/reduction
+   * 4. Channel count: max 18 (9 chunks × 2 types) vs old 50
    */
   const syncPresenceByChunk = useCallback((): void => {
-    if (!activeWorkspaceId || !userId) {
-      return;
-    }
+    if (!activeWorkspaceId || !userId) return;
 
     const usuario = userRef.current;
-    const chunkActual = obtenerChunk(usuario.x, usuario.y);
-    const claves = obtenerChunksVecinos(chunkActual, 2);
-    const canalesDeseados = new Map<
-      string,
-      'publico' | 'empresa'
-    >();
-    const empresaId = usuario.empresa_id ?? null;
+    const nearbyCount = prevOnlineUsersRef.current.size;
 
-    claves.forEach((clave: string) => {
+    // Application-layer policy decides radius and throttling
+    const decision = subscriptionPolicy.evaluate(
+      usuario.x,
+      usuario.y,
+      nearbyCount,
+      lastSyncRef.current,
+    );
+
+    if (decision.shouldSkip) return;
+    lastSyncRef.current = Date.now();
+
+    const empresaId = usuario.empresa_id ?? null;
+    const canalesDeseados = new Map<string, 'publico' | 'empresa'>();
+
+    for (const clave of decision.desiredChunks) {
       canalesDeseados.set(
         `workspace:${activeWorkspaceId}:${clave}:publico`,
-        'publico'
+        'publico',
       );
       if (empresaId) {
         canalesDeseados.set(
           `workspace:${activeWorkspaceId}:${clave}:empresa:${empresaId}`,
-          'empresa'
+          'empresa',
         );
       }
-    });
+    }
 
+    // Subscribe to new channels
     canalesDeseados.forEach(
       (nivelDetalle: 'publico' | 'empresa', canalNombre: string) => {
-        if (presenceChannelsRef.current.has(canalNombre)) {
-          return;
-        }
+        if (presenceChannelsRef.current.has(canalNombre)) return;
 
         const channel = supabase.channel(canalNombre, {
           config: { presence: { key: userId } },
@@ -259,44 +266,50 @@ export function usePresenceChannels({
           });
 
         presenceChannelsRef.current.set(canalNombre, channel);
-      }
+      },
     );
 
+    // Unsubscribe from channels no longer in range
     presenceChannelsRef.current.forEach(
       (channel: RealtimeChannel, canalNombre: string) => {
         if (!canalesDeseados.has(canalNombre)) {
           supabase.removeChannel(channel);
           presenceChannelsRef.current.delete(canalNombre);
         }
-      }
+      },
     );
-  }, [
-    activeWorkspaceId,
-    userId,
-    recalcularUsuarios,
-    trackPresenceEnCanal,
-  ]);
+
+    log.debug('Presence sync', {
+      radius: decision.radius,
+      channels: presenceChannelsRef.current.size,
+      nearbyAvatars: nearbyCount,
+    });
+  }, [activeWorkspaceId, userId, recalcularUsuarios, trackPresenceEnCanal, subscriptionPolicy]);
 
   /**
-   * Update presence in all active channels
+   * Update presence in all active channels (throttled).
+   *
+   * Performance: Each track() = 1 outbound message per channel.
+   * At 18 channels × 10 updates/min = 180 msgs/min vs old 500/min.
    */
   const updatePresenceInChannels = useCallback(
     async (nivelDetalle: 'publico' | 'empresa'): Promise<void> => {
-      if (!userId) {
-        return;
-      }
+      if (!userId) return;
+
+      // Throttle track() calls to reduce Supabase message count
+      if (!subscriptionPolicy.shouldTrack(lastTrackRef.current)) return;
+      lastTrackRef.current = Date.now();
 
       presenceChannelsRef.current.forEach(
         (channel: RealtimeChannel, canalNombre: string) => {
           if (channel.state === 'joined') {
-            const nivel =
-              canalNombre.includes(':publico') ? 'publico' : 'empresa';
+            const nivel = canalNombre.includes(':publico') ? 'publico' : 'empresa';
             trackPresenceEnCanal(channel, nivel);
           }
-        }
+        },
       );
     },
-    [userId, trackPresenceEnCanal]
+    [userId, trackPresenceEnCanal, subscriptionPolicy],
   );
 
   /**

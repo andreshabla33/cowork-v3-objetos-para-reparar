@@ -4,11 +4,21 @@
  * Hook que captura y evalúa métricas del WebGLRenderer en tiempo real.
  * Conecta la capa de presentación con el use case de optimización de renderizado.
  *
+ * Delta tracking: Compara métricas entre ciclos para detectar oscilaciones
+ * de geometrías/texturas que indican leaks o componentes que crean/destruyen
+ * recursos innecesariamente (e.g., 634↔714 geometries every ~8s).
+ *
+ * Diseñado para 500+ avatares:
+ *   - No crea objetos en el hot path (reutiliza refs)
+ *   - Logging throttled a INTERVALO_LOG_MS
+ *   - Alertas deduplicadas por sesión
+ *
  * Clean Architecture: hook de presentación que usa el infrastructure monitor.
  * NO contiene lógica de negocio — delega a OptimizarRenderizadoUseCase.
  *
  * Ref CLEAN-ARCH-F5
  * Ref: R3F docs — renderer.info para métricas de frame
+ * Ref: Three.js docs — WebGLRenderer.info.memory (geometries, textures)
  */
 
 import { useEffect, useRef } from 'react';
@@ -21,11 +31,29 @@ import {
 
 const log = logger.child('renderer-metrics');
 
-// ─── Intervalo de logging (ms) ────────────────────────────────────────────────
-// Loguear cada 5 segundos en dev, no en prod (para no saturar console)
+// ─── Configuración ───────────────────────────────────────────────────────────
+
+/** Logging interval in ms. 5s in dev, disabled in prod. */
 const INTERVALO_LOG_MS = import.meta.env.DEV ? 5_000 : 0;
 
-// ─── Hook ─────────────────────────────────────────────────────────────────────
+/**
+ * Oscillation detection threshold.
+ * If geometry count changes by more than this between samples, log a warning.
+ * Helps diagnose components that create/destroy geometries every frame cycle.
+ */
+const DELTA_GEOMETRIAS_UMBRAL = 20;
+const DELTA_TEXTURAS_UMBRAL = 10;
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+/** Snapshot of memory metrics for delta comparison */
+interface MetricsSnapshot {
+  geometries: number;
+  textures: number;
+  drawCalls: number;
+  programs: number;
+  timestamp: number;
+}
 
 export interface UseRendererMetricsOptions {
   gpuTier?: number;
@@ -33,12 +61,15 @@ export interface UseRendererMetricsOptions {
   emitirAlertas?: boolean;
 }
 
+// ─── Hook ────────────────────────────────────────────────────────────────────
+
 /**
- * Monitorea las métricas del renderer y emite alertas cuando se superan umbrales.
+ * Monitorea las métricas del renderer, emite alertas cuando se superan umbrales,
+ * y detecta oscilaciones de geometrías/texturas que indican resource churn.
+ *
  * Llama este hook en el componente VirtualSpace3D o similar (una sola vez).
  *
  * @example
- * // En VirtualSpace3D.tsx:
  * useRendererMetrics({ gpuTier, emitirAlertas: true });
  */
 export const useRendererMetrics = ({
@@ -49,6 +80,10 @@ export const useRendererMetrics = ({
   const ultimoLogRef = useRef(0);
   const alertasEmitidasRef = useRef(new Set<string>());
 
+  // Delta tracking refs (no allocations in hot path)
+  const prevSnapshotRef = useRef<MetricsSnapshot | null>(null);
+  const oscilacionCountRef = useRef(0);
+
   useEffect(() => {
     if (!gl || INTERVALO_LOG_MS === 0) return;
 
@@ -58,13 +93,78 @@ export const useRendererMetrics = ({
       ultimoLogRef.current = ahora;
 
       const resultado = evaluarFrameRenderer(gl, gpuTier);
-      const datosLog = formatearMetricasParaLog(resultado.metricas);
+      const metricas = resultado.metricas;
+      const datosLog = formatearMetricasParaLog(metricas);
 
-      log.info('Frame stats', datosLog);
+      // ── Delta tracking ──────────────────────────────────────────────
+      const currentSnapshot: MetricsSnapshot = {
+        geometries: metricas.geometrias,
+        textures: metricas.texturas,
+        drawCalls: metricas.drawCalls,
+        programs: metricas.programas,
+        timestamp: ahora,
+      };
 
+      const prev = prevSnapshotRef.current;
+      if (prev) {
+        const deltaGeometries = currentSnapshot.geometries - prev.geometries;
+        const deltaTextures = currentSnapshot.textures - prev.textures;
+        const deltaDrawCalls = currentSnapshot.drawCalls - prev.drawCalls;
+        const deltaPrograms = currentSnapshot.programs - prev.programs;
+        const elapsedSec = ((currentSnapshot.timestamp - prev.timestamp) / 1000).toFixed(1);
+
+        // Always include deltas in log for diagnostic visibility
+        log.info('Frame stats', {
+          ...datosLog,
+          deltaGeom: deltaGeometries,
+          deltaTex: deltaTextures,
+          deltaCalls: deltaDrawCalls,
+          deltaProg: deltaPrograms,
+          intervalSec: elapsedSec,
+        });
+
+        // Detect oscillation: significant geometry churn between samples
+        if (Math.abs(deltaGeometries) > DELTA_GEOMETRIAS_UMBRAL) {
+          oscilacionCountRef.current += 1;
+
+          // Log warning after 3 consecutive oscillations (not a one-off GC event)
+          if (oscilacionCountRef.current >= 3) {
+            const alertKey = 'geometry-oscillation';
+            if (!alertasEmitidasRef.current.has(alertKey)) {
+              alertasEmitidasRef.current.add(alertKey);
+              log.warn('GEOMETRY OSCILLATION DETECTED — possible resource churn', {
+                pattern: `${prev.geometries}→${currentSnapshot.geometries} (Δ${deltaGeometries})`,
+                consecutiveOscillations: oscilacionCountRef.current,
+                hint: 'Check components creating/destroying geometries on timer or re-render (text labels, name plates, presence indicators)',
+              });
+            }
+          }
+        } else {
+          // Reset counter when stable
+          oscilacionCountRef.current = 0;
+        }
+
+        // Texture churn detection
+        if (Math.abs(deltaTextures) > DELTA_TEXTURAS_UMBRAL) {
+          const alertKey = 'texture-churn';
+          if (!alertasEmitidasRef.current.has(alertKey)) {
+            alertasEmitidasRef.current.add(alertKey);
+            log.warn('Texture churn detected', {
+              pattern: `${prev.textures}→${currentSnapshot.textures} (Δ${deltaTextures})`,
+              hint: 'Check dynamic texture creation (canvas textures, video textures, sprite updates)',
+            });
+          }
+        }
+      } else {
+        // First sample — just log baseline
+        log.info('Frame stats (baseline)', datosLog);
+      }
+
+      prevSnapshotRef.current = currentSnapshot;
+
+      // ── Threshold alerts (existing behavior) ────────────────────────
       if (emitirAlertas && !resultado.saludable) {
         for (const alerta of resultado.alertas) {
-          // Evitar spam: solo loguear cada alerta una vez por sesión
           if (!alertasEmitidasRef.current.has(alerta)) {
             alertasEmitidasRef.current.add(alerta);
             log.warn('Renderer performance alert', { alerta, ...datosLog });
