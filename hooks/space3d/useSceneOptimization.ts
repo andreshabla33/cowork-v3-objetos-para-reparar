@@ -21,6 +21,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getDIContainer, type DIContainer } from '@/src/core/infrastructure/di/container';
 import { GestionarBatchedMeshUseCase } from '@/src/core/application/usecases/GestionarBatchedMeshUseCase';
+import { GestionarMultiBatchMeshUseCase } from '@/src/core/application/usecases/GestionarMultiBatchMeshUseCase';
 import { GestionarTextureAtlasUseCase } from '@/src/core/application/usecases/GestionarTextureAtlasUseCase';
 import { GestionarGPUSkinnedInstanceUseCase } from '@/src/core/application/usecases/GestionarGPUSkinnedInstanceUseCase';
 import { logger } from '@/lib/logger';
@@ -30,8 +31,10 @@ const log = logger.child('scene-optimization');
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface SceneOptimizationServices {
-  /** BatchedMesh use case — for static office objects */
+  /** BatchedMesh use case — for static office objects (Fase 3 legacy, single material) */
   batchedMesh: GestionarBatchedMeshUseCase;
+  /** Fase 4A — Multi-material BatchedMesh (N batches, one per material group) */
+  multiBatch: GestionarMultiBatchMeshUseCase;
   /** TextureAtlas use case — for consolidating textures into one GPU bind */
   textureAtlas: GestionarTextureAtlasUseCase;
   /** GPU Skinned Instance use case — for 500 avatar bone matrices */
@@ -70,6 +73,7 @@ export function useSceneOptimization(): SceneOptimizationServices {
     // Placeholder until DI resolves — will be replaced in useEffect
     return {
       batchedMesh: null as GestionarBatchedMeshUseCase | null,
+      multiBatch: null as GestionarMultiBatchMeshUseCase | null,
       textureAtlas: null as GestionarTextureAtlasUseCase | null,
       gpuSkinning: null as GestionarGPUSkinnedInstanceUseCase | null,
     };
@@ -77,6 +81,7 @@ export function useSceneOptimization(): SceneOptimizationServices {
 
   // Stable refs for the use cases (avoids re-render on init)
   const batchedMeshRef = useRef<GestionarBatchedMeshUseCase | null>(null);
+  const multiBatchRef = useRef<GestionarMultiBatchMeshUseCase | null>(null);
   const textureAtlasRef = useRef<GestionarTextureAtlasUseCase | null>(null);
   const gpuSkinningRef = useRef<GestionarGPUSkinnedInstanceUseCase | null>(null);
 
@@ -92,6 +97,7 @@ export function useSceneOptimization(): SceneOptimizationServices {
 
         // Wrap DI services in use cases
         const bm = new GestionarBatchedMeshUseCase(container.batchedMesh);
+        const mb = new GestionarMultiBatchMeshUseCase(container.multiBatch);
         const ta = new GestionarTextureAtlasUseCase(container.textureAtlas);
         const gs = new GestionarGPUSkinnedInstanceUseCase(container.gpuSkinnedInstance);
 
@@ -100,11 +106,13 @@ export function useSceneOptimization(): SceneOptimizationServices {
         gs.inicializar(MAX_AVATARS, BONES_PER_AVATAR);
 
         batchedMeshRef.current = bm;
+        multiBatchRef.current = mb;
         textureAtlasRef.current = ta;
         gpuSkinningRef.current = gs;
 
         // Update the mutable useCases object (avoids extra re-render)
         useCases.batchedMesh = bm;
+        useCases.multiBatch = mb;
         useCases.textureAtlas = ta;
         useCases.gpuSkinning = gs;
 
@@ -126,10 +134,12 @@ export function useSceneOptimization(): SceneOptimizationServices {
 
       // Dispose all GPU resources on unmount
       batchedMeshRef.current?.limpiar();
+      multiBatchRef.current?.limpiar();
       textureAtlasRef.current?.limpiar();
       gpuSkinningRef.current?.limpiar();
 
       batchedMeshRef.current = null;
+      multiBatchRef.current = null;
       textureAtlasRef.current = null;
       gpuSkinningRef.current = null;
 
@@ -141,6 +151,7 @@ export function useSceneOptimization(): SceneOptimizationServices {
   return useMemo(
     () => ({
       get batchedMesh() { return batchedMeshRef.current!; },
+      get multiBatch() { return multiBatchRef.current!; },
       get textureAtlas() { return textureAtlasRef.current!; },
       get gpuSkinning() { return gpuSkinningRef.current!; },
       isReady,

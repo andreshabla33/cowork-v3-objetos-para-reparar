@@ -67,6 +67,7 @@ export type {
 // Meetings
 export { MeetingSupabaseRepository, meetingRepository } from './MeetingSupabaseRepository';
 export { MeetingRealtimeSupabaseService, meetingRealtimeService } from './MeetingRealtimeSupabaseService';
+export { meetingAccessRepository } from './MeetingAccessSupabaseRepository';
 export type {
   IMeetingRepository,
   ReunionProgramadaData,
@@ -84,3 +85,46 @@ export type {
   IMeetingRealtimeService,
   MeetingRealtimeSubscription,
 } from '../../domain/ports/IMeetingRealtimeService';
+
+// Auth & Profile
+export { AuthSupabaseRepository, authRepository } from './AuthSupabaseRepository';
+export { ProfileSupabaseRepository, profileRepository } from './ProfileSupabaseRepository';
+export { OnboardingSupabaseRepository } from './OnboardingSupabaseRepository';
+
+// Spaces & Templates
+export { spaceRepository } from './SpaceSupabaseRepository';
+export { InyectorPlantillaEspacio } from './InyectorPlantillaEspacioAdapter';
+export { InyectorPlantillaZona } from './InyectorPlantillaZonaAdapter';
+export { RepositorioPlantillaZonaSupabase } from './RepositorioPlantillaZonaSupabaseAdapter';
+export { RepositorioRegistroEmpresaSupabase } from './RepositorioRegistroEmpresaSupabaseAdapter';
+
+// Invitations
+export { InvitacionSupabaseRepository } from './InvitacionSupabaseRepository';
+export { EnviarInvitacionSupabaseRepository } from './EnviarInvitacionSupabaseRepository';
+
+// Avatars & Catalog
+export { AvatarCatalogSupabaseRepository, avatarCatalogRepository } from './AvatarCatalogSupabaseRepository';
+
+// Recording
+export { recordingRepository } from './RecordingSupabaseRepository';
+
+// LiveKit & Video
+export { LiveKitOfficialBackgroundAdapter, getLiveKitBackgroundAdapter } from './LiveKitOfficialBackgroundAdapter';
+export { LocalVideoTrackFactory, getLocalVideoTrackFactory } from './LocalVideoTrackFactory';
+
+// Rendering & 3D Optimization
+export {
+  GeometryCacheAdapter,
+  getGeometryCacheAdapter,
+  resetGeometryCacheAdapter,
+} from './GeometryCacheAdapter';
+export {
+  MultiBatchMeshThreeAdapter,
+  getMultiBatchMeshAdapter,
+  resetMultiBatchMeshAdapter,
+} from './MultiBatchMeshThreeAdapter';
+export { RenderingOptimizationAdapter } from './RenderingOptimizationAdapter';
+export { ThreeTextureFactoryAdapter } from './ThreeTextureFactoryAdapter';
+
+// Bootstrap
+export { WorkspaceBootstrapSupabaseAdapter } from './WorkspaceBootstrapSupabaseAdapter';

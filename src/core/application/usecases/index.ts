@@ -6,6 +6,7 @@
 
 // Fase 3 — GPU Rendering (BatchedMesh, TextureAtlas, GPUSkinning)
 export { GestionarBatchedMeshUseCase } from './GestionarBatchedMeshUseCase';
+export { GestionarMultiBatchMeshUseCase } from './GestionarMultiBatchMeshUseCase';
 export { GestionarTextureAtlasUseCase } from './GestionarTextureAtlasUseCase';
 export { GestionarGPUSkinnedInstanceUseCase } from './GestionarGPUSkinnedInstanceUseCase';
 
