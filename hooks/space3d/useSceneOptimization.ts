@@ -42,8 +42,14 @@ export interface SceneOptimizationServices {
 
 // ─── Default capacity constants ───────────────────────────────────────────────
 
-/** Max unique geometry templates in BatchedMesh (desks, chairs, walls, etc.) */
-const MAX_GEOMETRIES = 256;
+/**
+ * Max instances (draw entries) in the BatchedMesh.
+ * This is the FIRST param of the BatchedMesh constructor (`maxInstanceCount`).
+ * With ~200 objects × ~5 sub-meshes average = ~1000 instances needed.
+ * Use 4096 for headroom.
+ * Ref: https://github.com/mrdoob/three.js/blob/r170/src/objects/BatchedMesh.js
+ */
+const MAX_INSTANCES = 4096;
 /** Max total vertices across all batched geometries */
 const MAX_VERTICES = 500_000;
 /** Max total indices across all batched geometries */
@@ -90,7 +96,7 @@ export function useSceneOptimization(): SceneOptimizationServices {
         const gs = new GestionarGPUSkinnedInstanceUseCase(container.gpuSkinnedInstance);
 
         // Initialize with default capacities
-        bm.inicializar(MAX_GEOMETRIES, MAX_VERTICES, MAX_INDICES);
+        bm.inicializar(MAX_INSTANCES, MAX_VERTICES, MAX_INDICES);
         gs.inicializar(MAX_AVATARS, BONES_PER_AVATAR);
 
         batchedMeshRef.current = bm;
@@ -105,7 +111,7 @@ export function useSceneOptimization(): SceneOptimizationServices {
         setIsReady(true);
 
         log.info('Scene optimization services initialized', {
-          maxGeometries: MAX_GEOMETRIES,
+          maxInstances: MAX_INSTANCES,
           maxVertices: MAX_VERTICES,
           maxAvatars: MAX_AVATARS,
           bonesPerAvatar: BONES_PER_AVATAR,

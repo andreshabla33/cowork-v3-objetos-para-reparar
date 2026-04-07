@@ -60,15 +60,18 @@ export class BatchedMeshThreeAdapter implements IBatchedMeshService {
 
   // ─── Lifecycle ──────────────────────────────────────────────────────────────
 
-  initialize(maxGeometries: number, maxVertices: number, maxIndices: number): void {
+  initialize(maxInstances: number, maxVertices: number, maxIndices: number): void {
     if (this._batch) {
       (this._batch.material as THREE.Material)?.dispose();
       this._batch.dispose();
     }
-    // Material will be set by the scene — use MeshStandardMaterial as default.
-    const material = new THREE.MeshStandardMaterial();
-    // r170 constructor: BatchedMesh(maxGeometryCount, maxVertexCount, maxIndexCount, material)
-    this._batch = new THREE.BatchedMesh(maxGeometries, maxVertices, maxIndices, material);
+    // Base material — per-instance colors are applied via setColorAt().
+    // vertexColors must be true for setColorAt to take effect.
+    const material = new THREE.MeshStandardMaterial({ vertexColors: false });
+    // r170 constructor: BatchedMesh(maxInstanceCount, maxVertexCount, maxIndexCount, material)
+    // NOTE: First param is maxInstanceCount (NOT maxGeometryCount).
+    // Ref: https://github.com/mrdoob/three.js/blob/r170/src/objects/BatchedMesh.js
+    this._batch = new THREE.BatchedMesh(maxInstances, maxVertices, maxIndices, material);
     this._geometryKeys.clear();
     this._instanceToGeometry.clear();
     this._geometryToInstances.clear();
@@ -167,6 +170,12 @@ export class BatchedMeshThreeAdapter implements IBatchedMeshService {
     const mat4 = new THREE.Matrix4();
     mat4.fromArray(matrix);
     this._batch.setMatrixAt(toIntId(instanceId), mat4);
+  }
+
+  setInstanceColor(instanceId: BatchInstanceId, r: number, g: number, b: number): void {
+    if (!this._batch) return;
+    const color = new THREE.Color(r, g, b);
+    this._batch.setColorAt(toIntId(instanceId), color);
   }
 
   setInstanceVisible(instanceId: BatchInstanceId, visible: boolean): void {

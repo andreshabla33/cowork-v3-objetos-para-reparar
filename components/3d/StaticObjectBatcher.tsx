@@ -207,6 +207,14 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
           }
         }
 
+        // Extract per-instance color from the GLTF material
+        // BatchedMesh uses ONE shared material — per-instance colors are set via setColorAt()
+        let matColor: { r: number; g: number; b: number } | null = null;
+        if ('color' in mat && (mat as THREE.MeshStandardMaterial).color) {
+          const c = (mat as THREE.MeshStandardMaterial).color;
+          matColor = { r: c.r, g: c.g, b: c.b };
+        }
+
         // Create instances for each object at its world transform
         for (const obj of objetos) {
           try {
@@ -217,7 +225,13 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
 
             const flatMatrix = new Float32Array(16);
             worldMatrix.toArray(flatMatrix);
-            batchedMesh.agregarInstancia(geoId, flatMatrix);
+            const instanceId = batchedMesh.agregarInstancia(geoId, flatMatrix);
+
+            // Apply the original GLTF material color to this instance
+            if (matColor) {
+              batchedMesh.establecerColorInstancia(instanceId, matColor.r, matColor.g, matColor.b);
+            }
+
             instanceCount++;
           } catch (err) {
             // Instance capacity exceeded

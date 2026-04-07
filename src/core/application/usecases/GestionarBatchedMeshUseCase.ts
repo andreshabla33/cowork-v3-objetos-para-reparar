@@ -29,12 +29,12 @@ export class GestionarBatchedMeshUseCase {
    * Initialize the batch with capacity limits.
    * Call once before scene population.
    *
-   * @param maxGeometrias Máximo de geometrías únicas (plantillas) — primer param de BatchedMesh r170
+   * @param maxInstancias Máximo de instancias (draw entries) — primer param `maxInstanceCount` de BatchedMesh r170
    * @param maxVertices   Vértices totales (suma de todas las geometrías)
    * @param maxIndices    Índices totales (suma de todas las geometrías)
    */
-  inicializar(maxGeometrias: number, maxVertices: number, maxIndices: number): void {
-    this.service.initialize(maxGeometrias, maxVertices, maxIndices);
+  inicializar(maxInstancias: number, maxVertices: number, maxIndices: number): void {
+    this.service.initialize(maxInstancias, maxVertices, maxIndices);
   }
 
   /**
@@ -65,6 +65,19 @@ export class GestionarBatchedMeshUseCase {
    */
   actualizarMatrizInstancia(idInstancia: BatchInstanceId, matriz: Matrix4Flat): void {
     this.service.updateInstanceMatrix(idInstancia, matriz);
+  }
+
+  /**
+   * Set per-instance color (overrides material base color for this instance).
+   * Uses BatchedMesh.setColorAt() internally.
+   *
+   * @param idInstancia Instance ID
+   * @param r Red [0..1]
+   * @param g Green [0..1]
+   * @param b Blue [0..1]
+   */
+  establecerColorInstancia(idInstancia: BatchInstanceId, r: number, g: number, b: number): void {
+    this.service.setInstanceColor(idInstancia, r, g, b);
   }
 
   /**

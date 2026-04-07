@@ -50,12 +50,12 @@ export interface IBatchedMeshService {
    * Initialize the batched mesh with capacity limits.
    * Must be called before any addGeometry/addInstance calls.
    *
-   * @param maxGeometries Maximum number of unique geometry templates
-   *                      (Three.js r170: first param of BatchedMesh constructor)
+   * @param maxInstances  Maximum number of instances (draw entries)
+   *                      (Three.js r170: first param `maxInstanceCount` of BatchedMesh constructor)
    * @param maxVertices   Maximum total vertex count (sum of all geometries)
    * @param maxIndices    Maximum total index count (sum of all geometries)
    */
-  initialize(maxGeometries: number, maxVertices: number, maxIndices: number): void;
+  initialize(maxInstances: number, maxVertices: number, maxIndices: number): void;
 
   /**
    * Register a geometry template into the batch and return its ID.
@@ -87,6 +87,19 @@ export interface IBatchedMeshService {
    * Called every frame for animated objects (e.g., doors).
    */
   updateInstanceMatrix(instanceId: BatchInstanceId, matrix: Matrix4Flat): void;
+
+  /**
+   * Set the color of an instance. Used to apply per-object colors when
+   * multiple colored objects share a single BatchedMesh material.
+   *
+   * @param instanceId  Instance ID returned by addInstance()
+   * @param r  Red channel [0..1]
+   * @param g  Green channel [0..1]
+   * @param b  Blue channel [0..1]
+   *
+   * Ref: THREE.BatchedMesh.setColorAt() — r170
+   */
+  setInstanceColor(instanceId: BatchInstanceId, r: number, g: number, b: number): void;
 
   /**
    * Toggle visibility of an instance without removing it.
