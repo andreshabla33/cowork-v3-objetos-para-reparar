@@ -89,8 +89,12 @@ export async function confirmPasswordReset(
     return { success: false, error: 'Las contraseñas no coinciden.' };
   }
 
-  // Verificar que hay una sesión activa (establecida por el link de recovery)
-  const { data: { session } } = await supabase.auth.getSession();
+  // Verificar sesión desde Zustand store (synced by onAuthStateChange).
+  // NO async getSession() — avoids orphaned Web Lock (gotrue-js issue #1594).
+  // En flujo de recovery, onAuthStateChange ya disparó PASSWORD_RECOVERY
+  // y la sesión está en el store.
+  const { useStore } = await import('../store/useStore');
+  const session = useStore.getState().session;
 
   if (!session) {
     return {

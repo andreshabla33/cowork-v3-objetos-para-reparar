@@ -348,9 +348,10 @@ class RecordingSupabaseRepository implements IRecordingRepository {
     try {
       log.debug('Generating AI summary', { grabacionId: data.grabacion_id });
 
-      // Get session auth token for Edge Function authorization
-      const session = await supabase.auth.getSession();
-      const token = session.data.session?.access_token;
+      // Read session from Zustand store (synced by onAuthStateChange).
+      // NO async getSession() — avoids orphaned Web Lock (gotrue-js issue #1594).
+      const { useStore } = await import('../../../../store/useStore');
+      const token = useStore.getState().session?.access_token;
 
       if (!token) {
         log.error('No auth token available for Edge Function', {

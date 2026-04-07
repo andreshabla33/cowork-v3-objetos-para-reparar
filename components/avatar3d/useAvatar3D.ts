@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useStore } from '@/store/useStore';
 import type { Avatar3DConfig } from './shared';
 import { DEFAULT_MODEL_URL } from './shared';
 
@@ -22,8 +23,8 @@ export const useAvatar3D = (userId?: string) => {
 
         let targetUserId = userId;
         if (!targetUserId) {
-          const { data: { user } } = await supabase.auth.getUser();
-          targetUserId = user?.id;
+          // Read from Zustand store — NO async getUser() to avoid orphaned Web Lock.
+          targetUserId = useStore.getState().session?.user?.id;
         }
 
         if (!targetUserId) {

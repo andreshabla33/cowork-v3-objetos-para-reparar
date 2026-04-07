@@ -53,11 +53,9 @@ export const createInitializeAction = (
       return;
     }
     if (get().initialized && get().activeWorkspace) {
-      log.debug('Already initialized with active workspace, refreshing session only');
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) set({ session });
-      } catch { /* ignore */ }
+      log.debug('Already initialized with active workspace, skipping re-init');
+      // Session is already kept in sync by onAuthStateChange in useBootstrapAplicacion.
+      // DO NOT call supabase.auth.getSession() here — causes orphaned Web Lock.
       return;
     }
     if (get().initialized && (get().view === 'onboarding_creador' || get().view === 'onboarding')) {
@@ -139,11 +137,4 @@ export const createInitializeAction = (
       const msg = error instanceof Error ? error.message : String(error);
       log.error('Initialization failed', { error: msg });
       if (get().view !== 'reset_password') {
-        set({ view: 'dashboard' });
-      }
-    } finally {
-      set({ initialized: true, isInitializing: false });
-      log.info('Initialization complete');
-    }
-  };
-};
+        set({ view: 'dashboard' }

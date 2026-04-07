@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { confirmPasswordReset } from '../lib/authRecoveryService';
+import { useStore } from '../store/useStore';
 
 type ResetState = 'validating' | 'form' | 'success' | 'error_token';
 
@@ -64,20 +65,17 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({ errorF
       }
     });
 
-    // Fallback: si la sesión ya existía antes de que el listener se montara.
-    // Guard con isMounted para evitar orphaned lock si el componente se desmonta
-    // mientras la promise está pendiente.
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!isMounted) return;
-      if (session) {
-        if (timeoutId !== null) {
-          window.clearTimeout(timeoutId);
-        }
-        setState('form');
-      } else {
-        timeoutId = window.setTimeout(marcarTokenInvalido, 2000);
+    // Fallback: read session from Zustand store (synced by onAuthStateChange).
+    // NO async getSession() call — avoids orphaned Web Lock (gotrue-js issue #1594).
+    const storeSession = useStore.getState().session;
+    if (storeSession) {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
       }
-    });
+      setState('form');
+    } else {
+      timeoutId = window.setTimeout(marcarTokenInvalido, 2000);
+    }
 
     return () => {
       isMounted = false;
@@ -381,15 +379,4 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({ errorF
               <button
                 id="reset-go-login-btn"
                 onClick={() => window.location.replace('/')}
-                className="relative w-full group overflow-hidden bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500 text-white py-3.5 rounded-xl font-black text-xs uppercase tracking-[0.15em] transition-all shadow-2xl shadow-violet-600/30 active:scale-[0.98]"
-              >
-                <span className="absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <span className="relative">Ir al inicio de sesión</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
+                className="relative w-full group overflow-hidden bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500 text-white py-3.5 rounded-xl font-black text-xs uppercase tracking-[0.15em] transition-all shadow-2xl shadow-violet-600/30 active:scale
