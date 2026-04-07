@@ -954,28 +954,47 @@ export const Scene: React.FC<SceneProps> = ({
       </Physics>
 
       {/* Fase 3: Static objects — BatchedMesh (non-edit) or InstancedMesh (edit mode) */}
-      {/* BatchedMesh collapses objects sharing same material into 1 draw call.    */}
-      {/* Edit mode needs InstancedMesh fallback for gizmos/drag interactivity.    */}
+      {/* BatchedMesh collapses GLTF objects sharing same material into 1 draw call. */}
+      {/* Builtin objects (walls, procedural geometry) always render individually.   */}
+      {/* Edit mode needs InstancedMesh fallback for gizmos/drag interactivity.      */}
       {!isEditMode && sceneOptimization.isReady ? (
-        <StaticObjectBatcher
-          gruposPorModelo={(() => {
-            const grupos = new Map<string, EspacioObjeto[]>();
-            for (const obj of espacioObjetos) {
-              if (obj.modelo_url && !obj.modelo_url.startsWith('builtin:') && obj.catalogo_id) {
-                const key = obj.modelo_url;
-                if (!grupos.has(key)) grupos.set(key, []);
-                grupos.get(key)!.push(obj);
+        <>
+          {/* GLTF catalog objects → BatchedMesh for minimal draw calls */}
+          <StaticObjectBatcher
+            gruposPorModelo={(() => {
+              const grupos = new Map<string, EspacioObjeto[]>();
+              for (const obj of espacioObjetos) {
+                if (obj.modelo_url && !obj.modelo_url.startsWith('builtin:') && obj.catalogo_id) {
+                  const key = obj.modelo_url;
+                  if (!grupos.has(key)) grupos.set(key, []);
+                  grupos.get(key)!.push(obj);
+                }
               }
+              return grupos;
+            })()}
+            services={sceneOptimization}
+            playerPosition={playerPositionState}
+            onInteractuar={onInteractuarObjeto
+              ? (obj) => onInteractuarObjeto(obj, asientosPorObjetoId.get(obj.id) || null)
+              : undefined
             }
-            return grupos;
-          })()}
-          services={sceneOptimization}
-          playerPosition={playerPositionState}
-          onInteractuar={onInteractuarObjeto
-            ? (obj) => onInteractuarObjeto(obj, asientosPorObjetoId.get(obj.id) || null)
-            : undefined
+          />
+          {/* Builtin/procedural objects (cubicle walls, partitions) — always individual */}
+          {espacioObjetos
+            .filter(obj => obj.catalogo_id && (!obj.modelo_url || obj.modelo_url.startsWith('builtin:')))
+            .map((obj) => (
+              <ObjetoEscena3D
+                key={obj.id}
+                objeto={obj}
+                playerPosition={playerPositionState}
+                onInteractuar={onInteractuarObjeto
+                  ? () => onInteractuarObjeto(obj, asientosPorObjetoId.get(obj.id) || null)
+                  : undefined
+                }
+              />
+            ))
           }
-        />
+        </>
       ) : (
         <ObjetosInstanciados
           espacioObjetos={espacioObjetos.filter(obj => !!obj.catalogo_id)}
