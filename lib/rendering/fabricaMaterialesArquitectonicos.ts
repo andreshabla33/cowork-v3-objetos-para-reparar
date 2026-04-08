@@ -266,8 +266,8 @@ const registroMateriales: Record<TipoMaterialArquitectonico, ConfiguracionMateri
   vidrio: {
     tamano_baldosa: 2.0,
     rugosidad: 0.05,
-    metalicidad: 0.0,
-    opacidad: 0.6,
+    metalicidad: 0.1,
+    opacidad: 0.35,               // Translúcido claro — max clamped a 0.4 en factory
     transparente: true,
     color_fallback: '#d4e8f5',
     generar_albedo: generarVidrio,
@@ -343,24 +343,29 @@ export const crearMaterialPBRArquitectonico = ({
   const roughnessMap = clonarTextura(rugosidadBase, repeatX, repeatY);
   const normalMap = clonarTextura(normalBase, repeatX, repeatY);
 
+  // Vidrio: MeshStandardMaterial con opacity (NO MeshPhysicalMaterial con transmission).
+  // Justificación:
+  //   - MeshPhysicalMaterial.transmission causa un render pass extra de la escena completa
+  //     ("double rendering"), inaceptable en GPU integrada (Intel Iris Xe, Tier 3).
+  //     Ref: https://github.com/pmndrs/react-three-fiber/discussions/1582
+  //   - transmission requiere envMap para ser visible; sin <Environment> de drei se ve opaco.
+  //     Ref: https://threejs.org/docs/#api/en/materials/MeshPhysicalMaterial
+  //   - MeshStandardMaterial + opacity es el approach estándar para arch-viz con budget limitado.
+  //     Ref: https://threejs.org/docs/#api/en/materials/MeshStandardMaterial
+  const resolvedOpacity = opacidad ?? config.opacidad;
+
   const material = tipo_material === 'vidrio'
-    ? new THREE.MeshPhysicalMaterial({
+    ? new THREE.MeshStandardMaterial({
         color: new THREE.Color(normalizarColor(color_base, config.color_fallback)),
         roughness: rugosidad ?? config.rugosidad,
-        metalness: 0,
+        metalness: 0.1,
         transparent: true,
-        opacity: opacidad ?? config.opacidad,
-        transmission: 0.85,
-        thickness: 0.02,
-        ior: 1.5,
-        reflectivity: 0.5,
-        clearcoat: 1.0,
-        clearcoatRoughness: 0.03,
-        envMapIntensity: 1.0,
-        emissive: new THREE.Color(resaltar ? '#9ec5ff' : '#000000'),
-        emissiveIntensity: resaltar ? 0.1 : 0,
-        side: THREE.DoubleSide,
+        opacity: Math.min(resolvedOpacity, 0.4),
         depthWrite: false,
+        emissive: new THREE.Color(resaltar ? '#9ec5ff' : '#000000'),
+        emissiveIntensity: resaltar ? 0.08 : 0,
+        side: THREE.DoubleSide,
+        envMapIntensity: 0.8,
       })
     : new THREE.MeshStandardMaterial({
         map: albedo,
@@ -369,8 +374,8 @@ export const crearMaterialPBRArquitectonico = ({
         color: new THREE.Color(normalizarColor(color_base, config.color_fallback)),
         roughness: rugosidad ?? config.rugosidad,
         metalness: metalicidad ?? config.metalicidad,
-        transparent: config.transparente || (opacidad ?? config.opacidad) < 1,
-        opacity: opacidad ?? config.opacidad,
+        transparent: config.transparente || resolvedOpacity < 1,
+        opacity: resolvedOpacity,
         emissive: new THREE.Color(resaltar ? '#6b7bff' : '#000000'),
         emissiveIntensity: resaltar ? 0.05 : 0,
         side: THREE.DoubleSide,

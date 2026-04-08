@@ -597,10 +597,10 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
     // Activar vertex colors para per-object color baking
     if (opaque?.material) opaque.material.vertexColors = true;
 
-    // Glass: NO usar vertexColors — el color multiplicativo con blanco funciona
-    // para opaque/metal, pero vidrio necesita color directo + transparent=true
-    // para que el depth-sorting funcione correctamente.
-    // Ref: https://threejs.org/docs/#api/en/materials/MeshPhysicalMaterial
+    // Glass: MeshStandardMaterial con opacity (sin transmission, sin double render pass).
+    // El factory ya configura transparent=true, depthWrite=false, opacity clamped ≤0.4.
+    // NO activar vertexColors en glass — usar color_base directo del perfil visual.
+    // Ref: https://threejs.org/docs/#api/en/materials/MeshStandardMaterial
     const glass = crearMaterialPBRArquitectonico({
       tipo_material: 'vidrio',
       ancho: 2,
@@ -613,11 +613,7 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       metalicidad: 0,
       resaltar: false,
     });
-    if (glass?.material) {
-      glass.material.transparent = true;
-      glass.material.depthWrite = false; // Evitar z-fighting con paredes detrás
-      // NO activar vertexColors en glass — usar color_base directo del perfil
-    }
+    // No se necesitan overrides — el factory ya garantiza transparent + depthWrite:false.
 
     const metal = crearMaterialMarcoArquitectonico('vidrio', false);
     if (metal?.material) metal.material.vertexColors = true;
