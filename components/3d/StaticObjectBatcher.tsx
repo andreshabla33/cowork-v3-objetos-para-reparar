@@ -30,7 +30,7 @@
 
 'use client';
 
-import React, { useEffect, useMemo, useRef, type FC } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useGLTF } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -44,10 +44,21 @@ const log = logger.child('StaticObjectBatcher');
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-/** Per-group capacity limits. Intentionally generous for headroom. */
-const GROUP_MAX_INSTANCES = 1024;
-const GROUP_MAX_VERTICES = 200_000;
-const GROUP_MAX_INDICES = 400_000;
+/**
+ * Per-group capacity limits.
+ *
+ * CRITICAL: Must accommodate ALL color-only instances across ALL models.
+ * Keyboard.glb alone contributes 21 objects × 67 meshes = 1407 instances.
+ * With ~20 models, the color-only group needs ~2500+ slots.
+ *
+ * Ref: Three.js r170 — BatchedMesh constructor maxInstanceCount
+ *   https://threejs.org/docs/#api/en/objects/BatchedMesh
+ * Ref: Three.js r170 added resize() for dynamic capacity expansion
+ *   https://github.com/mrdoob/three.js/releases/tag/r170
+ */
+const GROUP_MAX_INSTANCES = 4096;
+const GROUP_MAX_VERTICES = 500_000;
+const GROUP_MAX_INDICES = 1_000_000;
 
 /** LOD distance thresholds (Fase 4C) */
 const LOD_HIDE_DISTANCE = 80; // Beyond this: hide small objects (keyboards, monitors)
@@ -80,7 +91,6 @@ interface TrackedInstance {
 // ─── Shared tracking for frustum culling ─────────────────────────────────────
 
 const _trackedInstances: TrackedInstance[] = [];
-let _trackingDirty = false;
 
 // ─── Material identity key ────────────────────────────────────────────────────
 
@@ -89,18 +99,18 @@ let _trackingDirty = false;
  * Same key = same BatchedMesh = 1 draw call.
  *
  * CRITICAL OPTIMIZATION: Materials that only differ in color (no textures)
- * share the SAME group. Per-instance colors are applied via setColorAt().
+ * share the SAME group. Per-instance colors are applied via Fase 4D
+ * DataTexture + onBeforeCompile shader injection (replaces setColorAt).
  * This collapses e.g. Keyboard.glb's 67 color-only meshes into 1 draw call
  * instead of 67 separate groups.
  *
  * Grouping strategy:
  *   - Textured materials: group by texture UUID (each unique texture = 1 group)
  *   - Color-only materials: group by shader type + transparency + side
- *   - Per-instance color: applied via setColorAt() for color-only groups
+ *   - Per-instance color+metalness+roughness: via DataTexture (Fase 4D)
  *
- * Ref: Three.js r170 — setColorAt() stores per-instance colors in DataTexture,
- *   independent of the material.color. Works with any material type.
- *   https://github.com/mrdoob/three.js/issues/27449
+ * Ref: gkjohnson/batched-material-properties-demo
+ * Ref: Three.js r170 — BatchedMesh, gl_DrawID in batching_pars_vertex.glsl
  */
 function getMaterialKey(material: THREE.Material): string {
   if (material instanceof THREE.MeshStandardMaterial) {
@@ -142,19 +152,17 @@ function materialHasTextures(material: THREE.Material): boolean {
  * Each BatchedMesh group gets its own material instance to avoid shared state.
  *
  * CRITICAL: For color-only groups (no textures), the material base color
- * MUST be white (0xffffff). setColorAt() MULTIPLIES with material.color
- * in the shader — confirmed from Three.js r170 GLSL source:
- *   vertex:   vColor.xyz *= batchingColor.xyz;
- *   fragment: diffuseColor.rgb *= vColor;
- *
- * So: white(1,1,1) × batchColor = batchColor (correct)
- *     red(1,0,0) × blue(0,0,1) = black(0,0,0) (WRONG)
+ * MUST be white (0xffffff). Fase 4D DataTexture shader injection REPLACES
+ * diffuseColor entirely in the fragment shader, but Three.js internal
+ * batching still runs color_vertex.glsl which MULTIPLIES vColor with
+ * batchingColor. White base ensures no color corruption from the
+ * built-in batching pipeline before our override runs.
  *
  * Ref: Three.js r170 — color_vertex.glsl.js, color_fragment.glsl.js
- * Ref: Issue #30226 — "InstanceMesh setColorAt works differently than set material"
+ * Ref: gkjohnson/batched-material-properties-demo
  *
  * @param material   Source material to clone
- * @param forColorGroup  If true, forces base color to white for setColorAt compatibility
+ * @param forColorGroup  If true, forces base color to white for DataTexture compatibility
  */
 function cloneMaterialForBatch(material: THREE.Material, forColorGroup: boolean): THREE.Material {
   const cloned = material.clone();
@@ -279,7 +287,7 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
     let meshCount = 0;
     let instanceCount = 0;
     let atlasTextureCount = 0;
-    const colorGroupKeys = new Set<string>();
+    let colorGroupsCreatedHere = 0;
 
     gltfScene.traverse((child) => {
       if (!(child as THREE.Mesh).isMesh) return;
@@ -332,7 +340,7 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
           if (!materialHasTextures(mat)) {
             materialProps.inicializarGrupo(matKey, GROUP_MAX_INSTANCES);
             materialProps.aplicarAMaterial(matKey, groupMaterial);
-            colorGroupKeys.add(matKey);
+            colorGroupsCreatedHere++;
           }
         }
 
@@ -361,6 +369,12 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
             }
 
             geoId = multiBatch.agregarGeometria(matKey, geoKey, normalizedGeo);
+
+            // Dispose the cloned geometry — BatchedMesh.addGeometry() copies
+            // buffer data internally. Keeping the clone leaks GPU memory.
+            // Ref: https://threejs.org/docs/#manual/en/introduction/How-to-dispose-of-objects
+            normalizedGeo.dispose();
+
             meshCount++;
           } catch (err) {
             log.warn('MultiBatch geometry capacity exceeded', {
@@ -386,23 +400,30 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
             const instanceRef = multiBatch.agregarInstancia(matKey, geoId, flatMatrix);
 
             // ─── Fase 4D: Per-instance PBR properties via DataTexture ────
-            // For color-only materials: pack color+metalness+roughness into DataTexture.
-            // The fragment shader reads from this texture directly (REPLACEMENT, not multiply).
-            // For textured materials: skip — texture provides the diffuse color.
+            // Uses materialProps.tieneGrupo() (global service check) instead of
+            // a local Set — ensures ALL models that share a color-only group
+            // get their per-instance properties set, not just the first model.
+            //
+            // instanceId is BatchInstanceId (string) — parse to integer index
+            // for the DataTexture row (gl_DrawID = integer in GLSL).
             //
             // Ref: gkjohnson/batched-material-properties-demo
             // Ref: Three.js r170 — gl_DrawID in batching_pars_vertex.glsl
-            if (colorGroupKeys.has(matKey) && 'color' in mat) {
+            if (materialProps.tieneGrupo(matKey) && 'color' in mat) {
               const stdMat = mat as THREE.MeshStandardMaterial;
               const c = stdMat.color;
               if (c) {
-                materialProps.establecerPropiedades(matKey, instanceRef.instanceId, {
-                  r: c.r,
-                  g: c.g,
-                  b: c.b,
-                  metalness: stdMat.metalness ?? 0,
-                  roughness: stdMat.roughness ?? 0.5,
-                });
+                materialProps.establecerPropiedades(
+                  matKey,
+                  parseInt(instanceRef.instanceId, 10),
+                  {
+                    r: c.r,
+                    g: c.g,
+                    b: c.b,
+                    metalness: stdMat.metalness ?? 0,
+                    roughness: stdMat.roughness ?? 0.5,
+                  },
+                );
               }
             }
 
@@ -415,8 +436,17 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
             });
 
             instanceCount++;
-          } catch {
-            break; // Instance capacity exceeded
+          } catch (err) {
+            // Log capacity overflow per-instance — don't silently break.
+            // `break` would skip ALL remaining objects for this mesh,
+            // but other material groups may still have capacity.
+            log.warn('Instance capacity exceeded', {
+              matKey,
+              modeloUrl,
+              objetoId: obj.id,
+              error: (err as Error).message,
+            });
+            continue;
           }
         }
       });
@@ -432,16 +462,18 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
     }
 
     // ─── Fase 4D: Flush all DataTexture changes to GPU ──────────────
-    if (colorGroupKeys.size > 0) {
+    // Always flush — even if this loader didn't CREATE the color group,
+    // it may have SET properties on instances in an existing group.
+    const matPropsStats = materialProps.obtenerEstadisticas();
+    if (matPropsStats.groupCount > 0) {
       materialProps.sincronizarGPU();
       log.info('Fase 4D DataTexture flushed', {
-        colorGroups: colorGroupKeys.size,
-        stats: materialProps.obtenerEstadisticas(),
+        colorGroupsTotal: matPropsStats.groupCount,
+        colorGroupsCreatedHere,
       });
     }
 
     registeredRef.current = true;
-    _trackingDirty = true;
 
     log.info('MultiBatch registered', {
       modeloUrl,
@@ -449,7 +481,7 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
       meshes: meshCount,
       instances: instanceCount,
       atlasTextures: atlasTextureCount,
-      dataTextureGroups: colorGroupKeys.size,
+      dataTextureGroups: colorGroupsCreatedHere,
     });
   }, [services.isReady, gltfScene, modeloUrl, objetos, services]);
 
