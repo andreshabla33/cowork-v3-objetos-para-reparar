@@ -9,6 +9,13 @@
 
 import type { CatalogoObjeto3D } from '@/types/objetos3d';
 
+/**
+ * Columnas reales de la tabla `avatares_3d` en Supabase — verificado 2026-04-08.
+ *
+ * Nota: las propiedades LOD (modelo_url_medium/low, textura_url_medium/low) y
+ * `premium` se mantienen como opcionales para futura migración DB sin romper
+ * consumidores existentes. La query del adapter NO las solicita a Supabase.
+ */
 export interface AvatarModelData {
   id: string;
   nombre: string;

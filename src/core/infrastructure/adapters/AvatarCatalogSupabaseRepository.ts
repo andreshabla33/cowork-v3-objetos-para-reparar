@@ -20,11 +20,14 @@ const log = logger.child('avatar-catalog-repo');
 export class AvatarCatalogSupabaseRepository implements IAvatarCatalogRepository {
   async obtenerAvatares(): Promise<AvatarModelData[]> {
     try {
+      // Columnas reales de avatares_3d — verificadas 2026-04-08.
+      // Las columnas LOD (modelo_url_medium/low, textura_url_medium/low) y premium
+      // NO existen en la tabla. Se excluyen del select para evitar HTTP 400 de PostgREST.
+      // Ref: https://supabase.com/docs/guides/api#filtering
       const { data, error } = await supabase
         .from('avatares_3d')
         .select(
-          `id, nombre, descripcion, modelo_url, modelo_url_medium, modelo_url_low,
-           textura_url, textura_url_medium, textura_url_low, thumbnail_url, escala, premium`
+          `id, nombre, descripcion, modelo_url, textura_url, thumbnail_url, escala`
         )
         .eq('activo', true)
         .order('orden');
