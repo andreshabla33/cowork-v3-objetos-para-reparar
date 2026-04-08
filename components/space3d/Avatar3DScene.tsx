@@ -30,6 +30,8 @@ import { frameMetrics } from '@/lib/metrics/frameMetrics';
 import { AvatarLabels } from '../3d/AvatarLabels';
 import { CrowdInstances, type CrowdEntity } from './CrowdInstances';
 import { MidLodInstances, type MidLodEntity } from './MidLodInstances';
+import { InstancedAvatarRenderer } from '../3d/InstancedAvatarRenderer';
+import { DEFAULT_MODEL_URL } from '../avatar3d/shared';
 
 // ─── Labels de estado ────────────────────────────────────────────────────────
 const STATUS_LABELS: Record<PresenceStatus, string> = {
@@ -95,6 +97,12 @@ export interface AvatarProps {
   remoteAvatar3DConfig?: any;
   onAvatarHeightComputed?: (height: number) => void;
   onMetricasAvatarComputadas?: (metricas: { altura: number; alturaCadera: number; alturaCaderaSentada?: number }) => void;
+  /**
+   * When true, the 3D mesh is rendered by InstancedAvatarRenderer (GPU instancing).
+   * This Avatar component only renders overlays (video, chat, name, reaction, radial).
+   * The invisible hit-test cylinder is still rendered for interaction.
+   */
+  useInstancedMesh?: boolean;
   castShadow?: boolean;
   avatarInteractions?: {
     onGoTo?: (userId: string) => void;
@@ -118,7 +126,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   showName: showNameProp, lodLevel: lodLevelProp,
   esFantasma = false, remoteAvatar3DConfig,
   onAvatarHeightComputed, onMetricasAvatarComputadas,
-  avatarInteractions, castShadow = true
+  avatarInteractions, useInstancedMesh = false, castShadow = true
 }) => {
   const [showStatusLabel, setShowStatusLabel] = useState(false);
   const [showRadialWheel, setShowRadialWheel] = useState(false);
@@ -139,7 +147,9 @@ export const Avatar: React.FC<AvatarProps> = ({
   const showMid = lodLevel === 'mid';
   const showLow = lodLevel === 'low';
   const esMismaEmpresa = !esFantasma && !isCurrentUser;
-  const renderGLTF = showHigh || (esMismaEmpresa && showMid);
+  // When useInstancedMesh=true, the 3D mesh is handled by InstancedAvatarRenderer.
+  // Skip GLTFAvatar to avoid double-rendering the same avatar.
+  const renderGLTF = !useInstancedMesh && (showHigh || (esMismaEmpresa && showMid));
   const renderSprite = !renderGLTF && (showMid || showLow);
   const assetQuality: AvatarAssetQuality = showLow ? 'low' : showMid ? 'medium' : 'high';
   const effectiveAnimState = perfS.showAvatarAnimations === false ? 'idle' as AnimationState : animationState;
@@ -516,22 +526,63 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
     return { fullEntities: full, midEntities: mid, crowdEntities: crowd };
   }, [prioritizedEntities, usersById, renderPolicy]);
 
+  // ── GPU Instanced Avatar Rendering ──────────────────────────────────────────
+  // Group non-ghost fullEntities by model URL → 1 InstancedAvatarRenderer per URL.
+  // Each renderer handles the 3D mesh via InstancedMesh (1 draw call per model).
+  // The Avatar component still renders overlays (video, chat, name, reaction).
+  const { instancedGroups, instancedUserIds } = useMemo(() => {
+    const groups = new Map<string, Set<string>>();
+    const allInstancedIds = new Set<string>();
+
+    for (const entity of fullEntities) {
+      if (entity.esFantasma) continue;
+      const user = usersById.get(entity.userId);
+      if (!user) continue;
+
+      // Resolve model URL from avatar3DConfig or fallback to default
+      const modelUrl = user.avatar3DConfig?.modelo_url || DEFAULT_MODEL_URL;
+
+      let userSet = groups.get(modelUrl);
+      if (!userSet) {
+        userSet = new Set<string>();
+        groups.set(modelUrl, userSet);
+      }
+      userSet.add(entity.userId);
+      allInstancedIds.add(entity.userId);
+    }
+
+    return { instancedGroups: groups, instancedUserIds: allInstancedIds };
+  }, [fullEntities, usersById]);
+
   return (
     <>
+      {/* GPU Instanced renderers: 1 draw call per unique model URL */}
+      {Array.from(instancedGroups.entries()).map(([modelUrl, userIds]) => (
+        <InstancedAvatarRenderer
+          key={modelUrl}
+          modelUrl={modelUrl}
+          allowedUserIds={userIds}
+          onClickAvatar={onClickRemoteAvatar}
+        />
+      ))}
+
       <MidLodInstances entities={midEntities} onClick={onClickRemoteAvatar} />
       <CrowdInstances entities={crowdEntities} onClick={onClickRemoteAvatar} />
       {fullEntities.map((entity) => {
         const user = usersById.get(entity.userId);
         if (!user) return null;
 
+        // Non-ghost avatares with instanced rendering: Avatar renders overlays only
+        const isInstanced = instancedUserIds.has(entity.userId);
+
         return (
-          <group 
-            key={entity.userId} 
+          <group
+            key={entity.userId}
             ref={(el) => {
               if (el) groupRefs.current.set(entity.userId, el as any);
               else groupRefs.current.delete(entity.userId);
             }}
-            position={[entity.currentX, 0, entity.currentZ]} 
+            position={[entity.currentX, 0, entity.currentZ]}
             visible={entity.isVisible}
           >
             {entity.teleportPhase === 'none' && (
@@ -557,6 +608,7 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
                   onClickRemoteAvatar={onClickRemoteAvatar}
                   avatarInteractions={avatarInteractions}
                   userId={entity.userId}
+                  useInstancedMesh={isInstanced}
                   castShadow={entity.castShadow}
                 />
               )
