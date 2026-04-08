@@ -805,8 +805,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     setIsDrawingZone(false);
   }, [setIsDrawingZone]);
 
-  // PR-4: Evitar new Map() en cada render - el Map vacío se recrea en cada render de VirtualSpace3D
-  const emptyOwnerNamesMap = React.useMemo(() => new Map<string, string>(), []);
+  // Legacy Escritorio3D owner names map removed — all objects come from catalog
 
   const handleSceneZonaClick = useCallback((zona: ZonaEmpresa) => {
     setZonaAEditar(zona);
@@ -966,8 +965,6 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
             onClickRemoteAvatar={handleClickRemoteAvatar}
             avatarInteractions={avatarInteractionsMemo}
             espacioObjetos={espacioObjetos}
-            onReclamarObjeto={reclamarObjeto}
-            onLiberarObjeto={liberarObjeto}
             ocupacionesAsientosPorObjetoId={ocupacionesAsientosPorObjetoId}
             onInteractuarObjeto={handleInteraccionObjeto}
             onOcuparAsiento={handleOcuparAsiento}
@@ -978,7 +975,6 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
             onTransformarObjeto={handleTransformarObjeto}
             onEliminarObjeto={eliminarObjeto}
             onEliminarPlantillaZonaCompleta={handleEliminarPlantillaZonaCompleta}
-            objetoOwnerNames={emptyOwnerNamesMap}
             onClickZona={onClickZonaStable}
             objetoEnColocacion={objetoEnColocacion}
             onActualizarObjetoEnColocacion={handleActualizarObjetoEnColocacion}
