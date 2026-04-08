@@ -30,8 +30,8 @@ import { XP_POR_ACCION } from '@/lib/gamificacion';
 import { useStore } from '@/store/useStore';
 import { AplicarPlantillaZonaUseCase } from '@/src/core/application/usecases/AplicarPlantillaZonaUseCase';
 import { EliminarPlantillaZonaUseCase } from '@/src/core/application/usecases/EliminarPlantillaZonaUseCase';
-import { InyectorPlantillaZona } from '@/src/core/infrastructure/adapters/InyectorPlantillaZonaAdapter';
-import { RepositorioPlantillaZonaSupabase } from '@/src/core/infrastructure/adapters/RepositorioPlantillaZonaSupabaseAdapter';
+import { InyectorPlantillaZona } from '@/src/core/infrastructure/InyectorPlantillaZona';
+import { RepositorioPlantillaZonaSupabase } from '@/src/core/infrastructure/RepositorioPlantillaZonaSupabase';
 // GameHub ahora se importa en WorkspaceLayout
 import { EditModeHUD, EditModeToast, InspectorEdicionObjeto, PlacementHUD, PlacementToast, ToastContainer, toastEmitter } from './3d/PlacementHUD';
 import { AdminZoneHUD } from './3d/AdminZoneHUD';
@@ -805,7 +805,8 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     setIsDrawingZone(false);
   }, [setIsDrawingZone]);
 
-  // Legacy Escritorio3D owner names map removed — all objects come from catalog
+  // PR-4: Evitar new Map() en cada render - el Map vacío se recrea en cada render de VirtualSpace3D
+  const emptyOwnerNamesMap = React.useMemo(() => new Map<string, string>(), []);
 
   const handleSceneZonaClick = useCallback((zona: ZonaEmpresa) => {
     setZonaAEditar(zona);
@@ -965,6 +966,8 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
             onClickRemoteAvatar={handleClickRemoteAvatar}
             avatarInteractions={avatarInteractionsMemo}
             espacioObjetos={espacioObjetos}
+            onReclamarObjeto={reclamarObjeto}
+            onLiberarObjeto={liberarObjeto}
             ocupacionesAsientosPorObjetoId={ocupacionesAsientosPorObjetoId}
             onInteractuarObjeto={handleInteraccionObjeto}
             onOcuparAsiento={handleOcuparAsiento}
@@ -975,6 +978,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
             onTransformarObjeto={handleTransformarObjeto}
             onEliminarObjeto={eliminarObjeto}
             onEliminarPlantillaZonaCompleta={handleEliminarPlantillaZonaCompleta}
+            objetoOwnerNames={emptyOwnerNamesMap}
             onClickZona={onClickZonaStable}
             objetoEnColocacion={objetoEnColocacion}
             onActualizarObjetoEnColocacion={handleActualizarObjetoEnColocacion}

@@ -172,6 +172,12 @@ export function adaptiveConfigFromTier(
   }
 
   // Tier 3 (WebGPU capable)
+  // toneMappingExposure reducido de 1.2 → 1.05:
+  // Con directionalLight 1.2 + ambient 0.7 = 1.9x total lighting,
+  // exposure 1.2 amplifica Fresnel highlights causando white-out en
+  // objetos con metalness > 0 (GLTF importados). 1.05 preserva brillo
+  // sin saturar specular en ángulos rasantes.
+  // Ref: https://threejs.org/docs/#api/en/renderers/WebGLRenderer.toneMappingExposure
   return {
     shadows: true,
     antialias: true,
@@ -179,7 +185,7 @@ export function adaptiveConfigFromTier(
     maxDpr: deviceDpr,
     minDpr: 1,
     powerPreference: batterySaver ? 'default' : 'high-performance',
-    toneMappingExposure: 1.2,
+    toneMappingExposure: 1.05,
     maxVideoStreams: 12,
   };
 }

@@ -420,8 +420,13 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
                     r: c.r,
                     g: c.g,
                     b: c.b,
-                    metalness: stdMat.metalness ?? 0,
-                    roughness: stdMat.roughness ?? 0.5,
+                    // Clamp metalness/roughness para evitar Fresnel white-out:
+                    // GLTF importados pueden traer metalness > 0 en objetos no-metálicos
+                    // (madera, tela, plástico). Combinado con toneMappingExposure > 1,
+                    // produce reflejos blancos en ángulos rasantes (efecto Fresnel).
+                    // Ref: https://threejs.org/docs/#api/en/materials/MeshStandardMaterial.metalness
+                    metalness: Math.min(stdMat.metalness ?? 0, 0.15),
+                    roughness: Math.max(Math.min(stdMat.roughness ?? 0.5, 1), 0.3),
                   },
                 );
               }

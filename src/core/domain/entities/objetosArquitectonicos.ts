@@ -253,11 +253,11 @@ const inferirConfiguracionLegacy = (
                 ? crearPuertaCentrada(ancho, alto, false, true)
                 : [];
 
-    const colorBaseLegacy = esMamparaVidrio
-      ? '#c7d0db'
-      : (esVentanaDobleOficina || esVentanaOficina || esArco || geometria === 'wall-half' || geometria === 'box' || geometria === 'pared' || geometria === 'wall' || geometria === 'muro')
-        ? '#d9dde5'
-        : colorBase;
+    // Clean Architecture: la capa de dominio NO debe hardcodear colores visuales.
+    // El color proviene de built_in_color (DB) o del perfil visual (Infrastructure).
+    // Anterior: hardcodeaba '#c7d0db' para vidrio y '#d9dde5' para paredes,
+    // ignorando el valor real de Supabase (ej. '#bfdbfe' blue).
+    const colorBaseLegacy = colorBase;
 
     return {
       tipo_geometria: 'pared',

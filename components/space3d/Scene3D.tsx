@@ -14,11 +14,9 @@ import { VideoWithBackground } from '../VideoWithBackground';
 import { GhostAvatar } from '../3d/GhostAvatar';
 import { CerramientoZona3D } from '../3d/CerramientoZona3D';
 import { ZonaEmpresa as ZonaEmpresa3D } from '../3d/ZonaEmpresa';
+import { Escritorio3D } from '../3d/Escritorio3D';
 import { FantasmaColocacion3D, ObjetoEscena3D } from '../3d/ObjetoEscena3D';
 import { ObjetosInstanciados } from '../3d/ObjetosInstanciados';
-import { StaticObjectBatcher } from '../3d/StaticObjectBatcher';
-import { BuiltinWallBatcher } from '../3d/BuiltinWallBatcher';
-import { useSceneOptimization } from '@/hooks/space3d/useSceneOptimization';
 import type { EspacioObjeto, SpawnPersonal, TransformacionObjetoInput } from '@/hooks/space3d/useEspacioObjetos';
 import type { OcupacionAsientoReal } from '@/hooks/space3d/useOcupacionAsientos';
 import type { ObjetoPreview3D } from '@/types/objetos3d';
@@ -105,6 +103,8 @@ export interface SceneProps {
   onClickRemoteAvatar?: (userId: string) => void;
   avatarInteractions?: AvatarProps['avatarInteractions'];
   espacioObjetos?: EspacioObjeto[];
+  onReclamarObjeto?: (id: string) => void;
+  onLiberarObjeto?: (id: string) => void;
   ocupacionesAsientosPorObjetoId?: Map<string, OcupacionAsientoReal>;
   onInteractuarObjeto?: (objeto: EspacioObjeto, asiento: AsientoRuntime3D | null) => void;
   onOcuparAsiento?: (asiento: AsientoRuntime3D) => Promise<boolean>;
@@ -115,6 +115,7 @@ export interface SceneProps {
   onTransformarObjeto?: (id: string, cambios: TransformacionObjetoInput) => Promise<boolean>;
   onEliminarObjeto?: (id: string) => Promise<boolean>;
   onEliminarPlantillaZonaCompleta?: (objeto: EspacioObjeto) => Promise<boolean>;
+  objetoOwnerNames?: Map<string, string>;
   onClickZona?: (zona: ZonaEmpresa) => void;
   objetoEnColocacion?: ObjetoPreview3D | null;
   onActualizarObjetoEnColocacion?: (x: number, y: number, z: number) => void;
@@ -318,6 +319,8 @@ export const Scene: React.FC<SceneProps> = ({
   onClickRemoteAvatar,
   avatarInteractions,
   espacioObjetos = [],
+  onReclamarObjeto,
+  onLiberarObjeto,
   ocupacionesAsientosPorObjetoId = new Map(),
   onInteractuarObjeto,
   onOcuparAsiento,
@@ -328,6 +331,7 @@ export const Scene: React.FC<SceneProps> = ({
   onTransformarObjeto,
   onEliminarObjeto,
   onEliminarPlantillaZonaCompleta,
+  objetoOwnerNames,
   onClickZona,
   objetoEnColocacion,
   onActualizarObjetoEnColocacion,
@@ -340,9 +344,6 @@ export const Scene: React.FC<SceneProps> = ({
 }) => {
   const gridColor = theme === 'arcade' ? '#00ff41' : '#6366f1';
   const { camera, gl } = useThree();
-
-  // Fase 3: GPU rendering optimization services (BatchedMesh, TextureAtlas, GPUSkinning)
-  const sceneOptimization = useSceneOptimization();
   const frustumRef = useRef(new THREE.Frustum());
   const projectionRef = useRef(new THREE.Matrix4());
   const chairMeshRef = useRef<THREE.InstancedMesh>(null);
@@ -381,11 +382,6 @@ export const Scene: React.FC<SceneProps> = ({
         .map((asiento) => [asiento.objetoId as string, asiento])
     );
   }, [asientosPersistentes]);
-  // Fase 5A: Array estable de objetos builtin para BuiltinWallBatcher (evita .filter() inline en JSX)
-  const objetosBuiltin = useMemo(
-    () => espacioObjetos.filter(obj => obj.catalogo_id && (!obj.modelo_url || obj.modelo_url.startsWith('builtin:'))),
-    [espacioObjetos],
-  );
   const cerramientosZona = useMemo(() => crearParedesCerramientosZonas(zonasEmpresa), [zonasEmpresa]);
   const obstaculosMundo = useMemo(
     () => [
@@ -952,54 +948,44 @@ export const Scene: React.FC<SceneProps> = ({
         })}
       </Physics>
 
-      {/* Fase 3: Static objects — BatchedMesh (non-edit) or InstancedMesh (edit mode) */}
-      {/* BatchedMesh collapses GLTF objects sharing same material into 1 draw call. */}
-      {/* Builtin objects (walls, procedural geometry) always render individually.   */}
-      {/* Edit mode needs InstancedMesh fallback for gizmos/drag interactivity.      */}
-      {!isEditMode && sceneOptimization.isReady ? (
-        <>
-          {/* GLTF catalog objects → BatchedMesh for minimal draw calls */}
-          <StaticObjectBatcher
-            gruposPorModelo={(() => {
-              const grupos = new Map<string, EspacioObjeto[]>();
-              for (const obj of espacioObjetos) {
-                if (obj.modelo_url && !obj.modelo_url.startsWith('builtin:') && obj.catalogo_id) {
-                  const key = obj.modelo_url;
-                  if (!grupos.has(key)) grupos.set(key, []);
-                  grupos.get(key)!.push(obj);
-                }
-              }
-              return grupos;
-            })()}
-            services={sceneOptimization}
-            playerPosition={playerPositionState}
-            onInteractuar={onInteractuarObjeto
-              ? (obj) => onInteractuarObjeto(obj, asientosPorObjetoId.get(obj.id) || null)
-              : undefined
-            }
-          />
-          {/* Fase 5A: Builtin walls merged into ~3-5 draw calls (was ~330 individual) */}
-          <BuiltinWallBatcher objetos={objetosBuiltin} />
-        </>
-      ) : (
-        <ObjetosInstanciados
-          espacioObjetos={espacioObjetos.filter(obj => !!obj.catalogo_id)}
-          playerPosition={playerPositionState}
-          isEditMode={isEditMode}
-          selectedObjectId={selectedObjectId}
-          ultimoObjetoColocadoId={ultimoObjetoColocadoId}
-          onInteractuar={onInteractuarObjeto
-            ? (obj) => onInteractuarObjeto(obj, asientosPorObjetoId.get(obj.id) || null)
-            : undefined
-          }
-          onMover={onMoverObjeto}
-          onRotar={onRotarObjeto}
-          onEliminar={onEliminarObjeto}
-          onEliminarPlantillaCompleta={onEliminarPlantillaZonaCompleta}
-        />
-      )}
+      {/* PR-2: Objetos de catálogo (GLTF) — InstancedMesh, fuera de Physics */}
+      {/* Un draw call por mesh único del GLTF en lugar de uno por instancia */}
+      <ObjetosInstanciados
+        espacioObjetos={espacioObjetos.filter(obj => !!obj.catalogo_id)}
+        playerPosition={playerPositionState}
+        isEditMode={isEditMode}
+        selectedObjectId={selectedObjectId}
+        ultimoObjetoColocadoId={ultimoObjetoColocadoId}
+        onInteractuar={onInteractuarObjeto
+          ? (obj) => onInteractuarObjeto(obj, asientosPorObjetoId.get(obj.id) || null)
+          : undefined
+        }
+        onMover={onMoverObjeto}
+        onRotar={onRotarObjeto}
+        onEliminar={onEliminarObjeto}
+        onEliminarPlantillaCompleta={onEliminarPlantillaZonaCompleta}
+      />
 
-      {/* Legacy Escritorio3D path removed — all objects come from catalog (catalogo_id) */}
+      {/* Escritorios reclamables (sin catalogo_id) — siguen individuales */}
+      {espacioObjetos
+        .filter(obj => !obj.catalogo_id)
+        .map((obj) => (
+          <Escritorio3D
+            key={obj.id}
+            objeto={obj}
+            playerPosition={playerPositionState}
+            currentUserId={currentUser.id || null}
+            onReclamar={onReclamarObjeto || (() => { })}
+            onLiberar={onLiberarObjeto || (() => { })}
+            onMover={onMoverObjeto}
+            onRotar={onRotarObjeto}
+            onEliminar={onEliminarObjeto}
+            ownerName={objetoOwnerNames?.get(obj.owner_id || '') || null}
+          />
+        ))
+      }
+
+      {/* Objetos Dinámicos y Zonas se renderizan antes de aquí */}
 
       {/* Jugador actual */}
       <Player

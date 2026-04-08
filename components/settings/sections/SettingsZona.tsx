@@ -11,8 +11,8 @@ import { obtenerPlantillaZona, PLANTILLAS_ZONA_OFICINA, type PlantillaZonaId } f
 import { normalizarConfiguracionZonaEmpresa } from '@/src/core/domain/entities/cerramientosZona';
 import { AplicarPlantillaEspacioCompletaUseCase, type IRepositorioPlantillaEspacioCompleta } from '@/src/core/application/usecases/AplicarPlantillaEspacioCompletaUseCase';
 import { AplicarPlantillaZonaUseCase } from '@/src/core/application/usecases/AplicarPlantillaZonaUseCase';
-import { RepositorioPlantillaZonaSupabase } from '@/src/core/infrastructure/adapters/RepositorioPlantillaZonaSupabaseAdapter';
-import { InyectorPlantillaZona } from '@/src/core/infrastructure/adapters/InyectorPlantillaZonaAdapter';
+import { RepositorioPlantillaZonaSupabase } from '@/src/core/infrastructure/RepositorioPlantillaZonaSupabase';
+import { InyectorPlantillaZona } from '@/src/core/infrastructure/InyectorPlantillaZona';
 import { PLANTILLAS_ESPACIO_COMPLETAS } from '@/src/core/domain/entities/plantillasEspacio';
 import {
   cargarAutorizacionesActivas,

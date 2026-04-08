@@ -100,6 +100,7 @@ const _tmpColor = new THREE.Color();
 const normalizarGeometriaParaMerge = (
   geo: THREE.BufferGeometry,
   vertexColor?: string,
+  skipVertexColor = false,
 ): THREE.BufferGeometry => {
   // 1. Convertir a non-indexed (expande vértices compartidos)
   const nonIndexed = geo.index ? geo.toNonIndexed() : geo.clone();
@@ -117,21 +118,29 @@ const normalizarGeometriaParaMerge = (
   // 3. Inyectar vertex color — cada vértice recibe el color del objeto original
   //    Esto permite que mergeBufferGeometries preserve colores per-objeto
   //    en un solo mesh con material.vertexColors = true.
+  //    Skip para glass: el material de vidrio usa color_base directo, no vertexColors.
   //    Ref: https://threejs.org/docs/#api/en/materials/Material.vertexColors
-  if (vertexColor) {
-    _tmpColor.set(vertexColor);
+  if (!skipVertexColor) {
+    if (vertexColor) {
+      _tmpColor.set(vertexColor);
+    } else {
+      _tmpColor.set(0x94a3b8); // fallback gris neutro
+    }
+    // Convertir de sRGB a linear para que el renderer produzca el color correcto
+    _tmpColor.convertSRGBToLinear();
+    const colorArray = new Float32Array(vertCount * 3);
+    for (let i = 0; i < vertCount; i++) {
+      colorArray[i * 3] = _tmpColor.r;
+      colorArray[i * 3 + 1] = _tmpColor.g;
+      colorArray[i * 3 + 2] = _tmpColor.b;
+    }
+    nonIndexed.setAttribute('color', new THREE.Float32BufferAttribute(colorArray, 3));
   } else {
-    _tmpColor.set(0x94a3b8); // fallback gris neutro
+    // Eliminar color attribute si existía (para compatibilidad de merge)
+    if (nonIndexed.hasAttribute('color')) {
+      nonIndexed.deleteAttribute('color');
+    }
   }
-  // Convertir de sRGB a linear para que el renderer produzca el color correcto
-  _tmpColor.convertSRGBToLinear();
-  const colorArray = new Float32Array(vertCount * 3);
-  for (let i = 0; i < vertCount; i++) {
-    colorArray[i * 3] = _tmpColor.r;
-    colorArray[i * 3 + 1] = _tmpColor.g;
-    colorArray[i * 3 + 2] = _tmpColor.b;
-  }
-  nonIndexed.setAttribute('color', new THREE.Float32BufferAttribute(colorArray, 3));
 
   // 4. Asegurar que exista 'uv' — si no existe, crear uno trivial (0,0) por vértice
   if (!nonIndexed.hasAttribute('uv')) {
@@ -278,12 +287,10 @@ const generarGeometriasObjeto = (
     const color = category === 'glass' ? colorGlass
       : category === 'metal' ? colorMetal
         : colorOpaque;
-    // Normalizar para compatibilidad con mergeBufferGeometries:
-    // - Convierte a non-indexed
-    // - Inyecta vertex color per-object (preserva colores tras merge)
-    // - Retiene solo position/normal/uv/color
-    // - Limpia groups internos
-    const normalized = normalizarGeometriaParaMerge(geo, color);
+    // Glass: no usar vertex colors — el material usa color_base directo del perfil.
+    // Opaque/Metal: vertex colors per-object para preservar colores tras merge.
+    const skipVC = category === 'glass';
+    const normalized = normalizarGeometriaParaMerge(geo, color, skipVC);
     // Dispose la geometría original si es diferente a la normalizada
     if (normalized !== geo) geo.dispose();
     results.push({ geometry: normalized, category });
@@ -590,19 +597,27 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
     // Activar vertex colors para per-object color baking
     if (opaque?.material) opaque.material.vertexColors = true;
 
+    // Glass: NO usar vertexColors — el color multiplicativo con blanco funciona
+    // para opaque/metal, pero vidrio necesita color directo + transparent=true
+    // para que el depth-sorting funcione correctamente.
+    // Ref: https://threejs.org/docs/#api/en/materials/MeshPhysicalMaterial
     const glass = crearMaterialPBRArquitectonico({
       tipo_material: 'vidrio',
       ancho: 2,
       alto: 2,
       repetir_textura: false,
       escala_textura: 1,
-      color_base: '#ffffff', // Neutro — vertex color define el tono
+      color_base: perfil.materiales.color_vidrio ?? '#d6e7f1',
       opacidad: perfil.materiales.opacidad_vidrio_mampara,
       rugosidad: perfil.materiales.rugosidad_vidrio_mampara,
       metalicidad: 0,
       resaltar: false,
     });
-    if (glass?.material) glass.material.vertexColors = true;
+    if (glass?.material) {
+      glass.material.transparent = true;
+      glass.material.depthWrite = false; // Evitar z-fighting con paredes detrás
+      // NO activar vertexColors en glass — usar color_base directo del perfil
+    }
 
     const metal = crearMaterialMarcoArquitectonico('vidrio', false);
     if (metal?.material) metal.material.vertexColors = true;
@@ -635,13 +650,15 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
 
   return (
     <group name="BuiltinWallBatcher">
-      {merged.map(({ geometry, category }, i) => (
+      {merged.map(({ geometry, category }) => (
         <mesh
           key={category}
           geometry={geometry}
           material={getMaterial(category)}
-          castShadow
+          castShadow={category !== 'glass'}
           receiveShadow
+          // Glass renderizado después de opacos para depth-sorting correcto
+          renderOrder={category === 'glass' ? 1 : 0}
         />
       ))}
     </group>

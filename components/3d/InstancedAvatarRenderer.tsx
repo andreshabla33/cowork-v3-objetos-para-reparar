@@ -1,62 +1,50 @@
 /**
  * PR-9: InstancedAvatarRenderer — 1 componente React = 500 avatares
  *
- * Renderiza avatares remotos del MISMO modelo usando InstancedMesh
- * con el shader de instanced skinning (PR-8 / AnimationBaker).
+ * Renderiza TODOS los avatares remotos visibles usando InstancedMesh
+ * con el shader de instanced skinning (PR-8).
  *
  * Arquitectura:
- *   Avatar3DScene agrupa fullEntities por modelo_url →
- *     1 InstancedAvatarRenderer por modelo único →
- *       1 InstancedMesh + baked animation DataTexture →
- *         1 draw call por modelo (máx 512 instancias)
+ *   avatarStore (ECS) → InstancedAvatarRenderer → InstancedMesh
+ *                            ↓
+ *                   1 useFrame: actualiza matrices de instancia
+ *                   1 draw call: GPU renderiza todo
  *
- * Filtrado:
- *   Recibe `allowedUserIds` — solo renderiza instancias de esos userIds.
- *   Esto permite que Avatar3DScene controle qué entidades usan instancing
- *   (full-tier, no ghost, no current user) y cuáles mantienen el pipeline
- *   individual con GLTFAvatar (para overlays de video/chat/nombre).
+ * Fallback: Si no hay animaciones horneadas para un modelo,
+ * usa el sistema anterior (Avatar individual) para ese avatar.
  *
  * Clean Architecture:
- *   - Presentation layer: lee datos del ECS (avatarStore), no tiene estado propio
- *   - Escribe en InstancedMesh — imperativo, no React state
+ *   - Lee datos del ECS (avatarStore) — no tiene estado propio
+ *   - Escribe en InstancedMesh — imperativo, no React
  *   - React solo se usa para montar/desmontar el componente
- *
- * Ref: Three.js r170 — InstancedMesh
- *   https://threejs.org/docs/#api/en/objects/InstancedMesh
- * Ref: R3F useFrame — https://r3f.docs.pmnd.rs/api/hooks#useframe
  */
 
 'use client';
-import React, { useRef, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
+import React, { useRef, useMemo, useEffect } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { logger } from '@/lib/logger';
-import { avatarStore } from '@/lib/ecs/AvatarECS';
+import { avatarStore, type AvatarEntity } from '@/lib/ecs/AvatarECS';
 import {
   createInstanceAnimationAttributes,
   updateInstanceAnimation,
   createInstancedSkinningMaterial,
 } from '@/lib/gpu/instancedSkinningShader';
-import { getOrBakeAnimations } from '@/lib/gpu/AnimationBaker';
+import { getOrBakeAnimations, type BakedAnimationSet } from '@/lib/gpu/AnimationBaker';
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
 const log = logger.child('InstancedAvatarRenderer');
 
 const MAX_INSTANCES = 512;
+const ANIMATION_NAMES = ['idle', 'walk', 'run', 'sit'] as const;
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
 interface InstancedAvatarRendererProps {
   /** URL del modelo GLTF base de los avatares */
   modelUrl: string;
-  /**
-   * Set de userIds permitidos para este renderer.
-   * Solo estos avatares se renderizan como instancias.
-   * Permite a Avatar3DScene controlar el filtrado (full-tier, no ghost).
-   */
-  allowedUserIds: ReadonlySet<string>;
   /** Callback cuando se hace click en un avatar instanciado */
   onClickAvatar?: (userId: string) => void;
 }
@@ -73,7 +61,6 @@ interface InstancedAvatarRendererProps {
  */
 export const InstancedAvatarRenderer: React.FC<InstancedAvatarRendererProps> = ({
   modelUrl,
-  allowedUserIds,
   onClickAvatar,
 }) => {
   const { scene, animations } = useGLTF(modelUrl);
@@ -172,20 +159,8 @@ export const InstancedAvatarRenderer: React.FC<InstancedAvatarRendererProps> = (
     };
   }, [onClickAvatar]);
 
-  // ── Ángulos de dirección (calculados una vez, fuera del loop) ──
-  const dirAngles: Record<string, number> = useMemo(() => ({
-    south: 0,
-    west: Math.PI / 2,
-    north: Math.PI,
-    east: -Math.PI / 2,
-    southeast: -Math.PI / 4,
-    southwest: Math.PI / 4,
-    northeast: -3 * Math.PI / 4,
-    northwest: 3 * Math.PI / 4,
-  }), []);
-
   // ── Update loop: actualizar matrices y animaciones ──
-  useFrame(() => {
+  useFrame((_, delta) => {
     if (!instancedMeshRef.current || !bakedSet) return;
 
     const mesh = instancedMeshRef.current;
@@ -195,20 +170,32 @@ export const InstancedAvatarRenderer: React.FC<InstancedAvatarRendererProps> = (
 
     let instanceCount = 0;
 
-    for (let i = 0; i < entities.length && instanceCount < MAX_INSTANCES; i++) {
+    for (let i = 0; i < entities.length && i < MAX_INSTANCES; i++) {
       const entity = entities[i];
 
-      // Solo renderizar avatares incluidos en allowedUserIds
-      // (filtrado por Avatar3DScene: full-tier, no ghost, no current user)
-      if (!allowedUserIds.has(entity.userId)) continue;
+      // Solo renderizar avatares que usan este modelo
+      // (en el futuro: filtrar por avatar3DConfig.modelo_url === modelUrl)
+      if (entity.esFantasma) continue;
 
       // Posición y rotación
       dummyObject.position.set(entity.currentX, 0, entity.currentZ);
+
+      // Rotación basada en dirección
+      const dirAngles: Record<string, number> = {
+        south: 0,
+        west: Math.PI / 2,
+        north: Math.PI,
+        east: -Math.PI / 2,
+        southeast: -Math.PI / 4,
+        southwest: Math.PI / 4,
+        northeast: -3 * Math.PI / 4,
+        northwest: 3 * Math.PI / 4,
+      };
       dummyObject.rotation.y = dirAngles[entity.direction] || 0;
       dummyObject.updateMatrix();
       mesh.setMatrixAt(instanceCount, dummyObject.matrix);
 
-      // Animación: leer estado del ECS y mapear a baked animation index
+      // Animación
       const animName = entity.animState || 'idle';
       const animIdx = animNameToIndex.get(animName) ?? 0;
       const animData = bakedSet.animations.get(animName);

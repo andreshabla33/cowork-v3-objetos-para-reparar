@@ -984,6 +984,9 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     }
 
     (camera as any).userData.playerPosition = { x: positionRef.current.x, z: positionRef.current.z };
+    // Exponer dirección al CameraFollow para chase-cam rotation
+    (camera as any).userData.playerDirection = newDirection;
+    (camera as any).userData.playerMoving = movedThisFrame;
     if (onPositionUpdate) onPositionUpdate(positionRef.current.x, positionRef.current.z);
 
     const syncNow = state.clock.getElapsedTime();

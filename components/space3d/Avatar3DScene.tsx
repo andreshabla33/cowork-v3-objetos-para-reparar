@@ -638,6 +638,13 @@ export const CameraFollow: React.FC<{ controlsRef: React.MutableRefObject<any>; 
   const introStartedAtRef = useRef<number | null>(null);
   const isDragging = useStore((s) => s.isDragging);
 
+  // Chase-cam: ángulo objetivo basado en dirección del avatar
+  const targetAngleRef = useRef(0);
+  const currentAngleRef = useRef(0);
+  // Pausa auto-rotación si el usuario interactúa manualmente con la cámara
+  const userInteractingRef = useRef(false);
+  const lastPointerDownRef = useRef(0);
+
   // Cached zone detection results — recomputed every ZONE_REEVAL_FRAMES to avoid per-frame work
   const ZONE_REEVAL_FRAMES = 30;
   const zoneFrameCounter = useRef(0);
@@ -751,13 +758,59 @@ export const CameraFollow: React.FC<{ controlsRef: React.MutableRefObject<any>; 
       return;
     }
 
+    // ── Chase-cam: dirección → ángulo objetivo ──
+    // Mapeo de las 8 direcciones del avatar a ángulos en radianes.
+    // La cámara se posiciona DETRÁS del avatar (ángulo + PI).
+    // Ref: Three.js OrbitControls spherical coordinate system
+    const playerDir = (camera as any).userData?.playerDirection as string | undefined;
+    const playerMoving = (camera as any).userData?.playerMoving as boolean | undefined;
+
+    const DIRECTION_TO_ANGLE: Record<string, number> = {
+      front: 0,            // avatar mira hacia -Z → cámara detrás en +Z
+      back: Math.PI,       // avatar mira hacia +Z → cámara detrás en -Z
+      left: Math.PI / 2,   // avatar mira hacia -X → cámara detrás en +X
+      right: -Math.PI / 2, // avatar mira hacia +X → cámara detrás en -X
+      up: 0,               // alias de front en algunos mapeos
+    };
+
+    if (playerDir && playerMoving && DIRECTION_TO_ANGLE[playerDir] !== undefined) {
+      targetAngleRef.current = DIRECTION_TO_ANGLE[playerDir];
+      // Reset user interaction flag cuando el avatar se mueve
+      // (el usuario espera que la cámara siga)
+      if (Date.now() - lastPointerDownRef.current > 2000) {
+        userInteractingRef.current = false;
+      }
+    }
+
     if (moved && lastPlayerPos.current) {
       const deltaX = playerPos.x - lastPlayerPos.current.x;
       const deltaZ = playerPos.z - lastPlayerPos.current.z;
+
+      // Seguir posición del avatar (siempre)
       controls.target.x += deltaX;
       controls.target.z += deltaZ;
-      camera.position.x += deltaX;
-      camera.position.z += deltaZ;
+
+      // Chase-cam rotation: rotar offset alrededor del avatar
+      // Solo si el usuario no está interactuando manualmente con la cámara
+      if (!userInteractingRef.current && !usarVistaInterior) {
+        // Lerp suave del ángulo actual al objetivo
+        const angleDiff = targetAngleRef.current - currentAngleRef.current;
+        // Normalizar diferencia al rango [-PI, PI]
+        const normalizedDiff = ((angleDiff + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+        currentAngleRef.current += normalizedDiff * 0.025; // Factor de lerp suave
+
+        // Calcular nueva posición de cámara basada en ángulo rotado
+        const targetCamX = controls.target.x + Math.sin(currentAngleRef.current) * cameraDistance;
+        const targetCamZ = controls.target.z + Math.cos(currentAngleRef.current) * cameraDistance;
+
+        camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetCamX, 0.04);
+        camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetCamZ, 0.04);
+      } else {
+        // Modo manual o interior: mover cámara con offset fijo (comportamiento original)
+        camera.position.x += deltaX;
+        camera.position.z += deltaZ;
+      }
+
       controls.update();
       lastPlayerPos.current = { x: playerPos.x, z: playerPos.z };
     }
@@ -767,6 +820,10 @@ export const CameraFollow: React.FC<{ controlsRef: React.MutableRefObject<any>; 
     const distanciaHorizontalActual = Math.max(Math.hypot(offsetX, offsetZ), 0.001);
     const smoothing = usarVistaInterior ? 0.18 : 0.1;
     const offsetYActual = camera.position.y - controls.target.y;
+
+    // Sincronizar currentAngle con la posición real de la cámara
+    // (permite que OrbitControls manual actualice el ángulo)
+    currentAngleRef.current = Math.atan2(offsetX, offsetZ);
 
     controls.target.y = THREE.MathUtils.lerp(controls.target.y, cameraTargetHeight, smoothing);
 
@@ -785,6 +842,22 @@ export const CameraFollow: React.FC<{ controlsRef: React.MutableRefObject<any>; 
 
     controls.update();
   }, -1);
+
+  // Detectar interacción manual del usuario con OrbitControls
+  // Si el usuario arrastra la cámara manualmente, pausar auto-rotation
+  // del chase-cam durante 2 segundos para no interferir.
+  useEffect(() => {
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return;
+
+    const onPointerDown = () => {
+      userInteractingRef.current = true;
+      lastPointerDownRef.current = Date.now();
+    };
+
+    canvas.addEventListener('pointerdown', onPointerDown);
+    return () => canvas.removeEventListener('pointerdown', onPointerDown);
+  }, []);
 
   return null;
 };
