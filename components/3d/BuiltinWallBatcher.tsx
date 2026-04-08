@@ -27,7 +27,7 @@
  */
 
 'use client';
-import React, { useMemo, useEffect, useRef } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 import { mergeBufferGeometries } from 'three-stdlib';
 import { logger } from '@/lib/logger';
@@ -64,8 +64,17 @@ interface TransformedGeometry {
   category: MaterialCategory;
 }
 
-/** Atributos permitidos en geometrías normalizadas para merge */
-const ALLOWED_ATTRIBUTES: ReadonlySet<string> = new Set(['position', 'normal', 'uv']);
+/**
+ * Atributos permitidos en geometrías normalizadas para merge.
+ * Incluye 'color' para vertex colors (per-object color baking).
+ *
+ * @see https://threejs.org/docs/#api/en/materials/Material.vertexColors
+ * @see https://threejs.org/docs/#examples/en/utils/BufferGeometryUtils.mergeGeometries
+ */
+const ALLOWED_ATTRIBUTES: ReadonlySet<string> = new Set(['position', 'normal', 'uv', 'color']);
+
+/** Cache de THREE.Color para evitar crear objetos temporales en hot path */
+const _tmpColor = new THREE.Color();
 
 /**
  * Normaliza una BufferGeometry para que sea compatible con mergeBufferGeometries().
@@ -78,12 +87,20 @@ const ALLOWED_ATTRIBUTES: ReadonlySet<string> = new Set(['position', 'normal', '
  * y puede tener atributos adicionales. BoxGeometry genera indexed sin groups.
  * Mezclarlas directamente falla.
  *
- * Solución: convertir toda geometría a non-indexed, retener solo position/normal/uv,
+ * Solución: convertir toda geometría a non-indexed, retener solo position/normal/uv/color,
  * limpiar groups y recomputar normales.
  *
+ * @param geo           Geometría fuente (será clonada/convertida, no mutada)
+ * @param vertexColor   Color a inyectar como vertex color en TODOS los vértices.
+ *                      Permite preservar per-object color tras merge.
+ *
  * @see https://threejs.org/docs/#examples/en/utils/BufferGeometryUtils.mergeGeometries
+ * @see https://threejs.org/manual/en/custom-buffergeometry.html
  */
-const normalizarGeometriaParaMerge = (geo: THREE.BufferGeometry): THREE.BufferGeometry => {
+const normalizarGeometriaParaMerge = (
+  geo: THREE.BufferGeometry,
+  vertexColor?: string,
+): THREE.BufferGeometry => {
   // 1. Convertir a non-indexed (expande vértices compartidos)
   const nonIndexed = geo.index ? geo.toNonIndexed() : geo.clone();
 
@@ -95,21 +112,41 @@ const normalizarGeometriaParaMerge = (geo: THREE.BufferGeometry): THREE.BufferGe
     }
   }
 
-  // 3. Asegurar que exista 'uv' — si no existe, crear uno trivial (0,0) por vértice
+  const vertCount = nonIndexed.getAttribute('position').count;
+
+  // 3. Inyectar vertex color — cada vértice recibe el color del objeto original
+  //    Esto permite que mergeBufferGeometries preserve colores per-objeto
+  //    en un solo mesh con material.vertexColors = true.
+  //    Ref: https://threejs.org/docs/#api/en/materials/Material.vertexColors
+  if (vertexColor) {
+    _tmpColor.set(vertexColor);
+  } else {
+    _tmpColor.set(0x94a3b8); // fallback gris neutro
+  }
+  // Convertir de sRGB a linear para que el renderer produzca el color correcto
+  _tmpColor.convertSRGBToLinear();
+  const colorArray = new Float32Array(vertCount * 3);
+  for (let i = 0; i < vertCount; i++) {
+    colorArray[i * 3] = _tmpColor.r;
+    colorArray[i * 3 + 1] = _tmpColor.g;
+    colorArray[i * 3 + 2] = _tmpColor.b;
+  }
+  nonIndexed.setAttribute('color', new THREE.Float32BufferAttribute(colorArray, 3));
+
+  // 4. Asegurar que exista 'uv' — si no existe, crear uno trivial (0,0) por vértice
   if (!nonIndexed.hasAttribute('uv')) {
-    const count = nonIndexed.getAttribute('position').count;
-    nonIndexed.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(count * 2), 2));
+    nonIndexed.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(vertCount * 2), 2));
   }
 
-  // 4. Asegurar que exista 'normal'
+  // 5. Asegurar que exista 'normal'
   if (!nonIndexed.hasAttribute('normal')) {
     nonIndexed.computeVertexNormals();
   }
 
-  // 5. Limpiar groups internos (residuo de ExtrudeGeometry multi-material)
+  // 6. Limpiar groups internos (residuo de ExtrudeGeometry multi-material)
   nonIndexed.clearGroups();
 
-  // 6. Eliminar index residual (toNonIndexed() ya lo quita, pero por seguridad)
+  // 7. Eliminar index residual (toNonIndexed() ya lo quita, pero por seguridad)
   if (nonIndexed.index) {
     nonIndexed.setIndex(null);
   }
@@ -227,16 +264,26 @@ const generarGeometriasObjeto = (
   mat4.makeRotationY(objeto.rotacion_y || 0);
   mat4.setPosition(objeto.posicion_x, objeto.posicion_y, objeto.posicion_z);
 
+  // Resolver colores per-categoría basándose en el perfil visual y config del objeto
+  const colorOpaque = config.color_base ?? '#94a3b8';
+  const colorGlass = perfil.materiales.color_vidrio ?? '#e0f2fe';
+  const colorMetal = perfil.materiales.color_metal ?? '#a8a29e';
+
   const results: TransformedGeometry[] = [];
 
   const addGeo = (geo: THREE.BufferGeometry, category: MaterialCategory) => {
     // Aplicar transformación world-space ANTES de normalizar
     geo.applyMatrix4(mat4);
+    // Resolver color según categoría — cada vértice recibe este color
+    const color = category === 'glass' ? colorGlass
+      : category === 'metal' ? colorMetal
+        : colorOpaque;
     // Normalizar para compatibilidad con mergeBufferGeometries:
     // - Convierte a non-indexed
-    // - Retiene solo position/normal/uv
+    // - Inyecta vertex color per-object (preserva colores tras merge)
+    // - Retiene solo position/normal/uv/color
     // - Limpia groups internos
-    const normalized = normalizarGeometriaParaMerge(geo);
+    const normalized = normalizarGeometriaParaMerge(geo, color);
     // Dispose la geometría original si es diferente a la normalizada
     if (normalized !== geo) geo.dispose();
     results.push({ geometry: normalized, category });
@@ -404,31 +451,40 @@ const computarFingerprint = (objetos: EspacioObjeto[]): string => {
   return `${ids.length}:${ids.join(',')}`;
 };
 
+/**
+ * Module-level cache para sobrevivir React Strict Mode double-mount.
+ *
+ * En development, React.StrictMode desmonta y remonta componentes,
+ * reseteando useRef. Un cache a nivel de módulo evita re-computar
+ * ~450ms de geometrías idénticas en el segundo mount.
+ *
+ * En production, Strict Mode no hace double-mount, pero este cache
+ * también protege contra re-renders innecesarios del padre.
+ */
+let _moduleCacheFingerprint = '';
+let _moduleCacheResult: { geometry: THREE.BufferGeometry; category: MaterialCategory }[] | null = null;
+
 export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos }) => {
-  // ── Estabilización de referencia ──────────────────────────────────────────
-  // R3F re-renderiza en cada frame. Si el padre pasa un .filter() inline,
-  // useMemo([objetos]) se invalida cada frame porque la referencia es nueva.
-  // Solución: comparar un fingerprint estable y cachear el resultado.
-  const fingerprintRef = useRef<string>('');
-  const cachedMergeRef = useRef<{ geometry: THREE.BufferGeometry; category: MaterialCategory }[] | null>(null);
 
   const merged = useMemo(() => {
     const newFingerprint = computarFingerprint(objetos);
 
-    // Si el fingerprint no cambió, reusar el resultado cacheado
-    if (newFingerprint === fingerprintRef.current && cachedMergeRef.current !== null) {
-      return cachedMergeRef.current;
+    // Si el fingerprint no cambió, reusar el resultado cacheado (module-level).
+    // Sobrevive React Strict Mode double-mount y re-renders del padre.
+    if (newFingerprint === _moduleCacheFingerprint && _moduleCacheResult !== null) {
+      return _moduleCacheResult;
     }
 
     // Dispose geometrías previas antes de re-computar
-    if (cachedMergeRef.current) {
-      for (const m of cachedMergeRef.current) m.geometry.dispose();
+    if (_moduleCacheResult) {
+      for (const m of _moduleCacheResult) m.geometry.dispose();
+      _moduleCacheResult = null;
     }
 
-    fingerprintRef.current = newFingerprint;
+    _moduleCacheFingerprint = newFingerprint;
 
     if (objetos.length === 0) {
-      cachedMergeRef.current = null;
+      _moduleCacheResult = null;
       return null;
     }
 
@@ -506,13 +562,17 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       drawCalls: results.length,
     });
 
-    cachedMergeRef.current = results;
+    _moduleCacheResult = results;
     return results;
   }, [objetos]);
 
   // ── Materials (shared across all merged groups) ──
+  // vertexColors = true → el atributo 'color' de la geometría mergeada
+  // se MULTIPLICA con el color_base del material.
+  // Por eso usamos color_base: '#ffffff' (blanco) como base neutra,
+  // dejando que el vertex color defina el tono per-objeto.
+  // Ref: https://threejs.org/docs/#api/en/materials/Material.vertexColors
   const materials = useMemo(() => {
-    // Use the first wall-panel's visual profile for consistency
     const perfil = resolverPerfilVisualArquitectonico('corporativo');
 
     const opaque = crearMaterialPBRArquitectonico({
@@ -521,12 +581,14 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       alto: 3,
       repetir_textura: true,
       escala_textura: 1,
-      color_base: '#94a3b8',
+      color_base: '#ffffff', // Neutro — vertex color define el tono
       opacidad: 1,
       rugosidad: 0.7,
       metalicidad: 0.05,
       resaltar: false,
     });
+    // Activar vertex colors para per-object color baking
+    if (opaque?.material) opaque.material.vertexColors = true;
 
     const glass = crearMaterialPBRArquitectonico({
       tipo_material: 'vidrio',
@@ -534,24 +596,26 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       alto: 2,
       repetir_textura: false,
       escala_textura: 1,
-      color_base: perfil.materiales.color_vidrio,
+      color_base: '#ffffff', // Neutro — vertex color define el tono
       opacidad: perfil.materiales.opacidad_vidrio_mampara,
       rugosidad: perfil.materiales.rugosidad_vidrio_mampara,
       metalicidad: 0,
       resaltar: false,
     });
+    if (glass?.material) glass.material.vertexColors = true;
 
     const metal = crearMaterialMarcoArquitectonico('vidrio', false);
+    if (metal?.material) metal.material.vertexColors = true;
 
     return { opaque, glass, metal };
   }, []);
 
-  // Dispose on unmount
+  // Dispose materials on unmount.
+  // NOTE: geometrías mergeadas viven en _moduleCacheResult (module-level)
+  // y NO se disponen en unmount para sobrevivir Strict Mode double-mount.
+  // Se disponen solo cuando se re-computan con un fingerprint diferente.
   useEffect(() => {
     return () => {
-      if (merged) {
-        for (const m of merged) m.geometry.dispose();
-      }
       materials.opaque?.material.dispose();
       materials.opaque?.texturas.forEach((t) => t.dispose());
       materials.glass?.material.dispose();
@@ -559,7 +623,7 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       materials.metal?.material.dispose();
       materials.metal?.texturas.forEach((t) => t.dispose());
     };
-  }, [merged, materials]);
+  }, [materials]);
 
   if (!merged || merged.length === 0) return null;
 
