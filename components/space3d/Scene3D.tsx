@@ -381,6 +381,11 @@ export const Scene: React.FC<SceneProps> = ({
         .map((asiento) => [asiento.objetoId as string, asiento])
     );
   }, [asientosPersistentes]);
+  // Fase 5A: Array estable de objetos builtin para BuiltinWallBatcher (evita .filter() inline en JSX)
+  const objetosBuiltin = useMemo(
+    () => espacioObjetos.filter(obj => obj.catalogo_id && (!obj.modelo_url || obj.modelo_url.startsWith('builtin:'))),
+    [espacioObjetos],
+  );
   const cerramientosZona = useMemo(() => crearParedesCerramientosZonas(zonasEmpresa), [zonasEmpresa]);
   const obstaculosMundo = useMemo(
     () => [
@@ -974,9 +979,7 @@ export const Scene: React.FC<SceneProps> = ({
             }
           />
           {/* Fase 5A: Builtin walls merged into ~3-5 draw calls (was ~330 individual) */}
-          <BuiltinWallBatcher
-            objetos={espacioObjetos.filter(obj => obj.catalogo_id && (!obj.modelo_url || obj.modelo_url.startsWith('builtin:')))}
-          />
+          <BuiltinWallBatcher objetos={objetosBuiltin} />
         </>
       ) : (
         <ObjetosInstanciados

@@ -27,7 +27,7 @@
  */
 
 'use client';
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { mergeBufferGeometries } from 'three-stdlib';
 import { logger } from '@/lib/logger';
@@ -391,9 +391,46 @@ interface BuiltinWallBatcherProps {
 
 // ─── Componente ──────────────────────────────────────────────────────────────
 
+/**
+ * Genera un fingerprint estable basado en IDs de los objetos.
+ * Evita re-computar el merge cuando Scene3D pasa un array con nueva referencia
+ * pero los mismos objetos (causado por .filter() inline en cada render de R3F).
+ */
+const computarFingerprint = (objetos: EspacioObjeto[]): string => {
+  if (objetos.length === 0) return '';
+  // Usar IDs ordenados + count como fingerprint.
+  // Si los objetos cambian (agregan/eliminan/modifican), el fingerprint cambia.
+  const ids = objetos.map((o) => o.id).sort();
+  return `${ids.length}:${ids.join(',')}`;
+};
+
 export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos }) => {
+  // ── Estabilización de referencia ──────────────────────────────────────────
+  // R3F re-renderiza en cada frame. Si el padre pasa un .filter() inline,
+  // useMemo([objetos]) se invalida cada frame porque la referencia es nueva.
+  // Solución: comparar un fingerprint estable y cachear el resultado.
+  const fingerprintRef = useRef<string>('');
+  const cachedMergeRef = useRef<{ geometry: THREE.BufferGeometry; category: MaterialCategory }[] | null>(null);
+
   const merged = useMemo(() => {
-    if (objetos.length === 0) return null;
+    const newFingerprint = computarFingerprint(objetos);
+
+    // Si el fingerprint no cambió, reusar el resultado cacheado
+    if (newFingerprint === fingerprintRef.current && cachedMergeRef.current !== null) {
+      return cachedMergeRef.current;
+    }
+
+    // Dispose geometrías previas antes de re-computar
+    if (cachedMergeRef.current) {
+      for (const m of cachedMergeRef.current) m.geometry.dispose();
+    }
+
+    fingerprintRef.current = newFingerprint;
+
+    if (objetos.length === 0) {
+      cachedMergeRef.current = null;
+      return null;
+    }
 
     const buckets: Record<MaterialCategory, THREE.BufferGeometry[]> = {
       opaque: [],
@@ -467,9 +504,9 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       skipped: skippedCount,
       mergedGroups: results.length,
       drawCalls: results.length,
-      previousDrawCalls: '~330 (individual)',
     });
 
+    cachedMergeRef.current = results;
     return results;
   }, [objetos]);
 
