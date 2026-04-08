@@ -687,13 +687,43 @@ export const StaticObjectBatcher: React.FC<StaticObjectBatcherProps> = ({
   services,
   playerPosition,
 }) => {
-  // Clean up tracked instances + geometry cache on unmount
+  // Clean up tracked instances + geometry cache + MultiBatch state on unmount.
+  //
+  // CRITICAL FIX: When toggling edit mode off→on→off, StaticObjectBatcher
+  // unmounts and remounts, but the MultiBatch singleton (via useSceneOptimization)
+  // retains all groups/instances from the previous mount. New BatchedGroupLoader
+  // instances get registeredRef=false, causing them to call agregarInstancia()
+  // again — adding DUPLICATE instances on top of existing ones. This eventually
+  // exceeds GROUP_MAX_INSTANCES, flooding the console with
+  // "Maximum item count reached" warnings.
+  //
+  // Fix: Reset MultiBatch + MaterialProps + TextureAtlas on unmount so the
+  // next mount starts with a clean slate. The services themselves remain alive
+  // (owned by useSceneOptimization); only their internal state is cleared.
+  //
+  // Ref: Three.js r170 — BatchedMesh capacity is fixed at construction
+  //   https://threejs.org/docs/#api/en/objects/BatchedMesh
   useEffect(() => {
     return () => {
       _trackedInstances.length = 0;
       limpiarGeometryNormCache();
+
+      // Reset MultiBatch + MaterialProps state — dispose all groups/instances but
+      // keep services usable for the next mount cycle.
+      // NOTE: TextureAtlas is NOT reset here because its dispose() nullifies
+      // the internal canvas/ctx, making it non-reusable. The atlas retains its
+      // texture data across mount cycles and is re-used via tieneTextura() checks.
+      if (services.isReady) {
+        const stats = services.multiBatch.obtenerEstadisticas();
+        log.info('StaticObjectBatcher unmounting — resetting MultiBatch', {
+          groupCount: stats.groupCount,
+          totalInstances: stats.totalInstances,
+        });
+        services.multiBatch.limpiar();
+        services.materialProps.limpiar();
+      }
     };
-  }, []);
+  }, [services]);
 
   if (!services.isReady) return null;
 

@@ -446,16 +446,31 @@ interface BuiltinWallBatcherProps {
 // ─── Componente ──────────────────────────────────────────────────────────────
 
 /**
- * Genera un fingerprint estable basado en IDs de los objetos.
+ * Genera un fingerprint estable basado en IDs y propiedades geométricas.
  * Evita re-computar el merge cuando Scene3D pasa un array con nueva referencia
  * pero los mismos objetos (causado por .filter() inline en cada render de R3F).
+ *
+ * CRITICAL FIX: El fingerprint anterior solo usaba IDs, ignorando propiedades
+ * como built_in_geometry, built_in_color y dimensiones. Esto causaba que el
+ * cache del módulo retornara geometrías sin vidrio cuando las propiedades
+ * se cargaban asincrónicamente después de los IDs (Supabase realtime).
+ *
+ * Ahora incluye built_in_geometry + built_in_color + dimensiones para que
+ * cualquier cambio en la configuración geométrica invalide el cache.
  */
 const computarFingerprint = (objetos: EspacioObjeto[]): string => {
   if (objetos.length === 0) return '';
-  // Usar IDs ordenados + count como fingerprint.
-  // Si los objetos cambian (agregan/eliminan/modifican), el fingerprint cambia.
-  const ids = objetos.map((o) => o.id).sort();
-  return `${ids.length}:${ids.join(',')}`;
+  // Include configuracion_geometria hash — affects aberturas (glass panels).
+  // JSON.stringify is stable enough for fingerprinting (same keys = same string).
+  const parts = objetos
+    .map((o) => {
+      const configHash = o.configuracion_geometria
+        ? JSON.stringify(o.configuracion_geometria)
+        : '';
+      return `${o.id}|${o.built_in_geometry ?? ''}|${o.built_in_color ?? ''}|${o.ancho ?? 0}|${o.alto ?? 0}|${o.profundidad ?? 0}|${configHash}`;
+    })
+    .sort();
+  return `${parts.length}:${parts.join(',')}`;
 };
 
 /**
@@ -567,6 +582,12 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       skipped: skippedCount,
       mergedGroups: results.length,
       drawCalls: results.length,
+      categories: results.map((r) => r.category),
+      bucketSizes: {
+        opaque: buckets.opaque.length,
+        glass: buckets.glass.length,
+        metal: buckets.metal.length,
+      },
     });
 
     _moduleCacheResult = results;
@@ -621,10 +642,17 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
     return { opaque, glass, metal };
   }, []);
 
-  // Dispose materials on unmount.
-  // NOTE: geometrías mergeadas viven en _moduleCacheResult (module-level)
-  // y NO se disponen en unmount para sobrevivir Strict Mode double-mount.
-  // Se disponen solo cuando se re-computan con un fingerprint diferente.
+  // Dispose materials AND invalidate module geometry cache on unmount.
+  //
+  // CRITICAL FIX: Previously, geometries survived unmount via module cache
+  // to handle React Strict Mode double-mount. However, this caused stale
+  // glass geometry when the batcher unmounts (edit mode) and remounts
+  // (exit edit mode) — if the parent re-filters objects or data changes
+  // between mounts. Now we invalidate the cache on unmount so the next
+  // mount always re-computes fresh geometry with current object data.
+  //
+  // Strict Mode double-mount is handled by the fingerprint check — the
+  // second mount computes the same fingerprint and gets the same result.
   useEffect(() => {
     return () => {
       materials.opaque?.material.dispose();
@@ -633,6 +661,14 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       materials.glass?.texturas.forEach((t) => t.dispose());
       materials.metal?.material.dispose();
       materials.metal?.texturas.forEach((t) => t.dispose());
+
+      // Invalidate module cache — force re-computation on next mount.
+      // Dispose cached geometries to free GPU memory.
+      if (_moduleCacheResult) {
+        for (const m of _moduleCacheResult) m.geometry.dispose();
+      }
+      _moduleCacheFingerprint = '';
+      _moduleCacheResult = null;
     };
   }, [materials]);
 

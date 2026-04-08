@@ -167,11 +167,33 @@ export const useAvatarCatalog = (): UseAvatarCatalogReturn => {
       setAvailableObjects(objetos);
       setEquippedAvatarId(avatarEquipadoId);
 
-      // Precarga de imágenes
+      // Precarga de imágenes — avatares
       avatares.forEach((avatar) => {
         preloadImageAsset(avatar.thumbnail_url);
         preloadImageAsset(avatar.modelo_url);
         preloadImageAsset(avatar.textura_url);
+      });
+
+      // Precarga de imágenes y modelos GLTF — objetos de catálogo.
+      //
+      // CRITICAL FIX: Los avatares se precargaban aquí pero los objetos NO,
+      // causando que el modal mostrara objetos vacíos hasta que el usuario
+      // hacía clic en un botón de categoría (Mobiliario/Construcción/Todos).
+      // El clic en categoría disparaba un re-render que finalmente cargaba
+      // los thumbnails. Ahora precargamos thumbnails y modelos GLTF de objetos
+      // en paralelo con los avatares para que estén visibles inmediatamente.
+      //
+      // Ref: drei useGLTF.preload — https://drei.docs.pmnd.rs/loaders/gltf#useGLTF
+      objetos.forEach((objeto) => {
+        preloadImageAsset(objeto.thumbnail_url);
+        // Precargar modelo GLTF si tiene URL válida (no builtin)
+        if (objeto.modelo_url && !objeto.modelo_url.startsWith('builtin:')) {
+          try {
+            useGLTF.preload(objeto.modelo_url);
+          } catch {
+            // Ignorar errores de precarga — el modelo se cargará on-demand
+          }
+        }
       });
 
       // Si existe avatar equipado, seleccionarlo
