@@ -183,23 +183,60 @@ function cloneMaterialForBatch(material: THREE.Material, forColorGroup: boolean)
 // ─── Geometry attribute normalization ─────────────────────────────────────────
 
 /**
+ * Cache de geometrías normalizadas por UUID original.
+ *
+ * Problema: ensureConsistentAttributes() clonaba cada geometría en cada llamada,
+ * generando ~570 geometrías/segundo durante movimiento (4,724 en 8s de exploración).
+ * Aunque se disponen después, el "geometry churn" presiona el GPU memory allocator.
+ *
+ * Solución: Cache keyed por UUID del BufferGeometry original.
+ * Si la geometría ya fue normalizada, retorna el clon cacheado.
+ * Reduce el churn a ~0 para geometrías ya procesadas (solo clona la primera vez).
+ *
+ * Ref: https://threejs.org/docs/#api/en/core/BufferGeometry (uuid property)
+ * Ref: Object pooling pattern — https://discoverthreejs.com/tips-and-tricks/
+ */
+const _geometryNormCache = new Map<string, THREE.BufferGeometry>();
+
+/**
  * Ensure geometry has position, normal, and uv attributes.
  * Required by BatchedMesh r170 — all geometries in same batch must match.
+ *
+ * Uses a cache to avoid re-cloning the same geometry multiple times.
+ * The cache is keyed by the original geometry's UUID (stable across renders).
  */
 function ensureConsistentAttributes(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
-  const clone = geometry.clone();
-  const vertexCount = clone.getAttribute('position')?.count ?? 0;
+  const cached = _geometryNormCache.get(geometry.uuid);
+  if (cached) return cached.clone();
 
-  if (!clone.getAttribute('normal')) {
-    clone.computeVertexNormals();
+  const normalized = geometry.clone();
+  const vertexCount = normalized.getAttribute('position')?.count ?? 0;
+
+  if (!normalized.getAttribute('normal')) {
+    normalized.computeVertexNormals();
   }
 
-  if (!clone.getAttribute('uv')) {
+  if (!normalized.getAttribute('uv')) {
     const uvArray = new Float32Array(vertexCount * 2);
-    clone.setAttribute('uv', new THREE.BufferAttribute(uvArray, 2));
+    normalized.setAttribute('uv', new THREE.BufferAttribute(uvArray, 2));
   }
 
-  return clone;
+  // Guardar la versión normalizada en cache (la "plantilla").
+  // Cada consumidor recibe un .clone() de esta plantilla.
+  _geometryNormCache.set(geometry.uuid, normalized);
+
+  return normalized.clone();
+}
+
+/**
+ * Limpia el cache de geometrías normalizadas.
+ * Llamar cuando se desmonte el batcher o cambien los objetos.
+ */
+function limpiarGeometryNormCache(): void {
+  for (const geo of _geometryNormCache.values()) {
+    geo.dispose();
+  }
+  _geometryNormCache.clear();
 }
 
 // ─── UV remapping for texture atlas (Fase 4B) ───────────────────────────────
@@ -650,10 +687,11 @@ export const StaticObjectBatcher: React.FC<StaticObjectBatcherProps> = ({
   services,
   playerPosition,
 }) => {
-  // Clean up tracked instances on unmount
+  // Clean up tracked instances + geometry cache on unmount
   useEffect(() => {
     return () => {
       _trackedInstances.length = 0;
+      limpiarGeometryNormCache();
     };
   }, []);
 

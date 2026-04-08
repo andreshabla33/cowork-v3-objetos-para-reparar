@@ -132,6 +132,16 @@ export function adaptiveConfigFromTier(
 ): AdaptiveRenderConfig {
   const deviceDpr = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
 
+  // Determinar si la GPU es integrada para limitar DPR.
+  // GPU integradas (Intel Iris/UHD, Apple M-series, Mali, Adreno) tienen
+  // VRAM compartida y bandwidth limitado — DPR > 1.25 causa fragment-bound.
+  // Ref: https://threejs.org/docs/#api/en/renderers/WebGLRenderer.setPixelRatio
+  // Ref: https://r3f.docs.pmnd.rs/advanced/scaling-performance (AdaptiveDpr)
+  const gpuInfo = getGpuInfoSync();
+  const esGpuIntegrada = gpuInfo
+    ? gpuInfo.estimatedVRAM === 'medium' || gpuInfo.estimatedVRAM === 'low'
+    : false;
+
   if (qualityOverride === 'low' || tier === 0) {
     return {
       shadows: false,
@@ -159,11 +169,14 @@ export function adaptiveConfigFromTier(
   }
 
   if (tier === 2) {
+    // Tier 2: GPU integrada potente o dedicada entry-level.
+    // Limitar DPR a 1.5 (antes: 2) para integradas.
+    const maxDprTier2 = esGpuIntegrada ? Math.min(deviceDpr, 1.5) : Math.min(deviceDpr, 2);
     return {
       shadows: true,
       antialias: true,
-      dpr: Math.min(deviceDpr, 2),
-      maxDpr: 2,
+      dpr: maxDprTier2,
+      maxDpr: maxDprTier2,
       minDpr: 1,
       powerPreference: batterySaver ? 'low-power' : 'default',
       toneMappingExposure: 1.1,
@@ -172,17 +185,25 @@ export function adaptiveConfigFromTier(
   }
 
   // Tier 3 (WebGPU capable)
+  // DPR: GPU integrada (Intel Iris Xe, Apple M-series) → cap 1.25.
+  //   Con DPR 1.5, el fragment shader procesa 2.25× más pixels que DPR 1.0.
+  //   Con DPR 1.25, son 1.56× — un 30% menos de carga sin diferencia visual perceptible.
+  //   GPU dedicada → usar deviceDpr nativo (hasta 2.0).
+  // Ref: https://threejs.org/docs/#api/en/renderers/WebGLRenderer.setPixelRatio
+  // Ref: https://r3f.docs.pmnd.rs/advanced/scaling-performance
+  //
   // toneMappingExposure reducido de 1.2 → 1.05:
   // Con directionalLight 1.2 + ambient 0.7 = 1.9x total lighting,
   // exposure 1.2 amplifica Fresnel highlights causando white-out en
   // objetos con metalness > 0 (GLTF importados). 1.05 preserva brillo
   // sin saturar specular en ángulos rasantes.
   // Ref: https://threejs.org/docs/#api/en/renderers/WebGLRenderer.toneMappingExposure
+  const maxDprTier3 = esGpuIntegrada ? Math.min(deviceDpr, 1.25) : Math.min(deviceDpr, 2);
   return {
     shadows: true,
     antialias: true,
-    dpr: deviceDpr,
-    maxDpr: deviceDpr,
+    dpr: maxDprTier3,
+    maxDpr: maxDprTier3,
     minDpr: 1,
     powerPreference: batterySaver ? 'default' : 'high-performance',
     toneMappingExposure: 1.05,
