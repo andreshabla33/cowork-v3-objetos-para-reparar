@@ -16,6 +16,9 @@ export { GestionarPropiedadesMaterialBatchUseCase } from './GestionarPropiedades
 // Geometry cache
 export { GestionarGeometryCacheUseCase } from './GestionarGeometryCacheUseCase';
 
+// Fase 5A/5B — Builtin wall geometry merge + batch
+export { GenerarGeometriasMergeadasBuiltinUseCase } from './GenerarGeometriasMergeadasBuiltinUseCase';
+
 // Chat
 export { CargarGruposChatUseCase } from './CargarGruposChatUseCase';
 export { CargarMensajesChatUseCase, type ResultadoCargarMensajes } from './CargarMensajesChatUseCase';

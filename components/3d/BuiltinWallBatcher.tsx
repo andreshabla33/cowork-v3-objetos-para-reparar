@@ -1,604 +1,62 @@
 /**
  * @module BuiltinWallBatcher
  *
- * Fase 5A: Merge-batcher para objetos builtin (paredes procedurales).
+ * Fase 5A/5B: Merge-batcher para objetos builtin (paredes procedurales).
  *
  * Problema: 221 paredes builtin × 1-11 meshes cada una = ~330 draw calls.
- * Solución: Mergear geometrías por tipo de material → ~5 draw calls totales.
+ * Solución: Mergear geometrías por tipo de material → ~3-5 draw calls totales.
  *
- * Estrategia:
- *   1. Agrupar objetos por tipo de geometría (wall-panel, wall-glass, box, etc.)
- *   2. Para cada objeto, generar geometría procedural (misma lógica que GeometriaProceduralObjeto3D)
- *   3. Transformar cada geometría a world-space (posición + rotación del objeto)
- *   4. Mergear todas las geometrías por categoría de material:
- *      - "opaque": cuerpo de paredes (PBR)
- *      - "glass": paneles de vidrio (transparente)
- *      - "metal": marcos, remates, montantes
- *   5. Renderizar 1 mesh por categoría
- *
- * Arquitectura Clean:
- *   - Lee datos de EspacioObjeto (domain entity)
- *   - Reutiliza funciones de dominio (normalizarConfiguracionGeometricaObjeto)
- *   - Reutiliza fábricas de materiales (infrastructure)
- *   - Presentation layer: solo montaje R3F
+ * Clean Architecture — Presentation layer:
+ *   - Delega generación de geometrías a GenerarGeometriasMergeadasBuiltinUseCase
+ *   - Delega creación de materiales a fabricaMaterialesArquitectonicos (lib/rendering)
+ *   - Solo contiene hooks R3F, montaje JSX, y runtime diagnostic de vidrio
  *
  * Ref: Three.js r170 — BufferGeometryUtils.mergeGeometries
- * Ref: Three.js r170 — ExtrudeGeometry para paredes con aberturas
+ * Ref: Three.js r170 — MeshStandardMaterial (transparent, depthWrite)
  */
 
 'use client';
-import React, { useMemo, useEffect } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
 import * as THREE from 'three';
-import { mergeBufferGeometries } from 'three-stdlib';
+import { useFrame } from '@react-three/fiber';
 import { logger } from '@/lib/logger';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
-import {
-  normalizarConfiguracionGeometricaObjeto,
-  type ConfiguracionGeometricaObjeto,
-  type AberturaArquitectonica,
-} from '@/src/core/domain/entities/objetosArquitectonicos';
 import { resolverPerfilVisualArquitectonico } from '@/src/core/domain/entities/estilosVisualesArquitectonicos';
 import {
   crearMaterialMarcoArquitectonico,
   crearMaterialPBRArquitectonico,
 } from '@/lib/rendering/fabricaMaterialesArquitectonicos';
-import { obtenerDimensionesObjetoRuntime } from '../space3d/objetosRuntime';
+import { GeometriaProceduralParedesAdapter } from '@/src/core/infrastructure/adapters/GeometriaProceduralParedesAdapter';
+import { GenerarGeometriasMergeadasBuiltinUseCase } from '@/src/core/application/usecases/GenerarGeometriasMergeadasBuiltinUseCase';
+import type { MaterialCategory } from '@/src/core/domain/ports/IBuiltinWallGeometryService';
 
 const log = logger.child('BuiltinWallBatcher');
 
-// ─── Tipos internos ──────────────────────────────────────────────────────────
+// ─── Singleton Use Case (module-level, stateless except cache) ──────────────
+const geometryAdapter = new GeometriaProceduralParedesAdapter();
+const mergeUseCase = new GenerarGeometriasMergeadasBuiltinUseCase(geometryAdapter);
 
-interface AberturaRenderizable extends AberturaArquitectonica {
-  izquierda: number;
-  derecha: number;
-  inferior: number;
-  superior: number;
-}
-
-/** Categorías de material para merge */
-type MaterialCategory = 'opaque' | 'glass' | 'metal';
-
-/** Geometría transformada lista para merge */
-interface TransformedGeometry {
-  geometry: THREE.BufferGeometry;
-  category: MaterialCategory;
-}
-
-/**
- * Atributos permitidos en geometrías normalizadas para merge.
- * Incluye 'color' para vertex colors (per-object color baking).
- *
- * @see https://threejs.org/docs/#api/en/materials/Material.vertexColors
- * @see https://threejs.org/docs/#examples/en/utils/BufferGeometryUtils.mergeGeometries
- */
-const ALLOWED_ATTRIBUTES: ReadonlySet<string> = new Set(['position', 'normal', 'uv', 'color']);
-
-/** Cache de THREE.Color para evitar crear objetos temporales en hot path */
-const _tmpColor = new THREE.Color();
-
-/**
- * Normaliza una BufferGeometry para que sea compatible con mergeBufferGeometries().
- *
- * Three.js r170 requiere que TODAS las geometrías pasadas a mergeBufferGeometries
- * tengan exactamente los mismos atributos (mismo nombre, mismo tipo, mismo itemSize)
- * y que sean todas indexed o todas non-indexed.
- *
- * ExtrudeGeometry (paredes con aberturas) genera geometría indexed con groups internos
- * y puede tener atributos adicionales. BoxGeometry genera indexed sin groups.
- * Mezclarlas directamente falla.
- *
- * Solución: convertir toda geometría a non-indexed, retener solo position/normal/uv/color,
- * limpiar groups y recomputar normales.
- *
- * @param geo           Geometría fuente (será clonada/convertida, no mutada)
- * @param vertexColor   Color a inyectar como vertex color en TODOS los vértices.
- *                      Permite preservar per-object color tras merge.
- *
- * @see https://threejs.org/docs/#examples/en/utils/BufferGeometryUtils.mergeGeometries
- * @see https://threejs.org/manual/en/custom-buffergeometry.html
- */
-const normalizarGeometriaParaMerge = (
-  geo: THREE.BufferGeometry,
-  vertexColor?: string,
-  skipVertexColor = false,
-): THREE.BufferGeometry => {
-  // 1. Convertir a non-indexed (expande vértices compartidos)
-  const nonIndexed = geo.index ? geo.toNonIndexed() : geo.clone();
-
-  // 2. Eliminar atributos que no estén en el set permitido
-  const attrNames = Object.keys(nonIndexed.attributes);
-  for (const name of attrNames) {
-    if (!ALLOWED_ATTRIBUTES.has(name)) {
-      nonIndexed.deleteAttribute(name);
-    }
-  }
-
-  const vertCount = nonIndexed.getAttribute('position').count;
-
-  // 3. Inyectar vertex color — cada vértice recibe el color del objeto original
-  //    Esto permite que mergeBufferGeometries preserve colores per-objeto
-  //    en un solo mesh con material.vertexColors = true.
-  //    Skip para glass: el material de vidrio usa color_base directo, no vertexColors.
-  //    Ref: https://threejs.org/docs/#api/en/materials/Material.vertexColors
-  if (!skipVertexColor) {
-    if (vertexColor) {
-      _tmpColor.set(vertexColor);
-    } else {
-      _tmpColor.set(0x94a3b8); // fallback gris neutro
-    }
-    // Convertir de sRGB a linear para que el renderer produzca el color correcto
-    _tmpColor.convertSRGBToLinear();
-    const colorArray = new Float32Array(vertCount * 3);
-    for (let i = 0; i < vertCount; i++) {
-      colorArray[i * 3] = _tmpColor.r;
-      colorArray[i * 3 + 1] = _tmpColor.g;
-      colorArray[i * 3 + 2] = _tmpColor.b;
-    }
-    nonIndexed.setAttribute('color', new THREE.Float32BufferAttribute(colorArray, 3));
-  } else {
-    // Eliminar color attribute si existía (para compatibilidad de merge)
-    if (nonIndexed.hasAttribute('color')) {
-      nonIndexed.deleteAttribute('color');
-    }
-  }
-
-  // 4. Asegurar que exista 'uv' — si no existe, crear uno trivial (0,0) por vértice
-  if (!nonIndexed.hasAttribute('uv')) {
-    nonIndexed.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(vertCount * 2), 2));
-  }
-
-  // 5. Asegurar que exista 'normal'
-  if (!nonIndexed.hasAttribute('normal')) {
-    nonIndexed.computeVertexNormals();
-  }
-
-  // 6. Limpiar groups internos (residuo de ExtrudeGeometry multi-material)
-  nonIndexed.clearGroups();
-
-  // 7. Eliminar index residual (toNonIndexed() ya lo quita, pero por seguridad)
-  if (nonIndexed.index) {
-    nonIndexed.setIndex(null);
-  }
-
-  return nonIndexed;
-};
-
-// ─── Helpers de geometría (extraídos de GeometriaProceduralObjeto3D) ─────────
-
-const clamp = (valor: number, min: number, max: number) => Math.min(max, Math.max(min, valor));
-
-const crearGeneradorUVPared = (ancho: number, alto: number) => ({
-  generateTopUV: (_geo: THREE.ExtrudeGeometry, verts: number[], iA: number, iB: number, iC: number) => {
-    const read = (i: number) => new THREE.Vector2(
-      (verts[i * 3] + ancho / 2) / Math.max(ancho, 0.001),
-      (verts[i * 3 + 1] + alto / 2) / Math.max(alto, 0.001),
-    );
-    return [read(iA), read(iB), read(iC)];
-  },
-  generateSideWallUV: (_geo: THREE.ExtrudeGeometry, verts: number[], iA: number, iB: number, iC: number, iD: number) => {
-    const pts = [iA, iB, iC, iD].map((i) => ({ x: verts[i * 3], y: verts[i * 3 + 1], z: verts[i * 3 + 2] }));
-    const w = Math.max(Math.abs(pts[0].x - pts[1].x), Math.abs(pts[0].y - pts[1].y), 0.001);
-    const d = Math.max(...pts.map((p) => p.z)) - Math.min(...pts.map((p) => p.z)) || 0.001;
-    return [new THREE.Vector2(0, 0), new THREE.Vector2(w, 0), new THREE.Vector2(w, d), new THREE.Vector2(0, d)];
-  },
-});
-
-const normalizarAberturas = (
-  aberturas: AberturaArquitectonica[],
-  ancho: number,
-  alto: number,
-): AberturaRenderizable[] => {
-  const margen = 0.08;
-  return aberturas.map((ab) => {
-    const aw = clamp(ab.ancho, 0.2, Math.max(0.2, ancho - margen * 2));
-    const ah = clamp(ab.alto, 0.2, Math.max(0.2, alto - margen * 2));
-    const izq = clamp(ab.posicion_x - aw / 2, -ancho / 2 + margen, ancho / 2 - margen - aw);
-    const inf = clamp(ab.posicion_y - ah / 2, -alto / 2 + margen, alto / 2 - margen - ah);
-    return { ...ab, ancho: aw, alto: ah, izquierda: izq, derecha: izq + aw, inferior: inf, superior: inf + ah };
-  });
-};
-
-const crearHuecoAbertura = (ab: AberturaRenderizable) => {
-  const hueco = new THREE.Path();
-  if (ab.forma === 'arco') {
-    const radio = Math.min(ab.ancho / 2, ab.alto * 0.4);
-    const altArco = ab.superior - radio;
-    const cx = (ab.izquierda + ab.derecha) / 2;
-    hueco.moveTo(ab.izquierda, ab.inferior);
-    hueco.lineTo(ab.izquierda, altArco);
-    hueco.absarc(cx, altArco, radio, Math.PI, 0, true);
-    hueco.lineTo(ab.derecha, ab.inferior);
-    hueco.closePath();
-  } else {
-    hueco.moveTo(ab.izquierda, ab.inferior);
-    hueco.lineTo(ab.izquierda, ab.superior);
-    hueco.lineTo(ab.derecha, ab.superior);
-    hueco.lineTo(ab.derecha, ab.inferior);
-    hueco.closePath();
-  }
-  return hueco;
-};
-
-/** Crear geometría de pared extruida con aberturas (huecos). */
-const crearGeometriaPared = (
-  ancho: number, alto: number, profundidad: number,
-  aberturas: AberturaRenderizable[],
-): THREE.BufferGeometry => {
-  const shape = new THREE.Shape();
-  shape.moveTo(-ancho / 2, -alto / 2);
-  shape.lineTo(ancho / 2, -alto / 2);
-  shape.lineTo(ancho / 2, alto / 2);
-  shape.lineTo(-ancho / 2, alto / 2);
-  shape.lineTo(-ancho / 2, -alto / 2);
-  aberturas.forEach((ab) => shape.holes.push(crearHuecoAbertura(ab)));
-  const geo = new THREE.ExtrudeGeometry(shape, {
-    depth: profundidad,
-    bevelEnabled: false,
-    steps: 1,
-    curveSegments: 24,
-    UVGenerator: crearGeneradorUVPared(ancho, alto),
-  });
-  geo.translate(0, 0, -profundidad / 2);
-  geo.computeVertexNormals();
-  return geo;
-};
-
-/**
- * Genera todas las geometrías de un objeto builtin en world-space,
- * clasificadas por categoría de material.
- */
-const generarGeometriasObjeto = (
-  objeto: EspacioObjeto,
-  config: ConfiguracionGeometricaObjeto,
-): TransformedGeometry[] => {
-  const dims = obtenerDimensionesObjetoRuntime(objeto);
-  const ancho = Math.max(dims.ancho, 0.05);
-  const alto = Math.max(dims.alto, 0.05);
-  const prof = Math.max(dims.profundidad, 0.05);
-  const aberturas = config.tipo_geometria === 'pared'
-    ? normalizarAberturas(config.aberturas, ancho, alto) : [];
-
-  const geoLegacy = (objeto.built_in_geometry || '').trim().toLowerCase();
-  const esMampara = geoLegacy === 'wall-glass';
-  const esVentana = geoLegacy === 'wall-window' || geoLegacy === 'wall-window-double';
-  const esArco = geoLegacy === 'wall-arch';
-  const esPuerta = geoLegacy === 'wall-door' || geoLegacy === 'wall-door-double';
-  const esDivision = esMampara || esVentana;
-  const esMuro = esVentana || esArco || esPuerta;
-
-  const perfil = resolverPerfilVisualArquitectonico(config.estilo_visual ?? 'corporativo');
-
-  // World-space transform matrix
-  const mat4 = new THREE.Matrix4();
-  mat4.makeRotationY(objeto.rotacion_y || 0);
-  mat4.setPosition(objeto.posicion_x, objeto.posicion_y, objeto.posicion_z);
-
-  // Resolver colores per-categoría basándose en el perfil visual y config del objeto
-  const colorOpaque = config.color_base ?? '#94a3b8';
-  const colorGlass = perfil.materiales.color_vidrio ?? '#e0f2fe';
-  const colorMetal = perfil.materiales.color_metal ?? '#a8a29e';
-
-  const results: TransformedGeometry[] = [];
-
-  const addGeo = (geo: THREE.BufferGeometry, category: MaterialCategory) => {
-    // Aplicar transformación world-space ANTES de normalizar
-    geo.applyMatrix4(mat4);
-    // Resolver color según categoría — cada vértice recibe este color
-    const color = category === 'glass' ? colorGlass
-      : category === 'metal' ? colorMetal
-        : colorOpaque;
-    // Glass: no usar vertex colors — el material usa color_base directo del perfil.
-    // Opaque/Metal: vertex colors per-object para preservar colores tras merge.
-    const skipVC = category === 'glass';
-    const normalized = normalizarGeometriaParaMerge(geo, color, skipVC);
-    // Dispose la geometría original si es diferente a la normalizada
-    if (normalized !== geo) geo.dispose();
-    results.push({ geometry: normalized, category });
-  };
-
-  // ── Cuerpo principal ──
-  if (config.tipo_geometria === 'pared') {
-    addGeo(crearGeometriaPared(ancho, alto, prof, aberturas), 'opaque');
-  } else if (config.tipo_geometria === 'caja') {
-    addGeo(new THREE.BoxGeometry(ancho, alto, prof), 'opaque');
-  } else if (config.tipo_geometria === 'cilindro') {
-    addGeo(new THREE.CylinderGeometry(ancho / 2, ancho / 2, alto, 32), 'opaque');
-  } else if (config.tipo_geometria === 'plano') {
-    addGeo(new THREE.PlaneGeometry(ancho, alto), 'opaque');
-  }
-
-  // ── Remates metálicos de división interior (mamparas/ventanas) ──
-  if (config.tipo_geometria === 'pared' && esDivision && perfil.render.mostrar_remates_division) {
-    const aberturaPrincipal = aberturas[0];
-    if (aberturaPrincipal) {
-      const altRemate = clamp(aberturaPrincipal.inferior, -alto / 2 + 0.18, alto / 2 - 0.24);
-      const gRemate = new THREE.BoxGeometry(
-        Math.max(ancho - 0.02, 0.08),
-        perfil.render.espesor_remate_division,
-        Math.min(Math.max(prof * 0.82, 0.022), 0.05)
-      );
-      gRemate.translate(0, altRemate, 0);
-      addGeo(gRemate, 'metal');
-
-      const gCabezal = new THREE.BoxGeometry(
-        Math.max(ancho - 0.02, 0.08),
-        perfil.render.espesor_cabezal_division,
-        Math.min(Math.max(prof * 0.78, 0.02), 0.045)
-      );
-      gCabezal.translate(0, alto / 2 - 0.03, 0);
-      addGeo(gCabezal, 'metal');
-    }
-  }
-
-  // ── Montantes laterales mampara ──
-  if (config.tipo_geometria === 'pared' && esMampara && perfil.render.mostrar_montantes_laterales_mampara) {
-    const mw = perfil.render.espesor_montante_lateral;
-    const mh = Math.max(alto - 0.02, 0.2);
-    const md = Math.min(Math.max(prof * 0.76, 0.02), 0.04);
-    const gL = new THREE.BoxGeometry(mw, mh, md);
-    gL.translate(-ancho / 2 + 0.022, 0, 0);
-    addGeo(gL, 'metal');
-    const gR = new THREE.BoxGeometry(mw, mh, md);
-    gR.translate(ancho / 2 - 0.022, 0, 0);
-    addGeo(gR, 'metal');
-  }
-
-  // ── Bandas perimetrales (muros con ventana/puerta) ──
-  if (config.tipo_geometria === 'pared' && esMuro && aberturas[0] && perfil.render.mostrar_bandas_perimetrales) {
-    const ab = aberturas[0];
-    const altPecho = clamp(ab.inferior - 0.045, -alto / 2 + 0.08, alto / 2 - 0.12);
-    const gPecho = new THREE.BoxGeometry(
-      Math.max(ancho - 0.04, 0.12),
-      perfil.render.grosor_banda_perimetral_inferior,
-      Math.min(Math.max(prof * 0.86, 0.03), 0.075)
-    );
-    gPecho.translate(0, altPecho, 0);
-    addGeo(gPecho, 'opaque');
-
-    const altBanda = clamp(ab.superior + 0.035, -alto / 2 + 0.24, alto / 2 - 0.05);
-    const gBanda = new THREE.BoxGeometry(
-      Math.max(ancho - 0.02, 0.12),
-      perfil.render.grosor_banda_perimetral_superior,
-      Math.min(Math.max(prof * 0.86, 0.03), 0.07)
-    );
-    gBanda.translate(0, altBanda, 0);
-    addGeo(gBanda, 'opaque');
-  }
-
-  // ── Marcos + vidrio de aberturas ──
-  if (config.tipo_geometria === 'pared') {
-    for (const ab of aberturas) {
-      const frameDepth = clamp(Math.max(prof * 0.92, ab.profundidad_marco), 0.02, Math.max(prof, 0.02));
-      const grosorBase = clamp(ab.grosor_marco, 0.02, Math.min(ab.ancho * 0.2, ab.alto * 0.2));
-      const grosor = esMampara
-        ? Math.min(grosorBase, perfil.render.grosor_perfil_mampara_max)
-        : esVentana
-          ? clamp(grosorBase, perfil.render.grosor_perfil_ventana_min, perfil.render.grosor_perfil_ventana_max)
-          : grosorBase;
-      const anchoInt = Math.max(0.08, ab.ancho - grosor * 2);
-      const altoInt = Math.max(0.08, ab.alto - grosor * 2);
-      const cx = (ab.izquierda + ab.derecha) / 2;
-      const cy = (ab.inferior + ab.superior) / 2;
-      const usarMetal = esMampara || ab.tipo === 'ventana';
-      const matCat: MaterialCategory = usarMetal ? 'metal' : 'opaque';
-
-      const altArranque = ab.superior - Math.min(ab.ancho / 2, ab.alto * 0.4);
-      const altJamba = Math.max(0.08, altArranque - ab.inferior + grosor);
-
-      // Dintel superior (no en arco)
-      if (ab.forma !== 'arco') {
-        const gTop = new THREE.BoxGeometry(ab.ancho, grosor, frameDepth);
-        gTop.translate(cx, ab.superior - grosor / 2, 0);
-        addGeo(gTop, matCat);
-      }
-      // Alféizar (ventana o cerramiento)
-      if (ab.tipo === 'ventana' || ab.insertar_cerramiento) {
-        const gBot = new THREE.BoxGeometry(ab.ancho, grosor, frameDepth);
-        gBot.translate(cx, ab.inferior + grosor / 2, 0);
-        addGeo(gBot, matCat);
-      }
-      // Jambas laterales
-      const jH = ab.forma === 'arco' ? altJamba : ab.alto;
-      const jY = ab.forma === 'arco' ? (ab.inferior + altArranque) / 2 : cy;
-      const gJL = new THREE.BoxGeometry(grosor, jH, frameDepth);
-      gJL.translate(ab.izquierda + grosor / 2, jY, 0);
-      addGeo(gJL, matCat);
-      const gJR = new THREE.BoxGeometry(grosor, jH, frameDepth);
-      gJR.translate(ab.derecha - grosor / 2, jY, 0);
-      addGeo(gJR, matCat);
-
-      // Vidrio
-      if (ab.tipo === 'ventana') {
-        const espesorVidrio = Math.min(frameDepth * 0.22, 0.025);
-        const gGlass = new THREE.BoxGeometry(anchoInt, altoInt, espesorVidrio);
-        gGlass.translate(cx, cy, 0);
-        addGeo(gGlass, 'glass');
-
-        // Montante central (mamparas/ventanas anchas)
-        if ((esMampara || esVentana) && anchoInt > 1.05) {
-          const gMont = new THREE.BoxGeometry(grosor * 0.7, altoInt, Math.min(frameDepth * 0.92, 0.04));
-          gMont.translate(cx, cy, 0);
-          addGeo(gMont, 'metal');
-        }
-      }
-
-      // Hoja de puerta
-      if (ab.tipo === 'puerta' && ab.insertar_cerramiento && ab.forma !== 'arco' && !esPuerta) {
-        const espesorHoja = Math.max(0.02, Math.min(prof * 0.45, 0.05));
-        const zPuerta = prof / 2 - frameDepth / 2;
-        const gDoor = new THREE.BoxGeometry(anchoInt, altoInt, espesorHoja);
-        gDoor.translate(cx, cy, zPuerta);
-        addGeo(gDoor, 'opaque');
-      }
-    }
-  }
-
-  return results;
-};
-
-// ─── Props del componente ────────────────────────────────────────────────────
+// ─── Props ──────────────────────────────────────────────────────────────────
 
 interface BuiltinWallBatcherProps {
   /** Objetos builtin (modelo_url starts with 'builtin:') */
   objetos: EspacioObjeto[];
 }
 
-// ─── Componente ──────────────────────────────────────────────────────────────
-
-/**
- * Genera un fingerprint estable basado en IDs y propiedades geométricas.
- * Evita re-computar el merge cuando Scene3D pasa un array con nueva referencia
- * pero los mismos objetos (causado por .filter() inline en cada render de R3F).
- *
- * CRITICAL FIX: El fingerprint anterior solo usaba IDs, ignorando propiedades
- * como built_in_geometry, built_in_color y dimensiones. Esto causaba que el
- * cache del módulo retornara geometrías sin vidrio cuando las propiedades
- * se cargaban asincrónicamente después de los IDs (Supabase realtime).
- *
- * Ahora incluye built_in_geometry + built_in_color + dimensiones para que
- * cualquier cambio en la configuración geométrica invalide el cache.
- */
-const computarFingerprint = (objetos: EspacioObjeto[]): string => {
-  if (objetos.length === 0) return '';
-  // Include configuracion_geometria hash — affects aberturas (glass panels).
-  // JSON.stringify is stable enough for fingerprinting (same keys = same string).
-  const parts = objetos
-    .map((o) => {
-      const configHash = o.configuracion_geometria
-        ? JSON.stringify(o.configuracion_geometria)
-        : '';
-      return `${o.id}|${o.built_in_geometry ?? ''}|${o.built_in_color ?? ''}|${o.ancho ?? 0}|${o.alto ?? 0}|${o.profundidad ?? 0}|${configHash}`;
-    })
-    .sort();
-  return `${parts.length}:${parts.join(',')}`;
-};
-
-/**
- * Module-level cache para sobrevivir React Strict Mode double-mount.
- *
- * En development, React.StrictMode desmonta y remonta componentes,
- * reseteando useRef. Un cache a nivel de módulo evita re-computar
- * ~450ms de geometrías idénticas en el segundo mount.
- *
- * En production, Strict Mode no hace double-mount, pero este cache
- * también protege contra re-renders innecesarios del padre.
- */
-let _moduleCacheFingerprint = '';
-let _moduleCacheResult: { geometry: THREE.BufferGeometry; category: MaterialCategory }[] | null = null;
+// ─── Component (Presentation layer only) ────────────────────────────────────
 
 export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos }) => {
 
+  // ── Merged geometries via Use Case ──
   const merged = useMemo(() => {
-    const newFingerprint = computarFingerprint(objetos);
-
-    // Si el fingerprint no cambió, reusar el resultado cacheado (module-level).
-    // Sobrevive React Strict Mode double-mount y re-renders del padre.
-    if (newFingerprint === _moduleCacheFingerprint && _moduleCacheResult !== null) {
-      return _moduleCacheResult;
-    }
-
-    // Dispose geometrías previas antes de re-computar
-    if (_moduleCacheResult) {
-      for (const m of _moduleCacheResult) m.geometry.dispose();
-      _moduleCacheResult = null;
-    }
-
-    _moduleCacheFingerprint = newFingerprint;
-
-    if (objetos.length === 0) {
-      _moduleCacheResult = null;
-      return null;
-    }
-
-    const buckets: Record<MaterialCategory, THREE.BufferGeometry[]> = {
-      opaque: [],
-      glass: [],
-      metal: [],
-    };
-
-    let processedCount = 0;
-    let skippedCount = 0;
-
-    for (const obj of objetos) {
-      const config = normalizarConfiguracionGeometricaObjeto({
-        built_in_geometry: obj.built_in_geometry,
-        built_in_color: obj.built_in_color,
-        configuracion_geometria: obj.configuracion_geometria,
-        ancho: obj.ancho,
-        alto: obj.alto,
-        profundidad: obj.profundidad,
-      });
-
-      if (!config) {
-        skippedCount++;
-        continue;
-      }
-
-      const geos = generarGeometriasObjeto(obj, config);
-      for (const { geometry, category } of geos) {
-        buckets[category].push(geometry);
-      }
-      processedCount++;
-    }
-
-    // Merge each bucket
-    const results: { geometry: THREE.BufferGeometry; category: MaterialCategory }[] = [];
-
-    for (const cat of ['opaque', 'glass', 'metal'] as MaterialCategory[]) {
-      if (buckets[cat].length === 0) continue;
-
-      // Debug: verificar compatibilidad de atributos antes del merge
-      if (process.env.NODE_ENV !== 'production') {
-        const attrs0 = Object.keys(buckets[cat][0].attributes).sort().join(',');
-        const incompatible = buckets[cat].filter(
-          (g, i) => i > 0 && Object.keys(g.attributes).sort().join(',') !== attrs0,
-        );
-        if (incompatible.length > 0) {
-          log.warn(`[${cat}] Attribute mismatch detected BEFORE merge`, {
-            expected: attrs0,
-            mismatched: incompatible.length,
-            total: buckets[cat].length,
-          });
-        }
-      }
-
-      const merged = mergeBufferGeometries(buckets[cat], false);
-      if (merged) {
-        merged.computeVertexNormals();
-        results.push({ geometry: merged, category: cat });
-      } else {
-        log.warn(`mergeBufferGeometries() returned null for category "${cat}"`, {
-          geometryCount: buckets[cat].length,
-          hint: 'Incompatible attributes survived normalization — check normalizarGeometriaParaMerge()',
-        });
-      }
-      // Dispose source geometries — mergeBufferGeometries copies data
-      for (const g of buckets[cat]) g.dispose();
-    }
-
-    log.info('Builtin walls merged', {
-      inputObjects: objetos.length,
-      processed: processedCount,
-      skipped: skippedCount,
-      mergedGroups: results.length,
-      drawCalls: results.length,
-      categories: results.map((r) => r.category),
-      bucketSizes: {
-        opaque: buckets.opaque.length,
-        glass: buckets.glass.length,
-        metal: buckets.metal.length,
-      },
-    });
-
-    _moduleCacheResult = results;
-    return results;
+    const { merged: result } = mergeUseCase.ejecutar(objetos as never[]);
+    return result;
   }, [objetos]);
 
   // ── Materials (shared across all merged groups) ──
-  // vertexColors = true → el atributo 'color' de la geometría mergeada
-  // se MULTIPLICA con el color_base del material.
-  // Por eso usamos color_base: '#ffffff' (blanco) como base neutra,
-  // dejando que el vertex color defina el tono per-objeto.
+  // vertexColors = true → 'color' attribute de la geometría mergeada
+  // se MULTIPLICA con color_base del material.
+  // Por eso usamos color_base: '#ffffff' como base neutra para opaque/metal.
   // Ref: https://threejs.org/docs/#api/en/materials/Material.vertexColors
   const materials = useMemo(() => {
     const perfil = resolverPerfilVisualArquitectonico('corporativo');
@@ -609,19 +67,24 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       alto: 3,
       repetir_textura: true,
       escala_textura: 1,
-      color_base: '#ffffff', // Neutro — vertex color define el tono
+      color_base: '#ffffff',
       opacidad: 1,
       rugosidad: 0.7,
       metalicidad: 0.05,
       resaltar: false,
     });
-    // Activar vertex colors para per-object color baking
     if (opaque?.material) opaque.material.vertexColors = true;
 
     // Glass: MeshStandardMaterial con opacity (sin transmission, sin double render pass).
-    // El factory ya configura transparent=true, depthWrite=false, opacity clamped ≤0.4.
-    // NO activar vertexColors en glass — usar color_base directo del perfil visual.
+    //
+    // CRITICAL FIX (Fase 5B): After unmount/remount cycle (edit mode toggle), the
+    // WebGPU renderer pipeline cache can stale-match the glass material to an opaque
+    // pipeline. We force-assert all transparency properties AND bump material.version
+    // to trigger WebGPU pipeline recompilation.
+    //
     // Ref: https://threejs.org/docs/#api/en/materials/MeshStandardMaterial
+    // Ref: https://github.com/mrdoob/three.js/issues/25307 (transparent toggle fix)
+    // Ref: https://github.com/mrdoob/three.js/issues/32570 (WebGPU transparent regression r182)
     const glass = crearMaterialPBRArquitectonico({
       tipo_material: 'vidrio',
       ancho: 2,
@@ -634,7 +97,25 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       metalicidad: 0,
       resaltar: false,
     });
-    // No se necesitan overrides — el factory ya garantiza transparent + depthWrite:false.
+
+    // ── Glass material hardening ──
+    if (glass?.material) {
+      const gm = glass.material as THREE.MeshStandardMaterial;
+      gm.transparent = true;
+      gm.depthWrite = false;
+      gm.opacity = Math.min(
+        perfil.materiales.opacidad_vidrio_mampara ?? 0.35,
+        0.4,
+      );
+      gm.side = THREE.DoubleSide;
+      gm.blending = THREE.NormalBlending;
+      gm.depthTest = true;
+      gm.polygonOffset = true;
+      gm.polygonOffsetFactor = 1;
+      gm.polygonOffsetUnits = 1;
+      gm.needsUpdate = true;
+      gm.version++;
+    }
 
     const metal = crearMaterialMarcoArquitectonico('vidrio', false);
     if (metal?.material) metal.material.vertexColors = true;
@@ -642,35 +123,80 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
     return { opaque, glass, metal };
   }, []);
 
-  // Dispose materials AND invalidate module geometry cache on unmount.
+  // ── Cleanup: dispose materials + invalidate geometry cache on unmount ──
   //
-  // CRITICAL FIX: Previously, geometries survived unmount via module cache
-  // to handle React Strict Mode double-mount. However, this caused stale
-  // glass geometry when the batcher unmounts (edit mode) and remounts
-  // (exit edit mode) — if the parent re-filters objects or data changes
-  // between mounts. Now we invalidate the cache on unmount so the next
-  // mount always re-computes fresh geometry with current object data.
-  //
-  // Strict Mode double-mount is handled by the fingerprint check — the
-  // second mount computes the same fingerprint and gets the same result.
+  // CRITICAL FIX (Fase 5B): Do NOT dispose texture clones (texturas array).
+  // Texture.clone() shares the same .source (canvas) with the module-level
+  // base texture cache. Disposing a clone on WebGPU can corrupt the shared
+  // source's GPU binding.
+  // Ref: https://github.com/mrdoob/three.js/blob/dev/src/textures/Texture.js
   useEffect(() => {
     return () => {
       materials.opaque?.material.dispose();
-      materials.opaque?.texturas.forEach((t) => t.dispose());
       materials.glass?.material.dispose();
-      materials.glass?.texturas.forEach((t) => t.dispose());
       materials.metal?.material.dispose();
-      materials.metal?.texturas.forEach((t) => t.dispose());
-
-      // Invalidate module cache — force re-computation on next mount.
-      // Dispose cached geometries to free GPU memory.
-      if (_moduleCacheResult) {
-        for (const m of _moduleCacheResult) m.geometry.dispose();
-      }
-      _moduleCacheFingerprint = '';
-      _moduleCacheResult = null;
+      mergeUseCase.invalidarCache();
+      log.info('BuiltinWallBatcher unmounted — materials disposed, geometry cache invalidated');
     };
   }, [materials]);
+
+  // ── Runtime glass material integrity monitor ──
+  // Verifies glass material state on first frame post-mount.
+  // If corruption is detected (WebGPU pipeline cache, R3F reconciler),
+  // forces recovery by resetting all transparency properties.
+  const glassRef = useRef<THREE.Mesh>(null);
+  const hasLoggedGlassState = useRef(false);
+
+  useEffect(() => {
+    hasLoggedGlassState.current = false;
+  }, [materials]);
+
+  useFrame(() => {
+    if (hasLoggedGlassState.current) return;
+    const mesh = glassRef.current;
+    if (!mesh) return;
+
+    const mat = mesh.material as THREE.MeshStandardMaterial;
+    if (!mat) return;
+
+    hasLoggedGlassState.current = true;
+
+    const isHealthy =
+      mat.transparent === true &&
+      mat.depthWrite === false &&
+      mat.opacity < 1.0 &&
+      mat.opacity > 0;
+
+    if (!isHealthy) {
+      log.warn('Glass material integrity check FAILED — forcing recovery', {
+        transparent: mat.transparent,
+        depthWrite: mat.depthWrite,
+        opacity: mat.opacity,
+        blending: mat.blending,
+        side: mat.side,
+        visible: mat.visible,
+        version: mat.version,
+      });
+      mat.transparent = true;
+      mat.depthWrite = false;
+      mat.opacity = Math.min(mat.opacity || 0.35, 0.4);
+      mat.side = THREE.DoubleSide;
+      mat.blending = THREE.NormalBlending;
+      mat.needsUpdate = true;
+      mat.version++;
+    } else {
+      log.info('Glass material integrity check PASSED', {
+        transparent: mat.transparent,
+        opacity: mat.opacity,
+        depthWrite: mat.depthWrite,
+        renderOrder: mesh.renderOrder,
+        frustumCulled: mesh.frustumCulled,
+        visible: mesh.visible,
+      });
+    }
+  });
+
+  // ── Render ──
 
   if (!merged || merged.length === 0) return null;
 
@@ -682,17 +208,33 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
 
   return (
     <group name="BuiltinWallBatcher">
-      {merged.map(({ geometry, category }) => (
-        <mesh
-          key={category}
-          geometry={geometry}
-          material={getMaterial(category)}
-          castShadow={category !== 'glass'}
-          receiveShadow
-          // Glass renderizado después de opacos para depth-sorting correcto
-          renderOrder={category === 'glass' ? 1 : 0}
-        />
-      ))}
+      {merged.map(({ geometry, category }) =>
+        category === 'glass' ? (
+          // Glass mesh: special rendering configuration
+          // frustumCulled={false}: merged glass spans entire floor
+          // renderOrder={10}: renders well after all opaque/metal (renderOrder=0)
+          // Ref: https://threejs.org/docs/#api/en/core/Object3D.frustumCulled
+          <mesh
+            key={`glass-${category}`}
+            ref={glassRef}
+            geometry={geometry as THREE.BufferGeometry}
+            material={getMaterial(category)}
+            castShadow={false}
+            receiveShadow
+            frustumCulled={false}
+            renderOrder={10}
+          />
+        ) : (
+          <mesh
+            key={category}
+            geometry={geometry as THREE.BufferGeometry}
+            material={getMaterial(category)}
+            castShadow
+            receiveShadow
+            renderOrder={0}
+          />
+        ),
+      )}
     </group>
   );
 };

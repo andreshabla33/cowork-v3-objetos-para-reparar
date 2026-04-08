@@ -1,14 +1,31 @@
+/**
+ * @module GeometriaProceduralObjeto3D
+ *
+ * Presentation component for rendering a single procedural wall object.
+ * Used in edit mode (ObjetosInstanciados) where each wall renders individually
+ * with its own materials and R3F interactivity.
+ *
+ * Clean Architecture — Presentation layer:
+ *   - Uses shared geometry helpers from GeometriaProceduralParedesAdapter
+ *   - Material creation delegated to fabricaMaterialesArquitectonicos (lib/rendering)
+ *   - Only contains R3F hooks and JSX
+ */
 import React, { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import {
   normalizarConfiguracionGeometricaObjeto,
-  type AberturaArquitectonica,
 } from '@/src/core/domain/entities/objetosArquitectonicos';
 import { resolverPerfilVisualArquitectonico } from '@/src/core/domain/entities/estilosVisualesArquitectonicos';
 import {
   crearMaterialMarcoArquitectonico,
   crearMaterialPBRArquitectonico,
 } from '@/lib/rendering/fabricaMaterialesArquitectonicos';
+import {
+  normalizarAberturas,
+  crearHuecoAbertura,
+  crearGeneradorUVPared,
+  type AberturaRenderizable,
+} from '@/src/core/infrastructure/adapters/GeometriaProceduralParedesAdapter';
 
 interface ObjetoProceduralLike {
   built_in_geometry?: string | null;
@@ -27,93 +44,9 @@ interface GeometriaProceduralObjeto3DProps {
   resaltar: boolean;
 }
 
-interface AberturaRenderizable extends AberturaArquitectonica {
-  izquierda: number;
-  derecha: number;
-  inferior: number;
-  superior: number;
-}
-
 const clamp = (valor: number, minimo: number, maximo: number) => Math.min(maximo, Math.max(minimo, valor));
 
 const normalizarGeometriaLegacy = (valor?: string | null) => (valor || '').trim().toLowerCase();
-
-const crearGeneradorUVPared = (ancho: number, alto: number) => ({
-  generateTopUV: (_geometry: THREE.ExtrudeGeometry, vertices: number[], indexA: number, indexB: number, indexC: number) => {
-    const leer = (index: number) => new THREE.Vector2(
-      (vertices[index * 3] + ancho / 2) / Math.max(ancho, 0.001),
-      (vertices[index * 3 + 1] + alto / 2) / Math.max(alto, 0.001),
-    );
-    return [leer(indexA), leer(indexB), leer(indexC)];
-  },
-  generateSideWallUV: (_geometry: THREE.ExtrudeGeometry, vertices: number[], indexA: number, indexB: number, indexC: number, indexD: number) => {
-    const puntos = [indexA, indexB, indexC, indexD].map((indice) => ({
-      x: vertices[indice * 3],
-      y: vertices[indice * 3 + 1],
-      z: vertices[indice * 3 + 2],
-    }));
-    const anchoSegmento = Math.max(Math.abs(puntos[0].x - puntos[1].x), Math.abs(puntos[0].y - puntos[1].y), 0.001);
-    const profundidadSegmento = Math.max(...puntos.map((punto) => punto.z)) - Math.min(...puntos.map((punto) => punto.z)) || 0.001;
-    return [
-      new THREE.Vector2(0, 0),
-      new THREE.Vector2(anchoSegmento, 0),
-      new THREE.Vector2(anchoSegmento, profundidadSegmento),
-      new THREE.Vector2(0, profundidadSegmento),
-    ];
-  },
-});
-
-const normalizarAberturas = (
-  aberturas: AberturaArquitectonica[],
-  ancho: number,
-  alto: number,
-): AberturaRenderizable[] => {
-  const margen = 0.08;
-  return aberturas.map((abertura) => {
-    const anchoAbertura = clamp(abertura.ancho, 0.2, Math.max(0.2, ancho - margen * 2));
-    const altoAbertura = clamp(abertura.alto, 0.2, Math.max(0.2, alto - margen * 2));
-    const izquierda = clamp(abertura.posicion_x - anchoAbertura / 2, -ancho / 2 + margen, ancho / 2 - margen - anchoAbertura);
-    const inferior = clamp(abertura.posicion_y - altoAbertura / 2, -alto / 2 + margen, alto / 2 - margen - altoAbertura);
-    return {
-      ...abertura,
-      ancho: anchoAbertura,
-      alto: altoAbertura,
-      izquierda,
-      derecha: izquierda + anchoAbertura,
-      inferior,
-      superior: inferior + altoAbertura,
-    };
-  });
-};
-
-const crearHuecoAbertura = (abertura: AberturaRenderizable) => {
-  const hueco = new THREE.Path();
-  if (abertura.forma === 'arco') {
-    const radio = Math.min(abertura.ancho / 2, abertura.alto * 0.4);
-    const alturaArranqueArco = abertura.superior - radio;
-    const centroX = (abertura.izquierda + abertura.derecha) / 2;
-
-    hueco.moveTo(abertura.izquierda, abertura.inferior);
-    hueco.lineTo(abertura.izquierda, alturaArranqueArco);
-    hueco.absarc(
-      centroX,
-      alturaArranqueArco,
-      radio,
-      Math.PI,
-      0,
-      true,
-    );
-    hueco.lineTo(abertura.derecha, abertura.inferior);
-    hueco.closePath();
-    return hueco;
-  }
-  hueco.moveTo(abertura.izquierda, abertura.inferior);
-  hueco.lineTo(abertura.izquierda, abertura.superior);
-  hueco.lineTo(abertura.derecha, abertura.superior);
-  hueco.lineTo(abertura.derecha, abertura.inferior);
-  hueco.closePath();
-  return hueco;
-};
 
 export const GeometriaProceduralObjeto3D: React.FC<GeometriaProceduralObjeto3DProps> = ({
   objeto,

@@ -112,6 +112,12 @@ export { recordingRepository } from './RecordingSupabaseRepository';
 export { LiveKitOfficialBackgroundAdapter, getLiveKitBackgroundAdapter } from './LiveKitOfficialBackgroundAdapter';
 export { LocalVideoTrackFactory, getLocalVideoTrackFactory } from './LocalVideoTrackFactory';
 
+// Procedural Wall Geometry (Fase 5A/5B)
+export { GeometriaProceduralParedesAdapter } from './GeometriaProceduralParedesAdapter';
+export type {
+  AberturaRenderizable,
+} from './GeometriaProceduralParedesAdapter';
+
 // Rendering & 3D Optimization
 export {
   GeometryCacheAdapter,
