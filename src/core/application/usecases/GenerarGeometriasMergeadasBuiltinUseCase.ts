@@ -13,7 +13,7 @@
  *   5. Merge each bucket into a single geometry
  *   6. Manage module-level cache for React Strict Mode resilience
  *
- * Ref: Three.js r170 — BufferGeometryUtils.mergeGeometries
+ * Ref: Three.js r182 — BufferGeometryUtils.mergeGeometries
  */
 
 import { logger } from '@/lib/logger';

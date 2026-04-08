@@ -10,11 +10,36 @@
  *   BoxGeometry for frames/glass/metal) that must be merged by material category
  *   to reduce draw calls from ~330 to ~3-5.
  *
- * Ref: Three.js r170 — BufferGeometryUtils.mergeGeometries
+ * Ref: Three.js r182 — BufferGeometryUtils.mergeGeometries
  *   https://threejs.org/docs/#examples/en/utils/BufferGeometryUtils.mergeGeometries
- * Ref: Three.js r170 — ExtrudeGeometry
+ * Ref: Three.js r182 — ExtrudeGeometry
  *   https://threejs.org/docs/#api/en/geometries/ExtrudeGeometry
  */
+
+// ─── Domain Constants ──────────────────────────────────────────────────────
+
+/**
+ * Z-offset factor for glass panes relative to wall depth.
+ *
+ * Glass panes are placed at `wallDepth * GLASS_Z_OFFSET_FACTOR` instead of z=0
+ * to prevent z-fighting with the wall extrusion's inner hole side faces.
+ * Value of 0.15 (15% of wall depth) provides sufficient separation without
+ * visually displacing the glass from its hole.
+ *
+ * @see GeometriaProceduralParedesAdapter._generarAberturasGeometria
+ */
+export const GLASS_Z_OFFSET_FACTOR = 0.15;
+
+/**
+ * Minimum glass pane thickness in meters.
+ * Clamped to prevent degenerate geometry on very thin walls.
+ */
+export const GLASS_MIN_THICKNESS = 0.003;
+
+/**
+ * Maximum glass pane thickness in meters.
+ */
+export const GLASS_MAX_THICKNESS = 0.025;
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

@@ -11,8 +11,8 @@
  *   - Delega creación de materiales a fabricaMaterialesArquitectonicos (lib/rendering)
  *   - Solo contiene hooks R3F, montaje JSX, y runtime diagnostic de vidrio
  *
- * Ref: Three.js r170 — BufferGeometryUtils.mergeGeometries
- * Ref: Three.js r170 — MeshStandardMaterial (transparent, depthWrite)
+ * Ref: Three.js r182 — BufferGeometryUtils.mergeGeometries
+ * Ref: Three.js r182 — MeshStandardMaterial (transparent, depthWrite, alphaTest)
  */
 
 'use client';
@@ -28,13 +28,17 @@ import {
 } from '@/lib/rendering/fabricaMaterialesArquitectonicos';
 import { GeometriaProceduralParedesAdapter } from '@/src/core/infrastructure/adapters/GeometriaProceduralParedesAdapter';
 import { GenerarGeometriasMergeadasBuiltinUseCase } from '@/src/core/application/usecases/GenerarGeometriasMergeadasBuiltinUseCase';
-import type { MaterialCategory } from '@/src/core/domain/ports/IBuiltinWallGeometryService';
+import type { MaterialCategory, WallObjectData } from '@/src/core/domain/ports/IBuiltinWallGeometryService';
 
 const log = logger.child('BuiltinWallBatcher');
 
 // ─── Singleton Use Case (module-level, stateless except cache) ──────────────
 const geometryAdapter = new GeometriaProceduralParedesAdapter();
 const mergeUseCase = new GenerarGeometriasMergeadasBuiltinUseCase(geometryAdapter);
+
+// Singleton fallback material — avoids allocating GPU resources on every render.
+// Ref: https://threejs.org/docs/#api/en/materials/MeshBasicMaterial
+const _fallbackMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff, wireframe: true });
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
@@ -49,7 +53,7 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
 
   // ── Merged geometries via Use Case ──
   const merged = useMemo(() => {
-    const { merged: result } = mergeUseCase.ejecutar(objetos as never[]);
+    const { merged: result } = mergeUseCase.ejecutar(objetos as WallObjectData[]);
     return result;
   }, [objetos]);
 
@@ -99,6 +103,23 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
     });
 
     // ── Glass material hardening ──
+    //
+    // FIX (glass wall visibility):
+    //   1. REMOVED polygonOffset — positive offset was pushing glass fragments
+    //      AWAY from camera, causing them to fail depth test against nearby
+    //      wall hole inner faces. polygonOffset should only be used to pull
+    //      coplanar geometry TOWARD the camera (negative factor).
+    //      Ref: https://threejs.org/docs/#api/en/materials/Material.polygonOffset
+    //
+    //   2. ADDED alphaTest = 0.01 — Forces Three.js WebGPU renderer to classify
+    //      this material in the transparent render pass. Without this hint,
+    //      the pipeline cache can stale-match to an opaque pipeline after
+    //      mount/unmount cycles (edit mode toggle).
+    //      Ref: https://github.com/mrdoob/three.js/issues/32570
+    //      Ref: https://github.com/mrdoob/three.js/issues/25307
+    //
+    //   3. Glass pane geometry now has z-offset (see GeometriaProceduralParedesAdapter)
+    //      to avoid coplanarity with wall extrusion inner faces.
     if (glass?.material) {
       const gm = glass.material as THREE.MeshStandardMaterial;
       gm.transparent = true;
@@ -110,9 +131,8 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       gm.side = THREE.DoubleSide;
       gm.blending = THREE.NormalBlending;
       gm.depthTest = true;
-      gm.polygonOffset = true;
-      gm.polygonOffsetFactor = 1;
-      gm.polygonOffsetUnits = 1;
+      gm.alphaTest = 0.01;
+      gm.polygonOffset = false;
       gm.needsUpdate = true;
       gm.version++;
     }
@@ -165,7 +185,8 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       mat.transparent === true &&
       mat.depthWrite === false &&
       mat.opacity < 1.0 &&
-      mat.opacity > 0;
+      mat.opacity > 0 &&
+      mat.polygonOffset === false;
 
     if (!isHealthy) {
       log.warn('Glass material integrity check FAILED — forcing recovery', {
@@ -174,6 +195,8 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
         opacity: mat.opacity,
         blending: mat.blending,
         side: mat.side,
+        polygonOffset: mat.polygonOffset,
+        alphaTest: mat.alphaTest,
         visible: mat.visible,
         version: mat.version,
       });
@@ -182,6 +205,8 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       mat.opacity = Math.min(mat.opacity || 0.35, 0.4);
       mat.side = THREE.DoubleSide;
       mat.blending = THREE.NormalBlending;
+      mat.alphaTest = 0.01;
+      mat.polygonOffset = false;
       mat.needsUpdate = true;
       mat.version++;
     } else {
@@ -189,6 +214,8 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
         transparent: mat.transparent,
         opacity: mat.opacity,
         depthWrite: mat.depthWrite,
+        alphaTest: mat.alphaTest,
+        polygonOffset: mat.polygonOffset,
         renderOrder: mesh.renderOrder,
         frustumCulled: mesh.frustumCulled,
         visible: mesh.visible,
@@ -201,9 +228,9 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
   if (!merged || merged.length === 0) return null;
 
   const getMaterial = (cat: MaterialCategory): THREE.Material => {
-    if (cat === 'glass') return materials.glass?.material ?? new THREE.MeshBasicMaterial();
-    if (cat === 'metal') return materials.metal?.material ?? new THREE.MeshBasicMaterial();
-    return materials.opaque?.material ?? new THREE.MeshBasicMaterial();
+    if (cat === 'glass') return materials.glass?.material ?? _fallbackMaterial;
+    if (cat === 'metal') return materials.metal?.material ?? _fallbackMaterial;
+    return materials.opaque?.material ?? _fallbackMaterial;
   };
 
   return (

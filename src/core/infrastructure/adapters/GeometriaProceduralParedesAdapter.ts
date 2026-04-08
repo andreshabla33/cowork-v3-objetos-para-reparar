@@ -15,9 +15,9 @@
  *   - Geometry normalization for merge compatibility
  *   - Merging via three-stdlib mergeBufferGeometries
  *
- * Ref: Three.js r170 — ExtrudeGeometry
+ * Ref: Three.js r182 — ExtrudeGeometry
  *   https://threejs.org/docs/#api/en/geometries/ExtrudeGeometry
- * Ref: Three.js r170 — BufferGeometryUtils.mergeGeometries
+ * Ref: Three.js r182 — BufferGeometryUtils.mergeGeometries
  *   https://threejs.org/docs/#examples/en/utils/BufferGeometryUtils.mergeGeometries
  */
 
@@ -25,17 +25,24 @@ import * as THREE from 'three';
 import { mergeBufferGeometries } from 'three-stdlib';
 import {
   normalizarConfiguracionGeometricaObjeto,
-  type ConfiguracionGeometricaObjeto,
   type AberturaArquitectonica,
 } from '@/src/core/domain/entities/objetosArquitectonicos';
 import { resolverPerfilVisualArquitectonico } from '@/src/core/domain/entities/estilosVisualesArquitectonicos';
-import { obtenerDimensionesObjetoRuntime } from '@/components/space3d/objetosRuntime';
-import type {
-  IBuiltinWallGeometryService,
-  CategorizedGeometry,
-  MaterialCategory,
-  WallObjectData,
-  GeometryRef,
+// FIX (Clean Architecture): Import directly from domain, not from deprecated
+// Presentation proxy (@/components/space3d/objetosRuntime).
+// Ref: Infrastructure must depend on Domain, never on Presentation.
+import {
+  obtenerDimensionesObjeto,
+  type ObjetoRuntime3D,
+} from '@/src/core/domain/entities/espacio3d';
+import {
+  GLASS_Z_OFFSET_FACTOR,
+  GLASS_MAX_THICKNESS,
+  type IBuiltinWallGeometryService,
+  type CategorizedGeometry,
+  type MaterialCategory,
+  type WallObjectData,
+  type GeometryRef,
 } from '@/src/core/domain/ports/IBuiltinWallGeometryService';
 
 // ─── Types internos ─────────────────────────────────────────────────────────
@@ -61,11 +68,12 @@ const ALLOWED_ATTRIBUTES: ReadonlySet<string> = new Set(['position', 'normal', '
 /** Cache de THREE.Color para evitar crear objetos temporales en hot path */
 const _tmpColor = new THREE.Color();
 
+// ─── Domain utility imports ────────────────────────────────────────────────
+import { clamp } from '@/src/core/domain/utils/mathUtils';
+
 // ─── Helpers de geometría compartidos ───────────────────────────────────────
 // Estas funciones son usadas tanto por BuiltinWallBatcher (merge path)
 // como por GeometriaProceduralObjeto3D (individual path).
-
-const clamp = (valor: number, min: number, max: number) => Math.min(max, Math.max(min, valor));
 
 /**
  * Genera UV mapping para ExtrudeGeometry de paredes.
@@ -301,7 +309,7 @@ export class GeometriaProceduralParedesAdapter
 
     if (!config) return [];
 
-    const dims = obtenerDimensionesObjetoRuntime(objeto as never);
+    const dims = obtenerDimensionesObjeto(objeto as ObjetoRuntime3D);
     const ancho = Math.max(dims.ancho, 0.05);
     const alto = Math.max(dims.alto, 0.05);
     const prof = Math.max(dims.profundidad, 0.05);
@@ -551,10 +559,24 @@ export class GeometriaProceduralParedesAdapter
       addGeo(gJR, matCat);
 
       // Vidrio
+      // FIX: Glass pane z-offset to prevent z-fighting with hole inner side walls.
+      //
+      // Root cause: ExtrudeGeometry creates inner side faces at hole boundaries that
+      // span from z=-prof/2 to z=+prof/2. With glass at z=0, fragments compete for
+      // the same depth buffer values. On WebGPU (Three.js r182) this is exacerbated
+      // by higher depth precision and pipeline cache behavior.
+      //
+      // Solution: Push glass pane forward by 15% of wall depth so it sits clearly in
+      // front of the wall center, avoiding coplanarity with the extrusion's inner faces.
+      // Glass remains visually centered within the hole (offset is < 2cm for typical walls).
+      //
+      // Ref: https://threejs.org/docs/#api/en/geometries/ExtrudeGeometry (side wall generation)
+      // Ref: https://github.com/mrdoob/three.js/issues/32570 (WebGPU transparent regression)
       if (ab.tipo === 'ventana') {
-        const espesorVidrio = Math.min(frameDepth * 0.22, 0.025);
+        const espesorVidrio = Math.min(frameDepth * 0.22, GLASS_MAX_THICKNESS);
+        const glassZOffset = prof * GLASS_Z_OFFSET_FACTOR;
         const gGlass = new THREE.BoxGeometry(anchoInt, altoInt, espesorVidrio);
-        gGlass.translate(cx, cy, 0);
+        gGlass.translate(cx, cy, glassZOffset);
         addGeo(gGlass, 'glass');
 
         if ((esMampara || esVentana) && anchoInt > 1.05) {

@@ -22,10 +22,14 @@ import {
 } from '@/lib/rendering/fabricaMaterialesArquitectonicos';
 import {
   normalizarAberturas,
-  crearHuecoAbertura,
-  crearGeneradorUVPared,
+  crearGeometriaPared,
   type AberturaRenderizable,
 } from '@/src/core/infrastructure/adapters/GeometriaProceduralParedesAdapter';
+import {
+  GLASS_Z_OFFSET_FACTOR,
+  GLASS_MAX_THICKNESS,
+} from '@/src/core/domain/ports/IBuiltinWallGeometryService';
+import { clamp } from '@/src/core/domain/utils/mathUtils';
 
 interface ObjetoProceduralLike {
   built_in_geometry?: string | null;
@@ -43,8 +47,6 @@ interface GeometriaProceduralObjeto3DProps {
   transparente: boolean;
   resaltar: boolean;
 }
-
-const clamp = (valor: number, minimo: number, maximo: number) => Math.min(maximo, Math.max(minimo, valor));
 
 const normalizarGeometriaLegacy = (valor?: string | null) => (valor || '').trim().toLowerCase();
 
@@ -166,27 +168,11 @@ export const GeometriaProceduralObjeto3D: React.FC<GeometriaProceduralObjeto3DPr
     ? clamp(aberturaPrincipal.inferior - 0.045, -alto / 2 + 0.08, alto / 2 - 0.12)
     : null;
 
+  // FIX (Clean Architecture): Use shared crearGeometriaPared from Infrastructure adapter
+  // instead of duplicating ExtrudeGeometry + Shape + holes logic here.
   const geometriaPared = useMemo(() => {
     if (!configuracion || configuracion.tipo_geometria !== 'pared') return null;
-    const shape = new THREE.Shape();
-    shape.moveTo(-ancho / 2, -alto / 2);
-    shape.lineTo(ancho / 2, -alto / 2);
-    shape.lineTo(ancho / 2, alto / 2);
-    shape.lineTo(-ancho / 2, alto / 2);
-    shape.lineTo(-ancho / 2, -alto / 2);
-    aberturas.forEach((abertura) => {
-      shape.holes.push(crearHuecoAbertura(abertura));
-    });
-    const geometria = new THREE.ExtrudeGeometry(shape, {
-      depth: profundidad,
-      bevelEnabled: false,
-      steps: 1,
-      curveSegments: 24,
-      UVGenerator: crearGeneradorUVPared(ancho, alto),
-    });
-    geometria.translate(0, 0, -profundidad / 2);
-    geometria.computeVertexNormals();
-    return geometria;
+    return crearGeometriaPared(ancho, alto, profundidad, aberturas);
   }, [aberturas, alto, ancho, configuracion, profundidad]);
 
   const geometriaCaja = useMemo(() => {
@@ -304,7 +290,9 @@ export const GeometriaProceduralObjeto3D: React.FC<GeometriaProceduralObjeto3DPr
         const alturaArranqueArco = abertura.superior - Math.min(abertura.ancho / 2, abertura.alto * 0.4);
         const alturaJambaArco = Math.max(0.08, alturaArranqueArco - abertura.inferior + grosor);
         const montanteVentana = (esMamparaOficina || esVentanaOficina) && anchoInterior > 1.05;
-        const espesorVidrio = Math.min(frameDepth * 0.22, 0.025);
+        const espesorVidrio = Math.min(frameDepth * 0.22, GLASS_MAX_THICKNESS);
+        // FIX: Same z-offset as merge path to prevent z-fighting with wall hole inner faces
+        const glassZOffset = profundidad * GLASS_Z_OFFSET_FACTOR;
         return (
           <group key={abertura.id}>
             {abertura.forma !== 'arco' && (
@@ -330,7 +318,7 @@ export const GeometriaProceduralObjeto3D: React.FC<GeometriaProceduralObjeto3DPr
 
             {abertura.tipo === 'ventana' && (
               <>
-                <mesh position={[centroX, centroY, 0]} castShadow receiveShadow>
+                <mesh position={[centroX, centroY, glassZOffset]} castShadow receiveShadow>
                   <boxGeometry args={[anchoInterior, altoInterior, espesorVidrio]} />
                   <primitive object={materialVidrio.material} attach="material" />
                 </mesh>
