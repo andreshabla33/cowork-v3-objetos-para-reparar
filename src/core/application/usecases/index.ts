@@ -10,6 +10,9 @@ export { GestionarMultiBatchMeshUseCase } from './GestionarMultiBatchMeshUseCase
 export { GestionarTextureAtlasUseCase } from './GestionarTextureAtlasUseCase';
 export { GestionarGPUSkinnedInstanceUseCase } from './GestionarGPUSkinnedInstanceUseCase';
 
+// Fase 4D — Per-instance material properties via DataTexture
+export { GestionarPropiedadesMaterialBatchUseCase } from './GestionarPropiedadesMaterialBatchUseCase';
+
 // Geometry cache
 export { GestionarGeometryCacheUseCase } from './GestionarGeometryCacheUseCase';
 

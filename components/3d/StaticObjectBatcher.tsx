@@ -11,7 +11,8 @@
  *
  * Performance target (Fase 4):
  *   Before (Fase 3): ~50-60 draw calls (1 BatchedMesh, 1 material, colors only)
- *   After:           ~5-15 draw calls (N BatchedMesh, N materials with textures)
+ *   After (Fase 4A-C): ~5-15 draw calls (N BatchedMesh, N materials with textures)
+ *   After (Fase 4D): ~1-3 draw calls (DataTexture packs color+metalness+roughness per-instance)
  *   + frustum culling hides 30-60% of instances per frame
  *
  * Clean Architecture: Presentation layer — uses Application use cases via hook.
@@ -21,6 +22,8 @@
  *   https://threejs.org/docs/#api/en/objects/BatchedMesh
  * Ref: Three.js r170 — BatchedMesh.setVisibleAt()
  *   Per-instance visibility for frustum culling without removing instances.
+ * Ref: gkjohnson/batched-material-properties-demo
+ *   DataTexture + onBeforeCompile for per-instance PBR properties.
  * Ref: Mozilla Hubs — multi-batch + texture atlas pattern
  *   https://github.com/Hubs-Foundation/three-batch-manager
  */
@@ -270,12 +273,13 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
   useEffect(() => {
     if (!services.isReady || registeredRef.current || objetos.length === 0) return;
 
-    const { multiBatch, textureAtlas } = services;
+    const { multiBatch, textureAtlas, materialProps } = services;
     gltfScene.updateMatrixWorld(true);
 
     let meshCount = 0;
     let instanceCount = 0;
     let atlasTextureCount = 0;
+    const colorGroupKeys = new Set<string>();
 
     gltfScene.traverse((child) => {
       if (!(child as THREE.Mesh).isMesh) return;
@@ -311,7 +315,8 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
             // Clone textured material — keep original color (texture dominates)
             groupMaterial = cloneMaterialForBatch(mat, false);
           } else {
-            // Color-only group: MUST use white base (setColorAt multiplies)
+            // Color-only group: white base + Fase 4D DataTexture shader injection
+            // DataTexture REPLACES diffuseColor entirely (not multiplicative like setColorAt)
             groupMaterial = cloneMaterialForBatch(mat, true);
           }
 
@@ -322,6 +327,13 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
             maxVertices: GROUP_MAX_VERTICES,
             maxIndices: GROUP_MAX_INDICES,
           });
+
+          // ─── Fase 4D: Initialize DataTexture + shader injection for color-only groups ──
+          if (!materialHasTextures(mat)) {
+            materialProps.inicializarGrupo(matKey, GROUP_MAX_INSTANCES);
+            materialProps.aplicarAMaterial(matKey, groupMaterial);
+            colorGroupKeys.add(matKey);
+          }
         }
 
         // ─── Register geometry ───────────────────────────────────────
@@ -373,15 +385,24 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
 
             const instanceRef = multiBatch.agregarInstancia(matKey, geoId, flatMatrix);
 
-            // Apply per-instance color for color-only materials (no textures).
-            // setColorAt() stores colors in a DataTexture — works independently
-            // of the material.color. For textured materials, skip to avoid
-            // color × texture multiplication in the fragment shader.
-            // Ref: Three.js r170 — setColorAt uses internal _colorsTexture
-            if (!materialHasTextures(mat) && 'color' in mat) {
-              const c = (mat as THREE.MeshStandardMaterial).color;
+            // ─── Fase 4D: Per-instance PBR properties via DataTexture ────
+            // For color-only materials: pack color+metalness+roughness into DataTexture.
+            // The fragment shader reads from this texture directly (REPLACEMENT, not multiply).
+            // For textured materials: skip — texture provides the diffuse color.
+            //
+            // Ref: gkjohnson/batched-material-properties-demo
+            // Ref: Three.js r170 — gl_DrawID in batching_pars_vertex.glsl
+            if (colorGroupKeys.has(matKey) && 'color' in mat) {
+              const stdMat = mat as THREE.MeshStandardMaterial;
+              const c = stdMat.color;
               if (c) {
-                multiBatch.establecerColor(instanceRef, c.r, c.g, c.b);
+                materialProps.establecerPropiedades(matKey, instanceRef.instanceId, {
+                  r: c.r,
+                  g: c.g,
+                  b: c.b,
+                  metalness: stdMat.metalness ?? 0,
+                  roughness: stdMat.roughness ?? 0.5,
+                });
               }
             }
 
@@ -410,6 +431,15 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
       });
     }
 
+    // ─── Fase 4D: Flush all DataTexture changes to GPU ──────────────
+    if (colorGroupKeys.size > 0) {
+      materialProps.sincronizarGPU();
+      log.info('Fase 4D DataTexture flushed', {
+        colorGroups: colorGroupKeys.size,
+        stats: materialProps.obtenerEstadisticas(),
+      });
+    }
+
     registeredRef.current = true;
     _trackingDirty = true;
 
@@ -419,6 +449,7 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
       meshes: meshCount,
       instances: instanceCount,
       atlasTextures: atlasTextureCount,
+      dataTextureGroups: colorGroupKeys.size,
     });
   }, [services.isReady, gltfScene, modeloUrl, objetos, services]);
 

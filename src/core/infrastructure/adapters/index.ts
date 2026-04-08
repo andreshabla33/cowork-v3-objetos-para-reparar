@@ -123,6 +123,11 @@ export {
   getMultiBatchMeshAdapter,
   resetMultiBatchMeshAdapter,
 } from './MultiBatchMeshThreeAdapter';
+export {
+  BatchMaterialPropertiesThreeAdapter,
+  getBatchMaterialPropertiesAdapter,
+  resetBatchMaterialPropertiesAdapter,
+} from './BatchMaterialPropertiesThreeAdapter';
 export { RenderingOptimizationAdapter } from './RenderingOptimizationAdapter';
 export { ThreeTextureFactoryAdapter } from './ThreeTextureFactoryAdapter';
 

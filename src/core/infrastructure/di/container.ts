@@ -22,6 +22,7 @@ import type { IBatchedMeshService } from '../../domain/ports/IBatchedMeshService
 import type { IMultiBatchMeshService } from '../../domain/ports/IMultiBatchMeshService';
 import type { ITextureAtlasService } from '../../domain/ports/ITextureAtlasService';
 import type { IGPUSkinnedInstanceService } from '../../domain/ports/IGPUSkinnedInstanceService';
+import type { IBatchMaterialPropertiesService } from '../../domain/ports/IBatchMaterialPropertiesService';
 
 // ─── Tipo del contenedor ──────────────────────────────────────────────────────
 
@@ -46,6 +47,8 @@ export interface DIContainer {
   textureAtlas: ITextureAtlasService;
   /** Fase 3 — GPU instanced skinning para 500 avatares (DataTexture RGBA32F) */
   gpuSkinnedInstance: IGPUSkinnedInstanceService;
+  /** Fase 4D — Per-instance PBR material properties via DataTexture + shader injection */
+  materialProps: IBatchMaterialPropertiesService;
 }
 
 // ─── Singleton ────────────────────────────────────────────────────────────────
@@ -73,6 +76,7 @@ export async function getDIContainer(): Promise<DIContainer> {
     { getMultiBatchMeshAdapter },
     { getTextureAtlasAdapter },
     { getGPUSkinnedInstanceAdapter },
+    { getBatchMaterialPropertiesAdapter },
   ] = await Promise.all([
     import('../adapters/ThreeTextureFactoryAdapter'),
     import('../adapters/RenderingOptimizationAdapter'),
@@ -84,6 +88,7 @@ export async function getDIContainer(): Promise<DIContainer> {
     import('../adapters/MultiBatchMeshThreeAdapter'),
     import('../adapters/TextureAtlasCanvasAdapter'),
     import('../adapters/GPUSkinnedInstanceAdapter'),
+    import('../adapters/BatchMaterialPropertiesThreeAdapter'),
   ]);
 
   _container = {
@@ -97,6 +102,7 @@ export async function getDIContainer(): Promise<DIContainer> {
     multiBatch: getMultiBatchMeshAdapter(),
     textureAtlas: getTextureAtlasAdapter(),
     gpuSkinnedInstance: getGPUSkinnedInstanceAdapter(),
+    materialProps: getBatchMaterialPropertiesAdapter(),
   };
 
   return _container;

@@ -24,6 +24,7 @@ import { GestionarBatchedMeshUseCase } from '@/src/core/application/usecases/Ges
 import { GestionarMultiBatchMeshUseCase } from '@/src/core/application/usecases/GestionarMultiBatchMeshUseCase';
 import { GestionarTextureAtlasUseCase } from '@/src/core/application/usecases/GestionarTextureAtlasUseCase';
 import { GestionarGPUSkinnedInstanceUseCase } from '@/src/core/application/usecases/GestionarGPUSkinnedInstanceUseCase';
+import { GestionarPropiedadesMaterialBatchUseCase } from '@/src/core/application/usecases/GestionarPropiedadesMaterialBatchUseCase';
 import { logger } from '@/lib/logger';
 
 const log = logger.child('scene-optimization');
@@ -39,6 +40,8 @@ export interface SceneOptimizationServices {
   textureAtlas: GestionarTextureAtlasUseCase;
   /** GPU Skinned Instance use case — for 500 avatar bone matrices */
   gpuSkinning: GestionarGPUSkinnedInstanceUseCase;
+  /** Fase 4D — Per-instance PBR material properties via DataTexture + shader injection */
+  materialProps: GestionarPropiedadesMaterialBatchUseCase;
   /** Whether all services are initialized and ready */
   isReady: boolean;
 }
@@ -76,6 +79,7 @@ export function useSceneOptimization(): SceneOptimizationServices {
       multiBatch: null as GestionarMultiBatchMeshUseCase | null,
       textureAtlas: null as GestionarTextureAtlasUseCase | null,
       gpuSkinning: null as GestionarGPUSkinnedInstanceUseCase | null,
+      materialProps: null as GestionarPropiedadesMaterialBatchUseCase | null,
     };
   }, []);
 
@@ -84,6 +88,7 @@ export function useSceneOptimization(): SceneOptimizationServices {
   const multiBatchRef = useRef<GestionarMultiBatchMeshUseCase | null>(null);
   const textureAtlasRef = useRef<GestionarTextureAtlasUseCase | null>(null);
   const gpuSkinningRef = useRef<GestionarGPUSkinnedInstanceUseCase | null>(null);
+  const materialPropsRef = useRef<GestionarPropiedadesMaterialBatchUseCase | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,21 +105,25 @@ export function useSceneOptimization(): SceneOptimizationServices {
         const mb = new GestionarMultiBatchMeshUseCase(container.multiBatch);
         const ta = new GestionarTextureAtlasUseCase(container.textureAtlas);
         const gs = new GestionarGPUSkinnedInstanceUseCase(container.gpuSkinnedInstance);
+        const mp = new GestionarPropiedadesMaterialBatchUseCase(container.materialProps);
 
         // Initialize with default capacities
         bm.inicializar(MAX_INSTANCES, MAX_VERTICES, MAX_INDICES);
         gs.inicializar(MAX_AVATARS, BONES_PER_AVATAR);
+        // materialProps initialized per-group in StaticObjectBatcher (capacity = maxInstances of that group)
 
         batchedMeshRef.current = bm;
         multiBatchRef.current = mb;
         textureAtlasRef.current = ta;
         gpuSkinningRef.current = gs;
+        materialPropsRef.current = mp;
 
         // Update the mutable useCases object (avoids extra re-render)
         useCases.batchedMesh = bm;
         useCases.multiBatch = mb;
         useCases.textureAtlas = ta;
         useCases.gpuSkinning = gs;
+        useCases.materialProps = mp;
 
         setIsReady(true);
 
@@ -137,11 +146,13 @@ export function useSceneOptimization(): SceneOptimizationServices {
       multiBatchRef.current?.limpiar();
       textureAtlasRef.current?.limpiar();
       gpuSkinningRef.current?.limpiar();
+      materialPropsRef.current?.limpiar();
 
       batchedMeshRef.current = null;
       multiBatchRef.current = null;
       textureAtlasRef.current = null;
       gpuSkinningRef.current = null;
+      materialPropsRef.current = null;
 
       log.info('Scene optimization services disposed');
     };
@@ -154,6 +165,7 @@ export function useSceneOptimization(): SceneOptimizationServices {
       get multiBatch() { return multiBatchRef.current!; },
       get textureAtlas() { return textureAtlasRef.current!; },
       get gpuSkinning() { return gpuSkinningRef.current!; },
+      get materialProps() { return materialPropsRef.current!; },
       isReady,
     }),
     [isReady],
