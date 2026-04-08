@@ -64,6 +64,59 @@ interface TransformedGeometry {
   category: MaterialCategory;
 }
 
+/** Atributos permitidos en geometrías normalizadas para merge */
+const ALLOWED_ATTRIBUTES: ReadonlySet<string> = new Set(['position', 'normal', 'uv']);
+
+/**
+ * Normaliza una BufferGeometry para que sea compatible con mergeBufferGeometries().
+ *
+ * Three.js r170 requiere que TODAS las geometrías pasadas a mergeBufferGeometries
+ * tengan exactamente los mismos atributos (mismo nombre, mismo tipo, mismo itemSize)
+ * y que sean todas indexed o todas non-indexed.
+ *
+ * ExtrudeGeometry (paredes con aberturas) genera geometría indexed con groups internos
+ * y puede tener atributos adicionales. BoxGeometry genera indexed sin groups.
+ * Mezclarlas directamente falla.
+ *
+ * Solución: convertir toda geometría a non-indexed, retener solo position/normal/uv,
+ * limpiar groups y recomputar normales.
+ *
+ * @see https://threejs.org/docs/#examples/en/utils/BufferGeometryUtils.mergeGeometries
+ */
+const normalizarGeometriaParaMerge = (geo: THREE.BufferGeometry): THREE.BufferGeometry => {
+  // 1. Convertir a non-indexed (expande vértices compartidos)
+  const nonIndexed = geo.index ? geo.toNonIndexed() : geo.clone();
+
+  // 2. Eliminar atributos que no estén en el set permitido
+  const attrNames = Object.keys(nonIndexed.attributes);
+  for (const name of attrNames) {
+    if (!ALLOWED_ATTRIBUTES.has(name)) {
+      nonIndexed.deleteAttribute(name);
+    }
+  }
+
+  // 3. Asegurar que exista 'uv' — si no existe, crear uno trivial (0,0) por vértice
+  if (!nonIndexed.hasAttribute('uv')) {
+    const count = nonIndexed.getAttribute('position').count;
+    nonIndexed.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(count * 2), 2));
+  }
+
+  // 4. Asegurar que exista 'normal'
+  if (!nonIndexed.hasAttribute('normal')) {
+    nonIndexed.computeVertexNormals();
+  }
+
+  // 5. Limpiar groups internos (residuo de ExtrudeGeometry multi-material)
+  nonIndexed.clearGroups();
+
+  // 6. Eliminar index residual (toNonIndexed() ya lo quita, pero por seguridad)
+  if (nonIndexed.index) {
+    nonIndexed.setIndex(null);
+  }
+
+  return nonIndexed;
+};
+
 // ─── Helpers de geometría (extraídos de GeometriaProceduralObjeto3D) ─────────
 
 const clamp = (valor: number, min: number, max: number) => Math.min(max, Math.max(min, valor));
@@ -177,8 +230,16 @@ const generarGeometriasObjeto = (
   const results: TransformedGeometry[] = [];
 
   const addGeo = (geo: THREE.BufferGeometry, category: MaterialCategory) => {
+    // Aplicar transformación world-space ANTES de normalizar
     geo.applyMatrix4(mat4);
-    results.push({ geometry: geo, category });
+    // Normalizar para compatibilidad con mergeBufferGeometries:
+    // - Convierte a non-indexed
+    // - Retiene solo position/normal/uv
+    // - Limpia groups internos
+    const normalized = normalizarGeometriaParaMerge(geo);
+    // Dispose la geometría original si es diferente a la normalizada
+    if (normalized !== geo) geo.dispose();
+    results.push({ geometry: normalized, category });
   };
 
   // ── Cuerpo principal ──
@@ -370,12 +431,33 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
 
     for (const cat of ['opaque', 'glass', 'metal'] as MaterialCategory[]) {
       if (buckets[cat].length === 0) continue;
+
+      // Debug: verificar compatibilidad de atributos antes del merge
+      if (process.env.NODE_ENV !== 'production') {
+        const attrs0 = Object.keys(buckets[cat][0].attributes).sort().join(',');
+        const incompatible = buckets[cat].filter(
+          (g, i) => i > 0 && Object.keys(g.attributes).sort().join(',') !== attrs0,
+        );
+        if (incompatible.length > 0) {
+          log.warn(`[${cat}] Attribute mismatch detected BEFORE merge`, {
+            expected: attrs0,
+            mismatched: incompatible.length,
+            total: buckets[cat].length,
+          });
+        }
+      }
+
       const merged = mergeBufferGeometries(buckets[cat], false);
       if (merged) {
         merged.computeVertexNormals();
         results.push({ geometry: merged, category: cat });
+      } else {
+        log.warn(`mergeBufferGeometries() returned null for category "${cat}"`, {
+          geometryCount: buckets[cat].length,
+          hint: 'Incompatible attributes survived normalization — check normalizarGeometriaParaMerge()',
+        });
       }
-      // Dispose source geometries — mergeGeometries copies data
+      // Dispose source geometries — mergeBufferGeometries copies data
       for (const g of buckets[cat]) g.dispose();
     }
 
