@@ -32,6 +32,15 @@ interface OpcionesMaterialArquitectonico {
   rugosidad?: number | null;
   metalicidad?: number | null;
   resaltar?: boolean;
+  /**
+   * Override for THREE.Material.side.
+   * Defaults to THREE.DoubleSide (2) for individual mesh rendering.
+   *
+   * Merge pipelines MUST pass THREE.FrontSide (0) to prevent back-face depth
+   * writes that occlude transparent geometry (glass panes).
+   * @see MERGED_OPAQUE_SIDE in IBuiltinWallGeometryService
+   */
+  side?: THREE.Side;
 }
 
 const cacheAlbedo = new Map<TipoMaterialArquitectonico, THREE.CanvasTexture>();
@@ -332,6 +341,7 @@ export const crearMaterialPBRArquitectonico = ({
   rugosidad,
   metalicidad,
   resaltar = false,
+  side,
 }: OpcionesMaterialArquitectonico) => {
   const config = registroMateriales[tipo_material];
   const { repeatX, repeatY } = calcularRepeticion(ancho, alto, config.tamano_baldosa, repetir_textura, escala_textura);
@@ -354,6 +364,8 @@ export const crearMaterialPBRArquitectonico = ({
   //     Ref: https://threejs.org/docs/#api/en/materials/MeshStandardMaterial
   const resolvedOpacity = opacidad ?? config.opacidad;
 
+  const resolvedSide = side ?? THREE.DoubleSide;
+
   const material = tipo_material === 'vidrio'
     ? new THREE.MeshStandardMaterial({
         color: new THREE.Color(normalizarColor(color_base, config.color_fallback)),
@@ -364,7 +376,7 @@ export const crearMaterialPBRArquitectonico = ({
         depthWrite: false,
         emissive: new THREE.Color(resaltar ? '#9ec5ff' : '#000000'),
         emissiveIntensity: resaltar ? 0.08 : 0,
-        side: THREE.DoubleSide,
+        side: resolvedSide,
         envMapIntensity: 0.8,
       })
     : new THREE.MeshStandardMaterial({
@@ -378,7 +390,7 @@ export const crearMaterialPBRArquitectonico = ({
         opacity: resolvedOpacity,
         emissive: new THREE.Color(resaltar ? '#6b7bff' : '#000000'),
         emissiveIntensity: resaltar ? 0.05 : 0,
-        side: THREE.DoubleSide,
+        side: resolvedSide,
       });
 
   return { material, texturas: [albedo, roughnessMap, normalMap] };

@@ -12,7 +12,9 @@
  *   - Solo contiene hooks R3F, montaje JSX, y runtime diagnostic de vidrio
  *
  * Ref: Three.js r182 — BufferGeometryUtils.mergeGeometries
- * Ref: Three.js r182 — MeshStandardMaterial (transparent, depthWrite, alphaTest)
+ * Ref: Three.js r182 — MeshStandardMaterial (transparent, depthWrite, alphaTest, forceSinglePass)
+ * Ref: Three.js r182 — Material.side (FrontSide for merged opaque, DoubleSide for glass)
+ * Ref: Three.js Issue #2476 — DoubleSide + transparent depth artifacts
  */
 
 'use client';
@@ -28,7 +30,11 @@ import {
 } from '@/lib/rendering/fabricaMaterialesArquitectonicos';
 import { GeometriaProceduralParedesAdapter } from '@/src/core/infrastructure/adapters/GeometriaProceduralParedesAdapter';
 import { GenerarGeometriasMergeadasBuiltinUseCase } from '@/src/core/application/usecases/GenerarGeometriasMergeadasBuiltinUseCase';
-import type { MaterialCategory, WallObjectData } from '@/src/core/domain/ports/IBuiltinWallGeometryService';
+import {
+  MERGED_OPAQUE_SIDE,
+  type MaterialCategory,
+  type WallObjectData,
+} from '@/src/core/domain/ports/IBuiltinWallGeometryService';
 
 const log = logger.child('BuiltinWallBatcher');
 
@@ -65,6 +71,11 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
   const materials = useMemo(() => {
     const perfil = resolverPerfilVisualArquitectonico('corporativo');
 
+    // FIX (glass wall visibility): Opaque material MUST use FrontSide in merge pipeline.
+    // DoubleSide causes back faces of ExtrudeGeometry hole-perimeter to write depth buffer
+    // at positions overlapping glass panes, making glass invisible via depth test failure.
+    // Ref: MERGED_OPAQUE_SIDE constant in Domain port
+    // Ref: Three.js Issue #2476 — DoubleSide + transparent depth artifacts
     const opaque = crearMaterialPBRArquitectonico({
       tipo_material: 'yeso',
       ancho: 4,
@@ -76,6 +87,7 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       rugosidad: 0.7,
       metalicidad: 0.05,
       resaltar: false,
+      side: MERGED_OPAQUE_SIDE as THREE.Side,
     });
     if (opaque?.material) opaque.material.vertexColors = true;
 
@@ -104,22 +116,23 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
 
     // ── Glass material hardening ──
     //
-    // FIX (glass wall visibility):
-    //   1. REMOVED polygonOffset — positive offset was pushing glass fragments
-    //      AWAY from camera, causing them to fail depth test against nearby
-    //      wall hole inner faces. polygonOffset should only be used to pull
-    //      coplanar geometry TOWARD the camera (negative factor).
-    //      Ref: https://threejs.org/docs/#api/en/materials/Material.polygonOffset
+    // FIX (glass wall visibility — 2026-04-08):
     //
-    //   2. ADDED alphaTest = 0.01 — Forces Three.js WebGPU renderer to classify
-    //      this material in the transparent render pass. Without this hint,
-    //      the pipeline cache can stale-match to an opaque pipeline after
-    //      mount/unmount cycles (edit mode toggle).
-    //      Ref: https://github.com/mrdoob/three.js/issues/32570
-    //      Ref: https://github.com/mrdoob/three.js/issues/25307
+    //   PRIMARY FIX: Opaque material now uses FrontSide (see above). This eliminates
+    //   back-face depth writes from ExtrudeGeometry hole-perimeter faces that were
+    //   occluding glass panes in the merged pipeline.
     //
-    //   3. Glass pane geometry now has z-offset (see GeometriaProceduralParedesAdapter)
-    //      to avoid coplanarity with wall extrusion inner faces.
+    //   Glass keeps DoubleSide — panels must be visible from both room sides.
+    //
+    //   alphaTest = 0.01: Forces WebGPU pipeline to classify as transparent.
+    //   Ref: https://github.com/mrdoob/three.js/issues/32570
+    //
+    //   forceSinglePass = true: Prevents WebGPU from splitting the glass into
+    //   separate opaque+transparent sub-passes, which can cause pipeline cache
+    //   misclassification after mount/unmount cycles (edit mode toggle).
+    //   Ref: https://threejs.org/docs/#api/en/materials/Material.forceSinglePass
+    //
+    //   Glass z-offset: see GeometriaProceduralParedesAdapter (GLASS_Z_OFFSET_FACTOR).
     if (glass?.material) {
       const gm = glass.material as THREE.MeshStandardMaterial;
       gm.transparent = true;
@@ -133,12 +146,17 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       gm.depthTest = true;
       gm.alphaTest = 0.01;
       gm.polygonOffset = false;
+      gm.forceSinglePass = true;
       gm.needsUpdate = true;
       gm.version++;
     }
 
     const metal = crearMaterialMarcoArquitectonico('vidrio', false);
-    if (metal?.material) metal.material.vertexColors = true;
+    if (metal?.material) {
+      metal.material.vertexColors = true;
+      // Metal frames also use FrontSide in merge pipeline (same depth-buffer rationale as opaque).
+      metal.material.side = MERGED_OPAQUE_SIDE as THREE.Side;
+    }
 
     return { opaque, glass, metal };
   }, []);
@@ -186,7 +204,8 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       mat.depthWrite === false &&
       mat.opacity < 1.0 &&
       mat.opacity > 0 &&
-      mat.polygonOffset === false;
+      mat.polygonOffset === false &&
+      mat.forceSinglePass === true;
 
     if (!isHealthy) {
       log.warn('Glass material integrity check FAILED — forcing recovery', {
@@ -197,6 +216,7 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
         side: mat.side,
         polygonOffset: mat.polygonOffset,
         alphaTest: mat.alphaTest,
+        forceSinglePass: mat.forceSinglePass,
         visible: mat.visible,
         version: mat.version,
       });
@@ -207,6 +227,7 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       mat.blending = THREE.NormalBlending;
       mat.alphaTest = 0.01;
       mat.polygonOffset = false;
+      mat.forceSinglePass = true;
       mat.needsUpdate = true;
       mat.version++;
     } else {
@@ -216,9 +237,12 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
         depthWrite: mat.depthWrite,
         alphaTest: mat.alphaTest,
         polygonOffset: mat.polygonOffset,
+        forceSinglePass: mat.forceSinglePass,
+        side: mat.side,
         renderOrder: mesh.renderOrder,
         frustumCulled: mesh.frustumCulled,
         visible: mesh.visible,
+        geometryVertices: mesh.geometry?.attributes?.position?.count ?? 0,
       });
     }
   });

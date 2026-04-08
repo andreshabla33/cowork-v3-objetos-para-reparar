@@ -41,6 +41,25 @@ export const GLASS_MIN_THICKNESS = 0.003;
  */
 export const GLASS_MAX_THICKNESS = 0.025;
 
+/**
+ * Opaque/metal materials in the merge pipeline MUST use FrontSide (not DoubleSide).
+ *
+ * Root cause (2026-04-08): When all ~240 opaque walls are merged into a single
+ * draw call, `side: DoubleSide` causes the GPU to render back faces of the
+ * ExtrudeGeometry's inner hole-perimeter faces. These back faces write to the
+ * depth buffer at Z positions that overlap with glass panes, causing glass to
+ * fail depth test and become invisible.
+ *
+ * In edit mode (individual meshes), Three.js sorts transparent objects
+ * back-to-front per-mesh, so this issue does not manifest.
+ *
+ * Ref: Three.js Issue #2476  — DoubleSide + transparent depth artifacts
+ * Ref: Three.js Issue #32570 — WebGPU r182 transparent pipeline regression
+ * Ref: Three.js docs — Material.side
+ *      https://threejs.org/docs/#api/en/materials/Material.side
+ */
+export const MERGED_OPAQUE_SIDE = 0; // THREE.FrontSide (avoids Three.js import in domain)
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 /** Material category for merged geometry buckets */
