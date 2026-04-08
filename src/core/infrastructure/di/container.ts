@@ -18,6 +18,11 @@ import type { IAuthRepository } from '../../domain/ports/IAuthRepository';
 import type { IWorkspaceRepository } from '../../domain/ports/IWorkspaceRepository';
 import type { IProfileRepository } from '../../domain/ports/IProfileRepository';
 import type { IChatRepository } from '../../domain/ports/IChatRepository';
+import type { IBatchedMeshService } from '../../domain/ports/IBatchedMeshService';
+import type { IMultiBatchMeshService } from '../../domain/ports/IMultiBatchMeshService';
+import type { ITextureAtlasService } from '../../domain/ports/ITextureAtlasService';
+import type { IGPUSkinnedInstanceService } from '../../domain/ports/IGPUSkinnedInstanceService';
+import type { IBatchMaterialPropertiesService } from '../../domain/ports/IBatchMaterialPropertiesService';
 
 // ─── Tipo del contenedor ──────────────────────────────────────────────────────
 
@@ -34,6 +39,16 @@ export interface DIContainer {
   profile: IProfileRepository;
   /** Repositorio de chat */
   chat: IChatRepository;
+  /** Fase 3 — BatchedMesh para objetos estáticos (1 draw call por material) */
+  batchedMesh: IBatchedMeshService;
+  /** Fase 4A — Multi-material BatchedMesh (N batches, uno por material) */
+  multiBatch: IMultiBatchMeshService;
+  /** Fase 3 — Atlas de texturas Canvas2D (reduce texture switches) */
+  textureAtlas: ITextureAtlasService;
+  /** Fase 3 — GPU instanced skinning para 500 avatares (DataTexture RGBA32F) */
+  gpuSkinnedInstance: IGPUSkinnedInstanceService;
+  /** Fase 4D — Per-instance PBR material properties via DataTexture + shader injection */
+  materialProps: IBatchMaterialPropertiesService;
 }
 
 // ─── Singleton ────────────────────────────────────────────────────────────────
@@ -57,6 +72,11 @@ export async function getDIContainer(): Promise<DIContainer> {
     { WorkspaceSupabaseRepository },
     { ProfileSupabaseRepository },
     { chatRepository },
+    { getBatchedMeshAdapter },
+    { getMultiBatchMeshAdapter },
+    { getTextureAtlasAdapter },
+    { getGPUSkinnedInstanceAdapter },
+    { getBatchMaterialPropertiesAdapter },
   ] = await Promise.all([
     import('../adapters/ThreeTextureFactoryAdapter'),
     import('../adapters/RenderingOptimizationAdapter'),
@@ -64,6 +84,11 @@ export async function getDIContainer(): Promise<DIContainer> {
     import('../adapters/WorkspaceSupabaseRepository'),
     import('../adapters/ProfileSupabaseRepository'),
     import('../adapters/ChatSupabaseRepository'),
+    import('../adapters/BatchedMeshThreeAdapter'),
+    import('../adapters/MultiBatchMeshThreeAdapter'),
+    import('../adapters/TextureAtlasCanvasAdapter'),
+    import('../adapters/GPUSkinnedInstanceAdapter'),
+    import('../adapters/BatchMaterialPropertiesThreeAdapter'),
   ]);
 
   _container = {
@@ -73,6 +98,11 @@ export async function getDIContainer(): Promise<DIContainer> {
     workspace: new WorkspaceSupabaseRepository(),
     profile: new ProfileSupabaseRepository(),
     chat: chatRepository,
+    batchedMesh: getBatchedMeshAdapter(),
+    multiBatch: getMultiBatchMeshAdapter(),
+    textureAtlas: getTextureAtlasAdapter(),
+    gpuSkinnedInstance: getGPUSkinnedInstanceAdapter(),
+    materialProps: getBatchMaterialPropertiesAdapter(),
   };
 
   return _container;

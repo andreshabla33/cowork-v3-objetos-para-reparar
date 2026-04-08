@@ -27,7 +27,7 @@ export interface RemoteMediaLifecycleDiagnosticsOptions {
 export class RemoteMediaLifecycleDiagnostics {
   private enabled: boolean;
   private scope: string;
-  private log = logger.child('remote-media-lifecycle');
+  private readonly _logger = logger.child('remote-media-lifecycle');
 
   constructor(options: RemoteMediaLifecycleDiagnosticsOptions = {}) {
     this.enabled = options.enabled ?? false;
@@ -36,7 +36,7 @@ export class RemoteMediaLifecycleDiagnostics {
 
   log(event: RemoteMediaLifecycleEvent, payload: RemoteMediaLifecycleDiagnosticsPayload = {}): void {
     if (!this.enabled) return;
-    this.log.debug('Remote media lifecycle event', {
+    this._logger.debug('Remote media lifecycle event', {
       event,
       scope: this.scope,
       payload,
@@ -45,7 +45,7 @@ export class RemoteMediaLifecycleDiagnostics {
 
   warn(event: RemoteMediaLifecycleEvent, payload: RemoteMediaLifecycleDiagnosticsPayload = {}): void {
     if (!this.enabled) return;
-    this.log.warn('Remote media lifecycle event', {
+    this._logger.warn('Remote media lifecycle event', {
       event,
       scope: this.scope,
       payload,

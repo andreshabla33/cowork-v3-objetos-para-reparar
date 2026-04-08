@@ -4,6 +4,42 @@
  * Simplifies imports in use cases and other modules.
  */
 
+// Fase 3 — GPU Rendering adapters
+export {
+  BatchedMeshThreeAdapter,
+  getBatchedMeshAdapter,
+  resetBatchedMeshAdapter,
+} from './BatchedMeshThreeAdapter';
+export {
+  TextureAtlasCanvasAdapter,
+  getTextureAtlasAdapter,
+  resetTextureAtlasAdapter,
+} from './TextureAtlasCanvasAdapter';
+export {
+  GPUSkinnedInstanceAdapter,
+  getGPUSkinnedInstanceAdapter,
+  resetGPUSkinnedInstanceAdapter,
+} from './GPUSkinnedInstanceAdapter';
+export type {
+  IBatchedMeshService,
+  BatchGeometryId,
+  BatchInstanceId,
+  Matrix4Flat,
+  BatchedMeshStats,
+} from '../../domain/ports/IBatchedMeshService';
+export type {
+  ITextureAtlasService,
+  AtlasRegion,
+  UVTransform,
+  AtlasStats,
+} from '../../domain/ports/ITextureAtlasService';
+export type {
+  IGPUSkinnedInstanceService,
+  AvatarRowIndex,
+  BoneMatrices,
+  GPUSkinnedInstanceStats,
+} from '../../domain/ports/IGPUSkinnedInstanceService';
+
 // Workspace
 export { WorkspaceSupabaseRepository } from './WorkspaceSupabaseRepository';
 export type {
@@ -31,6 +67,7 @@ export type {
 // Meetings
 export { MeetingSupabaseRepository, meetingRepository } from './MeetingSupabaseRepository';
 export { MeetingRealtimeSupabaseService, meetingRealtimeService } from './MeetingRealtimeSupabaseService';
+export { meetingAccessRepository } from './MeetingAccessSupabaseRepository';
 export type {
   IMeetingRepository,
   ReunionProgramadaData,
@@ -48,3 +85,51 @@ export type {
   IMeetingRealtimeService,
   MeetingRealtimeSubscription,
 } from '../../domain/ports/IMeetingRealtimeService';
+
+// Auth & Profile
+export { AuthSupabaseRepository, authRepository } from './AuthSupabaseRepository';
+export { ProfileSupabaseRepository, profileRepository } from './ProfileSupabaseRepository';
+export { OnboardingSupabaseRepository } from './OnboardingSupabaseRepository';
+
+// Spaces & Templates
+export { spaceRepository } from './SpaceSupabaseRepository';
+export { InyectorPlantillaEspacio } from './InyectorPlantillaEspacioAdapter';
+export { InyectorPlantillaZona } from './InyectorPlantillaZonaAdapter';
+export { RepositorioPlantillaZonaSupabase } from './RepositorioPlantillaZonaSupabaseAdapter';
+export { RepositorioRegistroEmpresaSupabase } from './RepositorioRegistroEmpresaSupabaseAdapter';
+
+// Invitations
+export { InvitacionSupabaseRepository } from './InvitacionSupabaseRepository';
+export { EnviarInvitacionSupabaseRepository } from './EnviarInvitacionSupabaseRepository';
+
+// Avatars & Catalog
+export { AvatarCatalogSupabaseRepository, avatarCatalogRepository } from './AvatarCatalogSupabaseRepository';
+
+// Recording
+export { recordingRepository } from './RecordingSupabaseRepository';
+
+// LiveKit & Video
+export { LiveKitOfficialBackgroundAdapter, getLiveKitBackgroundAdapter } from './LiveKitOfficialBackgroundAdapter';
+export { LocalVideoTrackFactory, getLocalVideoTrackFactory } from './LocalVideoTrackFactory';
+
+// Rendering & 3D Optimization
+export {
+  GeometryCacheAdapter,
+  getGeometryCacheAdapter,
+  resetGeometryCacheAdapter,
+} from './GeometryCacheAdapter';
+export {
+  MultiBatchMeshThreeAdapter,
+  getMultiBatchMeshAdapter,
+  resetMultiBatchMeshAdapter,
+} from './MultiBatchMeshThreeAdapter';
+export {
+  BatchMaterialPropertiesThreeAdapter,
+  getBatchMaterialPropertiesAdapter,
+  resetBatchMaterialPropertiesAdapter,
+} from './BatchMaterialPropertiesThreeAdapter';
+export { RenderingOptimizationAdapter } from './RenderingOptimizationAdapter';
+export { ThreeTextureFactoryAdapter } from './ThreeTextureFactoryAdapter';
+
+// Bootstrap
+export { WorkspaceBootstrapSupabaseAdapter } from './WorkspaceBootstrapSupabaseAdapter';
