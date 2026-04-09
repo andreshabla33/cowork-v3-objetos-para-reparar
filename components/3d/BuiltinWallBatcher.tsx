@@ -4,7 +4,11 @@
  * Fase 5A/5B: Merge-batcher para objetos builtin (paredes procedurales).
  *
  * Problema: 221 paredes builtin × 1-11 meshes cada una = ~330 draw calls.
- * Solución: Mergear geometrías por tipo de material → ~3-5 draw calls totales.
+ * Solución: Mergear geometrías opacas y metal → ~2 draw calls + ~6 vidrios individuales.
+ *
+ * Fase 5C (2026-04-09): Glass panes are NOT merged — they render as individual meshes.
+ * WebGPU requires per-mesh BLEND pipeline classification for correct alpha blending.
+ * Merging transparent geometry caused alphaTest/MASK pipeline, making glass opaque.
  *
  * Clean Architecture — Presentation layer:
  *   - Delega generación de geometrías a GenerarGeometriasMergeadasBuiltinUseCase
@@ -12,9 +16,10 @@
  *   - Solo contiene hooks R3F, montaje JSX, y runtime diagnostic de vidrio
  *
  * Ref: Three.js r182 — BufferGeometryUtils.mergeGeometries
- * Ref: Three.js r182 — MeshStandardMaterial (transparent, depthWrite, alphaTest, forceSinglePass)
+ * Ref: Three.js r182 — MeshStandardMaterial (transparent, depthWrite, blending)
  * Ref: Three.js r182 — Material.side (FrontSide for merged opaque, DoubleSide for glass)
  * Ref: Three.js Issue #2476 — DoubleSide + transparent depth artifacts
+ * Ref: Three.js Issue #32570 — WebGPU alphaTest forces MASK pipeline, not BLEND
  */
 
 'use client';
@@ -91,16 +96,30 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
     });
     if (opaque?.material) opaque.material.vertexColors = true;
 
-    // Glass: MeshStandardMaterial con opacity (sin transmission, sin double render pass).
+    // Glass: MeshStandardMaterial with opacity-based alpha blending.
     //
-    // CRITICAL FIX (Fase 5B): After unmount/remount cycle (edit mode toggle), the
-    // WebGPU renderer pipeline cache can stale-match the glass material to an opaque
-    // pipeline. We force-assert all transparency properties AND bump material.version
-    // to trigger WebGPU pipeline recompilation.
+    // CRITICAL FIX (Fase 5C — 2026-04-09): Glass panes are now rendered as
+    // INDIVIDUAL meshes (not merged) for correct WebGPU transparency.
     //
-    // Ref: https://threejs.org/docs/#api/en/materials/MeshStandardMaterial
-    // Ref: https://github.com/mrdoob/three.js/issues/25307 (transparent toggle fix)
-    // Ref: https://github.com/mrdoob/three.js/issues/32570 (WebGPU transparent regression r182)
+    // Previous bug: alphaTest = 0.01 was set to "force WebGPU transparent pipeline",
+    // but this actually forces the ALPHA_MASK pipeline (binary discard), not the
+    // BLEND pipeline (alpha blending). Since opacity 0.4 > alphaTest 0.01, ALL
+    // fragments pass the test and render at FULL OPACITY — no blending occurs.
+    //
+    // Additionally, forceSinglePass = true prevented correct double-sided rendering
+    // for transparent materials (back faces should render before front faces for
+    // correct alpha compositing).
+    //
+    // Fix:
+    //   1. REMOVED alphaTest (let transparent: true drive the BLEND pipeline)
+    //   2. REMOVED forceSinglePass (allow back-then-front double-sided rendering)
+    //   3. REMOVED version++ (read-only in Three.js r182, needsUpdate suffices)
+    //   4. Glass geometries are NOT merged (see GenerarGeometriasMergeadasBuiltinUseCase)
+    //
+    // Ref: Three.js r182 — WebGPU pipeline selection: transparent → BLEND, alphaTest → MASK
+    // Ref: Three.js GitHub #32570 — WebGPU transparent regression
+    // Ref: Three.js docs — Material.transparent: enables alpha blending pipeline
+    //   https://threejs.org/docs/#api/en/materials/Material.transparent
     const glass = crearMaterialPBRArquitectonico({
       tipo_material: 'vidrio',
       ancho: 2,
@@ -114,25 +133,13 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       resaltar: false,
     });
 
-    // ── Glass material hardening ──
+    // ── Glass material assertion ──
     //
-    // FIX (glass wall visibility — 2026-04-08):
+    // Ensure glass material has correct blend-pipeline properties.
+    // Primary fix is now architectural: glass is NOT merged, so each pane is an
+    // individual mesh that the WebGPU renderer can correctly classify as BLEND.
     //
-    //   PRIMARY FIX: Opaque material now uses FrontSide (see above). This eliminates
-    //   back-face depth writes from ExtrudeGeometry hole-perimeter faces that were
-    //   occluding glass panes in the merged pipeline.
-    //
-    //   Glass keeps DoubleSide — panels must be visible from both room sides.
-    //
-    //   alphaTest = 0.01: Forces WebGPU pipeline to classify as transparent.
-    //   Ref: https://github.com/mrdoob/three.js/issues/32570
-    //
-    //   forceSinglePass = true: Prevents WebGPU from splitting the glass into
-    //   separate opaque+transparent sub-passes, which can cause pipeline cache
-    //   misclassification after mount/unmount cycles (edit mode toggle).
-    //   Ref: https://threejs.org/docs/#api/en/materials/Material.forceSinglePass
-    //
-    //   Glass z-offset: see GeometriaProceduralParedesAdapter (GLASS_Z_OFFSET_FACTOR).
+    // Glass z-offset: see GeometriaProceduralParedesAdapter (GLASS_Z_OFFSET_FACTOR).
     if (glass?.material) {
       const gm = glass.material as THREE.MeshStandardMaterial;
       gm.transparent = true;
@@ -144,11 +151,8 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       gm.side = THREE.DoubleSide;
       gm.blending = THREE.NormalBlending;
       gm.depthTest = true;
-      gm.alphaTest = 0.01;
       gm.polygonOffset = false;
-      gm.forceSinglePass = true;
       gm.needsUpdate = true;
-      gm.version++;
     }
 
     const metal = crearMaterialMarcoArquitectonico('vidrio', false);
@@ -179,9 +183,13 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
   }, [materials]);
 
   // ── Runtime glass material integrity monitor ──
-  // Verifies glass material state on first frame post-mount.
+  // Verifies glass material BLEND pipeline state on first frame post-mount.
   // If corruption is detected (WebGPU pipeline cache, R3F reconciler),
-  // forces recovery by resetting all transparency properties.
+  // forces recovery by resetting alpha-blend properties.
+  //
+  // FIX (Fase 5C — 2026-04-09): Removed alphaTest/forceSinglePass from checks.
+  // alphaTest forces ALPHA_MASK pipeline (binary discard) not BLEND (alpha blending).
+  // forceSinglePass prevents correct back-to-front double-sided transparency.
   const glassRef = useRef<THREE.Mesh>(null);
   const hasLoggedGlassState = useRef(false);
 
@@ -199,48 +207,45 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
 
     hasLoggedGlassState.current = true;
 
+    // BLEND pipeline criteria: transparent=true, depthWrite=false, 0 < opacity < 1
+    // NO alphaTest (would force ALPHA_MASK), NO forceSinglePass (breaks DoubleSide blend)
     const isHealthy =
       mat.transparent === true &&
       mat.depthWrite === false &&
       mat.opacity < 1.0 &&
       mat.opacity > 0 &&
-      mat.polygonOffset === false &&
-      mat.forceSinglePass === true;
+      mat.alphaTest === 0 &&
+      mat.polygonOffset === false;
 
     if (!isHealthy) {
-      log.warn('Glass material integrity check FAILED — forcing recovery', {
+      log.warn('Glass material BLEND pipeline check FAILED — forcing recovery', {
         transparent: mat.transparent,
         depthWrite: mat.depthWrite,
         opacity: mat.opacity,
         blending: mat.blending,
         side: mat.side,
-        polygonOffset: mat.polygonOffset,
         alphaTest: mat.alphaTest,
         forceSinglePass: mat.forceSinglePass,
+        polygonOffset: mat.polygonOffset,
         visible: mat.visible,
-        version: mat.version,
       });
       mat.transparent = true;
       mat.depthWrite = false;
       mat.opacity = Math.min(mat.opacity || 0.35, 0.4);
       mat.side = THREE.DoubleSide;
       mat.blending = THREE.NormalBlending;
-      mat.alphaTest = 0.01;
+      mat.alphaTest = 0;
       mat.polygonOffset = false;
-      mat.forceSinglePass = true;
+      mat.forceSinglePass = false;
       mat.needsUpdate = true;
-      mat.version++;
     } else {
-      log.info('Glass material integrity check PASSED', {
+      log.info('Glass material BLEND pipeline check PASSED', {
         transparent: mat.transparent,
         opacity: mat.opacity,
         depthWrite: mat.depthWrite,
         alphaTest: mat.alphaTest,
-        polygonOffset: mat.polygonOffset,
-        forceSinglePass: mat.forceSinglePass,
         side: mat.side,
         renderOrder: mesh.renderOrder,
-        frustumCulled: mesh.frustumCulled,
         visible: mesh.visible,
         geometryVertices: mesh.geometry?.attributes?.position?.count ?? 0,
       });
@@ -250,59 +255,95 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
   // ── Render ──
 
   // ── Geometry diagnostic log (once per merge) ──
-  // Logs vertex counts per category to verify hole presence.
-  // A wall-glass with correct holes has MORE opaque vertices than one without.
-  // Ref: ExtrudeGeometry generates extra triangles for hole boundaries.
+  // Logs vertex counts per category. Glass now reports individual pane counts.
   const hasLoggedGeoDiag = useRef(false);
   useEffect(() => { hasLoggedGeoDiag.current = false; }, [merged]);
   useEffect(() => {
     if (hasLoggedGeoDiag.current || !merged || merged.length === 0) return;
     hasLoggedGeoDiag.current = true;
     const diag: Record<string, number> = {};
+    let glassCount = 0;
+    let glassTotalVerts = 0;
     for (const { geometry, category } of merged) {
       const geo = geometry as THREE.BufferGeometry;
-      diag[`${category}Vertices`] = geo.attributes?.position?.count ?? 0;
+      const verts = geo.attributes?.position?.count ?? 0;
+      if (category === 'glass') {
+        glassCount++;
+        glassTotalVerts += verts;
+      } else {
+        diag[`${category}Vertices`] = verts;
+      }
     }
-    log.info('Merged geometry diagnostic', diag);
+    diag['glassPanes'] = glassCount;
+    diag['glassTotalVertices'] = glassTotalVerts;
+    log.info('Batched geometry diagnostic', diag);
   }, [merged]);
 
   if (!merged || merged.length === 0) return null;
 
-  const getMaterial = (cat: MaterialCategory): THREE.Material => {
-    if (cat === 'glass') return materials.glass?.material ?? _fallbackMaterial;
-    if (cat === 'metal') return materials.metal?.material ?? _fallbackMaterial;
-    return materials.opaque?.material ?? _fallbackMaterial;
-  };
+  const glassMaterial = materials.glass?.material ?? _fallbackMaterial;
+  const metalMaterial = materials.metal?.material ?? _fallbackMaterial;
+  const opaqueMaterial = materials.opaque?.material ?? _fallbackMaterial;
+
+  // Separate merged groups into opaque/metal (1 mesh each) and glass (N individual meshes).
+  // Glass geometries are NOT merged (Fase 5C fix) for correct WebGPU BLEND pipeline.
+  const opaqueGroup = merged.find(({ category }) => category === 'opaque');
+  const metalGroup = merged.find(({ category }) => category === 'metal');
+  const glassGroups = merged.filter(({ category }) => category === 'glass');
 
   return (
     <group name="BuiltinWallBatcher">
-      {merged.map(({ geometry, category }) =>
-        category === 'glass' ? (
-          // Glass mesh: special rendering configuration
-          // frustumCulled={false}: merged glass spans entire floor
-          // renderOrder={10}: renders well after all opaque/metal (renderOrder=0)
-          // Ref: https://threejs.org/docs/#api/en/core/Object3D.frustumCulled
-          <mesh
-            key={`glass-${category}`}
-            ref={glassRef}
-            geometry={geometry as THREE.BufferGeometry}
-            material={getMaterial(category)}
-            castShadow={false}
-            receiveShadow
-            frustumCulled={false}
-            renderOrder={10}
-          />
-        ) : (
-          <mesh
-            key={category}
-            geometry={geometry as THREE.BufferGeometry}
-            material={getMaterial(category)}
-            castShadow
-            receiveShadow
-            renderOrder={0}
-          />
-        ),
+      {/* Opaque walls — single merged mesh, ~240 walls in 1 draw call */}
+      {opaqueGroup && (
+        <mesh
+          key="opaque"
+          geometry={opaqueGroup.geometry as THREE.BufferGeometry}
+          material={opaqueMaterial}
+          castShadow
+          receiveShadow
+          renderOrder={0}
+        />
       )}
+
+      {/* Metal frames — single merged mesh */}
+      {metalGroup && (
+        <mesh
+          key="metal"
+          geometry={metalGroup.geometry as THREE.BufferGeometry}
+          material={metalMaterial}
+          castShadow
+          receiveShadow
+          renderOrder={0}
+        />
+      )}
+
+      {/* Glass panes — individual meshes for correct WebGPU BLEND pipeline.
+        *
+        * Each glass pane is a separate mesh so:
+        *   1. WebGPU compiles a proper BLEND (alpha blending) render pipeline per-mesh
+        *   2. Three.js can depth-sort individual panes back-to-front for correct compositing
+        *   3. No alphaTest interference (MASK vs BLEND pipeline conflict)
+        *
+        * Performance: ~6 extra draw calls (was 1 merged). Negligible impact.
+        *
+        * renderOrder={10}: renders well after all opaque/metal (renderOrder=0)
+        * frustumCulled={false}: individual panes are small but renderOrder must be respected
+        *
+        * Ref: Three.js docs — Object3D.renderOrder
+        *   https://threejs.org/docs/#api/en/core/Object3D.renderOrder
+        */}
+      {glassGroups.map(({ geometry }, idx) => (
+        <mesh
+          key={`glass-${idx}`}
+          ref={idx === 0 ? glassRef : undefined}
+          geometry={geometry as THREE.BufferGeometry}
+          material={glassMaterial}
+          castShadow={false}
+          receiveShadow
+          frustumCulled={false}
+          renderOrder={10}
+        />
+      ))}
     </group>
   );
 };

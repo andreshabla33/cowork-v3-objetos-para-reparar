@@ -121,10 +121,31 @@ export class GenerarGeometriasMergeadasBuiltinUseCase {
     }
 
     // ── Merge each bucket ──
+    //
+    // CRITICAL (2026-04-09 — Fase 5C): Glass geometries are NOT merged.
+    //
+    // Root cause: In WebGPU, merging transparent geometries into a single mesh
+    // prevents correct alpha blending. The WebGPU pipeline compiles blend state
+    // per-pipeline, and merged transparent geometry can't be individually depth-sorted.
+    //
+    // Additionally, alphaTest > 0 on a merged transparent mesh forces the WebGPU
+    // renderer to use ALPHA_MASK pipeline (binary discard) instead of BLEND pipeline
+    // (alpha blending), making glass appear fully opaque.
+    //
+    // Fix: Keep glass geometries as individual MergedGeometryGroup entries.
+    // With ~6 glass panes, the performance impact is negligible (6 draw calls vs 1).
+    //
+    // Industry standard: Transparent objects should NOT be batched; they need
+    // per-object depth sorting for correct blending order.
+    //
+    // Ref: Three.js GitHub #19164 — mergeBufferGeometries ignores existing groups
+    // Ref: Three.js GitHub #31768 — WebGPU transmission/transparent incorrect rendering
+    // Ref: Three.js docs — Object3D.renderOrder for transparent sorting
     const results: MergedGeometryGroup[] = [];
-    const categories: MaterialCategory[] = ['opaque', 'glass', 'metal'];
+    const mergeableCategories: MaterialCategory[] = ['opaque', 'metal'];
 
-    for (const cat of categories) {
+    // Merge opaque and metal buckets (fully opaque, no depth-sort issues)
+    for (const cat of mergeableCategories) {
       if (buckets[cat].length === 0) continue;
 
       // Dev mode: verify attribute compatibility before merge
@@ -149,6 +170,11 @@ export class GenerarGeometriasMergeadasBuiltinUseCase {
       for (const g of buckets[cat]) {
         this.geometryService.disposeGeometry(g);
       }
+    }
+
+    // Glass: push individual geometries WITHOUT merging (transparency exception)
+    for (const g of buckets.glass) {
+      results.push({ geometry: g, category: 'glass' });
     }
 
     const stats: MergeStats = {
