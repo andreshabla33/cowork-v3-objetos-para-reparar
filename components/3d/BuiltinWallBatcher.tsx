@@ -249,6 +249,23 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
 
   // ── Render ──
 
+  // ── Geometry diagnostic log (once per merge) ──
+  // Logs vertex counts per category to verify hole presence.
+  // A wall-glass with correct holes has MORE opaque vertices than one without.
+  // Ref: ExtrudeGeometry generates extra triangles for hole boundaries.
+  const hasLoggedGeoDiag = useRef(false);
+  useEffect(() => { hasLoggedGeoDiag.current = false; }, [merged]);
+  useEffect(() => {
+    if (hasLoggedGeoDiag.current || !merged || merged.length === 0) return;
+    hasLoggedGeoDiag.current = true;
+    const diag: Record<string, number> = {};
+    for (const { geometry, category } of merged) {
+      const geo = geometry as THREE.BufferGeometry;
+      diag[`${category}Vertices`] = geo.attributes?.position?.count ?? 0;
+    }
+    log.info('Merged geometry diagnostic', diag);
+  }, [merged]);
+
   if (!merged || merged.length === 0) return null;
 
   const getMaterial = (cat: MaterialCategory): THREE.Material => {

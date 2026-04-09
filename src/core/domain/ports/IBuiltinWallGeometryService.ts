@@ -23,12 +23,20 @@
  *
  * Glass panes are placed at `wallDepth * GLASS_Z_OFFSET_FACTOR` instead of z=0
  * to prevent z-fighting with the wall extrusion's inner hole side faces.
- * Value of 0.15 (15% of wall depth) provides sufficient separation without
- * visually displacing the glass from its hole.
+ *
+ * FIX (2026-04-09): Increased from 0.15 to 0.35.
+ * At 0.15 (15%), the glass pane sits too close to the wall center, making it
+ * vulnerable to depth buffer conflicts with the ExtrudeGeometry's inner side
+ * walls — especially in the merged pipeline where all opaque walls share a
+ * single depth buffer pass. At 0.35 (35%), the glass sits clearly in front of
+ * the wall's center plane, well beyond any side wall depth writes.
+ * For a typical 0.2m wall: offset = 0.07m (vs old 0.03m).
+ * The glass remains visually within the hole (< 4cm displacement for most walls).
  *
  * @see GeometriaProceduralParedesAdapter._generarAberturasGeometria
+ * @see GeometriaProceduralObjeto3D — uses same constant for edit mode consistency
  */
-export const GLASS_Z_OFFSET_FACTOR = 0.15;
+export const GLASS_Z_OFFSET_FACTOR = 0.35;
 
 /**
  * Minimum glass pane thickness in meters.

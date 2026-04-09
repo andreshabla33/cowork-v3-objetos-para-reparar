@@ -296,23 +296,45 @@ export class GeometriaProceduralParedesAdapter
   /**
    * Genera todas las geometrías de un objeto builtin en world-space,
    * clasificadas por categoría de material.
+   *
+   * FIX (2026-04-09): Compute SCALED dimensions BEFORE generating config.
+   *
+   * Root cause: Previously, `normalizarConfiguracionGeometricaObjeto` received
+   * RAW `objeto.ancho/alto` (from DB) while the wall body geometry used SCALED
+   * dimensions from `obtenerDimensionesObjeto`. When the object had non-unity
+   * scale factors, the aberturas (generated for RAW dimensions) didn't match
+   * the wall body (created with SCALED dimensions), producing holes that were
+   * too small, mispositioned, or completely absent — making glass invisible.
+   *
+   * In edit mode (GeometriaProceduralObjeto3D), the component receives already-
+   * scaled dimensions as its `dimensiones` prop (from obtenerDimensionesObjetoRuntime)
+   * and passes them consistently to both config and geometry. No mismatch there.
+   *
+   * Fix: Compute scaled dimensions first, then pass them to both config generation
+   * and geometry creation, mirroring the edit mode data flow.
+   *
+   * Ref: Clean Architecture — Infrastructure adapter must be consistent with
+   *      Presentation layer's data flow for the same domain operation.
    */
   generarGeometriasObjeto(objeto: WallObjectData): CategorizedGeometry[] {
-    const config = normalizarConfiguracionGeometricaObjeto({
-      built_in_geometry: objeto.built_in_geometry,
-      built_in_color: objeto.built_in_color,
-      configuracion_geometria: objeto.configuracion_geometria,
-      ancho: objeto.ancho,
-      alto: objeto.alto,
-      profundidad: objeto.profundidad,
-    });
-
-    if (!config) return [];
-
+    // STEP 1: Compute SCALED dimensions (includes escala, escalaNorm, factorEscena)
+    // Must happen BEFORE config generation so aberturas match the wall body.
     const dims = obtenerDimensionesObjeto(objeto as ObjetoRuntime3D);
     const ancho = Math.max(dims.ancho, 0.05);
     const alto = Math.max(dims.alto, 0.05);
     const prof = Math.max(dims.profundidad, 0.05);
+
+    // STEP 2: Generate config using SCALED dimensions (consistent with edit mode)
+    const config = normalizarConfiguracionGeometricaObjeto({
+      built_in_geometry: objeto.built_in_geometry,
+      built_in_color: objeto.built_in_color,
+      configuracion_geometria: objeto.configuracion_geometria,
+      ancho,
+      alto,
+      profundidad: prof,
+    });
+
+    if (!config) return [];
     const aberturas =
       config.tipo_geometria === 'pared'
         ? normalizarAberturas(config.aberturas, ancho, alto)
