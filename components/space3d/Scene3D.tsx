@@ -124,6 +124,22 @@ export interface SceneProps {
   onConfirmarPlantillaZonaEnColocacion?: () => void;
   ultimoObjetoColocadoId?: string | null;
   onDrawZoneEnd?: (zona: { ancho: number, alto: number, x: number, z: number, tipoSuelo: FloorType, nivelAnidamiento: number }) => void;
+  /**
+   * Callback fired when the scene is truly ready for display.
+   *
+   * In normal mode: fires AFTER sceneOptimization.isReady=true AND one rAF frame,
+   * guaranteeing that StaticObjectBatcher/BuiltinWallBatcher have rendered their
+   * merged geometries into the scene graph.
+   *
+   * In edit mode: fires AFTER one rAF frame (batchers not used, ObjetosInstanciados
+   * renders immediately).
+   *
+   * This replaces the old SceneReadyProbe which fired on mount (before batchers existed),
+   * causing a race condition where the loading screen hid ~2s before merged geometry appeared.
+   *
+   * @see VirtualSpace3D — gates loading screen visibility on this callback
+   */
+  onSceneReady?: () => void;
 }
 
 const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) * paso;
@@ -337,12 +353,14 @@ export const Scene: React.FC<SceneProps> = ({
   onConfirmarPlantillaZonaEnColocacion,
   ultimoObjetoColocadoId,
   onDrawZoneEnd,
+  onSceneReady,
 }) => {
   const gridColor = theme === 'arcade' ? '#00ff41' : '#6366f1';
   const { camera, gl } = useThree();
 
   // Fase 3: GPU rendering optimization services (BatchedMesh, TextureAtlas, GPUSkinning)
   const sceneOptimization = useSceneOptimization();
+
   const frustumRef = useRef(new THREE.Frustum());
   const projectionRef = useRef(new THREE.Matrix4());
   const chairMeshRef = useRef<THREE.InstancedMesh>(null);
@@ -417,6 +435,55 @@ export const Scene: React.FC<SceneProps> = ({
   const [previewZonaStart, setPreviewZonaStart] = useState<{ x: number, z: number } | null>(null);
   const [previewZonaCurrent, setPreviewZonaCurrent] = useState<{ x: number, z: number } | null>(null);
   const modoEdicionObjeto = useStore((s) => s.modoEdicionObjeto) as ModoEdicionObjeto;
+
+  // ── Scene Ready Signal (Fase 5C — race condition fix) ──
+  //
+  // FIX (2026-04-09): The loading screen must NOT hide until merged geometry
+  // (StaticObjectBatcher + BuiltinWallBatcher) has been committed to the scene graph.
+  //
+  // Previous bug: SceneReadyProbe in VirtualSpace3D fired onReady() on mount,
+  // ~2 seconds before batchers completed — causing visible pop-in where glass
+  // walls appeared solid during the gap.
+  //
+  // Sequence:
+  //   1. sceneOptimization.isReady → true (DI services initialized)
+  //   2. React re-renders → batchers compute merged geometries (useMemo, sync)
+  //   3. useEffect fires AFTER render → batchers are in scene graph
+  //   4. requestAnimationFrame → Three.js has processed the geometry
+  //   5. onSceneReady() → loading screen hides
+  //
+  // In edit mode: batchers don't render (ObjetosInstanciados renders instead),
+  // so we signal ready immediately after one rAF frame.
+  //
+  // Ref: React useEffect timing — https://react.dev/reference/react/useEffect
+  // Ref: rAF ensures WebGPURenderer has submitted the geometry to GPU
+  const sceneReadyFiredRef = useRef(false);
+
+  useEffect(() => {
+    if (sceneReadyFiredRef.current || !onSceneReady) return;
+
+    // In edit mode: no batchers needed, individual meshes render synchronously.
+    // In normal mode: wait until sceneOptimization services are ready,
+    // which gates the batcher render (conditional at the bottom of this component).
+    const shouldFire = isEditMode || sceneOptimization.isReady;
+    if (!shouldFire) return;
+
+    // Wait one animation frame so Three.js processes the newly mounted geometry.
+    // useEffect fires after React commit → scene graph updated → rAF ensures
+    // the WebGPURenderer has submitted the draw calls.
+    const rafId = requestAnimationFrame(() => {
+      if (sceneReadyFiredRef.current) return;
+      sceneReadyFiredRef.current = true;
+      onSceneReady();
+      log.info('[Scene3D] Scene ready signal fired', {
+        mode: isEditMode ? 'edit' : 'normal',
+        optimizationReady: sceneOptimization.isReady,
+      });
+    });
+
+    return () => cancelAnimationFrame(rafId);
+  }, [sceneOptimization.isReady, isEditMode, onSceneReady]);
+
   const objetoSeleccionado = useMemo(
     () => espacioObjetos.find((obj) => obj.id === selectedObjectId) || null,
     [espacioObjetos, selectedObjectId]

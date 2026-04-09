@@ -30,8 +30,8 @@ import { XP_POR_ACCION } from '@/lib/gamificacion';
 import { useStore } from '@/store/useStore';
 import { AplicarPlantillaZonaUseCase } from '@/src/core/application/usecases/AplicarPlantillaZonaUseCase';
 import { EliminarPlantillaZonaUseCase } from '@/src/core/application/usecases/EliminarPlantillaZonaUseCase';
-import { InyectorPlantillaZona } from '@/src/core/infrastructure/InyectorPlantillaZona';
-import { RepositorioPlantillaZonaSupabase } from '@/src/core/infrastructure/RepositorioPlantillaZonaSupabase';
+import { InyectorPlantillaZona } from '@/src/core/infrastructure/adapters/InyectorPlantillaZonaAdapter';
+import { RepositorioPlantillaZonaSupabase } from '@/src/core/infrastructure/adapters/RepositorioPlantillaZonaSupabaseAdapter';
 // GameHub ahora se importa en WorkspaceLayout
 import { EditModeHUD, EditModeToast, InspectorEdicionObjeto, PlacementHUD, PlacementToast, ToastContainer, toastEmitter } from './3d/PlacementHUD';
 import { AdminZoneHUD } from './3d/AdminZoneHUD';
@@ -52,13 +52,20 @@ const SceneFallback: React.FC<{ theme: string }> = ({ theme }) => (
   </>
 );
 
-const SceneReadyProbe: React.FC<{ onReady: () => void }> = ({ onReady }) => {
-  useEffect(() => {
-    onReady();
-  }, [onReady]);
-
-  return null;
-};
+/**
+ * @deprecated SceneReadyProbe — REMOVED (Fase 5C race condition fix, 2026-04-09).
+ *
+ * Previously fired onReady() immediately on mount inside Suspense, hiding the
+ * loading screen ~2 seconds before StaticObjectBatcher/BuiltinWallBatcher
+ * completed their merge pipeline. This caused visible pop-in where glass walls
+ * appeared solid during the gap.
+ *
+ * The ready signal now originates from Scene3D.onSceneReady, which fires AFTER
+ * sceneOptimization.isReady=true AND one requestAnimationFrame — guaranteeing
+ * merged geometry is in the scene graph and submitted to the GPU.
+ *
+ * @see Scene3D — onSceneReady prop and useEffect that gates it
+ */
 
 const RendererMetricsProbe: React.FC<{ adaptiveDpr: number; gpuInfo?: GpuInfo | null }> = ({ adaptiveDpr, gpuInfo }) => {
   const { gl, scene } = useThree();
@@ -805,8 +812,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     setIsDrawingZone(false);
   }, [setIsDrawingZone]);
 
-  // PR-4: Evitar new Map() en cada render - el Map vacío se recrea en cada render de VirtualSpace3D
-  const emptyOwnerNamesMap = React.useMemo(() => new Map<string, string>(), []);
+  // Legacy Escritorio3D owner names map removed — all objects come from catalog
 
   const handleSceneZonaClick = useCallback((zona: ZonaEmpresa) => {
     setZonaAEditar(zona);
@@ -921,8 +927,8 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
           onlineUsers={usuariosEnChunks}
         />
         <Suspense fallback={<SceneFallback theme={theme} />}>
-          <SceneReadyProbe onReady={handleSceneReady} />
           <Scene
+            onSceneReady={handleSceneReady}
             currentUser={currentUserEcs}
             onlineUsers={usuariosEnChunks}
             setPosition={setPositionEcs}
@@ -966,8 +972,6 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
             onClickRemoteAvatar={handleClickRemoteAvatar}
             avatarInteractions={avatarInteractionsMemo}
             espacioObjetos={espacioObjetos}
-            onReclamarObjeto={reclamarObjeto}
-            onLiberarObjeto={liberarObjeto}
             ocupacionesAsientosPorObjetoId={ocupacionesAsientosPorObjetoId}
             onInteractuarObjeto={handleInteraccionObjeto}
             onOcuparAsiento={handleOcuparAsiento}
@@ -978,7 +982,6 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
             onTransformarObjeto={handleTransformarObjeto}
             onEliminarObjeto={eliminarObjeto}
             onEliminarPlantillaZonaCompleta={handleEliminarPlantillaZonaCompleta}
-            objetoOwnerNames={emptyOwnerNamesMap}
             onClickZona={onClickZonaStable}
             objetoEnColocacion={objetoEnColocacion}
             onActualizarObjetoEnColocacion={handleActualizarObjetoEnColocacion}
