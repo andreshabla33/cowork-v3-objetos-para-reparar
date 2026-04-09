@@ -20,10 +20,12 @@ import { logger } from '@/lib/logger';
 import type {
   IBuiltinWallGeometryService,
   MaterialCategory,
+  OpaqueMaterialSubType,
   MergedGeometryGroup,
   MergeStats,
   WallObjectData,
   GeometryRef,
+  CategorizedGeometry,
 } from '@/src/core/domain/ports/IBuiltinWallGeometryService';
 
 const log = logger.child('GenerarGeometriasMergeadasBuiltinUseCase');
@@ -99,81 +101,105 @@ export class GenerarGeometriasMergeadasBuiltinUseCase {
     }
 
     // ── Bucket geometries by material category ──
-    const buckets: Record<MaterialCategory, GeometryRef[]> = {
-      opaque: [],
-      glass: [],
-      metal: [],
-    };
+    //
+    // FIX (2026-04-09 — Fase 6A): Opaque geometries are now sub-bucketed by
+    // materialSubType (ladrillo, yeso, concreto, etc.) so that each sub-group
+    // gets its own merged mesh with the correct procedural material.
+    //
+    // Previous bug: ALL opaque walls merged into 1 mesh with hardcoded 'yeso'
+    // material, causing brick/concrete/wood walls to lose their textures.
+    const glassBucket: GeometryRef[] = [];
+    const metalBucket: GeometryRef[] = [];
+    const opaqueSubBuckets = new Map<OpaqueMaterialSubType, GeometryRef[]>();
 
     let processedCount = 0;
     let skippedCount = 0;
 
     for (const obj of objetos) {
-      const geos = this.geometryService.generarGeometriasObjeto(obj);
+      const geos: CategorizedGeometry[] = this.geometryService.generarGeometriasObjeto(obj);
       if (geos.length === 0) {
         skippedCount++;
         continue;
       }
-      for (const { geometry, category } of geos) {
-        buckets[category].push(geometry);
+      for (const { geometry, category, materialSubType } of geos) {
+        if (category === 'glass') {
+          glassBucket.push(geometry);
+        } else if (category === 'metal') {
+          metalBucket.push(geometry);
+        } else {
+          // Opaque: sub-bucket by materialSubType (defaults to 'yeso')
+          const subType = materialSubType ?? 'yeso';
+          let bucket = opaqueSubBuckets.get(subType);
+          if (!bucket) {
+            bucket = [];
+            opaqueSubBuckets.set(subType, bucket);
+          }
+          bucket.push(geometry);
+        }
       }
       processedCount++;
     }
 
     // ── Merge each bucket ──
     //
-    // CRITICAL (2026-04-09 — Fase 5C): Glass geometries are NOT merged.
+    // Fase 6A: Opaque sub-buckets are merged per materialSubType.
+    // Each sub-group produces 1 draw call with its own procedural material.
+    // Typical count: 1-3 sub-types (yeso + ladrillo + concreto).
     //
-    // Root cause: In WebGPU, merging transparent geometries into a single mesh
-    // prevents correct alpha blending. The WebGPU pipeline compiles blend state
-    // per-pipeline, and merged transparent geometry can't be individually depth-sorted.
-    //
-    // Additionally, alphaTest > 0 on a merged transparent mesh forces the WebGPU
-    // renderer to use ALPHA_MASK pipeline (binary discard) instead of BLEND pipeline
-    // (alpha blending), making glass appear fully opaque.
-    //
-    // Fix: Keep glass geometries as individual MergedGeometryGroup entries.
-    // With ~6 glass panes, the performance impact is negligible (6 draw calls vs 1).
-    //
-    // Industry standard: Transparent objects should NOT be batched; they need
-    // per-object depth sorting for correct blending order.
+    // Glass geometries are NOT merged (Fase 5C):
+    //   - WebGPU requires individual meshes for correct BLEND pipeline
+    //   - Transparent objects need per-object depth sorting
     //
     // Ref: Three.js GitHub #19164 — mergeBufferGeometries ignores existing groups
-    // Ref: Three.js GitHub #31768 — WebGPU transmission/transparent incorrect rendering
-    // Ref: Three.js docs — Object3D.renderOrder for transparent sorting
+    // Ref: Three.js GitHub #31768 — WebGPU transmission/transparent rendering
     const results: MergedGeometryGroup[] = [];
-    const mergeableCategories: MaterialCategory[] = ['opaque', 'metal'];
 
-    // Merge opaque and metal buckets (fully opaque, no depth-sort issues)
-    for (const cat of mergeableCategories) {
-      if (buckets[cat].length === 0) continue;
+    // Merge opaque sub-buckets — one merged mesh per material type
+    let totalOpaqueGeos = 0;
+    for (const [subType, bucket] of opaqueSubBuckets) {
+      if (bucket.length === 0) continue;
+      totalOpaqueGeos += bucket.length;
 
-      // Dev mode: verify attribute compatibility before merge
       if (process.env.NODE_ENV !== 'production') {
-        this._verificarCompatibilidadAtributos(cat, buckets[cat]);
+        this._verificarCompatibilidadAtributos('opaque', bucket);
       }
 
-      const merged = this.geometryService.mergearGeometrias(buckets[cat]);
+      const merged = this.geometryService.mergearGeometrias(bucket);
       if (merged) {
-        results.push({ geometry: merged, category: cat });
+        results.push({ geometry: merged, category: 'opaque', materialSubType: subType });
       } else {
-        log.warn(
-          `mergeBufferGeometries() returned null for category "${cat}"`,
-          {
-            geometryCount: buckets[cat].length,
-            hint: 'Incompatible attributes survived normalization',
-          },
-        );
+        log.warn(`mergeBufferGeometries() returned null for opaque:${subType}`, {
+          geometryCount: bucket.length,
+        });
       }
 
-      // Dispose source geometries — merge copies data
-      for (const g of buckets[cat]) {
+      for (const g of bucket) {
         this.geometryService.disposeGeometry(g);
       }
     }
 
-    // Glass: push individual geometries WITHOUT merging (transparency exception)
-    for (const g of buckets.glass) {
+    // Merge metal bucket (single material, no sub-types needed)
+    if (metalBucket.length > 0) {
+      if (process.env.NODE_ENV !== 'production') {
+        this._verificarCompatibilidadAtributos('metal', metalBucket);
+      }
+
+      const merged = this.geometryService.mergearGeometrias(metalBucket);
+      if (merged) {
+        results.push({ geometry: merged, category: 'metal' });
+      } else {
+        log.warn('mergeBufferGeometries() returned null for metal', {
+          geometryCount: metalBucket.length,
+        });
+      }
+
+      for (const g of metalBucket) {
+        this.geometryService.disposeGeometry(g);
+      }
+    }
+
+    // Glass: individual geometries WITHOUT merging (transparency exception)
+    for (const g of glassBucket) {
       results.push({ geometry: g, category: 'glass' });
     }
 
@@ -184,13 +210,13 @@ export class GenerarGeometriasMergeadasBuiltinUseCase {
       mergedGroups: results.length,
       categories: results.map((r) => r.category),
       bucketSizes: {
-        opaque: buckets.opaque.length,
-        glass: buckets.glass.length,
-        metal: buckets.metal.length,
+        opaque: totalOpaqueGeos,
+        glass: glassBucket.length,
+        metal: metalBucket.length,
       },
     };
 
-    log.info('Builtin walls merged', stats);
+    log.info('Builtin walls merged', stats as unknown as Record<string, unknown>);
 
     _moduleCacheResult = results;
     return { merged: results, stats };

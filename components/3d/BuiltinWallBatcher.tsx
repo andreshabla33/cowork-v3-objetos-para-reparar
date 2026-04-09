@@ -37,7 +37,7 @@ import { GeometriaProceduralParedesAdapter } from '@/src/core/infrastructure/ada
 import { GenerarGeometriasMergeadasBuiltinUseCase } from '@/src/core/application/usecases/GenerarGeometriasMergeadasBuiltinUseCase';
 import {
   MERGED_OPAQUE_SIDE,
-  type MaterialCategory,
+  type OpaqueMaterialSubType,
   type WallObjectData,
 } from '@/src/core/domain/ports/IBuiltinWallGeometryService';
 
@@ -69,57 +69,76 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
   }, [objetos]);
 
   // ── Materials (shared across all merged groups) ──
-  // vertexColors = true → 'color' attribute de la geometría mergeada
-  // se MULTIPLICA con color_base del material.
-  // Por eso usamos color_base: '#ffffff' como base neutra para opaque/metal.
+  //
+  // Fase 6A (2026-04-09): Opaque materials are now created PER materialSubType.
+  // Previously, ALL opaque walls shared a single 'yeso' material, causing brick,
+  // concrete, and wood walls to lose their textures in batched mode.
+  //
+  // vertexColors = true → 'color' attribute from merged geometry is MULTIPLIED
+  // with color_base of the material. We use '#ffffff' as neutral base.
   // Ref: https://threejs.org/docs/#api/en/materials/Material.vertexColors
+  //
+  // polygonOffset = true on opaque materials: pushes opaque depth writes slightly
+  // away from the camera, preventing depth-buffer occlusion of glass panes that
+  // sit at GLASS_Z_OFFSET_FACTOR (0.35) inside the wall body.
+  // Ref: https://threejs.org/docs/#api/en/materials/Material.polygonOffset
+  const opaqueMaterialSubTypes: OpaqueMaterialSubType[] = useMemo(() => {
+    if (!merged) return [];
+    const subTypes = new Set<OpaqueMaterialSubType>();
+    for (const g of merged) {
+      if (g.category === 'opaque' && g.materialSubType) {
+        subTypes.add(g.materialSubType);
+      }
+    }
+    return Array.from(subTypes);
+  }, [merged]);
+
   const materials = useMemo(() => {
     const perfil = resolverPerfilVisualArquitectonico('corporativo');
 
-    // FIX (glass wall visibility): Opaque material MUST use FrontSide in merge pipeline.
-    // DoubleSide causes back faces of ExtrudeGeometry hole-perimeter to write depth buffer
-    // at positions overlapping glass panes, making glass invisible via depth test failure.
-    // Ref: MERGED_OPAQUE_SIDE constant in Domain port
-    // Ref: Three.js Issue #2476 — DoubleSide + transparent depth artifacts
-    const opaque = crearMaterialPBRArquitectonico({
-      tipo_material: 'yeso',
-      ancho: 4,
-      alto: 3,
-      repetir_textura: true,
-      escala_textura: 1,
-      color_base: '#ffffff',
-      opacidad: 1,
-      rugosidad: 0.7,
-      metalicidad: 0.05,
-      resaltar: false,
-      side: MERGED_OPAQUE_SIDE as THREE.Side,
-    });
-    if (opaque?.material) opaque.material.vertexColors = true;
+    // ── Opaque materials: one per materialSubType ──
+    // Each sub-type gets its own procedural PBR material (albedo/roughness/normal).
+    // FrontSide prevents back-face depth writes that occlude glass.
+    // polygonOffset pushes depth slightly back to avoid z-fighting with glass.
+    const opaqueMap = new Map<OpaqueMaterialSubType, ReturnType<typeof crearMaterialPBRArquitectonico>>();
+
+    for (const subType of opaqueMaterialSubTypes) {
+      const mat = crearMaterialPBRArquitectonico({
+        tipo_material: subType,
+        ancho: 4,
+        alto: 3,
+        repetir_textura: true,
+        escala_textura: 1,
+        color_base: '#ffffff',
+        opacidad: 1,
+        rugosidad: 0.7,
+        metalicidad: subType === 'metal' ? 0.8 : 0.05,
+        resaltar: false,
+        side: MERGED_OPAQUE_SIDE as THREE.Side,
+      });
+      if (mat?.material) {
+        mat.material.vertexColors = true;
+        // polygonOffset: push opaque depth slightly behind to prevent
+        // depth-buffer occlusion of glass panes sitting inside the wall body.
+        mat.material.polygonOffset = true;
+        mat.material.polygonOffsetFactor = 1;
+        mat.material.polygonOffsetUnits = 1;
+      }
+      opaqueMap.set(subType, mat);
+    }
 
     // Glass: MeshStandardMaterial with opacity-based alpha blending.
     //
     // CRITICAL FIX (Fase 5C — 2026-04-09): Glass panes are now rendered as
     // INDIVIDUAL meshes (not merged) for correct WebGPU transparency.
     //
-    // Previous bug: alphaTest = 0.01 was set to "force WebGPU transparent pipeline",
-    // but this actually forces the ALPHA_MASK pipeline (binary discard), not the
-    // BLEND pipeline (alpha blending). Since opacity 0.4 > alphaTest 0.01, ALL
-    // fragments pass the test and render at FULL OPACITY — no blending occurs.
-    //
-    // Additionally, forceSinglePass = true prevented correct double-sided rendering
-    // for transparent materials (back faces should render before front faces for
-    // correct alpha compositing).
-    //
     // Fix:
     //   1. REMOVED alphaTest (let transparent: true drive the BLEND pipeline)
     //   2. REMOVED forceSinglePass (allow back-then-front double-sided rendering)
-    //   3. REMOVED version++ (read-only in Three.js r182, needsUpdate suffices)
-    //   4. Glass geometries are NOT merged (see GenerarGeometriasMergeadasBuiltinUseCase)
+    //   3. Glass geometries are NOT merged (see GenerarGeometriasMergeadasBuiltinUseCase)
     //
     // Ref: Three.js r182 — WebGPU pipeline selection: transparent → BLEND, alphaTest → MASK
     // Ref: Three.js GitHub #32570 — WebGPU transparent regression
-    // Ref: Three.js docs — Material.transparent: enables alpha blending pipeline
-    //   https://threejs.org/docs/#api/en/materials/Material.transparent
     const glass = crearMaterialPBRArquitectonico({
       tipo_material: 'vidrio',
       ancho: 2,
@@ -134,11 +153,7 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
     });
 
     // ── Glass material assertion ──
-    //
-    // Ensure glass material has correct blend-pipeline properties.
-    // Primary fix is now architectural: glass is NOT merged, so each pane is an
-    // individual mesh that the WebGPU renderer can correctly classify as BLEND.
-    //
+    // Ensure glass material has correct BLEND pipeline properties.
     // Glass z-offset: see GeometriaProceduralParedesAdapter (GLASS_Z_OFFSET_FACTOR).
     if (glass?.material) {
       const gm = glass.material as THREE.MeshStandardMaterial;
@@ -160,10 +175,14 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       metal.material.vertexColors = true;
       // Metal frames also use FrontSide in merge pipeline (same depth-buffer rationale as opaque).
       metal.material.side = MERGED_OPAQUE_SIDE as THREE.Side;
+      // polygonOffset for metal too (frames sit near glass panes)
+      metal.material.polygonOffset = true;
+      metal.material.polygonOffsetFactor = 1;
+      metal.material.polygonOffsetUnits = 1;
     }
 
-    return { opaque, glass, metal };
-  }, []);
+    return { opaqueMap, glass, metal };
+  }, [opaqueMaterialSubTypes]);
 
   // ── Cleanup: dispose materials + invalidate geometry cache on unmount ──
   //
@@ -189,8 +208,16 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
     return () => {
       let disposedMaterials = 0;
 
-      // Dispose each material category — textures are NOT disposed (shared cache)
-      for (const mat of [materials.opaque, materials.glass, materials.metal]) {
+      // Dispose all opaque materials (one per sub-type) — textures are NOT disposed (shared cache)
+      for (const mat of materials.opaqueMap.values()) {
+        if (mat?.material) {
+          mat.material.dispose();
+          disposedMaterials++;
+        }
+      }
+
+      // Dispose glass and metal materials
+      for (const mat of [materials.glass, materials.metal]) {
         if (mat?.material) {
           mat.material.dispose();
           disposedMaterials++;
@@ -293,12 +320,14 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
     const diag: Record<string, number> = {};
     let glassCount = 0;
     let glassTotalVerts = 0;
-    for (const { geometry, category } of merged) {
+    for (const { geometry, category, materialSubType } of merged) {
       const geo = geometry as THREE.BufferGeometry;
       const verts = geo.attributes?.position?.count ?? 0;
       if (category === 'glass') {
         glassCount++;
         glassTotalVerts += verts;
+      } else if (category === 'opaque' && materialSubType) {
+        diag[`opaque_${materialSubType}_Vertices`] = verts;
       } else {
         diag[`${category}Vertices`] = verts;
       }
@@ -312,27 +341,43 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
 
   const glassMaterial = materials.glass?.material ?? _fallbackMaterial;
   const metalMaterial = materials.metal?.material ?? _fallbackMaterial;
-  const opaqueMaterial = materials.opaque?.material ?? _fallbackMaterial;
 
-  // Separate merged groups into opaque/metal (1 mesh each) and glass (N individual meshes).
+  // Separate merged groups by category.
+  // Fase 6A: opaque groups are now per-materialSubType (1-3 groups typically).
   // Glass geometries are NOT merged (Fase 5C fix) for correct WebGPU BLEND pipeline.
-  const opaqueGroup = merged.find(({ category }) => category === 'opaque');
+  const opaqueGroups = merged.filter(({ category }) => category === 'opaque');
   const metalGroup = merged.find(({ category }) => category === 'metal');
   const glassGroups = merged.filter(({ category }) => category === 'glass');
 
   return (
     <group name="BuiltinWallBatcher">
-      {/* Opaque walls — single merged mesh, ~240 walls in 1 draw call */}
-      {opaqueGroup && (
-        <mesh
-          key="opaque"
-          geometry={opaqueGroup.geometry as THREE.BufferGeometry}
-          material={opaqueMaterial}
-          castShadow
-          receiveShadow
-          renderOrder={0}
-        />
-      )}
+      {/* Opaque walls — one merged mesh PER materialSubType.
+        *
+        * Fase 6A (2026-04-09): Each sub-type (yeso, ladrillo, concreto, etc.)
+        * gets its own merged geometry + procedural PBR material with correct
+        * albedo/roughness/normal textures.
+        *
+        * Previous bug: ALL opaque walls merged into 1 mesh with hardcoded 'yeso'
+        * material, causing brick/concrete/wood walls to lose their textures.
+        *
+        * Typical draw calls: 1-3 (yeso + ladrillo + concreto).
+        * polygonOffset on each material prevents depth-buffer occlusion of glass.
+        */}
+      {opaqueGroups.map(({ geometry, materialSubType }) => {
+        const subType = materialSubType ?? 'yeso';
+        const matEntry = materials.opaqueMap.get(subType);
+        const material = matEntry?.material ?? _fallbackMaterial;
+        return (
+          <mesh
+            key={`opaque-${subType}`}
+            geometry={geometry as THREE.BufferGeometry}
+            material={material}
+            castShadow
+            receiveShadow
+            renderOrder={0}
+          />
+        );
+      })}
 
       {/* Metal frames — single merged mesh */}
       {metalGroup && (

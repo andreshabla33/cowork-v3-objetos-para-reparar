@@ -41,6 +41,7 @@ import {
   type IBuiltinWallGeometryService,
   type CategorizedGeometry,
   type MaterialCategory,
+  type OpaqueMaterialSubType,
   type WallObjectData,
   type GeometryRef,
 } from '@/src/core/domain/ports/IBuiltinWallGeometryService';
@@ -363,6 +364,15 @@ export class GeometriaProceduralParedesAdapter
     const colorGlass = perfil.materiales.color_vidrio ?? '#e0f2fe';
     const colorMetal = perfil.materiales.color_metal ?? '#a8a29e';
 
+    // Resolve the opaque material sub-type from the wall's configuration.
+    // This allows the merge pipeline to group opaque geometries by visual material
+    // (ladrillo, concreto, yeso, etc.) instead of collapsing all to a single 'yeso'.
+    //
+    // FIX (2026-04-09 — Fase 6A): Propagate tipo_material to CategorizedGeometry
+    // so BuiltinWallBatcher can create per-material-type merged meshes.
+    const opaqueSubType: OpaqueMaterialSubType =
+      (config.tipo_material as OpaqueMaterialSubType) ?? 'yeso';
+
     const results: CategorizedGeometry[] = [];
 
     const addGeo = (geo: THREE.BufferGeometry, category: MaterialCategory) => {
@@ -380,7 +390,12 @@ export class GeometriaProceduralParedesAdapter
         skipVC,
       ) as THREE.BufferGeometry;
       if (normalized !== geo) geo.dispose();
-      results.push({ geometry: normalized, category });
+      results.push({
+        geometry: normalized,
+        category,
+        // Only opaque geometries carry the sub-type; glass/metal use shared materials.
+        ...(category === 'opaque' ? { materialSubType: opaqueSubType } : {}),
+      });
     };
 
     // ── Cuerpo principal ──

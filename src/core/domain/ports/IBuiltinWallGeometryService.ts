@@ -76,16 +76,40 @@ export type MaterialCategory = 'opaque' | 'glass' | 'metal';
 /** Opaque geometry reference (avoids Three.js dep in domain) */
 export type GeometryRef = unknown;
 
+/**
+ * Sub-type identifier for opaque materials.
+ * Allows the merge pipeline to group opaque geometries by their visual material
+ * (e.g., 'ladrillo', 'yeso', 'concreto') instead of collapsing ALL opaques
+ * into a single yeso material.
+ *
+ * FIX (2026-04-09 — Fase 6A): Without this, BuiltinWallBatcher hardcodes
+ * `tipo_material: 'yeso'` for all opaque walls, causing brick/concrete/wood
+ * walls to lose their textures in batched mode.
+ */
+export type OpaqueMaterialSubType = 'yeso' | 'ladrillo' | 'concreto' | 'madera' | 'metal' | 'vidrio';
+
 /** A geometry classified by material category, ready for merging */
 export interface CategorizedGeometry {
   geometry: GeometryRef;
   category: MaterialCategory;
+  /**
+   * Sub-type for opaque geometries. Determines which procedural texture
+   * (albedo/roughness/normal) the merged mesh receives.
+   * Only meaningful when category === 'opaque'.
+   * @see OpaqueMaterialSubType
+   */
+  materialSubType?: OpaqueMaterialSubType;
 }
 
 /** Result of merging geometries by material category */
 export interface MergedGeometryGroup {
   geometry: GeometryRef;
   category: MaterialCategory;
+  /**
+   * Propagated from CategorizedGeometry.materialSubType for opaque groups.
+   * The batcher uses this to select the correct procedural material.
+   */
+  materialSubType?: OpaqueMaterialSubType;
 }
 
 /** Statistics for logging/monitoring */
