@@ -708,19 +708,29 @@ export const StaticObjectBatcher: React.FC<StaticObjectBatcherProps> = ({
       _trackedInstances.length = 0;
       limpiarGeometryNormCache();
 
-      // Reset MultiBatch + MaterialProps state — dispose all groups/instances but
-      // keep services usable for the next mount cycle.
-      // NOTE: TextureAtlas is NOT reset here because its dispose() nullifies
-      // the internal canvas/ctx, making it non-reusable. The atlas retains its
-      // texture data across mount cycles and is re-used via tieneTextura() checks.
+      // Reset ALL GPU service state — dispose groups/instances/textures.
+      // Services remain usable for the next mount cycle because:
+      //   - MultiBatchMeshThreeAdapter: _groups cleared → crearGrupoMaterial() works
+      //   - BatchMaterialPropertiesThreeAdapter: _groups cleared → inicializarGrupo() works
+      //   - TextureAtlasCanvasAdapter: _ensureCanvas() recreates canvas/ctx/texture on demand
+      //
+      // CRITICAL FIX (2026-04-09): TextureAtlas MUST be cleaned up.
+      // The atlas holds a 4096×4096 CanvasTexture (64MB GPU memory) that leaked
+      // across edit-mode mount/unmount cycles. The adapter's _ensureCanvas() method
+      // lazily recreates the canvas + texture on the next addTexture() call, so
+      // calling limpiar() is safe for reuse.
+      //
+      // Ref: Three.js — How to dispose of objects
+      //   https://threejs.org/docs/#manual/en/introduction/How-to-dispose-of-objects
       if (services.isReady) {
         const stats = services.multiBatch.obtenerEstadisticas();
-        log.info('StaticObjectBatcher unmounting — resetting MultiBatch', {
+        log.info('StaticObjectBatcher unmounting — disposing all GPU resources', {
           groupCount: stats.groupCount,
           totalInstances: stats.totalInstances,
         });
         services.multiBatch.limpiar();
         services.materialProps.limpiar();
+        services.textureAtlas.limpiar();
       }
     };
   }, [services]);

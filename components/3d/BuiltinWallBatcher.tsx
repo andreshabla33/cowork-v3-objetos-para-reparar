@@ -172,13 +172,42 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
   // base texture cache. Disposing a clone on WebGPU can corrupt the shared
   // source's GPU binding.
   // Ref: https://github.com/mrdoob/three.js/blob/dev/src/textures/Texture.js
+  //
+  // CRITICAL FIX (Fase 5C — 2026-04-09): Exhaustive GPU resource cleanup.
+  // On edit-mode toggle, this component unmounts and remounts. Without full
+  // cleanup, orphaned GPU resources accumulate and eventually cause
+  // "WebGL: INVALID_OPERATION: loseContext: context already lost".
+  //
+  // Disposal order:
+  //   1. Materials (release GPU programs + uniform buffers)
+  //   2. Merged geometries via invalidarCache (release GPU vertex/index buffers)
+  //   3. Reset glass monitoring refs (prevent stale state on remount)
+  //
+  // Ref: Three.js — How to dispose of objects
+  //   https://threejs.org/docs/#manual/en/introduction/How-to-dispose-of-objects
   useEffect(() => {
     return () => {
-      materials.opaque?.material.dispose();
-      materials.glass?.material.dispose();
-      materials.metal?.material.dispose();
+      let disposedMaterials = 0;
+
+      // Dispose each material category — textures are NOT disposed (shared cache)
+      for (const mat of [materials.opaque, materials.glass, materials.metal]) {
+        if (mat?.material) {
+          mat.material.dispose();
+          disposedMaterials++;
+        }
+      }
+
+      // Invalidate geometry cache — disposes ALL cached geometries (opaque, metal, glass individual)
       mergeUseCase.invalidarCache();
-      log.info('BuiltinWallBatcher unmounted — materials disposed, geometry cache invalidated');
+
+      // Reset glass monitoring refs to prevent stale state on remount
+      hasLoggedGlassState.current = false;
+      hasLoggedGeoDiag.current = false;
+
+      log.info('BuiltinWallBatcher unmounted — GPU resources disposed', {
+        disposedMaterials,
+        geometryCacheInvalidated: true,
+      });
     };
   }, [materials]);
 

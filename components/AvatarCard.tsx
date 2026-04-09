@@ -45,7 +45,7 @@ export const AvatarCard: React.FC<AvatarCardProps> = ({
         />
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-[radial-gradient(circle,_#1a1c23_0%,_#0a0a0c_100%)] relative">
-          <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
+          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='4' height='4' fill='%23222' fill-opacity='0.4'/%3E%3Crect x='4' y='4' width='4' height='4' fill='%23222' fill-opacity='0.4'/%3E%3Cline x1='0' y1='4' x2='4' y2='0' stroke='%23333' stroke-opacity='0.3' stroke-width='0.5'/%3E%3Cline x1='4' y1='8' x2='8' y2='4' stroke='%23333' stroke-opacity='0.3' stroke-width='0.5'/%3E%3C/svg%3E\")", backgroundSize: '8px 8px' }} />
           <div className="flex flex-col items-center">
             <span className="text-xl font-black text-[#c8aa6e]/40 drop-shadow-sm select-none">
               {nombre.substring(0, 2).toUpperCase()}

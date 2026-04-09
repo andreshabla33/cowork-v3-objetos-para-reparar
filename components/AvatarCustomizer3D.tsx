@@ -694,7 +694,7 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({ compact 
               `}
             >
               {activeTab === tab.key && (
-                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20 Mix-blend-overlay"></div>
+                <div className="absolute inset-0 opacity-20 mix-blend-overlay" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Crect width='10' height='10' fill='%23fff' fill-opacity='0.08'/%3E%3Crect x='10' y='10' width='10' height='10' fill='%23fff' fill-opacity='0.08'/%3E%3C/svg%3E\")", backgroundSize: '20px 20px' }}></div>
               )}
               <span className="relative z-10 drop-shadow-md flex items-center justify-center gap-1.5">
                 {tab.icon} {tab.label}
