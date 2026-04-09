@@ -18,8 +18,8 @@ import type { CargoDB } from '../../../../components/onboarding/CargoSelector';
 const log = logger.child('onboarding-repo');
 
 export class OnboardingSupabaseRepository implements IOnboardingRepository {
-  async obtenerMiembroPendiente(userId: string): Promise<MiembroOnboarding | null> {
-    const { data: miembro, error } = await supabase
+  async obtenerMiembroPendiente(userId: string, espacioId?: string): Promise<MiembroOnboarding | null> {
+    let query = supabase
       .from('miembros_espacio')
       .select(`
         id,
@@ -31,7 +31,16 @@ export class OnboardingSupabaseRepository implements IOnboardingRepository {
       `)
       .eq('usuario_id', userId)
       .eq('aceptado', true)
-      .eq('onboarding_completado', false)
+      .eq('onboarding_completado', false);
+
+    // ROLE-MISMATCH-001: si viene espacioId, filtrar por workspace exacto.
+    // Esto evita retornar una membresía de otro workspace con un rol diferente
+    // (ej: super_admin en workspace A cuando el usuario fue invitado como miembro en B).
+    if (espacioId) {
+      query = query.eq('espacio_id', espacioId);
+    }
+
+    const { data: miembro, error } = await query
       .order('aceptado_en', { ascending: false, nullsFirst: false })
       .limit(1)
       .single();
@@ -46,7 +55,7 @@ export class OnboardingSupabaseRepository implements IOnboardingRepository {
     return {
       id: miembro.id,
       cargo: miembro.cargo,
-      rol: (miembro as { rol?: string }).rol || 'member',
+      rol: (miembro as { rol?: string }).rol || 'miembro',
       espacio_id: miembro.espacio_id,
       onboarding_completado: miembro.onboarding_completado,
       espacioNombre: espacioData?.nombre || 'tu espacio',

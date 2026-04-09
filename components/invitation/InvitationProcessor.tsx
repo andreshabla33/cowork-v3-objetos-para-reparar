@@ -1,12 +1,14 @@
 /**
  * @module components/invitation/InvitationProcessor
  * @description Handles workspace invitation verification and acceptance.
- * Refactored to Clean Architecture: zero Supabase imports.
- * All data access delegated to Use Cases + Repository.
+ * Refactored to Clean Architecture: zero Supabase imports, zero module-level singletons.
+ * All data access delegated to Use Cases + Repository via DI Context.
  *
  * Domain types: src/core/domain/entities/invitation.ts
  * Use Cases: VerificarInvitacionUseCase, AceptarInvitacionUseCase
- * Infrastructure: InvitacionSupabaseRepository (injected)
+ * DI: Repositories injected from DIProvider (React Context)
+ *
+ * Ref: CLEAN-ARCH-DI-001
  */
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -17,26 +19,26 @@ import { seleccionarProcesadorInvitacion } from '../../store/selectores';
 import type { InvitationState, InvitacionInfo } from '../../src/core/domain/entities/invitation';
 import { logger } from '../../lib/logger';
 
-// Clean Architecture: Use Cases + Repository (no direct supabase import)
+// Clean Architecture: Use Cases (Application Layer — no infrastructure imports)
 import { VerificarInvitacionUseCase } from '../../src/core/application/usecases/VerificarInvitacionUseCase';
 import { AceptarInvitacionUseCase } from '../../src/core/application/usecases/AceptarInvitacionUseCase';
-import { InvitacionSupabaseRepository } from '../../src/core/infrastructure/adapters/InvitacionSupabaseRepository';
+// DI: Repository port resolved from React Context, not module-level singleton
+import { useDIUseCase } from '../../src/core/infrastructure/di/DIProvider';
 import { supabase } from '../../lib/supabase';
 
 const log = logger.child('invitation');
 
-// Singleton repository — injected into use cases
-const invitacionRepo = new InvitacionSupabaseRepository();
-const verificarUC = new VerificarInvitacionUseCase(invitacionRepo);
-const aceptarUC = new AceptarInvitacionUseCase(invitacionRepo);
-
 export const InvitationProcessor: React.FC = () => {
+  // DI: Use Cases resueltos desde el container inyectado por DIProvider
+  const verificarUC = useDIUseCase((c) => new VerificarInvitacionUseCase(c.invitacion));
+  const aceptarUC = useDIUseCase((c) => new AceptarInvitacionUseCase(c.invitacion));
+
   const [estado, setEstado] = useState<InvitationState>('cargando');
   const [invitacion, setInvitacion] = useState<InvitacionInfo | null>(null);
   const [procesando, setProcesando] = useState(false);
   const [errorLocal, setErrorLocal] = useState('');
   const [tokenHashLocal, setTokenHashLocal] = useState<string>('');
-  const { session, setAuthFeedback, setView, theme, fetchWorkspaces } = useStore(
+  const { session, setAuthFeedback, setView, theme, fetchWorkspaces, setPendingOnboardingEspacioId } = useStore(
     useShallow(seleccionarProcesadorInvitacion)
   );
 
@@ -91,6 +93,9 @@ export const InvitationProcessor: React.FC = () => {
 
       setTimeout(() => {
         setAuthFeedback({ type: 'success', message: `¡Bienvenido a ${invitacion.espacio.nombre}!` });
+        // ROLE-MISMATCH-001: pasar espacio_id al onboarding para que filtre
+        // la membresía correcta y no retorne otra con rol diferente.
+        setPendingOnboardingEspacioId(invitacion.espacio.id);
         setView('onboarding');
       }, 2000);
     } catch (err: unknown) {

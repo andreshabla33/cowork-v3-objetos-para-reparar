@@ -23,6 +23,9 @@ import type { IMultiBatchMeshService } from '../../domain/ports/IMultiBatchMeshS
 import type { ITextureAtlasService } from '../../domain/ports/ITextureAtlasService';
 import type { IGPUSkinnedInstanceService } from '../../domain/ports/IGPUSkinnedInstanceService';
 import type { IBatchMaterialPropertiesService } from '../../domain/ports/IBatchMaterialPropertiesService';
+import type { IInvitacionRepository } from '../../domain/ports/IInvitacionRepository';
+import type { IEnviarInvitacionRepository } from '../../domain/ports/IEnviarInvitacionRepository';
+import type { IOnboardingRepository } from '../../domain/ports/IOnboardingRepository';
 
 // ─── Tipo del contenedor ──────────────────────────────────────────────────────
 
@@ -49,6 +52,12 @@ export interface DIContainer {
   gpuSkinnedInstance: IGPUSkinnedInstanceService;
   /** Fase 4D — Per-instance PBR material properties via DataTexture + shader injection */
   materialProps: IBatchMaterialPropertiesService;
+  /** Repositorio de verificación y aceptación de invitaciones */
+  invitacion: IInvitacionRepository;
+  /** Repositorio de envío de invitaciones (Edge Function) */
+  enviarInvitacion: IEnviarInvitacionRepository;
+  /** Repositorio de onboarding de miembros */
+  onboarding: IOnboardingRepository;
 }
 
 // ─── Singleton ────────────────────────────────────────────────────────────────
@@ -77,6 +86,9 @@ export async function getDIContainer(): Promise<DIContainer> {
     { getTextureAtlasAdapter },
     { getGPUSkinnedInstanceAdapter },
     { getBatchMaterialPropertiesAdapter },
+    { InvitacionSupabaseRepository },
+    { EnviarInvitacionSupabaseRepository },
+    { OnboardingSupabaseRepository },
   ] = await Promise.all([
     import('../adapters/ThreeTextureFactoryAdapter'),
     import('../adapters/RenderingOptimizationAdapter'),
@@ -89,6 +101,9 @@ export async function getDIContainer(): Promise<DIContainer> {
     import('../adapters/TextureAtlasCanvasAdapter'),
     import('../adapters/GPUSkinnedInstanceAdapter'),
     import('../adapters/BatchMaterialPropertiesThreeAdapter'),
+    import('../adapters/InvitacionSupabaseRepository'),
+    import('../adapters/EnviarInvitacionSupabaseRepository'),
+    import('../adapters/OnboardingSupabaseRepository'),
   ]);
 
   _container = {
@@ -103,6 +118,9 @@ export async function getDIContainer(): Promise<DIContainer> {
     textureAtlas: getTextureAtlasAdapter(),
     gpuSkinnedInstance: getGPUSkinnedInstanceAdapter(),
     materialProps: getBatchMaterialPropertiesAdapter(),
+    invitacion: new InvitacionSupabaseRepository(),
+    enviarInvitacion: new EnviarInvitacionSupabaseRepository(),
+    onboarding: new OnboardingSupabaseRepository(),
   };
 
   return _container;

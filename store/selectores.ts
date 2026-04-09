@@ -57,4 +57,5 @@ export const seleccionarProcesadorInvitacion = (state: StoreState) => ({
   setView: state.setView,
   theme: state.theme,
   fetchWorkspaces: state.fetchWorkspaces,
+  setPendingOnboardingEspacioId: state.setPendingOnboardingEspacioId,
 });

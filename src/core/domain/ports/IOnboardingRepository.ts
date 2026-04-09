@@ -29,8 +29,10 @@ export interface DatosOnboarding {
 export interface IOnboardingRepository {
   /**
    * Find the most recent pending onboarding membership for a user.
+   * @param espacioId — Si se provee, filtra por workspace específico (evita retornar
+   *                     membresías de otros workspaces con rol diferente — ROLE-MISMATCH-001).
    */
-  obtenerMiembroPendiente(userId: string): Promise<MiembroOnboarding | null>;
+  obtenerMiembroPendiente(userId: string, espacioId?: string): Promise<MiembroOnboarding | null>;
 
   /**
    * Fetch departments, roles/cargos, and invitation data for onboarding.

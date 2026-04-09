@@ -1,11 +1,14 @@
 /**
  * @module components/onboarding/OnboardingCargoView
  * @description Multi-step onboarding flow for new workspace members.
- * Refactored to Clean Architecture: zero direct Supabase imports.
- * All data access delegated to Use Cases + Repository.
+ * Refactored to Clean Architecture: zero direct Supabase imports, zero module-level singletons.
+ * All data access delegated to Use Cases + Repository via DI Context.
  *
  * Domain types: src/core/domain/entities/onboarding.ts
  * Use Cases: ObtenerDatosOnboardingUseCase, CompletarOnboardingUseCase
+ * DI: Repositories injected from DIProvider (React Context)
+ *
+ * Ref: CLEAN-ARCH-DI-001
  */
 
 import React, { useEffect, useState } from 'react';
@@ -15,17 +18,13 @@ import { CargoSelector } from './CargoSelector';
 import type { CargoLaboral, CargoDB } from './CargoSelector';
 import type { Departamento, OnboardingCargoState } from '../../src/core/domain/entities/onboarding';
 
-// Clean Architecture: Use Cases + Repository (no direct supabase import)
+// Clean Architecture: Use Cases (Application Layer — no infrastructure imports)
 import { ObtenerDatosOnboardingUseCase } from '../../src/core/application/usecases/ObtenerDatosOnboardingUseCase';
 import { CompletarOnboardingUseCase } from '../../src/core/application/usecases/CompletarOnboardingUseCase';
-import { OnboardingSupabaseRepository } from '../../src/core/infrastructure/adapters/OnboardingSupabaseRepository';
+// DI: Repository port resolved from React Context, not module-level singleton
+import { useDIUseCase } from '../../src/core/infrastructure/di/DIProvider';
 
 const log = logger.child('onboarding');
-
-// Singleton instances — dependency injection
-const onboardingRepo = new OnboardingSupabaseRepository();
-const obtenerDatosUC = new ObtenerDatosOnboardingUseCase(onboardingRepo);
-const completarUC = new CompletarOnboardingUseCase(onboardingRepo);
 
 /** Emoji mapping for department icons */
 const DEPARTMENT_ICON_MAP: Record<string, string> = {
@@ -38,7 +37,11 @@ const DEPARTMENT_ICON_MAP: Record<string, string> = {
 };
 
 export const OnboardingCargoView: React.FC = () => {
-  const { session, setView, setAuthFeedback, fetchWorkspaces } = useStore();
+  // DI: Use Cases resueltos desde el container inyectado por DIProvider
+  const obtenerDatosUC = useDIUseCase((c) => new ObtenerDatosOnboardingUseCase(c.onboarding));
+  const completarUC = useDIUseCase((c) => new CompletarOnboardingUseCase(c.onboarding));
+
+  const { session, setView, setAuthFeedback, fetchWorkspaces, pendingOnboardingEspacioId, setPendingOnboardingEspacioId } = useStore();
   const [state, setState] = useState<OnboardingCargoState>({
     isLoading: true,
     error: null,
@@ -62,7 +65,12 @@ export const OnboardingCargoView: React.FC = () => {
     }
 
     try {
-      const datos = await obtenerDatosUC.ejecutar(session.user.id, session.user.email || '');
+      // ROLE-MISMATCH-001: pasar espacioId para filtrar la membresía correcta
+      const datos = await obtenerDatosUC.ejecutar(
+        session.user.id,
+        session.user.email || '',
+        pendingOnboardingEspacioId ?? undefined,
+      );
 
       if (!datos) {
         setState((prev) => ({ ...prev, isLoading: false, error: 'No se encontró membresía' }));
@@ -70,6 +78,7 @@ export const OnboardingCargoView: React.FC = () => {
       }
 
       if (datos.miembro.onboarding_completado) {
+        setPendingOnboardingEspacioId(null);
         setView('dashboard');
         return;
       }
@@ -106,6 +115,7 @@ export const OnboardingCargoView: React.FC = () => {
       try {
         await completarUC.ejecutar({ miembroId: state.miembroId, cargoId: cargo });
         await fetchWorkspaces();
+        setPendingOnboardingEspacioId(null);
         setAuthFeedback({ type: 'success', message: '¡Perfil configurado!' });
         setView('dashboard');
       } catch (err: unknown) {
@@ -132,6 +142,7 @@ export const OnboardingCargoView: React.FC = () => {
 
       const deptNombre = state.departamentos.find((d) => d.id === departamentoId)?.nombre || '';
       await fetchWorkspaces();
+      setPendingOnboardingEspacioId(null);
       setAuthFeedback({ type: 'success', message: `¡Perfil configurado! ${deptNombre}` });
       setView('dashboard');
     } catch (err: unknown) {

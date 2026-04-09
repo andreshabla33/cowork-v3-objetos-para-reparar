@@ -9,8 +9,12 @@ import type { IOnboardingRepository, DatosOnboarding } from '../../domain/ports/
 export class ObtenerDatosOnboardingUseCase {
   constructor(private readonly repo: IOnboardingRepository) {}
 
-  async ejecutar(userId: string, userEmail: string): Promise<DatosOnboarding | null> {
-    const miembro = await this.repo.obtenerMiembroPendiente(userId);
+  /**
+   * @param espacioId — Si se provee, busca la membresía pendiente de onboarding
+   *                     SOLO para ese workspace (fix ROLE-MISMATCH-001).
+   */
+  async ejecutar(userId: string, userEmail: string, espacioId?: string): Promise<DatosOnboarding | null> {
+    const miembro = await this.repo.obtenerMiembroPendiente(userId, espacioId);
     if (!miembro) return null;
 
     if (miembro.onboarding_completado) return null;

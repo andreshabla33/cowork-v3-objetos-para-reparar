@@ -9,6 +9,7 @@ import ReactDOM from 'react-dom/client';
 import './styles/tailwind.css';
 import App from './App';
 import { AppErrorBoundary } from './components/ui/AppErrorBoundary';
+import { DIProvider } from './src/core/infrastructure/di/DIProvider';
 import { captureError } from './lib/monitoring/sentryInit';
 import { registerSentryForwarder } from './lib/logger';
 
@@ -28,7 +29,9 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <AppErrorBoundary>
-      <App />
+      <DIProvider>
+        <App />
+      </DIProvider>
     </AppErrorBoundary>
   </React.StrictMode>
 );

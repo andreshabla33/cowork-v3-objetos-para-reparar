@@ -81,11 +81,14 @@ serve(async (req) => {
 
     const empresaId = miembroInvitador.empresa_id;
 
+    // Normalizar email una sola vez para evitar inconsistencias
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Verificar si ya existe invitación pendiente para este email+espacio
     const { data: existente } = await supabaseClient
       .from('invitaciones_pendientes')
       .select('id')
-      .eq('email', email.toLowerCase().trim())
+      .eq('email', normalizedEmail)
       .eq('espacio_id', espacio_id)
       .eq('usada', false)
       .maybeSingle();
@@ -97,19 +100,29 @@ serve(async (req) => {
       });
     }
 
-    // Verificar si el usuario ya es miembro del espacio
-    const { data: yaEsMiembro } = await supabaseClient
-      .from('miembros_espacio')
+    // Verificar si el usuario ya es miembro del espacio.
+    // Separado en 2 queries atómicos para mayor legibilidad y resiliencia.
+    // Si el email no corresponde a ningún usuario registrado, no hay conflicto.
+    const { data: usuarioExistente } = await supabaseClient
+      .from('usuarios')
       .select('id')
-      .eq('espacio_id', espacio_id)
-      .eq('usuario_id', (await supabaseClient.from('usuarios').select('id').eq('email', email.toLowerCase().trim()).maybeSingle()).data?.id || '00000000-0000-0000-0000-000000000000')
+      .eq('email', normalizedEmail)
       .maybeSingle();
 
-    if (yaEsMiembro) {
-      return new Response(JSON.stringify({ error: 'Este usuario ya es miembro del espacio' }), {
-        status: 409,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (usuarioExistente) {
+      const { data: yaEsMiembro } = await supabaseClient
+        .from('miembros_espacio')
+        .select('id')
+        .eq('espacio_id', espacio_id)
+        .eq('usuario_id', usuarioExistente.id)
+        .maybeSingle();
+
+      if (yaEsMiembro) {
+        return new Response(JSON.stringify({ error: 'Este usuario ya es miembro del espacio' }), {
+          status: 409,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     // SHA-256 Token Hashing
@@ -121,7 +134,7 @@ serve(async (req) => {
     const { error: insertError } = await supabaseClient
       .from('invitaciones_pendientes')
       .insert({
-        email: email.toLowerCase().trim(),
+        email: normalizedEmail,
         espacio_id,
         empresa_id: empresaId,
         rol,
@@ -150,7 +163,7 @@ serve(async (req) => {
         accion: 'crear_invitacion',
         entidad: 'invitaciones_pendientes',
         descripcion: 'Invitacion enviada por edge function',
-        datos_extra: { email: email.toLowerCase().trim(), rol }
+        datos_extra: { email: normalizedEmail, rol }
       });
     } catch (_logError) {
       // No bloquear el flujo si falla el log

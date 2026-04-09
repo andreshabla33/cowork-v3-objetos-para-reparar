@@ -20,6 +20,12 @@ export interface UISlice {
   activeSubTab: 'space' | 'tasks' | 'miembros' | 'settings' | 'builder' | 'chat' | 'avatar' | 'calendar' | 'grabaciones' | 'metricas';
   notifications: Notification[];
   isMiniMode: boolean;
+  /**
+   * espacio_id pendiente para el onboarding tras aceptar invitación.
+   * Evita que obtenerMiembroPendiente retorne una membresía de otro workspace
+   * con rol diferente (bug ROLE-MISMATCH-001).
+   */
+  pendingOnboardingEspacioId: string | null;
 
   setTheme: (theme: ThemeType) => void;
   setView: (view: UISlice['view']) => void;
@@ -29,6 +35,7 @@ export interface UISlice {
   clearNotifications: () => void;
   setMiniMode: (val: boolean) => void;
   toggleMiniMode: () => void;
+  setPendingOnboardingEspacioId: (id: string | null) => void;
 }
 
 export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
@@ -37,9 +44,11 @@ export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
   activeSubTab: 'space',
   notifications: [],
   isMiniMode: false,
+  pendingOnboardingEspacioId: null,
 
   setTheme: (theme) => set({ theme }),
   setView: (view) => set({ view }),
+  setPendingOnboardingEspacioId: (id) => set({ pendingOnboardingEspacioId: id }),
   setActiveSubTab: (activeSubTab) => set({ activeSubTab }),
 
   addNotification: (message, type = 'info') =>

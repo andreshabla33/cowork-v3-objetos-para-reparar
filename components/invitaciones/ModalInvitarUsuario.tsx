@@ -2,11 +2,11 @@
  * @module components/invitaciones/ModalInvitarUsuario
  * UI para crear y enviar invitaciones a un espacio de trabajo.
  *
- * Clean Architecture (REMEDIATION-007b — 2026-03-30):
+ * Clean Architecture (REMEDIATION-007b — 2026-03-30, DI-001 — 2026-04-09):
  *  - Eliminado import directo de `supabase`, `SUPABASE_URL` y `SUPABASE_ANON_KEY`.
+ *  - Eliminado singleton a nivel módulo; repositorio inyectado desde DIProvider.
  *  - Toda la lógica de negocio delegada a EnviarInvitacionUseCase.
  *  - El componente solo gestiona estado UI (email, nombre, rol, errores visuales).
- *  - Singleton de Use Case instanciado a nivel módulo para evitar re-creación por render.
  */
 import React, { useState } from 'react';
 import { Mail, User, Shield, Users, Crown, X, Send, CheckCircle, AlertTriangle } from 'lucide-react';
@@ -14,12 +14,9 @@ import { Modal } from '../ui/Modal';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { EnviarInvitacionUseCase } from '../../src/core/application/usecases/EnviarInvitacionUseCase';
-import { EnviarInvitacionSupabaseRepository } from '../../src/core/infrastructure/adapters/EnviarInvitacionSupabaseRepository';
+// DI: Repository port resolved from React Context, not module-level singleton
+import { useDIUseCase } from '../../src/core/infrastructure/di/DIProvider';
 import type { RolInvitacion } from '../../src/core/domain/ports/IEnviarInvitacionRepository';
-
-// Singleton: mismo ciclo de vida que el módulo, no por render
-const _repo = new EnviarInvitacionSupabaseRepository();
-const _useCase = new EnviarInvitacionUseCase(_repo);
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -62,6 +59,9 @@ export const ModalInvitarUsuario: React.FC<Props> = ({
   onCerrar,
   onExito,
 }) => {
+  // DI: Use Case resuelto desde el container inyectado por DIProvider
+  const enviarUC = useDIUseCase((c) => new EnviarInvitacionUseCase(c.enviarInvitacion));
+
   const [email, setEmail]     = useState('');
   const [nombre, setNombre]   = useState('');
   const [rol, setRol]         = useState<RolInvitacion>('miembro');
@@ -76,7 +76,7 @@ export const ModalInvitarUsuario: React.FC<Props> = ({
     setEnviando(true);
 
     try {
-      const result = await _useCase.ejecutar({
+      const result = await enviarUC.ejecutar({
         email,
         espacioId,
         rol,
