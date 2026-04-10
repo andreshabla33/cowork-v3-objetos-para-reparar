@@ -21,7 +21,7 @@
  *   ("First frame may show incomplete data; WebGPU may defer pipeline creation")
  */
 
-import type { WebGLRenderer } from 'three';
+import type { Scene, WebGLRenderer } from 'three';
 import {
   OptimizarRenderizadoUseCase,
   UMBRALES_RENDERIZADO,
@@ -68,6 +68,7 @@ const toFiniteNumber = (value: unknown): number =>
 export const evaluarFrameRenderer = (
   renderer: WebGLRenderer,
   gpuTier: number,
+  scene?: Scene,
 ): ResultadoEvaluacionFrame => {
   const info = renderer.info;
 
@@ -79,7 +80,7 @@ export const evaluarFrameRenderer = (
     geometrias: toFiniteNumber(info.memory.geometries),
     texturas: toFiniteNumber(info.memory.textures),
     programas: toFiniteNumber(info.programs?.length),
-    objetosEscena: 0, // se obtiene desde la escena si es necesario
+    objetosEscena: scene ? scene.children.length : 0,
     gpuTier,
   };
 
@@ -99,6 +100,7 @@ export const formatearMetricasParaLog = (
   geometries: metricas.geometrias,
   textures: metricas.texturas,
   programs: metricas.programas,
+  sceneObjects: metricas.objetosEscena,
   gpuTier: metricas.gpuTier,
   saludable: metricas.drawCalls <= UMBRALES_RENDERIZADO.drawCallsMaximo,
 });

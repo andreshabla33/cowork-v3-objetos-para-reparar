@@ -15,6 +15,16 @@
 import type { IRenderingOptimizationService, GrupoInstanciado, MetricasRenderizado } from '../../domain/ports/IRenderingOptimizationService';
 import type { ObjetoEspacio3D } from '../../domain/entities/espacio3d/ObjetoEspacio3D';
 import { UMBRALES_RENDERIZADO } from '../../domain/ports/IRenderingOptimizationService';
+import type {
+  MuestraRenderizado,
+  ResultadoEstabilidad,
+  VentanaEstabilidad,
+} from '../../domain/ports/EstabilidadRenderizado';
+import {
+  agregarMuestra,
+  crearVentanaEstabilidad,
+  evaluarVentanaEstabilidad,
+} from '../../domain/ports/EstabilidadRenderizado';
 
 // ─── Use Case Class ───────────────────────────────────────────────────────────
 
@@ -93,6 +103,51 @@ export class OptimizarRenderizadoUseCase {
       saludable: alertas.length === 0,
       alertas,
     };
+  }
+
+  /**
+   * Caso de uso de alto nivel para telemetría idle-aware:
+   * agrega una muestra a la ventana deslizante y devuelve (a) la ventana
+   * actualizada y (b) el veredicto sobre si debe emitirse un log.
+   *
+   * Uso típico desde la capa de presentación (hook useRendererMetrics):
+   *
+   *   const { ventanaActualizada, resultado } =
+   *     OptimizarRenderizadoUseCase.evaluarEstabilidadRenderizado(
+   *       ventanaRef.current,
+   *       nuevaMuestra,
+   *     );
+   *   ventanaRef.current = ventanaActualizada;
+   *   if (resultado.debeEmitir) log.info(...);
+   *
+   * Clean Architecture: el use-case no lee Three.js ni React — recibe datos
+   * ya desacoplados (MuestraRenderizado es un value-object puro del dominio)
+   * y devuelve una decisión pura. Es determinístico y libre de side-effects.
+   *
+   * Ref DEBT-003-B-CLOSE-2026-04-10.
+   */
+  static evaluarEstabilidadRenderizado(
+    ventana: VentanaEstabilidad,
+    muestra: MuestraRenderizado,
+  ): {
+    ventanaActualizada: VentanaEstabilidad;
+    resultado: ResultadoEstabilidad;
+  } {
+    const esPrimerMuestra = ventana.muestras.length === 0;
+    const ventanaActualizada = agregarMuestra(ventana, muestra);
+    const resultado = evaluarVentanaEstabilidad(
+      ventanaActualizada,
+      esPrimerMuestra,
+    );
+    return { ventanaActualizada, resultado };
+  }
+
+  /**
+   * Factory helper para la capa de presentación — evita que el hook tenga que
+   * importar directamente la función pura del dominio.
+   */
+  static crearVentanaEstabilidadVacia(): VentanaEstabilidad {
+    return crearVentanaEstabilidad();
   }
 }
 

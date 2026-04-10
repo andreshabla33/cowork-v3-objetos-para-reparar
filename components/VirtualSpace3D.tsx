@@ -911,6 +911,17 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
           if (gpuRenderConfig) {
             gl.toneMappingExposure = gpuRenderConfig.toneMappingExposure;
           }
+          // NOTA (DEBT-003-B-CLOSE-2026-04-10): NO aplicamos
+          // `shadowMap.autoUpdate = false` aquí. Three.js Tip 61 recomienda
+          // desactivarlo SOLO en escenas estáticas. Nuestra escena contiene
+          // avatares que se mueven en walk phase → deshabilitarlo congelaría
+          // sus sombras. Una optimización futura sería gatear needsUpdate por
+          // detección de movimiento desde el ECS, pero eso requiere un
+          // controller dedicado fuera del alcance de este hotfix.
+          //
+          // El cierre de Flag 1 (idle-guard espurio) se logra en la capa
+          // Presentation con el sliding-window de EstabilidadRenderizado.
+          // Ref DEBT-003-B-CLOSE-2026-04-10.
         }}
         onPointerMissed={handlePointerMissed}
       >
