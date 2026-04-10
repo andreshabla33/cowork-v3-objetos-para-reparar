@@ -82,7 +82,35 @@ export function useBootstrapAplicacion({ initialize, setSession, setView, setAut
       }
       
       lastAuthEventRef.current = { event: eventKey, userId: session?.user?.id || 'no-user', timestamp: now };
-      log.info('Auth event', { event, userId: session?.user?.id });
+
+      // ─── BUG-2 FIX (2026-04-10) — Log level adaptativo por significancia ──
+      // Supabase emite `SIGNED_IN` en cada token refresh (~60 s) y tab refocus
+      // (Page Visibility API). Esos eventos son idempotentes para nosotros:
+      // las guards de abajo los bloquean, pero antes imprimian `Auth event`
+      // a nivel INFO generando ruido en consola.
+      //
+      // Ahora: INFO solo para transiciones con consecuencia real (primer
+      // login, logout, recovery). DEBUG para eventos idempotentes que las
+      // guards descartan (noop SIGNED_IN tras token refresh).
+      //
+      // Ref: Supabase JS v2 — onAuthStateChange event semantics
+      //   https://supabase.com/docs/reference/javascript/auth-onauthstatechange
+      // Ref: MDN — Page Visibility API
+      //   https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API
+      const currentState = useStore.getState();
+      const isNoopSignedIn =
+        event === 'SIGNED_IN' &&
+        currentState.initialized &&
+        (currentState.view === 'reset_password' ||
+          currentState.view === 'onboarding_creador' ||
+          currentState.view === 'onboarding' ||
+          !!currentState.activeWorkspace);
+
+      if (isNoopSignedIn) {
+        log.debug('Auth event (idempotente)', { event, userId: session?.user?.id });
+      } else {
+        log.info('Auth event', { event, userId: session?.user?.id });
+      }
 
       // ─── PASSWORD_RECOVERY: NO inicializar, NO redirigir al dashboard ────────
       // Este evento llega cuando el usuario hace clic en el link del correo de
@@ -102,19 +130,18 @@ export function useBootstrapAplicacion({ initialize, setSession, setView, setAut
       }
 
       if (event === 'SIGNED_IN') {
-        const state = useStore.getState();
         // Si ya estamos en el flujo de reset, ignorar el SIGNED_IN que Supabase
         // dispara junto con PASSWORD_RECOVERY para no sobreescribir la vista
-        if (state.view === 'reset_password') {
+        if (currentState.view === 'reset_password') {
           log.debug('SIGNED_IN ignorado: flujo reset_password activo');
           return;
         }
         // Si ya estamos en onboarding, no re-inicializar (usuario nuevo sin workspaces)
-        if (state.initialized && (state.view === 'onboarding_creador' || state.view === 'onboarding')) {
+        if (currentState.initialized && (currentState.view === 'onboarding_creador' || currentState.view === 'onboarding')) {
           log.debug('SIGNED_IN ignorado: flujo onboarding activo');
           return;
         }
-        if (state.initialized && state.activeWorkspace) {
+        if (currentState.initialized && currentState.activeWorkspace) {
           log.debug('SIGNED_IN: ya inicializado con workspace activo, omitiendo re-init');
           return;
         }

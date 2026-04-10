@@ -4,6 +4,14 @@
 // @see https://docs.sentry.io/platforms/javascript/guides/react/
 import './instrument';
 
+// ─── Rapier wasm-bindgen deprecation suppressor ────────────────────────────
+// Debe instalarse ANTES de que cualquier código importe @react-three/rapier
+// (lo hacemos aquí, antes de App y DIProvider). Ver el JSDoc del módulo
+// para el análisis upstream del warning.
+import { installSuppressRapierDeprecationWarning } from './lib/rendering/suppressRapierDeprecationWarning';
+
+installSuppressRapierDeprecationWarning();
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './styles/tailwind.css';
