@@ -337,7 +337,8 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     const debugKey = `${fase}:${JSON.stringify(payload)}`;
     if (lastSitDebugKeyRef.current === debugKey) return;
     lastSitDebugKeyRef.current = debugKey;
-    log.info('SIT_DEBUG[player]', { fase, ...payload });
+    // P2 (2026-04-10): diagnóstico de posicionamiento al sentarse — debug-level
+    log.debug('SIT_DEBUG[player]', { fase, ...payload });
   }, []);
 
   const handleAvatarHeightComputed = useCallback((height: number) => {
@@ -355,7 +356,7 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     }
     if (metricas.alturaCaderaSentada != null && metricas.alturaCaderaSentada > 0.1) {
       avatarSitHipHeightRef.current = metricas.alturaCaderaSentada;
-      log.info('SIT_DEBUG[player] pelvis_sentada_recibida', {
+      log.debug('SIT_DEBUG[player] pelvis_sentada_recibida', {
         alturaCaderaSentada: Number(metricas.alturaCaderaSentada.toFixed(4)),
       });
     }
@@ -931,7 +932,7 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
         sitDownStartTimeRef.current = Date.now();
       }
       if (sentadoActivo && currentSeatRuntime && (Date.now() - sitDownStartTimeRef.current) < 3000 && (Date.now() - sitDownStartTimeRef.current) % 500 < 20) {
-        log.info('SIT_Y_DEBUG', {
+        log.debug('SIT_Y_DEBUG', {
           seatPosY: +currentSeatRuntime.posicion.y.toFixed(4),
           targetY: +targetY.toFixed(4),
           currentGroupY: +groupRef.current.position.y.toFixed(4),

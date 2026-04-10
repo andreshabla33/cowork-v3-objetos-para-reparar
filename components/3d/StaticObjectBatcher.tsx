@@ -92,6 +92,70 @@ interface TrackedInstance {
 
 const _trackedInstances: TrackedInstance[] = [];
 
+// ─── P1 PERFORMANCE FIX (2026-04-10) — Módulo-level registration cache ─────
+// Rationale (auditoría rendimiento 2026-04-09):
+//   El efecto de unmount invocaba multiBatch.limpiar() + materialProps.limpiar()
+//   + textureAtlas.limpiar() en cada ciclo (StrictMode / edit-toggle), causando
+//   un re-registro completo de ~3 000 instancias y un spike de 466 draw calls.
+//
+// Solución Clean Architecture-compliant (Presentation-layer):
+//   - `_registration.signature` = firma estable (URLs de modelo + IDs de objetos)
+//   - `_registration.services`  = referencia al servicio asociado (para detectar
+//     cambios de espacio/DI container)
+//   - `_registeredModels`        = mapa modelo→firma consultado por BatchedGroupLoader
+//
+//   Mientras la firma + services sean idénticos entre remounts, se omite el
+//   trabajo pesado (merge + agregarGeometria + agregarInstancia). Si la firma
+//   cambia (cambio de espacio, objetos actualizados), se ejecuta limpiar() y
+//   se vuelve a registrar con la firma nueva.
+//
+// Ref: https://r3f.docs.pmnd.rs/api/objects  (manual lifecycle management)
+// Ref: https://threejs.org/docs/#api/en/objects/BatchedMesh  (capacity is fixed)
+
+interface RegistrationState {
+  signature: string | null;
+  services: SceneOptimizationServices | null;
+}
+
+const _registration: RegistrationState = {
+  signature: null,
+  services: null,
+};
+
+/** modeloUrl → firma de objetos ya registrada. Consultado por BatchedGroupLoader. */
+const _registeredModels = new Map<string, string>();
+
+/** Firma estable de un grupo de objetos. Solo depende de IDs ordenados. */
+function computeObjetosSignature(objetos: EspacioObjeto[]): string {
+  return objetos
+    .map((o) => o.id)
+    .sort()
+    .join(',');
+}
+
+/** Firma global de todos los grupos (para detectar cambios de espacio). */
+function computeGruposSignature(grupos: Map<string, EspacioObjeto[]>): string {
+  const parts: string[] = [];
+  for (const [url, objs] of grupos) {
+    parts.push(`${url}::${computeObjetosSignature(objs)}`);
+  }
+  return parts.sort().join('|');
+}
+
+/** Full reset de todo el estado cacheado. Llamar SOLO cuando la firma cambia. */
+function resetRegistrationCache(services: SceneOptimizationServices): void {
+  if (services.isReady) {
+    services.multiBatch.limpiar();
+    services.materialProps.limpiar();
+    services.textureAtlas.limpiar();
+  }
+  _trackedInstances.length = 0;
+  limpiarGeometryNormCache();
+  _registeredModels.clear();
+  _registration.signature = null;
+  _registration.services = null;
+}
+
 // ─── Material identity key ────────────────────────────────────────────────────
 
 /**
@@ -318,6 +382,20 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
   useEffect(() => {
     if (!services.isReady || registeredRef.current || objetos.length === 0) return;
 
+    // P1 FAST-PATH: si este modelo ya fue registrado con la MISMA firma de
+    // objetos, omitir todo el trabajo pesado. El cache vive a nivel módulo
+    // y sobrevive unmount/remount (StrictMode, edit-toggle).
+    const currentSignature = computeObjetosSignature(objetos);
+    const cachedSignature = _registeredModels.get(modeloUrl);
+    if (cachedSignature === currentSignature) {
+      registeredRef.current = true;
+      log.debug('BatchedGroupLoader cache hit — skipping registration', {
+        modeloUrl,
+        signature: currentSignature,
+      });
+      return;
+    }
+
     const { multiBatch, textureAtlas, materialProps } = services;
     gltfScene.updateMatrixWorld(true);
 
@@ -516,6 +594,7 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
     }
 
     registeredRef.current = true;
+    _registeredModels.set(modeloUrl, currentSignature);
 
     log.info('MultiBatch registered', {
       modeloUrl,
@@ -687,53 +766,52 @@ export const StaticObjectBatcher: React.FC<StaticObjectBatcherProps> = ({
   services,
   playerPosition,
 }) => {
-  // Clean up tracked instances + geometry cache + MultiBatch state on unmount.
+  // P1 PERFORMANCE FIX (2026-04-10) — firma-aware signature cache.
   //
-  // CRITICAL FIX: When toggling edit mode off→on→off, StaticObjectBatcher
-  // unmounts and remounts, but the MultiBatch singleton (via useSceneOptimization)
-  // retains all groups/instances from the previous mount. New BatchedGroupLoader
-  // instances get registeredRef=false, causing them to call agregarInstancia()
-  // again — adding DUPLICATE instances on top of existing ones. This eventually
-  // exceeds GROUP_MAX_INSTANCES, flooding the console with
-  // "Maximum item count reached" warnings.
+  // Antes (bug): `limpiar()` en cada unmount → full re-register en remount,
+  // causando un spike de ~17 s / 466 draw calls (auditoría rendimiento).
   //
-  // Fix: Reset MultiBatch + MaterialProps + TextureAtlas on unmount so the
-  // next mount starts with a clean slate. The services themselves remain alive
-  // (owned by useSceneOptimization); only their internal state is cleared.
+  // Ahora: solo limpiamos cuando la firma de `gruposPorModelo` CAMBIA
+  // (cambio real de espacio/objetos). Mientras permanezca igual, los
+  // BatchedMesh groups, DataTextures y TextureAtlas sobreviven a cualquier
+  // remount (StrictMode, edit-toggle, etc.) y los BatchedGroupLoader toman
+  // el fast-path (cache hit) en <1 ms.
   //
-  // Ref: Three.js r170 — BatchedMesh capacity is fixed at construction
+  // El duplicate-instance bug queda cubierto porque BatchedGroupLoader ahora
+  // consulta `_registeredModels` antes de registrar — si ya está cacheado
+  // para esta firma, omite todo el trabajo.
+  //
+  // Ref: Three.js r170 — BatchedMesh capacity fija en constructor
   //   https://threejs.org/docs/#api/en/objects/BatchedMesh
-  useEffect(() => {
-    return () => {
-      _trackedInstances.length = 0;
-      limpiarGeometryNormCache();
+  const currentSignature = useMemo(
+    () => computeGruposSignature(gruposPorModelo),
+    [gruposPorModelo],
+  );
 
-      // Reset ALL GPU service state — dispose groups/instances/textures.
-      // Services remain usable for the next mount cycle because:
-      //   - MultiBatchMeshThreeAdapter: _groups cleared → crearGrupoMaterial() works
-      //   - BatchMaterialPropertiesThreeAdapter: _groups cleared → inicializarGrupo() works
-      //   - TextureAtlasCanvasAdapter: _ensureCanvas() recreates canvas/ctx/texture on demand
-      //
-      // CRITICAL FIX (2026-04-09): TextureAtlas MUST be cleaned up.
-      // The atlas holds a 4096×4096 CanvasTexture (64MB GPU memory) that leaked
-      // across edit-mode mount/unmount cycles. The adapter's _ensureCanvas() method
-      // lazily recreates the canvas + texture on the next addTexture() call, so
-      // calling limpiar() is safe for reuse.
-      //
-      // Ref: Three.js — How to dispose of objects
-      //   https://threejs.org/docs/#manual/en/introduction/How-to-dispose-of-objects
-      if (services.isReady) {
-        const stats = services.multiBatch.obtenerEstadisticas();
-        log.info('StaticObjectBatcher unmounting — disposing all GPU resources', {
-          groupCount: stats.groupCount,
-          totalInstances: stats.totalInstances,
-        });
-        services.multiBatch.limpiar();
-        services.materialProps.limpiar();
-        services.textureAtlas.limpiar();
-      }
-    };
-  }, [services]);
+  useEffect(() => {
+    if (!services.isReady) return;
+
+    // ── Signature mismatch: espacio distinto o objetos modificados ──
+    // Es seguro (y necesario) ejecutar un reset completo.
+    if (
+      _registration.signature !== null &&
+      (_registration.signature !== currentSignature ||
+        _registration.services !== services)
+    ) {
+      log.info('Signature changed — reset completo del cache de batcher', {
+        prevSignature: _registration.signature,
+        nextSignature: currentSignature,
+      });
+      resetRegistrationCache(_registration.services ?? services);
+    }
+
+    _registration.signature = currentSignature;
+    _registration.services = services;
+  }, [currentSignature, services]);
+
+  // NO efecto de unmount destructivo: el cache vive a nivel módulo y
+  // sobrevive remounts. Solo se invalida cuando cambia la firma (efecto
+  // anterior) o cuando la página se descarga completamente (GC del navegador).
 
   if (!services.isReady) return null;
 

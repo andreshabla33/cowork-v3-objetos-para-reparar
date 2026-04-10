@@ -51,6 +51,38 @@ const mergeUseCase = new GenerarGeometriasMergeadasBuiltinUseCase(geometryAdapte
 // Ref: https://threejs.org/docs/#api/en/materials/MeshBasicMaterial
 const _fallbackMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff, wireframe: true });
 
+// ─── P1 PERFORMANCE FIX (2026-04-10) — Módulo-level material cache ──────────
+// Rationale (auditoría rendimiento 2026-04-09):
+//   Un remount StrictMode / edit-toggle provocaba un full re-merge (~17 s, spike
+//   a 466 draw calls). La causa raíz: el `useEffect` de unmount llamaba a
+//   `mergeUseCase.invalidarCache()` destruyendo el cache del use case y el
+//   comportamiento por defecto de R3F disponía las geometrías mergeadas.
+//
+// Solución Clean Architecture-compliant:
+//   1. Mantener el cache DEL USE CASE (Application layer) intacto entre mounts —
+//      el fingerprint basado en IDs+geometría ya garantiza invalidación correcta
+//      cuando los datos cambian.
+//   2. Cachear los materiales PBR a nivel módulo keyed por sub-types firmados,
+//      evitando la recreación en cada remount.
+//   3. Envolver los <mesh> en <group dispose={null}> para deshabilitar la
+//      disposición automática de R3F sobre recursos gestionados por el cache.
+//
+// Ref: https://r3f.docs.pmnd.rs/api/objects — "If you manage assets by yourself,
+//      globally or in a cache, … you can switch it off by placing dispose={null}"
+// Ref: https://threejs.org/docs/#manual/en/introduction/How-to-dispose-of-objects
+
+interface MaterialsCacheEntry {
+  opaqueMap: Map<OpaqueMaterialSubType, ReturnType<typeof crearMaterialPBRArquitectonico>>;
+  glass: ReturnType<typeof crearMaterialPBRArquitectonico>;
+  metal: ReturnType<typeof crearMaterialMarcoArquitectonico>;
+}
+
+let _materialsCacheKey: string | null = null;
+let _materialsCacheValue: MaterialsCacheEntry | null = null;
+
+const computarClaveMateriales = (subTypes: OpaqueMaterialSubType[]): string =>
+  [...subTypes].sort().join('|');
+
 // ─── Props ──────────────────────────────────────────────────────────────────
 
 interface BuiltinWallBatcherProps {
@@ -94,6 +126,26 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
   }, [merged]);
 
   const materials = useMemo(() => {
+    // P1 cache hit — mismos sub-types: reutilizar materiales existentes para
+    // sobrevivir remounts (StrictMode, edit-toggle). Esto elimina el re-work
+    // de ~N PBR materials + compilación de shaders cada mount.
+    const cacheKey = computarClaveMateriales(opaqueMaterialSubTypes);
+    if (_materialsCacheKey === cacheKey && _materialsCacheValue !== null) {
+      return _materialsCacheValue;
+    }
+
+    // Cache miss — los sub-types cambiaron realmente. Disponer el cache previo
+    // antes de crear el nuevo para liberar GPU resources.
+    if (_materialsCacheValue !== null) {
+      for (const mat of _materialsCacheValue.opaqueMap.values()) {
+        mat?.material?.dispose();
+      }
+      _materialsCacheValue.glass?.material?.dispose();
+      _materialsCacheValue.metal?.material?.dispose();
+      _materialsCacheValue = null;
+      _materialsCacheKey = null;
+    }
+
     const perfil = resolverPerfilVisualArquitectonico('corporativo');
 
     // ── Opaque materials: one per materialSubType ──
@@ -181,60 +233,34 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
       metal.material.polygonOffsetUnits = 1;
     }
 
-    return { opaqueMap, glass, metal };
+    const entry: MaterialsCacheEntry = { opaqueMap, glass, metal };
+    _materialsCacheKey = cacheKey;
+    _materialsCacheValue = entry;
+    return entry;
   }, [opaqueMaterialSubTypes]);
 
-  // ── Cleanup: dispose materials + invalidate geometry cache on unmount ──
+  // ── Cleanup: LIGHTWEIGHT unmount, cache persists across remounts ──
   //
-  // CRITICAL FIX (Fase 5B): Do NOT dispose texture clones (texturas array).
-  // Texture.clone() shares the same .source (canvas) with the module-level
-  // base texture cache. Disposing a clone on WebGPU can corrupt the shared
-  // source's GPU binding.
-  // Ref: https://github.com/mrdoob/three.js/blob/dev/src/textures/Texture.js
+  // P1 FIX (2026-04-10) — auditoría rendimiento:
+  //   Previamente este efecto disponía TODOS los materiales e invalidaba el
+  //   cache del use case, forzando un re-merge completo (~17 s) en cada
+  //   remount (StrictMode / edit-toggle). Ahora los recursos viven a nivel
+  //   módulo y el cache se invalida SOLO cuando el fingerprint de los datos
+  //   cambia (ver GenerarGeometriasMergeadasBuiltinUseCase.computarFingerprint).
   //
-  // CRITICAL FIX (Fase 5C — 2026-04-09): Exhaustive GPU resource cleanup.
-  // On edit-mode toggle, this component unmounts and remounts. Without full
-  // cleanup, orphaned GPU resources accumulate and eventually cause
-  // "WebGL: INVALID_OPERATION: loseContext: context already lost".
+  //   Las geometrías mergeadas se protegen de la disposición automática de
+  //   R3F con <group dispose={null}> en el render (ver más abajo).
   //
-  // Disposal order:
-  //   1. Materials (release GPU programs + uniform buffers)
-  //   2. Merged geometries via invalidarCache (release GPU vertex/index buffers)
-  //   3. Reset glass monitoring refs (prevent stale state on remount)
-  //
-  // Ref: Three.js — How to dispose of objects
-  //   https://threejs.org/docs/#manual/en/introduction/How-to-dispose-of-objects
+  // Ref: https://r3f.docs.pmnd.rs/api/objects  (dispose={null})
+  // Ref: https://threejs.org/docs/#manual/en/introduction/How-to-dispose-of-objects
   useEffect(() => {
     return () => {
-      let disposedMaterials = 0;
-
-      // Dispose all opaque materials (one per sub-type) — textures are NOT disposed (shared cache)
-      for (const mat of materials.opaqueMap.values()) {
-        if (mat?.material) {
-          mat.material.dispose();
-          disposedMaterials++;
-        }
-      }
-
-      // Dispose glass and metal materials
-      for (const mat of [materials.glass, materials.metal]) {
-        if (mat?.material) {
-          mat.material.dispose();
-          disposedMaterials++;
-        }
-      }
-
-      // Invalidate geometry cache — disposes ALL cached geometries (opaque, metal, glass individual)
-      mergeUseCase.invalidarCache();
-
-      // Reset glass monitoring refs to prevent stale state on remount
+      // Reset glass monitoring refs to prevent stale state on remount.
+      // NO disponer materiales — sobreviven a remounts vía _materialsCacheValue.
+      // NO invalidar use case cache — el fingerprint lo gestiona automáticamente.
       hasLoggedGlassState.current = false;
       hasLoggedGeoDiag.current = false;
-
-      log.info('BuiltinWallBatcher unmounted — GPU resources disposed', {
-        disposedMaterials,
-        geometryCacheInvalidated: true,
-      });
+      log.debug('BuiltinWallBatcher unmount — cache preservado');
     };
   }, [materials]);
 
@@ -349,8 +375,12 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
   const metalGroup = merged.find(({ category }) => category === 'metal');
   const glassGroups = merged.filter(({ category }) => category === 'glass');
 
+  // dispose={null}: los recursos (geometrías mergeadas + materiales) son
+  // gestionados por caches a nivel módulo. Sin este flag, R3F dispondría las
+  // geometrías en cada unmount y obligaría a un re-merge en el próximo mount.
+  // Ref: https://r3f.docs.pmnd.rs/api/objects
   return (
-    <group name="BuiltinWallBatcher">
+    <group name="BuiltinWallBatcher" dispose={null}>
       {/* Opaque walls — one merged mesh PER materialSubType.
         *
         * Fase 6A (2026-04-09): Each sub-type (yeso, ladrillo, concreto, etc.)

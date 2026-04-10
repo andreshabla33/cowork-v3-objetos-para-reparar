@@ -121,8 +121,12 @@ export function validateTurnCredentials(): string[] {
 export function runStartupSecurityChecks(supabaseKey: string): void {
   const keyResult = validateSupabaseKey(supabaseKey);
 
+  // P2 (2026-04-10) — bajamos a debug las warnings no-críticas (p.ej.
+  // "Could not decode Supabase key") para reducir ruido en consola durante
+  // bootstraps normales. Los errores siguen en log.error para no perder
+  // visibilidad de vulnerabilidades reales.
   for (const warning of keyResult.warnings) {
-    log.warn(warning);
+    log.debug(warning);
   }
 
   for (const error of keyResult.errors) {
