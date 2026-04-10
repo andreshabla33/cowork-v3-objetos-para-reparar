@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, Suspense, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas } from '@react-three/fiber';
 import { Grid, Loader } from '@react-three/drei';
 import { Room, Track } from 'livekit-client';
 import { User, PresenceStatus, Role, ZonaEmpresa } from '@/types';
@@ -13,6 +13,7 @@ import { ConsentimientoPendiente } from './meetings/recording/ConsentimientoPend
 import { BottomControlBar } from './BottomControlBar';
 import { AvatarCustomizer3D } from './AvatarCustomizer3D';
 import { useBackgroundProcessor } from '@/hooks/space3d/useBackgroundProcessor';
+import { useRendererMetrics } from '@/hooks/space3d/useRendererMetrics';
 import { SpatialAudio } from './3d/SpatialAudio';
 import { type GpuInfo } from '@/lib/gpuCapabilities';
 import { logger } from '@/lib/logger';
@@ -67,30 +68,25 @@ const SceneFallback: React.FC<{ theme: string }> = ({ theme }) => (
  * @see Scene3D — onSceneReady prop and useEffect that gates it
  */
 
+/**
+ * RendererMetricsProbe — Wrapper R3F del hook canónico `useRendererMetrics`.
+ *
+ * Reemplaza la implementación inline legacy (CLEAN-ARCH-F3 hotfix 2026-04-10)
+ * que duplicaba la lectura de `gl.info.*`, bypassaba la capa Infrastructure
+ * (`rendererMetricsMonitor`) y nunca pasaba por el dominio
+ * (`OptimizarRenderizadoUseCase.evaluarMetricasSinAdapter`).
+ *
+ * El hook incluye:
+ *   - Idle guard de doble capa (adaptive frameloop + delta tracking)
+ *   - Detección de oscilación de geometrías/texturas
+ *   - Alertas de umbrales del dominio
+ */
 const RendererMetricsProbe: React.FC<{ adaptiveDpr: number; gpuInfo?: GpuInfo | null }> = ({ adaptiveDpr, gpuInfo }) => {
-  const { gl, scene } = useThree();
-  const lastLogAtRef = useRef(0);
-
-  useFrame(() => {
-    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    if (typeof document !== 'undefined' && document.hidden) return;
-    if (now - lastLogAtRef.current < 8000) return;
-    lastLogAtRef.current = now;
-
-    logger.child('renderer-metrics').info('Frame stats', {
-      dpr: Number(adaptiveDpr.toFixed(2)),
-      calls: gl.info.render.calls,
-      triangles: gl.info.render.triangles,
-      points: gl.info.render.points,
-      lines: gl.info.render.lines,
-      geometries: gl.info.memory.geometries,
-      textures: gl.info.memory.textures,
-      programs: (gl.info.programs as unknown[] | undefined)?.length,
-      sceneObjects: scene.children.length,
-      gpuTier: gpuInfo?.tier ?? null,
-    });
+  useRendererMetrics({
+    gpuTier: gpuInfo?.tier ?? 1,
+    adaptiveDpr,
+    emitirAlertas: true,
   });
-
   return null;
 };
 
