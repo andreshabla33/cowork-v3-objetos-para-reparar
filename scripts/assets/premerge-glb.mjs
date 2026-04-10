@@ -56,7 +56,7 @@
  */
 
 import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import process from 'node:process';
 
@@ -258,7 +258,15 @@ async function main() {
 }
 
 // Solo ejecutar main() cuando se invoca directamente (no cuando se importa).
-if (import.meta.url === `file://${process.argv[1]}`) {
+// NOTA: usamos pathToFileURL() en lugar de `file://${argv[1]}` porque en
+// Windows `process.argv[1]` viene con backslashes (`C:\...`) mientras que
+// `import.meta.url` es `file:///C:/...`. El check ingenuo nunca empareja
+// en Windows y main() no se ejecuta (bug silencioso, scripts/assets 2026-04-10).
+// Ref: https://nodejs.org/api/url.html#urlpathtofileurlpath
+const invokedDirectly =
+  process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (invokedDirectly) {
   main().catch((err) => {
     console.error('✗', err);
     process.exit(1);
