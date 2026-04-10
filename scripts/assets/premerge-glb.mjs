@@ -55,7 +55,7 @@
  * - Three.js BatchedMesh (motivación): https://threejs.org/docs/#api/en/objects/BatchedMesh
  */
 
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import process from 'node:process';
@@ -181,10 +181,12 @@ async function mergeGlbByMaterial(bytes) {
  * @param {string} objectPath p.ej. 'pruebasObjetos/Keyboard.merged.glb'
  */
 async function uploadGlb(bytes, objectPath) {
-  const supabaseUrl = process.env.SUPABASE_URL;
+  const supabaseUrl =
+    process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
   const serviceKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY ??
     process.env.SUPABASE_SERVICE_KEY ??
+    process.env.VITE_SUPABASE_SERVICE_ROLE_KEY ??
     process.env.SUPABASE_KEY;
 
   if (!supabaseUrl || !serviceKey) {
@@ -221,9 +223,12 @@ async function uploadGlb(bytes, objectPath) {
 
 async function main() {
   const args = parseArgs(process.argv);
-  const supabaseUrl = process.env.SUPABASE_URL;
+  // Aceptamos tanto el nombre "vanilla" como el prefijo VITE_ que usa
+  // el .env del proyecto, así el mismo archivo sirve al runtime y al script.
+  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
   if (!supabaseUrl) {
-    console.error('❌ SUPABASE_URL no está definida. Carga las variables desde tu .env antes de correr.');
+    console.error('❌ SUPABASE_URL / VITE_SUPABASE_URL no está definida.');
+    console.error('   Ejecuta con --env-file=.env o exporta la variable antes.');
     process.exit(1);
   }
 
@@ -245,6 +250,30 @@ async function main() {
 
   if (args.dryRun) {
     console.log('◇ --dry-run: saltando upload');
+    return;
+  }
+
+  // Si no hay service-role key, guardamos el archivo en disco y damos
+  // instrucciones de upload manual vía dashboard. Esto evita que el usuario
+  // tenga que pegar credenciales de admin en su .env (fail-safe).
+  const serviceKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ??
+    process.env.SUPABASE_SERVICE_KEY ??
+    process.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!serviceKey) {
+    const outDir = path.resolve('scripts/assets/out');
+    await mkdir(outDir, { recursive: true });
+    const localPath = path.join(outDir, args.output);
+    await writeFile(localPath, outputBytes);
+
+    console.log(`\n◇ Sin SUPABASE_SERVICE_ROLE_KEY — archivo guardado localmente:`);
+    console.log(`  ${localPath}`);
+    console.log(`\n  Siguientes pasos (upload manual, sin tocar credenciales):`);
+    console.log(`  1. Abre https://supabase.com/dashboard/project/lcryrsdyrzotjqdxcwtp/storage/buckets/${DEFAULT_BUCKET}`);
+    console.log(`  2. Entra a la carpeta "${DEFAULT_PREFIX}/"`);
+    console.log(`  3. Arrastra "${args.output}" al dashboard (upsert=sí si pregunta).`);
+    console.log(`  4. Avísale a Claude: "archivo subido" para aplicar la migración SQL.\n`);
     return;
   }
 

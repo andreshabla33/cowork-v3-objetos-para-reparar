@@ -36,3 +36,6 @@ dist-ssr
 /playwright/.auth/
 /tests/.auth/user.json
 /tests/.env.test
+
+# Asset pre-merge artifacts (build tooling output, not runtime)
+scripts/assets/out/
