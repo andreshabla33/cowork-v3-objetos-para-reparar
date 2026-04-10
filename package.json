@@ -24,8 +24,12 @@
     "test:debug": "npx playwright test --debug",
     "test:report": "npx playwright show-report",
     "test:seed": "node tests/scripts/seed-test-users.mjs",
-    "assets:premerge-keyboard": "node scripts/assets/premerge-glb.mjs --input Keyboard.glb --output Keyboard.merged.glb",
-    "assets:premerge-keyboard:dry": "node scripts/assets/premerge-glb.mjs --input Keyboard.glb --output Keyboard.merged.glb --dry-run"
+    "assets:premerge-keyboard": "node --env-file=.env scripts/assets/premerge-glb.mjs --input Keyboard.glb --output Keyboard.merged.glb",
+    "assets:premerge-keyboard:dry": "node --env-file=.env scripts/assets/premerge-glb.mjs --input Keyboard.glb --output Keyboard.merged.glb --dry-run",
+    "assets:premerge-computer": "node --env-file=.env scripts/assets/premerge-glb.mjs --input \"Simple computer.glb\" --output \"Simple computer.merged.glb\"",
+    "assets:premerge-computer:dry": "node --env-file=.env scripts/assets/premerge-glb.mjs --input \"Simple computer.glb\" --output \"Simple computer.merged.glb\" --dry-run",
+    "assets:premerge-desk": "node --env-file=.env scripts/assets/premerge-glb.mjs --input \"Adjustable Desk.glb\" --output \"Adjustable Desk.merged.glb\"",
+    "assets:premerge-desk:dry": "node --env-file=.env scripts/assets/premerge-glb.mjs --input \"Adjustable Desk.glb\" --output \"Adjustable Desk.merged.glb\" --dry-run"
   },
   "dependencies": {
     "@google/genai": "^1.34.0",

@@ -113,15 +113,27 @@ export const useRendererMetrics = ({
         const deltaPrograms = currentSnapshot.programs - prev.programs;
         const elapsedSec = ((currentSnapshot.timestamp - prev.timestamp) / 1000).toFixed(1);
 
-        // Always include deltas in log for diagnostic visibility
-        log.info('Frame stats', {
-          ...datosLog,
-          deltaGeom: deltaGeometries,
-          deltaTex: deltaTextures,
-          deltaCalls: deltaDrawCalls,
-          deltaProg: deltaPrograms,
-          intervalSec: elapsedSec,
-        });
+        // DEBT-003 (2026-04-10) — Idle-guard.
+        // Cuando la escena está estable (cámara/objetos sin cambios) las
+        // métricas de WebGLRenderer.info se mantienen idénticas frame a frame.
+        // Evitamos spamear la consola emitiendo solo cuando algo cambió.
+        // Seguimos actualizando prevSnapshotRef para no perder la línea base.
+        const hayCambio =
+          deltaGeometries !== 0 ||
+          deltaTextures !== 0 ||
+          deltaDrawCalls !== 0 ||
+          deltaPrograms !== 0;
+
+        if (hayCambio) {
+          log.info('Frame stats', {
+            ...datosLog,
+            deltaGeom: deltaGeometries,
+            deltaTex: deltaTextures,
+            deltaCalls: deltaDrawCalls,
+            deltaProg: deltaPrograms,
+            intervalSec: elapsedSec,
+          });
+        }
 
         // Detect oscillation: significant geometry churn between samples
         if (Math.abs(deltaGeometries) > DELTA_GEOMETRIAS_UMBRAL) {

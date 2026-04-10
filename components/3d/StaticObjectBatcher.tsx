@@ -628,12 +628,44 @@ const FrustumCuller: React.FC<{
   const lastCullTimeRef = useRef(0);
   const _sphereTest = useMemo(() => new THREE.Sphere(), []);
 
+  // DEBT-003 (2026-04-10) — Idle-guard refs.
+  // Con la escena estable (cámara quieta, avatar quieto, instancias inmutables)
+  // el cull-pass produce exactamente el mismo resultado que el ciclo anterior.
+  // Guardamos el estado mínimo que afecta al resultado: matriz de mundo de la
+  // cámara, posición del avatar (afecta LOD distance) y cantidad de tracked
+  // instances. Si nada cambió, saltamos todo el pase — cero iteraciones,
+  // cero llamadas a establecerVisibilidad() y, lo más importante, cero churn
+  // sobre el buffer de visibilidad del BatchedMesh cuando la escena está idle.
+  const lastCullMatrixRef = useRef(new THREE.Matrix4());
+  const lastCullPlayerRef = useRef({ x: Number.NaN, z: Number.NaN });
+  const lastCullInstanceCountRef = useRef(-1);
+
   useFrame(() => {
     if (!services.isReady || _trackedInstances.length === 0) return;
 
     const now = performance.now();
     if (now - lastCullTimeRef.current < FRUSTUM_UPDATE_INTERVAL) return;
     lastCullTimeRef.current = now;
+
+    // ── Idle-guard ────────────────────────────────────────────────────────
+    // Ref R3F docs: "Mutate in useFrame, don't setState" — pero también
+    // "skip work when nothing changed" (pitfalls oficiales). Combinamos
+    // ambos: sólo recalculamos el frustum cuando hay un cambio real.
+    const cameraMoved = !camera.matrixWorld.equals(lastCullMatrixRef.current);
+    const playerMoved =
+      playerPosition.x !== lastCullPlayerRef.current.x ||
+      playerPosition.z !== lastCullPlayerRef.current.z;
+    const instancesChanged =
+      _trackedInstances.length !== lastCullInstanceCountRef.current;
+
+    if (!cameraMoved && !playerMoved && !instancesChanged) {
+      return;
+    }
+
+    lastCullMatrixRef.current.copy(camera.matrixWorld);
+    lastCullPlayerRef.current.x = playerPosition.x;
+    lastCullPlayerRef.current.z = playerPosition.z;
+    lastCullInstanceCountRef.current = _trackedInstances.length;
 
     // Update frustum from camera
     projScreenMatrixRef.current.multiplyMatrices(

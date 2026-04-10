@@ -10,6 +10,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 import { logger } from '@/lib/logger';
 import type { CatalogoObjeto3D } from '@/types/objetos3d';
 import { obtenerPlantillaZona } from '@/src/core/domain/entities/plantillasEspacio';
+import { ResolverModeloUrlObjetoUseCase } from '@/src/core/application/usecases/ResolverModeloUrlObjetoUseCase';
 
 // ─── Tipo canónico desde dominio ──────────────────────────────────────────────
 // CLEAN-ARCH-F1: EspacioObjeto es una entidad de dominio, no un detalle del hook.
@@ -150,11 +151,29 @@ const enriquecerObjetoEspacio = (
     (claveSlugPlantilla ? indiceCatalogo.porSlug.get(claveSlugPlantilla) : undefined) ||
     (claveTipo ? indiceCatalogo.porTipo.get(claveTipo) : undefined);
 
-  if (!metadata) return objeto;
+  // DEBT-001 (2026-04-10) — la resolución de modelo_url es regla de negocio
+  // y vive en la capa Application. El use case prioriza el catálogo sobre
+  // la instancia cuando hay catalogo_id válido, evitando drift tras un
+  // swap del asset (p. ej. el premerge de Keyboard.merged.glb).
+  const resolucionUrl = ResolverModeloUrlObjetoUseCase.resolver(
+    { modelo_url: objeto.modelo_url, catalogo_id: objeto.catalogo_id ?? null },
+    metadata
+      ? {
+          id: metadata.id,
+          modelo_url: metadata.modelo_url,
+          built_in_geometry: metadata.built_in_geometry,
+          built_in_color: metadata.built_in_color,
+        }
+      : null,
+  );
 
-  const modeloUrlInstancia = (objeto.modelo_url || '').trim();
-  const modeloUrlMetadata = (metadata.modelo_url || '').trim();
-  const usarModeloCatalogo = Boolean(modeloUrlMetadata) && (!modeloUrlInstancia || modeloUrlInstancia.startsWith('builtin:'));
+  if (!metadata) {
+    // Sin metadata aplicamos al menos la URL resuelta (puede haber cambiado
+    // si el use case sintetizó un builtin fallback).
+    return resolucionUrl.modeloUrl !== objeto.modelo_url
+      ? { ...objeto, modelo_url: resolucionUrl.modeloUrl }
+      : objeto;
+  }
 
   const escalaNormalizacionInstancia = Number(objeto.escala_normalizacion);
   const escalaNormalizacionMetadata = Number(metadata.escala_normalizacion ?? 1);
@@ -167,7 +186,7 @@ const enriquecerObjetoEspacio = (
 
   return {
     ...objeto,
-    modelo_url: usarModeloCatalogo ? modeloUrlMetadata : objeto.modelo_url,
+    modelo_url: resolucionUrl.modeloUrl,
     built_in_geometry: metadata.built_in_geometry,
     built_in_color: metadata.built_in_color,
     ancho: metadata.ancho,
