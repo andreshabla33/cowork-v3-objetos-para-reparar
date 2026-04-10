@@ -48,6 +48,15 @@ export class OptimizarRenderizadoUseCase {
   /**
    * Evaluación básica sin adapter (útil para logging directo en renderer-metrics).
    * Compara draw calls contra umbrales del dominio.
+   *
+   * Guard defensivo: todas las comparaciones están envueltas en `Number.isFinite`
+   * para evitar falsas alertas cuando el adapter devuelve valores no-finitos
+   * (WebGPURenderer en frame 0 reporta `Infinity` para render.triangles antes de
+   * completar la primera compute pass). En condiciones normales, la capa
+   * Infrastructure (`rendererMetricsMonitor.toFiniteNumber`) ya sanea estos
+   * valores a 0, pero el dominio no debe confiar ciegamente en su entrada.
+   *
+   * Ref HOTFIX-RENDERER-METRICS-WEBGPU-INFINITY-2026-04-10.
    */
   static evaluarMetricasSinAdapter(metricas: MetricasRenderizado): {
     saludable: boolean;
@@ -55,17 +64,26 @@ export class OptimizarRenderizadoUseCase {
   } {
     const alertas: string[] = [];
 
-    if (metricas.drawCalls > UMBRALES_RENDERIZADO.drawCallsMaximo) {
+    if (
+      Number.isFinite(metricas.drawCalls) &&
+      metricas.drawCalls > UMBRALES_RENDERIZADO.drawCallsMaximo
+    ) {
       alertas.push(
         `Draw calls ${metricas.drawCalls} superan el máximo recomendado (${UMBRALES_RENDERIZADO.drawCallsMaximo}). Aplicar instancing.`,
       );
-    } else if (metricas.drawCalls > UMBRALES_RENDERIZADO.drawCallsAlerta) {
+    } else if (
+      Number.isFinite(metricas.drawCalls) &&
+      metricas.drawCalls > UMBRALES_RENDERIZADO.drawCallsAlerta
+    ) {
       alertas.push(
         `Draw calls ${metricas.drawCalls} en zona de alerta (>${UMBRALES_RENDERIZADO.drawCallsAlerta}). Considerar más instancing.`,
       );
     }
 
-    if (metricas.triangulos > UMBRALES_RENDERIZADO.trianglesBudget) {
+    if (
+      Number.isFinite(metricas.triangulos) &&
+      metricas.triangulos > UMBRALES_RENDERIZADO.trianglesBudget
+    ) {
       alertas.push(
         `Triángulos (${metricas.triangulos.toLocaleString()}) superan el presupuesto para GPU mid-range.`,
       );

@@ -115,6 +115,19 @@ export const useRendererMetrics = ({
     // frameloop se configura en "always")
     if (typeof document !== 'undefined' && document.hidden) return;
 
+    // Warm-up guard (HOTFIX-RENDERER-METRICS-WEBGPU-INFINITY-2026-04-10):
+    // WebGPURenderer en Three.js r170 puede reportar `info.render.triangles`
+    // como Infinity durante los primeros frames (antes de completar la primera
+    // compute pass). Esperamos a que (a) al menos un draw call se haya
+    // ejecutado y (b) el contador de triángulos sea finito antes de emitir
+    // cualquier sample. Esto evita baselines basura y falsas alertas de dominio.
+    if (
+      gl.info.render.calls === 0 ||
+      !Number.isFinite(gl.info.render.triangles)
+    ) {
+      return;
+    }
+
     const ahora = performance.now();
     if (ahora - ultimoLogRef.current < THROTTLE_LOG_MS) return;
     ultimoLogRef.current = ahora;

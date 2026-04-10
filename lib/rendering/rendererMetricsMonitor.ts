@@ -10,8 +10,15 @@
  *   calls: 652 | triangles: 737,104 | geometries: 312-567 | programs: 28-32
  *
  * Clean Architecture: capa de infraestructura — importa Three.js y el use case.
+ * Garantía del boundary: todo valor que cruza al dominio es un `number` finito.
+ * La sanitización defensiva protege contra particularidades de renderers exóticos
+ * (p. ej. WebGPURenderer en frame 0 devuelve `Infinity` para `render.triangles`
+ * mientras la primera compute pass aún no se ha completado — Three.js r170).
  *
  * Ref CLEAN-ARCH-F5: integrado en el hook useRendererMetrics.
+ * Ref HOTFIX-RENDERER-METRICS-WEBGPU-INFINITY-2026-04-10.
+ * Ref Three.js docs — https://threejs.org/docs/#api/en/renderers/WebGPURenderer
+ *   ("First frame may show incomplete data; WebGPU may defer pipeline creation")
  */
 
 import type { WebGLRenderer } from 'three';
@@ -28,6 +35,21 @@ export interface ResultadoEvaluacionFrame {
   alertas: string[];
   metricas: MetricasRenderizado;
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Garantiza que el valor que cruza la frontera al dominio sea un `number` finito.
+ *
+ * Por qué: `WebGPURenderer.info.render.triangles` puede devolver `Infinity` o
+ * `NaN` en frame 0 (antes de que WebGPU complete la primera compute/render pass)
+ * y `JSON.stringify(Infinity)` → `"null"`, lo que rompe el logging estructurado
+ * y dispara falsas alertas en el dominio (`Infinity > cualquierUmbral`).
+ *
+ * Ref HOTFIX-RENDERER-METRICS-WEBGPU-INFINITY-2026-04-10.
+ */
+const toFiniteNumber = (value: unknown): number =>
+  typeof value === 'number' && Number.isFinite(value) ? value : 0;
 
 // ─── Monitor ──────────────────────────────────────────────────────────────────
 
@@ -49,12 +71,14 @@ export const evaluarFrameRenderer = (
 ): ResultadoEvaluacionFrame => {
   const info = renderer.info;
 
+  // Sanitización defensiva en el boundary Infrastructure→Domain.
+  // Todo valor no-finito (Infinity, NaN, undefined) colapsa a 0.
   const metricas: MetricasRenderizado = {
-    drawCalls: info.render.calls,
-    triangulos: info.render.triangles,
-    geometrias: info.memory.geometries,
-    texturas: info.memory.textures,
-    programas: info.programs?.length ?? 0,
+    drawCalls: toFiniteNumber(info.render.calls),
+    triangulos: toFiniteNumber(info.render.triangles),
+    geometrias: toFiniteNumber(info.memory.geometries),
+    texturas: toFiniteNumber(info.memory.textures),
+    programas: toFiniteNumber(info.programs?.length),
     objetosEscena: 0, // se obtiene desde la escena si es necesario
     gpuTier,
   };
