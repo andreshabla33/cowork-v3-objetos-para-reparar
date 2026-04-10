@@ -788,30 +788,60 @@ export const StaticObjectBatcher: React.FC<StaticObjectBatcherProps> = ({
     [gruposPorModelo],
   );
 
-  useEffect(() => {
-    if (!services.isReady) return;
+  // ─── P1 HOTFIX (2026-04-10) — Render-phase signature detection ──────────
+  //
+  // BUG previo: la detección de firma vivía en un `useEffect`, que corre
+  // DESPUÉS de los effects de los hijos (React ejecuta effects bottom-up).
+  // Flujo defectuoso en el primer render con datos:
+  //   1. Render 1 (gruposPorModelo vacío): currentSignature = ""
+  //      → efecto del padre deja `_registration.signature = ""`.
+  //   2. Render 2 (datos cargados): currentSignature = "<firma real>"
+  //      → hijos `BatchedGroupLoader` registran ~3043 instancias.
+  //      → luego el efecto del padre detecta "" !== "<firma real>"
+  //      → llama a `resetRegistrationCache(services)` → `multiBatch.limpiar()`
+  //      → DESTRUYE todo lo que los hijos acaban de registrar.
+  //   Resultado visible: solo se ven muros/cubículos, los GLB (sillas,
+  //   escritorios, monitores, etc.) desaparecen visualmente.
+  //
+  // Fix: mover la detección + reset a la fase de render del padre. El
+  // padre renderiza ANTES que los hijos, así que cuando los effects de
+  // los hijos corran ya encontrarán los servicios limpios/estables.
+  //
+  // Llamar side-effects en render es aceptable aquí porque:
+  //   - Solo actualiza estado a nivel módulo (no props, no state React).
+  //   - Es idempotente: cualquier re-invocación del render encuentra la
+  //     firma ya actualizada y no hace nada.
+  //   - No dispara renders adicionales (no toca setState).
+  //
+  // Adicionalmente tratamos `""` como "sin data previa" (igual que `null`),
+  // evitando que un primer render con datos vacíos marque como "previous"
+  // y dispare un reset espúreo.
+  //
+  // Ref oficial React 19 — "You Might Not Need an Effect · Adjusting state
+  // when a prop changes":
+  //   https://react.dev/learn/you-might-not-need-an-effect#adjusting-state-when-a-prop-changes
+  if (services.isReady && _registration.signature !== currentSignature) {
+    const hadPreviousData =
+      _registration.signature !== null && _registration.signature !== '';
+    const servicesChanged =
+      _registration.services !== null && _registration.services !== services;
 
-    // ── Signature mismatch: espacio distinto o objetos modificados ──
-    // Es seguro (y necesario) ejecutar un reset completo.
-    if (
-      _registration.signature !== null &&
-      (_registration.signature !== currentSignature ||
-        _registration.services !== services)
-    ) {
+    if (hadPreviousData || servicesChanged) {
       log.info('Signature changed — reset completo del cache de batcher', {
         prevSignature: _registration.signature,
         nextSignature: currentSignature,
+        servicesChanged,
       });
       resetRegistrationCache(_registration.services ?? services);
     }
 
     _registration.signature = currentSignature;
     _registration.services = services;
-  }, [currentSignature, services]);
+  }
 
   // NO efecto de unmount destructivo: el cache vive a nivel módulo y
-  // sobrevive remounts. Solo se invalida cuando cambia la firma (efecto
-  // anterior) o cuando la página se descarga completamente (GC del navegador).
+  // sobrevive remounts. Solo se invalida cuando cambia la firma (detección
+  // en render-phase arriba) o cuando la página se descarga (GC del navegador).
 
   if (!services.isReady) return null;
 
