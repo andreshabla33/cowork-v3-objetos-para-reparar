@@ -19,8 +19,8 @@ import type { CargoLaboral, CargoDB } from './CargoSelector';
 import { SelectorPlantillaEspacio } from './SelectorPlantillaEspacio';
 import { recomendarPlantillaEspacio, type PlantillaEspacioId } from '@/src/core/domain/entities/plantillasEspacio';
 import { RegistrarEmpresaConPlantillaUseCase } from '@/src/core/application/usecases/RegistrarEmpresaConPlantillaUseCase';
-import { RepositorioRegistroEmpresaSupabase } from '@/src/core/infrastructure/RepositorioRegistroEmpresaSupabase';
-import { InyectorPlantillaEspacio } from '@/src/core/infrastructure/InyectorPlantillaEspacio';
+import { RepositorioRegistroEmpresaSupabase } from '@/src/core/infrastructure/adapters/RepositorioRegistroEmpresaSupabaseAdapter';
+import { InyectorPlantillaEspacio } from '@/src/core/infrastructure/adapters/InyectorPlantillaEspacioAdapter';
 
 const INDUSTRIAS = [
   'Tecnología', 'Finanzas', 'Salud', 'Educación', 'Comercio',
