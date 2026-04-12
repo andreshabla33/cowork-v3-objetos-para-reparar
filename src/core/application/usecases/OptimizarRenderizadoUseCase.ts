@@ -133,12 +133,10 @@ export class OptimizarRenderizadoUseCase {
     ventanaActualizada: VentanaEstabilidad;
     resultado: ResultadoEstabilidad;
   } {
-    const esPrimerMuestra = ventana.muestras.length === 0;
+    // El VO detecta baseline internamente mediante totalObservadas === 1
+    // tras agregarMuestra. No necesitamos un flag externo.
     const ventanaActualizada = agregarMuestra(ventana, muestra);
-    const resultado = evaluarVentanaEstabilidad(
-      ventanaActualizada,
-      esPrimerMuestra,
-    );
+    const resultado = evaluarVentanaEstabilidad(ventanaActualizada);
     return { ventanaActualizada, resultado };
   }
 
