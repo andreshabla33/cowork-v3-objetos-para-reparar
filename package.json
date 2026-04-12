@@ -29,7 +29,8 @@
     "assets:premerge-computer": "node --env-file=.env scripts/assets/premerge-glb.mjs --input \"Simple computer.glb\" --output \"Simple computer.merged.glb\"",
     "assets:premerge-computer:dry": "node --env-file=.env scripts/assets/premerge-glb.mjs --input \"Simple computer.glb\" --output \"Simple computer.merged.glb\" --dry-run",
     "assets:premerge-desk": "node --env-file=.env scripts/assets/premerge-glb.mjs --input \"Adjustable Desk.glb\" --output \"Adjustable Desk.merged.glb\"",
-    "assets:premerge-desk:dry": "node --env-file=.env scripts/assets/premerge-glb.mjs --input \"Adjustable Desk.glb\" --output \"Adjustable Desk.merged.glb\" --dry-run"
+    "assets:premerge-desk:dry": "node --env-file=.env scripts/assets/premerge-glb.mjs --input \"Adjustable Desk.glb\" --output \"Adjustable Desk.merged.glb\" --dry-run",
+    "assets:verify-drift": "node --env-file=.env scripts/assets/verify-drift.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.34.0",
