@@ -1,0 +1,352 @@
+/**
+ * @module customizer/AvatarCustomizer3D
+ * @description Lightweight orchestrator for the 3D avatar/object customizer modal.
+ * Composes extracted sub-modules: preview scenes, tab panels, and shared constants.
+ *
+ * Clean Architecture: Presentation layer — orchestrates hooks + child components.
+ * Original 920-line monolith decomposed on 2026-04-13 following:
+ *   - React 19: single responsibility, lift state up, pass slices down
+ *   - R3F v9: split by semantic function (lighting, models, controls)
+ *   - Three.js r170+: explicit dispose of cloned materials on unmount
+ */
+
+'use client';
+
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useGLTF } from '@react-three/drei';
+import { useStore } from '@/store/useStore';
+import type { CatalogoObjeto3D } from '@/types/objetos3d';
+import { useAvatar3D } from '../avatar3d/useAvatar3D';
+import { useAvatarCatalog } from '@/hooks/customizer/useAvatarCatalog';
+import { useProfileEditor } from '@/hooks/customizer/useProfileEditor';
+import { glass } from '@/styles/design-tokens';
+import { UserAvatar } from '../UserAvatar';
+import { CATEGORY_LABELS, CATEGORY_ICONS } from './shared/customizerConstants';
+
+// ─── Extracted sub-modules ──────────────────────────────────────────────────
+import { PreviewCanvas } from './preview/PreviewCanvas';
+import { AvatarPreviewScene } from './preview/AvatarPreviewScene';
+import { ObjectPreviewScene, ObjectPreviewPoster } from './preview/ObjectPreviewScene';
+import { ProfilePanel } from './panels/ProfilePanel';
+import { AvatarPanel } from './panels/AvatarPanel';
+import { ObjectPanel } from './panels/ObjectPanel';
+
+// ─── Props ──────────────────────────────────────────────────────────────────
+interface AvatarCustomizer3DProps {
+  compact?: boolean;
+  onClose?: () => void;
+  onPrepararObjeto?: (objeto: CatalogoObjeto3D) => void;
+  modoColocacionActivo?: boolean;
+  modoReemplazoActivo?: boolean;
+}
+
+// ─── Tab config ─────────────────────────────────────────────────────────────
+const TABS = [
+  { key: 'profile' as const, label: 'Perfil', icon: '👤' },
+  { key: 'avatares' as const, label: 'Avatares', icon: '🧍' },
+  { key: 'objetos' as const, label: 'Objetos', icon: '📦' },
+] as const;
+
+type TabKey = (typeof TABS)[number]['key'];
+
+// ─── Component ──────────────────────────────────────────────────────────────
+export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({
+  compact = false,
+  onClose,
+  onPrepararObjeto,
+  modoColocacionActivo = false,
+  modoReemplazoActivo = false,
+}) => {
+  const { currentUser } = useStore();
+  const { avatarConfig } = useAvatar3D(currentUser?.id);
+  const [activeTab, setActiveTab] = useState<TabKey>('profile');
+
+  // ─── Hooks ──────────────────────────────────────────────────────────────
+  const catalog = useAvatarCatalog();
+  const profile = useProfileEditor({ onClose });
+
+  // ─── Local state for thumbnail capture ──────────────────────────────────
+  const [captureRequest, setCaptureRequest] = useState<{ kind: 'avatar' | 'object'; token: number } | null>(null);
+
+  // ─── Load catalogs on mount ─────────────────────────────────────────────
+  useEffect(() => { void catalog.loadCatalogs(); }, []);
+
+  // ─── Derived state ──────────────────────────────────────────────────────
+  const objectCategories = useMemo(() => {
+    const categories = Array.from(new Set(catalog.availableObjects.map((o) => o.categoria).filter(Boolean)));
+    return ['todos', ...categories];
+  }, [catalog.availableObjects]);
+
+  const filteredObjects = useMemo(() => {
+    if (catalog.selectedCategory === 'todos') return catalog.availableObjects;
+    return catalog.availableObjects.filter((o) => o.categoria === catalog.selectedCategory);
+  }, [catalog.availableObjects, catalog.selectedCategory]);
+
+  // Auto-select first object if current selection not in filtered list
+  useEffect(() => {
+    if (filteredObjects.length === 0) return;
+    const existeSeleccion = filteredObjects.some((o) => o.id === catalog.selectedObjectId);
+    if (!existeSeleccion) catalog.selectObject(filteredObjects[0].id);
+  }, [filteredObjects, catalog.selectedObjectId]);
+
+  const selectedObject = useMemo(
+    () => catalog.availableObjects.find((o) => o.id === catalog.selectedObjectId) || null,
+    [catalog.availableObjects, catalog.selectedObjectId],
+  );
+
+  // Preload GLB when selected object changes
+  useEffect(() => { if (selectedObject?.modelo_url) useGLTF.preload(selectedObject.modelo_url); }, [selectedObject]);
+
+  // ─── Callbacks ──────────────────────────────────────────────────────────
+  const handlePrepararObjeto = useCallback(() => {
+    if (!selectedObject || !onPrepararObjeto) return;
+    onPrepararObjeto(selectedObject);
+    onClose?.();
+  }, [selectedObject, onPrepararObjeto, onClose]);
+
+  const handleObjectDragStart = useCallback((e: React.DragEvent, data: CatalogoObjeto3D) => {
+    e.dataTransfer.setData('application/json', JSON.stringify(data));
+    e.dataTransfer.effectAllowed = 'move';
+    if (onClose) setTimeout(() => onClose(), 150);
+  }, [onClose]);
+
+  const handleObjectModelError = useCallback(async (objectId: string) => {
+    if (!objectId) return;
+    await catalog.reportInvalidObjectModel(objectId, !catalog.availableObjects.find((o) => o.id === objectId)?.built_in_geometry);
+  }, [catalog]);
+
+  const handlePreviewCapture = useCallback((blob: Blob) => {
+    const kind = captureRequest?.kind;
+    setCaptureRequest(null);
+    if (!kind) return;
+    void catalog.captureThumbnail(blob);
+  }, [captureRequest?.kind, catalog]);
+
+  const requestAvatarCapture = useCallback(() => {
+    if (catalog.isCapturing) return;
+    setCaptureRequest({ kind: 'avatar', token: Date.now() });
+  }, [catalog.isCapturing]);
+
+  const requestObjectCapture = useCallback(() => {
+    if (catalog.isCapturing) return;
+    setCaptureRequest({ kind: 'object', token: Date.now() });
+  }, [catalog.isCapturing]);
+
+  // ─── 3D Preview renderer ───────────────────────────────────────────────
+  const renderPreviewPanel = () => {
+    if (activeTab === 'objetos' && selectedObject) {
+      const hasModel = !!selectedObject.modelo_url && !catalog.invalidObjectModelIds.has(selectedObject.id);
+      const hasPreview3D = hasModel || !!selectedObject.built_in_geometry;
+
+      return (
+        <>
+          {hasModel && (
+            <div className="absolute top-3 left-3 z-20 flex flex-col gap-2">
+              <button
+                onClick={requestObjectCapture}
+                disabled={catalog.isCapturing}
+                title="Capturar miniatura del objeto"
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  catalog.isCapturing
+                    ? 'bg-zinc-800 cursor-not-allowed'
+                    : 'bg-[#c8aa6e]/20 hover:bg-[#c8aa6e] text-[#c8aa6e] hover:text-[#0a0a0c] border border-[#c8aa6e]/30'
+                }`}
+              >
+                {catalog.isCapturing ? <div className="w-3 h-3 border-2 border-[#c8aa6e] border-t-transparent rounded-full animate-spin" /> : '📸'}
+              </button>
+            </div>
+          )}
+
+          <div className="absolute inset-0 flex flex-col justify-between p-4 sm:p-3 pointer-events-none">
+            <div className="flex items-start justify-between gap-3 z-10">
+              <div>
+                {!selectedObject.premium && (
+                  <div className="inline-flex items-center rounded-sm border border-emerald-400/30 bg-emerald-500/80 px-2 py-0.5 shadow-sm backdrop-blur-[2px] mb-2">
+                    <span className="text-[6px] font-black uppercase tracking-[0.2em] text-white leading-none">Free</span>
+                  </div>
+                )}
+                <h2 className="text-base font-black text-white drop-shadow-lg">{selectedObject.nombre}</h2>
+                <p className="mt-0.5 text-[9px] font-bold uppercase tracking-[0.15em] text-[#0397ab]/70">
+                  {CATEGORY_ICONS[selectedObject.categoria] || '📦'} {CATEGORY_LABELS[selectedObject.categoria] || selectedObject.categoria}
+                </p>
+              </div>
+              {(selectedObject.es_interactuable || selectedObject.es_sentable) && (
+                <span className="rounded-full bg-black/40 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.15em] text-amber-300 backdrop-blur-md border border-amber-500/20">
+                  {selectedObject.es_sentable ? '🪑 Sit' : '⚡ Inter.'}
+                </span>
+              )}
+            </div>
+
+            <div className="relative flex flex-1 items-center justify-center overflow-hidden my-2 pointer-events-auto">
+              {hasPreview3D ? (
+                <PreviewCanvas
+                  cameraFov={35}
+                  cameraPosition={hasModel ? [0, 1, 3] : [0, 1.5, 4]}
+                  captureToken={captureRequest?.kind === 'object' ? captureRequest.token : null}
+                  fallback={<ObjectPreviewPoster selectedObject={selectedObject} />}
+                  onCapture={handlePreviewCapture}
+                  frameloop="demand"
+                  pixelRatio={[1, 1.5]}
+                  shadows={false}
+                >
+                  <ObjectPreviewScene
+                    hasModel={hasModel}
+                    onError={() => handleObjectModelError(selectedObject.id)}
+                    selectedObject={selectedObject}
+                  />
+                </PreviewCanvas>
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-6xl text-[#0397ab]/20">📦</div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 z-10 pointer-events-auto">
+              <p className="flex-1 text-[9px] text-[#a09b8c] font-medium truncate">
+                {selectedObject.descripcion || 'Arrastra al espacio o haz clic en Colocar.'}
+              </p>
+              <button
+                onClick={handlePrepararObjeto}
+                disabled={!onPrepararObjeto}
+                className={`flex-shrink-0 px-4 py-2 text-[9px] font-black uppercase tracking-widest rounded transition-all duration-300 ${
+                  !onPrepararObjeto
+                    ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700'
+                    : 'bg-[#0397ab] text-white border border-[#04c8e0] shadow-[0_0_15px_rgba(4,200,224,0.4)] hover:shadow-[0_0_25px_rgba(4,200,224,0.6)] hover:bg-[#04c8e0]'
+                }`}
+              >
+                {modoReemplazoActivo ? '♻ Reemplazar' : modoColocacionActivo ? '✓ Activo' : '🎯 Colocar'}
+              </button>
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    // Avatar preview (default for profile + avatares tabs)
+    return (
+      <>
+        <div className="absolute top-3 left-3 z-20 flex flex-col gap-2">
+          <button
+            onClick={requestAvatarCapture}
+            disabled={catalog.isCapturing}
+            title="Capturar miniatura"
+            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+              catalog.isCapturing
+                ? 'bg-zinc-800 cursor-not-allowed'
+                : 'bg-[#c8aa6e]/20 hover:bg-[#c8aa6e] text-[#c8aa6e] hover:text-[#0a0a0c] border border-[#c8aa6e]/30'
+            }`}
+          >
+            {catalog.isCapturing ? <div className="w-3 h-3 border-2 border-[#c8aa6e] border-t-transparent rounded-full animate-spin" /> : '📸'}
+          </button>
+        </div>
+
+        <PreviewCanvas
+          cameraFov={30}
+          cameraPosition={[0, 0.8, 5]}
+          captureToken={captureRequest?.kind === 'avatar' ? captureRequest.token : null}
+          fallback={null}
+          onCapture={handlePreviewCapture}
+          frameloop="always"
+          pixelRatio={[1, 1.5]}
+          shadows={false}
+        >
+          <AvatarPreviewScene avatarConfig={catalog.previewConfig || avatarConfig} />
+        </PreviewCanvas>
+        <div className="absolute bottom-3 left-3 text-[9px] text-white/30 pointer-events-none">
+          Arrastra para rotar · Scroll para zoom
+        </div>
+      </>
+    );
+  };
+
+  // ─── Render ─────────────────────────────────────────────────────────────
+  return (
+    <div className={compact
+      ? 'p-3 flex flex-col gap-3 h-full'
+      : 'p-4 flex flex-col lg:flex-row gap-4 h-full overflow-hidden sm:p-3'
+    }>
+      {/* ====== Left panel: 3D Preview ====== */}
+      <div className={`
+        ${compact ? 'h-56' : 'lg:flex-1 min-h-[300px]'}
+        bg-[#1a1c23] bg-[radial-gradient(ellipse_at_center,_#2d3748_0%,_#1a1c23_50%,_#0f1419_100%)]
+        rounded-md border border-[#2b2518] shadow-[0_0_30px_rgba(3,151,171,0.1)_inset]
+        overflow-hidden relative
+      `}>
+        {renderPreviewPanel()}
+
+        {(profile.saved || catalog.avatarSaved) && (
+          <div className="absolute top-3 right-3 bg-emerald-500/90 text-white text-[10px] font-bold px-3 py-1.5 rounded-full animate-in fade-in shadow-lg shadow-emerald-500/30">
+            ✓ Guardado
+          </div>
+        )}
+
+        {/* User info chip */}
+        <div className={`absolute bottom-3 right-3 flex items-center gap-2 ${glass.card} rounded-xl p-1.5 pr-3`}>
+          <UserAvatar name={currentUser.name} profilePhoto={profile.profilePhoto || ''} size="xs" showStatus status={currentUser.status} />
+          <div>
+            <p className="text-[9px] font-bold text-white/80 leading-tight">{profile.displayName || currentUser.name}</p>
+            <p className="text-[7px] text-white/30">{currentUser.cargo || 'Colaborador'}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ====== Right panel: Customization tabs ====== */}
+      <div className={`${compact ? 'flex-1 min-h-0' : 'lg:w-[380px] xl:w-[420px]'} flex flex-col gap-3 min-h-0`}>
+        {/* Tab bar */}
+        <div className="flex gap-1 bg-[#0a0a0c] border border-[#1e2328] p-1 rounded-md flex-shrink-0 relative">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`
+                flex-1 py-2.5 rounded text-[9px] font-black uppercase tracking-widest transition-all duration-300 relative overflow-hidden
+                ${activeTab === tab.key
+                  ? 'bg-[#0397ab] text-white shadow-[0_0_15px_rgba(3,151,171,0.5)] border border-[#04c8e0]'
+                  : 'text-[#a09b8c] hover:text-[#f0e6d2] hover:bg-[#1e2328] border border-transparent'
+                }
+              `}
+            >
+              {activeTab === tab.key && (
+                <div
+                  className="absolute inset-0 opacity-20 mix-blend-overlay"
+                  style={{
+                    backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Crect width='10' height='10' fill='%23fff' fill-opacity='0.08'/%3E%3Crect x='10' y='10' width='10' height='10' fill='%23fff' fill-opacity='0.08'/%3E%3C/svg%3E\")",
+                    backgroundSize: '20px 20px',
+                  }}
+                />
+              )}
+              <span className="relative z-10 drop-shadow-md flex items-center justify-center gap-1.5">
+                {tab.icon} {tab.label}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Scrollable tab content */}
+        <div className="flex-1 overflow-y-auto min-h-0 pr-1 custom-scrollbar">
+          {activeTab === 'profile' && (
+            <ProfilePanel profile={profile} currentUser={currentUser} />
+          )}
+
+          {activeTab === 'avatares' && (
+            <AvatarPanel catalog={catalog} />
+          )}
+
+          {activeTab === 'objetos' && (
+            <ObjectPanel
+              catalog={catalog}
+              objectCategories={objectCategories}
+              filteredObjects={filteredObjects}
+              selectedObject={selectedObject}
+              onPrepararObjeto={handlePrepararObjeto}
+              onDragStart={handleObjectDragStart}
+              modoColocacionActivo={modoColocacionActivo}
+              canPlace={!!onPrepararObjeto}
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AvatarCustomizer3D;

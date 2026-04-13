@@ -310,6 +310,12 @@ export const useAvatarCatalog = (): UseAvatarCatalogReturn => {
 
       try {
         setAvatarSaved(false);
+
+        // 1. Actualizar preview inmediatamente (UX: feedback visual instantáneo)
+        //    selectAvatar carga el modelo 3D en el preview canvas.
+        await selectAvatar(avatarId);
+
+        // 2. Persistir en BD (async, no bloquea el preview)
         const success = await cambiarAvatarUseCase.ejecutar(userIdRef.current, avatarId);
 
         if (success) {
@@ -329,7 +335,7 @@ export const useAvatarCatalog = (): UseAvatarCatalogReturn => {
         });
       }
     },
-    []
+    [selectAvatar]
   );
 
   /**
