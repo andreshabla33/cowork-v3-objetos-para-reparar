@@ -2,9 +2,13 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const ALLOWED_ORIGINS = [
+  'https://cowork-v3.vercel.app',
   'https://mvp-cowork.vercel.app',
   'http://localhost:3000',
 ];
+
+// URL de producción hardcodeada como fallback robusto
+const PRODUCTION_URL = 'https://cowork-v3.vercel.app';
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || '';
@@ -151,7 +155,8 @@ serve(async (req) => {
       });
     }
 
-    const frontendUrl = (Deno.env.get('FRONTEND_URL') ?? Deno.env.get('APP_URL') ?? '').trim().replace(/\/$/, '');
+    // Hardcoded: env vars FRONTEND_URL/APP_URL tenían dominio viejo (mvp-cowork)
+    const frontendUrl = PRODUCTION_URL;
     const invitationLink = `${frontendUrl}/invitation?token=${invitationToken}`;
     const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 
@@ -276,7 +281,7 @@ serve(async (req) => {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            from: 'Cowork <onboarding@resend.dev>', // FIX: Mantener dominio permitido
+            from: 'Cowork <am@urpeailab.com>',
             to: [email],
             subject: `Invitacion a ${espacio.nombre} - Cowork`,
             html: emailHtml,

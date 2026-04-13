@@ -22,7 +22,6 @@ import type { StateCreator } from 'zustand';
 import type { AvatarConfig } from '../../types';
 import type { StoreState } from '../state';
 import { logger } from '../../lib/logger';
-import { supabase } from '../../lib/supabase';
 
 // Atomic orchestrators
 import { ejecutarAuthBootstrap } from './bootstrap/authBootstrap';
@@ -53,11 +52,9 @@ export const createInitializeAction = (
       return;
     }
     if (get().initialized && get().activeWorkspace) {
-      log.debug('Already initialized with active workspace, refreshing session only');
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) set({ session });
-      } catch { /* ignore */ }
+      log.debug('Already initialized with active workspace, skipping re-init');
+      // Session is already kept in sync by onAuthStateChange in useBootstrapAplicacion.
+      // DO NOT call supabase.auth.getSession() here — causes orphaned Web Lock.
       return;
     }
     if (get().initialized && (get().view === 'onboarding_creador' || get().view === 'onboarding')) {

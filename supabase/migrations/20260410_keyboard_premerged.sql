@@ -24,7 +24,7 @@ BEGIN;
 --    Solo actualiza si la URL actual termina en 'Keyboard.glb' (idempotente).
 UPDATE public.catalogo_objetos_3d
 SET modelo_url = REPLACE(modelo_url, 'Keyboard.glb', 'Keyboard.merged.glb'),
-    updated_at = NOW()
+    actualizado_en = NOW()
 WHERE nombre = 'Keyboard'
   AND modelo_url LIKE '%/Keyboard.glb';
 
