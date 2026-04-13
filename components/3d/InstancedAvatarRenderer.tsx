@@ -65,6 +65,14 @@ interface InstancedAvatarRendererProps {
    * Avatar3DScene uses this to fall back to GLTFAvatar for these models.
    */
   onModelUnsupported?: (modelUrl: string) => void;
+  /**
+   * Callback fired when the model has been successfully loaded, baked,
+   * and is ready to render via instancing.
+   * Avatar3DScene uses this to switch users from GLTFAvatar → instanced.
+   * Without this confirmation, Avatar keeps rendering GLTFAvatar as fallback
+   * to avoid the "green triangle" gap during model loading.
+   */
+  onModelReady?: (modelUrl: string) => void;
 }
 
 // ─── Componente ─────────────────────────────────────────────────────────────
@@ -82,10 +90,12 @@ export const InstancedAvatarRenderer: React.FC<InstancedAvatarRendererProps> = (
   allowedUserIds,
   onClickAvatar,
   onModelUnsupported,
+  onModelReady,
 }) => {
   const { scene, animations } = useGLTF(modelUrl);
   const instancedMeshRef = useRef<THREE.InstancedMesh>(null);
   const reportedUnsupportedRef = useRef(false);
+  const reportedReadyRef = useRef(false);
   const dummyObject = useMemo(() => new THREE.Object3D(), []);
   const entityMapRef = useRef<Map<number, string>>(new Map()); // instanceIndex → userId
 
@@ -117,6 +127,17 @@ export const InstancedAvatarRenderer: React.FC<InstancedAvatarRendererProps> = (
       onModelUnsupported(modelUrl);
     }
   }, [bakedSet, modelUrl, onModelUnsupported]);
+
+  // ── Report model ready (has baked animations, will render) ──
+  // Fires AFTER onModelUnsupported check — only for models that pass.
+  // Avatar3DScene uses this to switch users from GLTFAvatar → instanced rendering.
+  React.useEffect(() => {
+    if (bakedSet && onModelReady && !reportedReadyRef.current) {
+      reportedReadyRef.current = true;
+      log.info('Model baked and ready for instancing', { modelUrl });
+      onModelReady(modelUrl);
+    }
+  }, [bakedSet, modelUrl, onModelReady]);
 
   // ── Crear atributos de instancia para animación ──
   const animAttributes = useMemo(() => {

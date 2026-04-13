@@ -1,5 +1,5 @@
 'use client';
-import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
+import React, { Suspense, useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Text, Html, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
@@ -172,8 +172,10 @@ export const Avatar: React.FC<AvatarProps> = ({
   const esMismaEmpresa = !esFantasma && !isCurrentUser;
   // When useInstancedMesh=true, the 3D mesh is handled by InstancedAvatarRenderer.
   // Skip GLTFAvatar to avoid double-rendering the same avatar.
+  // Also skip the sprite fallback — rendering a statusColor sprite while
+  // InstancedAvatarRenderer loads produces the "green triangle" artifact.
   const renderGLTF = !useInstancedMesh && (showHigh || (esMismaEmpresa && showMid));
-  const renderSprite = !renderGLTF && (showMid || showLow);
+  const renderSprite = !renderGLTF && !useInstancedMesh && (showMid || showLow);
   const assetQuality: AvatarAssetQuality = showLow ? 'low' : showMid ? 'medium' : 'high';
   const effectiveAnimState = perfS.showAvatarAnimations === false ? 'idle' as AnimationState : animationState;
 
@@ -559,6 +561,16 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
     () => new Set()
   );
 
+  // ── Models confirmed ready for instancing ─────────────────────────────────
+  // A model enters this set ONLY after InstancedAvatarRenderer successfully
+  // bakes animations and is rendering. Until confirmed, Avatar renders
+  // GLTFAvatar for users of that model — this prevents the "green triangle"
+  // gap where useInstancedMesh=true but InstancedAvatarRenderer hasn't loaded
+  // yet (useGLTF Suspense) or is still baking.
+  const [readyInstancedModels, setReadyInstancedModels] = useState<Set<string>>(
+    () => new Set()
+  );
+
   const handleModelUnsupported = useCallback((modelUrl: string) => {
     setUnsupportedInstancedModels((prev) => {
       if (prev.has(modelUrl)) return prev; // No-op → avoid re-render
@@ -566,11 +578,33 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
       next.add(modelUrl);
       return next;
     });
+    // Also remove from ready set if it was there (defensive)
+    setReadyInstancedModels((prev) => {
+      if (!prev.has(modelUrl)) return prev;
+      const next = new Set(prev);
+      next.delete(modelUrl);
+      return next;
+    });
   }, []);
 
+  const handleModelReady = useCallback((modelUrl: string) => {
+    setReadyInstancedModels((prev) => {
+      if (prev.has(modelUrl)) return prev; // No-op → avoid re-render
+      const next = new Set(prev);
+      next.add(modelUrl);
+      return next;
+    });
+  }, []);
+
+  // ── Build instanced groups ────────────────────────────────────────────────
+  // instancedGroups: models to MOUNT InstancedAvatarRenderer for (probing + rendering).
+  // instancedUserIds: users whose Avatar should skip GLTFAvatar (only CONFIRMED models).
+  // This 2-phase approach eliminates the green triangle:
+  //   Phase 1 (mount): InstancedAvatarRenderer loads model, bakes, reports ready/unsupported
+  //   Phase 2 (switch): Only after "ready" do we tell Avatar to stop rendering GLTFAvatar
   const { instancedGroups, instancedUserIds } = useMemo(() => {
     const groups = new Map<string, Set<string>>();
-    const allInstancedIds = new Set<string>();
+    const confirmedInstancedIds = new Set<string>();
 
     for (const entity of fullEntities) {
       if (entity.esFantasma) continue;
@@ -589,23 +623,34 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
         groups.set(modelUrl, userSet);
       }
       userSet.add(entity.userId);
-      allInstancedIds.add(entity.userId);
+
+      // Only mark user as "instanced" (skip GLTFAvatar) if the model is CONFIRMED ready.
+      // Before confirmation, both InstancedAvatarRenderer and GLTFAvatar may render
+      // for 1-2 frames (acceptable overdraw) — but no green triangle.
+      if (readyInstancedModels.has(modelUrl)) {
+        confirmedInstancedIds.add(entity.userId);
+      }
     }
 
-    return { instancedGroups: groups, instancedUserIds: allInstancedIds };
-  }, [fullEntities, usersById, unsupportedInstancedModels]);
+    return { instancedGroups: groups, instancedUserIds: confirmedInstancedIds };
+  }, [fullEntities, usersById, unsupportedInstancedModels, readyInstancedModels]);
 
   return (
     <>
-      {/* GPU Instanced renderers: 1 draw call per unique model URL */}
+      {/* GPU Instanced renderers: 1 draw call per unique model URL.
+        * Each wrapped in Suspense to isolate useGLTF loading — prevents
+        * a slow-loading model from suspending the entire 3D scene.
+        * Fallback is null: GLTFAvatar handles rendering until model is ready. */}
       {Array.from(instancedGroups.entries()).map(([modelUrl, userIds]) => (
-        <InstancedAvatarRenderer
-          key={modelUrl}
-          modelUrl={modelUrl}
-          allowedUserIds={userIds}
-          onClickAvatar={onClickRemoteAvatar}
-          onModelUnsupported={handleModelUnsupported}
-        />
+        <Suspense key={modelUrl} fallback={null}>
+          <InstancedAvatarRenderer
+            modelUrl={modelUrl}
+            allowedUserIds={userIds}
+            onClickAvatar={onClickRemoteAvatar}
+            onModelUnsupported={handleModelUnsupported}
+            onModelReady={handleModelReady}
+          />
+        </Suspense>
       ))}
 
       <MidLodInstances entities={midEntities} onClick={onClickRemoteAvatar} />
