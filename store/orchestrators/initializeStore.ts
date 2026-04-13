@@ -113,7 +113,13 @@ export const createInitializeAction = (
           profilePhoto: statusResult.profilePhoto,
           status: statusResult.estado_disponibilidad,
           statusText: statusResult.estado_personalizado,
+          // avatar3DConfig MUST be in currentUser so that usePresenceChannels
+          // includes it in the presence payload. Without this, remote users
+          // receive avatar3DConfig=null and fall back to DEFAULT_MODEL_URL.
+          avatar3DConfig: avatarResult.avatar3DConfig,
         },
+        // Also keep in AvatarSlice for components that read it directly
+        // (e.g. Avatar3DScene reads avatar3DConfig from useStore for current user)
         avatar3DConfig: avatarResult.avatar3DConfig,
       });
 

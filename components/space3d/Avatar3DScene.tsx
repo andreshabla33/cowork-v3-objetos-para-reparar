@@ -697,6 +697,7 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
                   userId={entity.userId}
                   useInstancedMesh={isInstanced}
                   castShadow={entity.castShadow}
+                  showName={false}
                 />
               )
             )}
