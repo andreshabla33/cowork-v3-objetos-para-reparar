@@ -59,6 +59,12 @@ interface InstancedAvatarRendererProps {
   allowedUserIds: ReadonlySet<string>;
   /** Callback cuando se hace click en un avatar instanciado */
   onClickAvatar?: (userId: string) => void;
+  /**
+   * Callback fired when the model cannot be rendered via instancing
+   * (e.g. no embedded animations or no SkinnedMesh found).
+   * Avatar3DScene uses this to fall back to GLTFAvatar for these models.
+   */
+  onModelUnsupported?: (modelUrl: string) => void;
 }
 
 // ─── Componente ─────────────────────────────────────────────────────────────
@@ -75,9 +81,11 @@ export const InstancedAvatarRenderer: React.FC<InstancedAvatarRendererProps> = (
   modelUrl,
   allowedUserIds,
   onClickAvatar,
+  onModelUnsupported,
 }) => {
   const { scene, animations } = useGLTF(modelUrl);
   const instancedMeshRef = useRef<THREE.InstancedMesh>(null);
+  const reportedUnsupportedRef = useRef(false);
   const dummyObject = useMemo(() => new THREE.Object3D(), []);
   const entityMapRef = useRef<Map<number, string>>(new Map()); // instanceIndex → userId
 
@@ -98,6 +106,17 @@ export const InstancedAvatarRenderer: React.FC<InstancedAvatarRendererProps> = (
 
     return getOrBakeAnimations(modelUrl, skinnedMesh, animations, 30);
   }, [scene, animations, modelUrl]);
+
+  // ── Report unsupported model (no embedded animations) to parent ──
+  // Uses useEffect to avoid calling setState during render.
+  // reportedUnsupportedRef prevents duplicate calls on re-renders.
+  React.useEffect(() => {
+    if (!bakedSet && onModelUnsupported && !reportedUnsupportedRef.current) {
+      reportedUnsupportedRef.current = true;
+      log.info('Model has no embedded animations, reporting unsupported', { modelUrl });
+      onModelUnsupported(modelUrl);
+    }
+  }, [bakedSet, modelUrl, onModelUnsupported]);
 
   // ── Crear atributos de instancia para animación ──
   const animAttributes = useMemo(() => {

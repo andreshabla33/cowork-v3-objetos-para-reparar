@@ -61,6 +61,18 @@ export async function getTurnIceServers(supabase: SupabaseClient): Promise<RTCIc
   }
 
   try {
+    // Ensure session token is fresh before calling the Edge Function.
+    // The turn-credentials function has verify_jwt=true at the Supabase gateway level,
+    // which rejects expired tokens with 401 BEFORE the function code runs.
+    // getSession() triggers an automatic refresh if the access_token has expired.
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError || !sessionData.session) {
+      log.warn('No active session for TURN credentials', {
+        error: sessionError?.message ?? 'session is null',
+      })
+      return []
+    }
+
     const { data, error } = await supabase.functions.invoke<TurnCredentialsResponse>(
       'turn-credentials',
       { method: 'POST' },

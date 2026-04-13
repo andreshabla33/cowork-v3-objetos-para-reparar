@@ -550,6 +550,24 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
   // Group non-ghost fullEntities by model URL → 1 InstancedAvatarRenderer per URL.
   // Each renderer handles the 3D mesh via InstancedMesh (1 draw call per model).
   // The Avatar component still renders overlays (video, chat, name, reaction).
+  //
+  // Models without embedded animations (e.g. external animations loaded from DB)
+  // are tracked in unsupportedInstancedModels. When InstancedAvatarRenderer reports
+  // a model as unsupported, those users are excluded from instancing and fall back
+  // to GLTFAvatar which supports loading external animation files.
+  const [unsupportedInstancedModels, setUnsupportedInstancedModels] = useState<Set<string>>(
+    () => new Set()
+  );
+
+  const handleModelUnsupported = useCallback((modelUrl: string) => {
+    setUnsupportedInstancedModels((prev) => {
+      if (prev.has(modelUrl)) return prev; // No-op → avoid re-render
+      const next = new Set(prev);
+      next.add(modelUrl);
+      return next;
+    });
+  }, []);
+
   const { instancedGroups, instancedUserIds } = useMemo(() => {
     const groups = new Map<string, Set<string>>();
     const allInstancedIds = new Set<string>();
@@ -562,6 +580,9 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
       // Resolve model URL from avatar3DConfig or fallback to default
       const modelUrl = user.avatar3DConfig?.modelo_url || DEFAULT_MODEL_URL;
 
+      // Skip models known to lack embedded animations — they'll use GLTFAvatar instead
+      if (unsupportedInstancedModels.has(modelUrl)) continue;
+
       let userSet = groups.get(modelUrl);
       if (!userSet) {
         userSet = new Set<string>();
@@ -572,7 +593,7 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
     }
 
     return { instancedGroups: groups, instancedUserIds: allInstancedIds };
-  }, [fullEntities, usersById]);
+  }, [fullEntities, usersById, unsupportedInstancedModels]);
 
   return (
     <>
@@ -583,6 +604,7 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
           modelUrl={modelUrl}
           allowedUserIds={userIds}
           onClickAvatar={onClickRemoteAvatar}
+          onModelUnsupported={handleModelUnsupported}
         />
       ))}
 
