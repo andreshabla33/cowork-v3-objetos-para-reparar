@@ -37,6 +37,12 @@ precision highp float;
 #include <shadowmap_pars_vertex>
 #include <fog_pars_vertex>
 
+// Skinning attributes — NOT auto-injected by Three.js for ShaderMaterial
+// since r137 removed material.skinning (PR #21788).
+// The geometry MUST have these as BufferAttributes (cloned from SkinnedMesh).
+attribute vec4 skinIndex;
+attribute vec4 skinWeight;
+
 // Per-instance attributes (set via InstancedBufferAttribute)
 attribute float animIndex;   // Which animation to play
 attribute float animTime;    // Normalized time 0-1

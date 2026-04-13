@@ -54,18 +54,21 @@ import type {
  * attributes (position, normal, uv, skinIndex, skinWeight).
  * https://threejs.org/docs/pages/ShaderMaterial.html
  *
- * Ref: Three.js skinning shader chunks — `skinIndex` and `skinWeight` are
- * injected by `#include <common>` when the geometry has skinning attributes.
- * Using raw `attribute vec4 skinIndex` fails on WebGL2/GLSL300 because
- * Three.js auto-upgrades to `in` keywords and provides them via chunks.
+ * IMPORTANT: `skinIndex` and `skinWeight` are NOT auto-injected by Three.js
+ * for ShaderMaterial since r137 removed `material.skinning` (PR #21788).
+ * They MUST be declared explicitly. Three.js auto-upgrades `attribute` → `in`
+ * for GLSL 300 es, so using `attribute` syntax is correct and portable.
  *
- * Pattern aligned with lib/gpu/instancedSkinningShader.ts (PR-8/9) which
- * works correctly in production.
+ * Pattern aligned with lib/gpu/instancedSkinningShader.ts (PR-8/9).
  */
 const VERTEX_SHADER = /* glsl */ `
 precision highp float;
 
 #include <common>
+
+// Skinning attributes — explicit declaration required since Three.js r137
+attribute vec4 skinIndex;
+attribute vec4 skinWeight;
 
 // Bone matrix DataTexture uniforms
 uniform sampler2D boneMatrixTexture;

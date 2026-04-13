@@ -65,6 +65,7 @@ export function usePresenceChannels({
   const userRef = useRef(currentUser);
   const lastSyncRef = useRef(0);
   const lastTrackRef = useRef(0);
+  const recalcTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   userRef.current = currentUser;
 
@@ -72,57 +73,80 @@ export function usePresenceChannels({
   const subscriptionPolicy = useMemo(() => new EvaluarPresenceSubscriptionUseCase(), []);
 
   /**
-   * Recalculate online users from all subscribed presence channels
+   * Recalculate online users from all subscribed presence channels.
+   *
+   * Channel processing order guarantee:
+   *   1. Process PUBLICO channels first → populate user with obfuscated data
+   *   2. Process EMPRESA channels second → overwrite with full data
+   *   This ensures empresa ALWAYS wins regardless of Map insertion order
+   *   or Supabase subscription callback timing.
+   *
+   * Debounce (150ms):
+   *   Multiple channels fire 'sync' independently. Without debounce, the first
+   *   sync (often publico) would emit users as "Miembro de otra empresa" before
+   *   the empresa channel has received the same user's track(). The debounce
+   *   coalesces rapid sync events so all channels are read together.
    */
-  const recalcularUsuarios = useCallback((): void => {
+  const recalcularUsuariosInner = useCallback((): void => {
     const usuariosMap = new Map<string, User>();
     const detalleMap = new Map<string, 'empresa' | 'publico'>();
 
-    presenceChannelsRef.current.forEach((channel: RealtimeChannel) => {
-      const state = channel.presenceState() as PresenceState;
-      Object.keys(state).forEach((key: string) => {
-        const presences = state[key] as PresencePayload[];
-        presences.forEach((presence: PresencePayload) => {
-          if (presence.user_id !== userId) {
-            const nivelDetalle: 'empresa' | 'publico' =
-              presence.nivel_detalle === 'publico' ? 'publico' : 'empresa';
-            const nivelPrevio = detalleMap.get(presence.user_id);
-            if (nivelPrevio === 'empresa' && nivelDetalle === 'publico') {
-              return;
-            }
-
-            detalleMap.set(presence.user_id, nivelDetalle);
-            usuariosMap.set(presence.user_id, {
-              id: presence.user_id,
-              name:
-                presence.name ||
-                (nivelDetalle === 'publico' ? 'Miembro de otra empresa' : 'Usuario'),
-              role: (presence.role || 'miembro') as Role,
-              avatar: presence.profilePhoto || '',
-              profilePhoto: presence.profilePhoto || '',
-              avatarConfig: presence.avatarConfig || {
-                skinColor: '#fcd34d',
-                clothingColor: '#6366f1',
-                hairColor: '#4b2c20',
-                accessory: 'none',
-              },
-              avatar3DConfig: presence.avatar3DConfig || null,
-              empresa_id: presence.empresa_id || undefined,
-              departamento_id: presence.departamento_id || undefined,
-              x: presence.x || 500,
-              y: presence.y || 500,
-              direction: presence.direction || 'front',
-              isOnline: true,
-              isMicOn: presence.isMicOn || false,
-              isCameraOn: presence.isCameraOn || false,
-              isScreenSharing: false,
-              isPrivate: presence.isPrivate ?? nivelDetalle === 'publico',
-              status: (presence.status || 'available') as PresenceStatus,
-            });
-          }
-        });
+    // ── Sort channels: publico first, empresa last ──────────────────────
+    // This guarantees empresa data always overwrites publico data.
+    const sortedChannels = Array.from(presenceChannelsRef.current.entries())
+      .sort(([a], [b]) => {
+        const aIsEmpresa = a.includes(':empresa:') ? 1 : 0;
+        const bIsEmpresa = b.includes(':empresa:') ? 1 : 0;
+        return aIsEmpresa - bIsEmpresa; // publico (0) first, empresa (1) last
       });
-    });
+
+    for (const [, channel] of sortedChannels) {
+      const state = channel.presenceState() as PresenceState;
+      for (const key of Object.keys(state)) {
+        const presences = state[key] as PresencePayload[];
+        for (const presence of presences) {
+          if (presence.user_id === userId) continue;
+
+          const nivelDetalle: 'empresa' | 'publico' =
+            presence.nivel_detalle === 'publico' ? 'publico' : 'empresa';
+          const nivelPrevio = detalleMap.get(presence.user_id);
+
+          // Skip publico if we already have empresa data for this user
+          if (nivelPrevio === 'empresa' && nivelDetalle === 'publico') {
+            continue;
+          }
+
+          detalleMap.set(presence.user_id, nivelDetalle);
+          usuariosMap.set(presence.user_id, {
+            id: presence.user_id,
+            name:
+              presence.name ||
+              (nivelDetalle === 'publico' ? 'Miembro de otra empresa' : 'Usuario'),
+            role: (presence.role || 'miembro') as Role,
+            avatar: presence.profilePhoto || '',
+            profilePhoto: presence.profilePhoto || '',
+            avatarConfig: presence.avatarConfig || {
+              skinColor: '#fcd34d',
+              clothingColor: '#6366f1',
+              hairColor: '#4b2c20',
+              accessory: 'none',
+            },
+            avatar3DConfig: presence.avatar3DConfig || null,
+            empresa_id: presence.empresa_id || undefined,
+            departamento_id: presence.departamento_id || undefined,
+            x: presence.x || 500,
+            y: presence.y || 500,
+            direction: presence.direction || 'front',
+            isOnline: true,
+            isMicOn: presence.isMicOn || false,
+            isCameraOn: presence.isCameraOn || false,
+            isScreenSharing: false,
+            isPrivate: presence.isPrivate ?? nivelDetalle === 'publico',
+            status: (presence.status || 'available') as PresenceStatus,
+          });
+        }
+      }
+    }
 
     const nextIds = new Set(usuariosMap.keys());
     const now = Date.now();
@@ -140,6 +164,19 @@ export function usePresenceChannels({
     prevOnlineUsersRef.current = nextIds;
     onOnlineUsersChange(Array.from(usuariosMap.values()));
   }, [userId, onOnlineUsersChange]);
+
+  /**
+   * Debounced wrapper for recalcularUsuarios.
+   * Coalesces rapid 'sync' events from multiple channels (publico + empresa)
+   * to avoid transient "Miembro de otra empresa" flicker.
+   */
+  const recalcularUsuarios = useCallback((): void => {
+    if (recalcTimerRef.current) clearTimeout(recalcTimerRef.current);
+    recalcTimerRef.current = setTimeout(() => {
+      recalcTimerRef.current = null;
+      recalcularUsuariosInner();
+    }, 150);
+  }, [recalcularUsuariosInner]);
 
   /**
    * Track presence in a single channel
@@ -335,6 +372,10 @@ export function usePresenceChannels({
    * Cleanup all presence channels on unmount
    */
   const cleanup = useCallback((): void => {
+    if (recalcTimerRef.current) {
+      clearTimeout(recalcTimerRef.current);
+      recalcTimerRef.current = null;
+    }
     presenceChannelsRef.current.forEach((channel: RealtimeChannel) => {
       supabase.removeChannel(channel);
     });
