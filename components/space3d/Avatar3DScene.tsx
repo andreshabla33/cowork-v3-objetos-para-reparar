@@ -5,7 +5,7 @@ import { Text, Html, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import { User, PresenceStatus, ZonaEmpresa } from '@/types';
 import { GLTFAvatar } from '../avatar3d/GLTFAvatar';
-import type { AnimationState, AvatarAssetQuality } from '../avatar3d/shared';
+import type { AnimationState, AvatarAssetQuality, Avatar3DConfig } from '../avatar3d/shared';
 import { GhostAvatar } from '../3d/GhostAvatar';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import { useStore } from '@/store/useStore';
@@ -42,6 +42,19 @@ import { CrowdInstances, type CrowdEntity } from './CrowdInstances';
 import { MidLodInstances, type MidLodEntity } from './MidLodInstances';
 import { InstancedAvatarRenderer } from '../3d/InstancedAvatarRenderer';
 import { DEFAULT_MODEL_URL } from '../avatar3d/shared';
+
+/**
+ * Fallback Avatar3DConfig for remote users whose avatar3DConfig is null/undefined.
+ * Ensures GLTFAvatar always receives a valid config object — prevents shader errors
+ * when the presence payload omits avatar data (e.g. cross-company users before fix,
+ * or network-level payload truncation).
+ */
+const FALLBACK_AVATAR_3D_CONFIG: Avatar3DConfig = {
+  id: 'default',
+  nombre: 'Default',
+  modelo_url: DEFAULT_MODEL_URL,
+  escala: 1,
+};
 
 // ─── Labels de estado ────────────────────────────────────────────────────────
 const STATUS_LABELS: Record<PresenceStatus, string> = {
@@ -226,7 +239,7 @@ export const Avatar: React.FC<AvatarProps> = ({
       {renderGLTF && (
         <GLTFAvatar
           key={`${isCurrentUser ? (avatar3DConfig?.modelo_url || 'default') : (remoteAvatar3DConfig?.modelo_url || 'remote')}:${assetQuality}`}
-          avatarConfig={isCurrentUser ? avatar3DConfig : (remoteAvatar3DConfig || undefined)}
+          avatarConfig={isCurrentUser ? avatar3DConfig : (remoteAvatar3DConfig || FALLBACK_AVATAR_3D_CONFIG)}
           animationState={effectiveAnimState}
           direction={direction}
           isSitting={isSitting}

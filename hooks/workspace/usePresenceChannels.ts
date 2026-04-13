@@ -190,6 +190,11 @@ export function usePresenceChannels({
         isCameraOn: false,
         isPrivate: true,
         status: 'away' as PresenceStatus,
+        // El avatar3DConfig (modelo, escala, texturas) NO es información privada —
+        // es data cosmética necesaria para renderizar el avatar 3D correctamente.
+        // Sin este campo, admins que ven usuarios cross-company con esFantasma=false
+        // reciben avatarConfig=null → shader error → rectángulo verde.
+        avatar3DConfig: usuario.avatar3DConfig || null,
       };
 
       try {
