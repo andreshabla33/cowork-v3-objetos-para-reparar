@@ -74,6 +74,31 @@ export const ZonaEmpresa: React.FC<ZonaEmpresaProps> = ({
   const [logoTexture, setLogoTexture] = useState<THREE.Texture | null>(null);
   const [hovered, setHovered] = useState(false);
 
+  // ── Cached geometries — prevent geometry leak on re-render ──────────────
+  // edgesGeometry wraps a PlaneGeometry; creating both inline causes 2 leaked
+  // geometries per frame per zone. Memoizing by (ancho, alto) ensures stable
+  // references across renders. Cleanup on unmount to free GPU memory.
+  const edgesGeo = useMemo(
+    () => new THREE.EdgesGeometry(new THREE.PlaneGeometry(ancho, alto)),
+    [ancho, alto],
+  );
+  const logoGeoLarge = useMemo(
+    () => new THREE.PlaneGeometry(Math.min(ancho, alto) * 0.4, Math.min(ancho, alto) * 0.4),
+    [ancho, alto],
+  );
+  const logoGeoSmall = useMemo(
+    () => new THREE.PlaneGeometry(Math.min(ancho, alto) * 0.28, Math.min(ancho, alto) * 0.28),
+    [ancho, alto],
+  );
+
+  useEffect(() => {
+    return () => {
+      edgesGeo.dispose();
+      logoGeoLarge.dispose();
+      logoGeoSmall.dispose();
+    };
+  }, [edgesGeo, logoGeoLarge, logoGeoSmall]);
+
   useEffect(() => {
     if (hovered && onClick) {
       document.body.style.cursor = 'pointer';
@@ -224,8 +249,7 @@ export const ZonaEmpresa: React.FC<ZonaEmpresaProps> = ({
             
             {/* Outline on hover for admin selection clarity */}
             {hovered && (
-              <lineSegments rotation={[0, 0, 0]} position={[0, 0, 0.01]} >
-                <edgesGeometry args={[new THREE.PlaneGeometry(ancho, alto)]} />
+              <lineSegments rotation={[0, 0, 0]} position={[0, 0, 0.01]} geometry={edgesGeo}>
                 <lineBasicMaterial color="white" linewidth={2} />
               </lineSegments>
             )}
@@ -233,22 +257,19 @@ export const ZonaEmpresa: React.FC<ZonaEmpresaProps> = ({
 
           {/* Logo si existe */}
           {logoTexture && !modeloUrl && (
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[posicion[0], 0.02, posicion[2]]}>
-              <planeGeometry args={[Math.min(ancho, alto) * 0.4, Math.min(ancho, alto) * 0.4]} />
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[posicion[0], 0.02, posicion[2]]} geometry={logoGeoLarge}>
               <meshBasicMaterial map={logoTexture} transparent side={THREE.DoubleSide} />
             </mesh>
           )}
         </>
       )}
 
-      <lineSegments rotation={[-Math.PI / 2, 0, 0]} position={[posicion[0], posicion[1] + 0.02, posicion[2]]}>
-        <edgesGeometry args={[new THREE.PlaneGeometry(ancho, alto)]} />
+      <lineSegments rotation={[-Math.PI / 2, 0, 0]} position={[posicion[0], posicion[1] + 0.02, posicion[2]]} geometry={edgesGeo}>
         <lineBasicMaterial color={bordeZona.color} transparent opacity={bordeZona.opacity} />
       </lineSegments>
 
       {mostrarLogo && !modeloUrl && (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[posicion[0] - ancho * 0.32, posicion[1] + 0.02, posicion[2] - alto * 0.32]}>
-          <planeGeometry args={[Math.min(ancho, alto) * 0.28, Math.min(ancho, alto) * 0.28]} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[posicion[0] - ancho * 0.32, posicion[1] + 0.02, posicion[2] - alto * 0.32]} geometry={logoGeoSmall}>
           <meshBasicMaterial map={logoTexture} transparent opacity={0.9} />
         </mesh>
       )}

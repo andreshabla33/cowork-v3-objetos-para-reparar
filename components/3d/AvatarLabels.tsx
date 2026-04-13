@@ -91,8 +91,10 @@ const AvatarLabel: React.FC<{ entity: AvatarEntity }> = React.memo(({ entity }) 
   // Solo mostrar label si está lo suficientemente cerca
   if (entity.distanceToCamera > 40) return null;
 
-  // Calcular tamaño de fuente basado en distancia (más grande de lejos)
-  const fontSize = entity.distanceToCamera > 20 ? 0.3 : 0.24;
+  // Quantized font size — only 2 discrete values to prevent troika-three-text
+  // from regenerating geometry on every distance change. Hysteresis band (18/22)
+  // prevents rapid oscillation at the threshold boundary.
+  const fontSize = entity.distanceToCamera > 22 ? 0.3 : entity.distanceToCamera < 18 ? 0.24 : 0.3;
 
   // Posición: encima del avatar
   const nameY = NAME_Y_OFFSET;
@@ -130,13 +132,20 @@ const AvatarLabel: React.FC<{ entity: AvatarEntity }> = React.memo(({ entity }) 
     </group>
   );
 }, (prev, next) => {
-  // Solo re-render si cambió algo relevante para el label
+  // Solo re-render si cambió algo visually relevante para el label.
+  // distanceToCamera: quantize to same fontSize bucket to avoid troika re-geometry.
+  // Position: tolerance of 0.5 units to reduce spurious updates.
+  const prevFar = prev.entity.distanceToCamera > 20;
+  const nextFar = next.entity.distanceToCamera > 20;
+  const prevVisible = prev.entity.distanceToCamera <= 40;
+  const nextVisible = next.entity.distanceToCamera <= 40;
   return (
     prev.entity.name === next.entity.name &&
     prev.entity.status === next.entity.status &&
     Math.abs(prev.entity.currentX - next.entity.currentX) < 0.5 &&
     Math.abs(prev.entity.currentZ - next.entity.currentZ) < 0.5 &&
-    prev.entity.distanceToCamera === next.entity.distanceToCamera
+    prevFar === nextFar &&
+    prevVisible === nextVisible
   );
 });
 

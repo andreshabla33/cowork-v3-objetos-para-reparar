@@ -90,6 +90,7 @@ export function usePresenceChannels({
   const recalcularUsuariosInner = useCallback((): void => {
     const usuariosMap = new Map<string, User>();
     const detalleMap = new Map<string, 'empresa' | 'publico'>();
+    const currentEmpresaId = userRef.current.empresa_id;
 
     // ── Sort channels: publico first, empresa last ──────────────────────
     // This guarantees empresa data always overwrites publico data.
@@ -116,12 +117,28 @@ export function usePresenceChannels({
             continue;
           }
 
-          detalleMap.set(presence.user_id, nivelDetalle);
+          // ── Same-company detection via empresa_id in payload ──────────
+          // Race condition fix: when a user reconnects, the publico channel
+          // may fire 'sync' before the empresa channel has their track().
+          // The publico payload carries empresa_id in payloadBase (line 200).
+          // If it matches our own empresa_id, this user is a same-company
+          // colleague arriving via the publico channel — treat as empresa
+          // to prevent them appearing as "Miembro de otra empresa" ghost.
+          const isSameCompanyViaPublico =
+            nivelDetalle === 'publico' &&
+            !!currentEmpresaId &&
+            !!presence.empresa_id &&
+            presence.empresa_id === currentEmpresaId;
+
+          const effectiveNivel = isSameCompanyViaPublico ? 'empresa' : nivelDetalle;
+
+          detalleMap.set(presence.user_id, effectiveNivel);
           usuariosMap.set(presence.user_id, {
             id: presence.user_id,
             name:
-              presence.name ||
-              (nivelDetalle === 'publico' ? 'Miembro de otra empresa' : 'Usuario'),
+              presence.name && presence.name !== 'Miembro de otra empresa'
+                ? presence.name
+                : effectiveNivel === 'publico' ? 'Miembro de otra empresa' : 'Usuario',
             role: (presence.role || 'miembro') as Role,
             avatar: presence.profilePhoto || '',
             profilePhoto: presence.profilePhoto || '',
@@ -141,7 +158,7 @@ export function usePresenceChannels({
             isMicOn: presence.isMicOn || false,
             isCameraOn: presence.isCameraOn || false,
             isScreenSharing: false,
-            isPrivate: presence.isPrivate ?? nivelDetalle === 'publico',
+            isPrivate: presence.isPrivate ?? effectiveNivel === 'publico',
             status: (presence.status || 'available') as PresenceStatus,
           });
         }
