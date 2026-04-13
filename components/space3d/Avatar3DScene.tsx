@@ -1,7 +1,7 @@
 'use client';
 import React, { Suspense, useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { Text, Html, Billboard } from '@react-three/drei';
+import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { User, PresenceStatus, ZonaEmpresa } from '@/types';
 import { GLTFAvatar } from '../avatar3d/GLTFAvatar';
@@ -28,7 +28,6 @@ import { movementSystem, cullingSystem, animationSystem } from '@/lib/ecs/Avatar
 import {
   hitTestCylinderCurrentUser,
   hitTestCylinderRemote,
-  statusDotGeometry,
   crowdMarkerGeometry,
   teleportCylinderGeometry,
   teleportRingGeometry,
@@ -56,13 +55,7 @@ const FALLBACK_AVATAR_3D_CONFIG: Avatar3DConfig = {
   escala: 1,
 };
 
-// ─── Labels de estado ────────────────────────────────────────────────────────
-const STATUS_LABELS: Record<PresenceStatus, string> = {
-  [PresenceStatus.AVAILABLE]: 'Disponible',
-  [PresenceStatus.BUSY]: 'Ocupado',
-  [PresenceStatus.AWAY]: 'Ausente',
-  [PresenceStatus.DND]: 'No molestar',
-};
+// STATUS_LABELS moved to spaceTypes.ts (shared with AvatarLabels via Clean Architecture)
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -146,12 +139,11 @@ export const Avatar: React.FC<AvatarProps> = ({
   camOn, showVideoBubble = true, message,
   onClickAvatar, onClickRemoteAvatar, userId,
   mirrorVideo: mirrorVideoProp, hideSelfView: hideSelfViewProp,
-  showName: showNameProp, lodLevel: lodLevelProp,
+  showName: _showNameProp, lodLevel: lodLevelProp,
   esFantasma = false, remoteAvatar3DConfig,
   onAvatarHeightComputed, onMetricasAvatarComputadas,
   avatarInteractions, useInstancedMesh = false, castShadow = true
 }) => {
-  const [showStatusLabel, setShowStatusLabel] = useState(false);
   const [showRadialWheel, setShowRadialWheel] = useState(false);
   const [avatarHeight, setAvatarHeight] = useState(2.0);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -160,11 +152,10 @@ export const Avatar: React.FC<AvatarProps> = ({
   const { avatar3DConfig } = useStore();
 
   const videoSettings = useMemo(() => getSettingsSection('video'), []);
-  const space3dS = useMemo(() => getSettingsSection('space3d'), []);
   const perfS = useMemo(() => getSettingsSection('performance'), []);
   const mirrorVideo = mirrorVideoProp ?? videoSettings.mirrorVideo ?? true;
   const hideSelfView = hideSelfViewProp ?? videoSettings.hideSelfView ?? false;
-  const showName = showNameProp ?? space3dS.showNamesAboveAvatars ?? true;
+  // showName is now handled by unified AvatarLabels (Clean Architecture)
   const lodLevel = lodLevelProp ?? 'high';
   const showHigh = lodLevel === 'high';
   const showMid = lodLevel === 'mid';
@@ -179,12 +170,10 @@ export const Avatar: React.FC<AvatarProps> = ({
   const assetQuality: AvatarAssetQuality = showLow ? 'low' : showMid ? 'medium' : 'high';
   const effectiveAnimState = perfS.showAvatarAnimations === false ? 'idle' as AnimationState : animationState;
 
-  const nameY = avatarHeight + 0.4;
   const videoY = avatarHeight + 1.15;
   const chatY = avatarHeight + (camOn ? 2.75 : 0.95);
   const reactionY = avatarHeight + (camOn ? 1.75 : 0.65);
   const radialY = avatarHeight + (camOn ? 2.05 : 0.65);
-  const allowName = showName && (!camOn || !(showHigh || showMid)) && (esMismaEmpresa || lodLevel !== 'low');
   const allowVideo = (showHigh || showMid) && camOn;
   const allowMessage = showHigh && message;
   const allowReaction = (showHigh || showMid) && reaction;
@@ -193,13 +182,6 @@ export const Avatar: React.FC<AvatarProps> = ({
   useEffect(() => {
     if (onAvatarHeightComputed && avatarHeight > 0) onAvatarHeightComputed(avatarHeight);
   }, [avatarHeight, onAvatarHeightComputed]);
-
-  useEffect(() => {
-    if (showStatusLabel) {
-      const timer = setTimeout(() => setShowStatusLabel(false), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [showStatusLabel]);
 
   const handlePointerDown = useCallback((e: any) => {
     if (isCurrentUser || !userId || !avatarInteractions) return;
@@ -291,25 +273,9 @@ export const Avatar: React.FC<AvatarProps> = ({
         </Html>
       )}
 
-      {!allowVideo && allowName && (
-        <Billboard position={[0, nameY, 0]} follow lockX={false} lockY={false} lockZ={false}>
-          <group>
-            <Text position={[0, 0, 0]} fontSize={0.24} color={isCurrentUser ? '#60a5fa' : '#ffffff'} anchorX="center" anchorY="middle" outlineWidth={0.015} outlineColor="#000000" renderOrder={10} depthOffset={-1} onClick={(e) => { e.stopPropagation(); !isCurrentUser && setShowStatusLabel(true); }}>
-              {name}
-            </Text>
-            <mesh position={[name.length * 0.08 + 0.05, 0, 0]} geometry={statusDotGeometry}>
-              <meshBasicMaterial color={statusColors[status]} />
-            </mesh>
-          </group>
-          {showStatusLabel && !isCurrentUser && (
-            <Html position={[0, 0.45, 0]} center zIndexRange={[200, 0]}>
-              <div className="px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider text-white shadow-lg whitespace-nowrap" style={{ backgroundColor: statusColors[status] }}>
-                {STATUS_LABELS[status]}
-              </div>
-            </Html>
-          )}
-        </Billboard>
-      )}
+      {/* Name labels are now rendered by the unified AvatarLabels component (Clean Architecture).
+        * All label logic (dynamic Y, current user color, status tooltip, distance culling)
+        * is handled via PrepararAvatarLabelsUseCase → AvatarLabels. */}
 
       {showRadialWheel && !isCurrentUser && userId && avatarInteractions && (
         <Html position={[0, radialY, 0]} center distanceFactor={6} zIndexRange={[310, 0]}>
@@ -386,6 +352,18 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
   const groupRefs = useRef(new Map<string, THREE.Group>());
   const isDocumentVisibleRef = useRef(typeof document === 'undefined' ? true : !document.hidden);
   const runtimeSchedulerRef = useRef(new AvatarRuntimeScheduler());
+  /** Stable map of userId → measured avatar height for unified AvatarLabels */
+  const avatarHeightsRef = useRef(new Map<string, number>());
+  /** Factory: returns a stable callback per userId to update avatarHeightsRef */
+  const heightCallbacksRef = useRef(new Map<string, (h: number) => void>());
+  const getHeightCallback = useCallback((userId: string) => {
+    let cb = heightCallbacksRef.current.get(userId);
+    if (!cb) {
+      cb = (h: number) => { avatarHeightsRef.current.set(userId, h); };
+      heightCallbacksRef.current.set(userId, cb);
+    }
+    return cb;
+  }, []);
   const performanceSettings = useMemo(() => getSettingsSection('performance'), [settingsVersion]);
 
   useEffect(() => {
@@ -697,7 +675,7 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
                   userId={entity.userId}
                   useInstancedMesh={isInstanced}
                   castShadow={entity.castShadow}
-                  showName={false}
+                  onAvatarHeightComputed={getHeightCallback(entity.userId)}
                 />
               )
             )}
@@ -711,7 +689,12 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
         );
       })}
 
-      <AvatarLabels ecsVersion={renderVersion} showNames={true} />
+      <AvatarLabels
+        ecsVersion={renderVersion}
+        showNames={true}
+        currentUserId={currentUser.id}
+        avatarHeights={avatarHeightsRef.current}
+      />
     </>
   );
 };

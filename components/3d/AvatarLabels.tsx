@@ -1,81 +1,104 @@
 /**
- * PR-10: AvatarLabels — WebGL text labels para 500+ avatares
+ * @module components/3d/AvatarLabels
+ * @description Unified WebGL name labels for ALL avatars (local + remote).
  *
- * Reemplaza los 500 `<Html>` DOM elements con componentes `<Text>`
- * de @react-three/drei (troika-three-text bajo el capó).
+ * Clean Architecture: Presentation layer — pure rendering component.
+ * All data preparation is handled by PrepararAvatarLabelsUseCase (Application)
+ * via EcsAvatarLabelDataProvider (Infrastructure).
  *
- * Optimizaciones:
- * 1. Solo renderiza labels de avatares VISIBLES (del ECS)
- * 2. Billboard automático (siempre mira a la cámara)
- * 3. Memoización agresiva — solo re-render si cambia la lista visible
- * 4. Font compartida entre todas las instancias
+ * Merges features from two legacy systems:
+ *   - AvatarLabels (PR-10): WebGL troika text, batch rendering, 0 DOM elements
+ *   - Avatar inline label: dynamic Y offset, current user color, status tooltip, click interaction
  *
- * Comparación:
- *   ANTES: 500 <Html center> → 500 DOM divs → DOM lag
- *   AHORA: 500 <Text> → WebGL quads → 0 DOM elements
+ * Optimizations retained:
+ *   1. Only renders labels from pre-filtered AvatarLabelEntity[]
+ *   2. Billboard automatic (always faces camera)
+ *   3. Aggressive memoization — custom React.memo comparator
+ *   4. Font size quantization (2 discrete values → no troika geometry churn)
+ *   5. Shared singleton geometries
+ *   6. Status tooltip: 1 DOM element on click (vs 0 in idle)
  *
- * Nota: troika-three-text hace batching interno, así que
- * N labels ≈ 1-2 draw calls totales (mejor que N draw calls).
+ * Performance with 500 avatars and ~80 visible:
+ *   - DOM elements: 0 idle, 1 max (tooltip on click)
+ *   - Draw calls: 2-3 (troika batching)
  */
 
 'use client';
-import React, { useMemo } from 'react';
-import { Text, Billboard } from '@react-three/drei';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Text, Html, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
-import { avatarStore, type AvatarEntity } from '@/lib/ecs/AvatarECS';
+import type { AvatarLabelEntity } from '@/src/core/domain/entities/espacio3d/AvatarLabelEntity';
+import { LABEL_CONFIG } from '@/src/core/domain/entities/espacio3d/AvatarLabelEntity';
+import { PrepararAvatarLabelsUseCase } from '@/src/core/application/usecases/PrepararAvatarLabelsUseCase';
+import { ecsAvatarLabelDataProvider } from '@/src/core/infrastructure/adapters/EcsAvatarLabelDataProvider';
+import { statusColors, STATUS_LABELS } from '../space3d/spaceTypes';
+import type { PresenceStatus } from '@/types';
 
-// ─── Constantes ──────────────────────────────────────────────────────────────
+// ─── Singleton use case instance ────────────────────────────────────────────
+const prepararLabelsUseCase = new PrepararAvatarLabelsUseCase(ecsAvatarLabelDataProvider);
 
-/** Altura base del nombre sobre el avatar (se suma avatarHeight si disponible) */
-const NAME_Y_OFFSET = 2.4;
+// ─── Shared geometries (singleton — no leak on re-render) ───────────────────
+const statusDotGeometry = new THREE.SphereGeometry(0.06, 8, 8);
 
-/** Colores de estado para el punto WebGL */
-const STATUS_COLORS: Record<string, string> = {
+// ─── Status colors for WebGL dot (aligned with spaceTypes.statusColors) ─────
+const LABEL_STATUS_COLORS: Record<string, string> = {
   available: '#22c55e',
   busy: '#ef4444',
   away: '#f59e0b',
   dnd: '#dc2626',
 };
-
-/** Color por defecto si el status no está en el mapa */
 const DEFAULT_STATUS_COLOR = '#9ca3af';
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
-interface AvatarLabelsProps {
-  /** Versión del ECS store (para que React sepa cuándo re-renderizar) */
+export interface UnifiedAvatarLabelsProps {
+  /** ECS store version — triggers React re-render when entities change */
   ecsVersion: number;
-  /** Si se deben mostrar los nombres o no */
+  /** Global setting: show name labels above avatars */
   showNames?: boolean;
+  /** ID of the current (local) user */
+  currentUserId: string;
+  /** Map of userId → measured avatar height from GLTFAvatar */
+  avatarHeights: ReadonlyMap<string, number>;
 }
 
-// ─── Geometrías compartidas (singleton) ─────────────────────────────────────
-
-const statusDotGeometry = new THREE.SphereGeometry(0.06, 8, 8);
-
-// ─── Componente ─────────────────────────────────────────────────────────────
+// ─── Main component ─────────────────────────────────────────────────────────
 
 /**
- * Renderiza los nombres y puntos de estado de TODOS los avatares visibles.
- * Usa WebGL text (troika) en lugar de DOM elements.
+ * Renders unified name labels + status dots for all visible avatars.
+ * Uses WebGL text (troika-three-text) — 0 DOM elements in idle state.
  *
- * Con 500 avatares y 80 visibles:
- *   - DOM elements: 0 (vs 80 antes)
- *   - Draw calls: 2-3 (troika batching) vs 80 (Html individually)
+ * Features merged from both legacy systems:
+ *   ✓ Dynamic Y offset (avatarHeight + LABEL_Y_OFFSET)
+ *   ✓ Current user highlight color (#60a5fa)
+ *   ✓ Status tooltip on click (Html portal, 1 DOM element)
+ *   ✓ Status dot (WebGL sphere)
+ *   ✓ Distance-based font quantization (2 sizes)
+ *   ✓ Aggressive memoization
  */
-export const AvatarLabels: React.FC<AvatarLabelsProps> = React.memo(({
+export const AvatarLabels: React.FC<UnifiedAvatarLabelsProps> = React.memo(({
   ecsVersion,
   showNames = true,
+  currentUserId,
+  avatarHeights,
 }) => {
-  if (!showNames) return null;
+  // Run the use case to get filtered labels
+  // eslint-disable-next-line react-hooks/exhaustive-deps — ecsVersion triggers recalc
+  const { labels } = useMemo(
+    () => prepararLabelsUseCase.execute({
+      currentUserId,
+      avatarHeights,
+      showNames,
+    }),
+    [ecsVersion, currentUserId, avatarHeights, showNames],
+  );
 
-  // Leer avatares visibles del ECS
-  const visibleEntities = avatarStore.getAllVisible();
+  if (labels.length === 0) return null;
 
   return (
     <>
-      {visibleEntities.map(entity => (
-        <AvatarLabel key={entity.userId} entity={entity} />
+      {labels.map((label) => (
+        <AvatarLabel key={label.userId} label={label} />
       ))}
     </>
   );
@@ -83,69 +106,109 @@ export const AvatarLabels: React.FC<AvatarLabelsProps> = React.memo(({
 
 AvatarLabels.displayName = 'AvatarLabels';
 
-// ─── Label individual (WebGL, no DOM) ───────────────────────────────────────
+// ─── Individual label (WebGL, 0 DOM idle) ───────────────────────────────────
 
-const AvatarLabel: React.FC<{ entity: AvatarEntity }> = React.memo(({ entity }) => {
-  const statusColor = STATUS_COLORS[entity.status] || DEFAULT_STATUS_COLOR;
+interface AvatarLabelProps {
+  label: AvatarLabelEntity;
+}
 
-  // Solo mostrar label si está lo suficientemente cerca
-  if (entity.distanceToCamera > 40) return null;
+const AvatarLabel: React.FC<AvatarLabelProps> = React.memo(({ label }) => {
+  const [showStatusTooltip, setShowStatusTooltip] = useState(false);
+  const statusColor = LABEL_STATUS_COLORS[label.status] || DEFAULT_STATUS_COLOR;
 
-  // Quantized font size — only 2 discrete values to prevent troika-three-text
-  // from regenerating geometry on every distance change. Hysteresis band (18/22)
-  // prevents rapid oscillation at the threshold boundary.
-  const fontSize = entity.distanceToCamera > 22 ? 0.3 : entity.distanceToCamera < 18 ? 0.24 : 0.3;
+  // Auto-hide status tooltip
+  useEffect(() => {
+    if (showStatusTooltip) {
+      const timer = setTimeout(
+        () => setShowStatusTooltip(false),
+        LABEL_CONFIG.STATUS_TOOLTIP_DELAY_MS,
+      );
+      return () => clearTimeout(timer);
+    }
+  }, [showStatusTooltip]);
 
-  // Posición: encima del avatar
-  const nameY = NAME_Y_OFFSET;
+  // Click handler — show status tooltip for remote users
+  const handleClick = useCallback((e: THREE.Event) => {
+    (e as unknown as { stopPropagation: () => void }).stopPropagation();
+    if (!label.isCurrentUser) {
+      setShowStatusTooltip(true);
+    }
+  }, [label.isCurrentUser]);
+
+  // Dynamic Y: avatar height + offset (was fixed 2.4 in PR-10, now dynamic)
+  const nameY = label.avatarHeight + LABEL_CONFIG.LABEL_Y_OFFSET;
+
+  // Font size quantization — 2 discrete values to prevent troika geometry churn.
+  // Hysteresis band (18/22) prevents oscillation at the threshold.
+  const fontSize = label.distanceToCamera > LABEL_CONFIG.FONT_FAR_THRESHOLD
+    ? LABEL_CONFIG.FONT_SIZE_FAR
+    : label.distanceToCamera < LABEL_CONFIG.FONT_NEAR_THRESHOLD
+      ? LABEL_CONFIG.FONT_SIZE_NEAR
+      : LABEL_CONFIG.FONT_SIZE_FAR;
+
+  // Color: current user gets highlight blue, remote users get white
+  const textColor = label.isCurrentUser ? '#60a5fa' : '#ffffff';
 
   return (
-    <group position={[entity.currentX, nameY, entity.currentZ]}>
-      <Billboard
-        follow={true}
-        lockX={false}
-        lockY={false}
-        lockZ={false}
-      >
-        {/* Nombre del avatar — WebGL text (troika) */}
-        <Text
-          fontSize={fontSize}
-          color="#ffffff"
-          anchorX="center"
-          anchorY="middle"
-          outlineWidth={0.015}
-          outlineColor="#000000"
-          renderOrder={10}
-          depthOffset={-1}
-        >
-          {entity.name}
-        </Text>
+    <group position={[label.x, nameY, label.z]}>
+      <Billboard follow lockX={false} lockY={false} lockZ={false}>
+        <group>
+          {/* Name — WebGL text (troika) */}
+          <Text
+            fontSize={fontSize}
+            color={textColor}
+            anchorX="center"
+            anchorY="middle"
+            outlineWidth={0.015}
+            outlineColor="#000000"
+            renderOrder={10}
+            depthOffset={-1}
+            onClick={handleClick}
+          >
+            {label.name}
+          </Text>
 
-        {/* Punto de estado — WebGL sphere */}
-        <mesh
-          position={[entity.name.length * 0.08 + 0.05, 0, 0]}
-          geometry={statusDotGeometry}
-        >
-          <meshBasicMaterial color={statusColor} />
-        </mesh>
+          {/* Status dot — WebGL sphere */}
+          <mesh
+            position={[label.name.length * 0.08 + 0.05, 0, 0]}
+            geometry={statusDotGeometry}
+          >
+            <meshBasicMaterial color={statusColor} />
+          </mesh>
+        </group>
+
+        {/* Status tooltip — 1 DOM element, only on click (idle = 0 DOM) */}
+        {showStatusTooltip && !label.isCurrentUser && (
+          <Html position={[0, 0.45, 0]} center zIndexRange={[200, 0]}>
+            <div
+              className="px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider text-white shadow-lg whitespace-nowrap"
+              style={{ backgroundColor: statusColors[label.status as PresenceStatus] }}
+            >
+              {STATUS_LABELS[label.status as PresenceStatus] ?? label.status}
+            </div>
+          </Html>
+        )}
       </Billboard>
     </group>
   );
 }, (prev, next) => {
-  // Solo re-render si cambió algo visually relevante para el label.
-  // distanceToCamera: quantize to same fontSize bucket to avoid troika re-geometry.
+  // Custom comparator — only re-render on visually relevant changes.
   // Position: tolerance of 0.5 units to reduce spurious updates.
-  const prevFar = prev.entity.distanceToCamera > 20;
-  const nextFar = next.entity.distanceToCamera > 20;
-  const prevVisible = prev.entity.distanceToCamera <= 40;
-  const nextVisible = next.entity.distanceToCamera <= 40;
+  // Distance: quantize to same fontSize bucket to avoid troika re-geometry.
+  const pL = prev.label;
+  const nL = next.label;
+  const prevFar = pL.distanceToCamera > 20;
+  const nextFar = nL.distanceToCamera > 20;
   return (
-    prev.entity.name === next.entity.name &&
-    prev.entity.status === next.entity.status &&
-    Math.abs(prev.entity.currentX - next.entity.currentX) < 0.5 &&
-    Math.abs(prev.entity.currentZ - next.entity.currentZ) < 0.5 &&
-    prevFar === nextFar &&
-    prevVisible === nextVisible
+    pL.name === nL.name &&
+    pL.status === nL.status &&
+    pL.isCurrentUser === nL.isCurrentUser &&
+    pL.isCameraOn === nL.isCameraOn &&
+    pL.lodLevel === nL.lodLevel &&
+    Math.abs(pL.x - nL.x) < 0.5 &&
+    Math.abs(pL.z - nL.z) < 0.5 &&
+    Math.abs(pL.avatarHeight - nL.avatarHeight) < 0.1 &&
+    prevFar === nextFar
   );
 });
 

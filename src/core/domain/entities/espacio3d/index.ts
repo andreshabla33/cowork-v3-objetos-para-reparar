@@ -76,3 +76,7 @@ export {
   resolverDisplayObjeto,
   resolverUseObjeto,
 } from './InteraccionObjetoEntity';
+
+// ─── Avatar Labels ───────────────────────────────────────────────────────────
+export type { AvatarLabelEntity, LabelPresenceStatus } from './AvatarLabelEntity';
+export { LABEL_CONFIG } from './AvatarLabelEntity';
