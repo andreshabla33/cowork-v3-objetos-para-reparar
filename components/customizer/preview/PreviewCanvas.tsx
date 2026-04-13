@@ -44,16 +44,31 @@ const PreviewCaptureBridge = ({
   return null;
 };
 
-/** Cleans up WebGL context on unmount to prevent memory leaks. */
+/**
+ * Cleans up WebGL context on unmount to prevent memory leaks.
+ *
+ * Dispose order (Three.js r170+ best practice):
+ *   1. gl.dispose() — libera texturas, geometrías, programas internos de Three.js
+ *   2. forceContextLoss() — libera el contexto WebGL del navegador (slot GPU)
+ *
+ * Guard: verifica isContextLost() antes de forzar pérdida para evitar
+ * "INVALID_OPERATION: loseContext: context already lost" en unmount.
+ */
 const PreviewRendererLifecycle = () => {
   const { gl } = useThree();
 
   useEffect(() => {
     return () => {
-      if (typeof gl.forceContextLoss === 'function') {
+      // 1. Liberar recursos Three.js primero
+      gl.dispose();
+
+      // 2. Liberar slot WebGL del navegador (solo si el contexto sigue vivo)
+      const ctx = gl.getContext();
+      const isAlreadyLost = ctx && typeof ctx.isContextLost === 'function' && ctx.isContextLost();
+
+      if (!isAlreadyLost && typeof gl.forceContextLoss === 'function') {
         gl.forceContextLoss();
       }
-      gl.dispose();
     };
   }, [gl]);
 
