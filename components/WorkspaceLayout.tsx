@@ -98,7 +98,7 @@ export const WorkspaceLayout: React.FC = () => {
     onAutorizacionesLoaded: setEmpresasAutorizadas,
   });
 
-  const { syncPresenceByChunk, updatePresenceInChannels, cleanup } =
+  const { syncPresenceByChunk, updatePresenceInChannels, forceRetrackAll, cleanup } =
     usePresenceChannels({
       activeWorkspaceId: activeWorkspace?.id,
       userId: session?.user?.id,
@@ -214,6 +214,21 @@ export const WorkspaceLayout: React.FC = () => {
     syncPresenceByChunk,
   ]);
 
+  // Force re-track all channels when empresa_id loads.
+  // This ensures payloads carry the correct empresa_id and triggers
+  // recalculation with same-company detection from channel names.
+  const empresaIdLoadedRef = useRef(false);
+  useEffect(() => {
+    if (currentUser.empresa_id && !empresaIdLoadedRef.current) {
+      empresaIdLoadedRef.current = true;
+      // Delay slightly to ensure channels are subscribed first
+      const timer = setTimeout(() => forceRetrackAll(), 500);
+      return () => clearTimeout(timer);
+    }
+    if (!currentUser.empresa_id) {
+      empresaIdLoadedRef.current = false;
+    }
+  }, [currentUser.empresa_id, forceRetrackAll]);
 
   // Actualizar presencia cuando cambia la posición (respetando settings de privacidad)
   useEffect(() => {

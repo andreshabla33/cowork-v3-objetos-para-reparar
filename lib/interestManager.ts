@@ -1,6 +1,12 @@
 import type { User } from '../types';
 import { Role } from '../types';
 import { obtenerChunk, obtenerChunksVecinos } from './chunkSystem';
+import { logger } from './logger';
+
+const log = logger.child('interest-manager');
+
+/** Verbose logging for ghost avatar debugging — disable in production for perf */
+const __DEV_LOG_GHOST__ = import.meta.env.DEV;
 
 export const filtrarUsuariosPorChunks = (
   usuarios: User[],
@@ -59,6 +65,15 @@ export const aplicarInteresEmpresa = (
         isPrivate: true,
         esFantasma: true,
       };
+    }
+
+    if (__DEV_LOG_GHOST__) {
+      log.warn('Ghost flag applied', {
+        userId: usuario.id,
+        userName: usuario.name,
+        userEmpresaId: usuario.empresa_id ?? 'null',
+        currentEmpresaId: empresaIdActual ?? 'null',
+      });
     }
 
     return {

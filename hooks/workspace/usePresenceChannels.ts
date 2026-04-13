@@ -10,6 +10,12 @@
  * - Track throttle: 5s minimum between presence track() updates
  * - Density-aware: reduces radius further when >100 nearby avatars
  *
+ * Same-company detection (3-layer, no race conditions):
+ * 1. Channel name: workspace:X:chunk:empresa:UUID → authoritative membership
+ * 2. Pre-scan: Phase 1 scans empresa channels to build empresaUserIds set
+ * 3. Payload: presence.empresa_id match (fallback for edge cases)
+ * Any of the 3 layers detecting same-company → user treated as empresa-level.
+ *
  * Clean Architecture: Infrastructure hook (Supabase Realtime).
  * Uses Application-layer policy (EvaluarPresenceSubscriptionUseCase)
  * for subscription decisions — no business logic in this file.
@@ -42,6 +48,7 @@ interface UsePresenceChannelsProps {
 interface UsePresenceChannelsReturn {
   syncPresenceByChunk: () => void;
   updatePresenceInChannels: (nivelDetalle: 'publico' | 'empresa') => Promise<void>;
+  forceRetrackAll: () => void;
   cleanup: () => void;
 }
 
@@ -92,16 +99,40 @@ export function usePresenceChannels({
     const detalleMap = new Map<string, 'empresa' | 'publico'>();
     const currentEmpresaId = userRef.current.empresa_id;
 
-    // ── Sort channels: publico first, empresa last ──────────────────────
-    // This guarantees empresa data always overwrites publico data.
+    // ── Phase 1: Collect empresa user IDs from channel names ────────────
+    // The channel name is AUTHORITATIVE for empresa membership:
+    // "workspace:X:chunk:empresa:UUID" → any user in this channel belongs
+    // to that empresa. This is deterministic and immune to payload race
+    // conditions (stale empresa_id, delayed track, throttled updates).
+    const empresaUserIds = new Set<string>();
+    if (currentEmpresaId) {
+      const empresaSuffix = `:empresa:${currentEmpresaId}`;
+      presenceChannelsRef.current.forEach((channel, canalNombre) => {
+        if (!canalNombre.includes(empresaSuffix)) return;
+        const state = channel.presenceState() as PresenceState;
+        for (const key of Object.keys(state)) {
+          const presences = state[key] as PresencePayload[];
+          for (const presence of presences) {
+            if (presence.user_id && presence.user_id !== userId) {
+              empresaUserIds.add(presence.user_id);
+            }
+          }
+        }
+      });
+    }
+
+    // ── Phase 2: Process all channels (publico first, empresa last) ─────
+    // empresa always overwrites publico data for the same user.
     const sortedChannels = Array.from(presenceChannelsRef.current.entries())
       .sort(([a], [b]) => {
         const aIsEmpresa = a.includes(':empresa:') ? 1 : 0;
         const bIsEmpresa = b.includes(':empresa:') ? 1 : 0;
-        return aIsEmpresa - bIsEmpresa; // publico (0) first, empresa (1) last
+        return aIsEmpresa - bIsEmpresa;
       });
 
-    for (const [, channel] of sortedChannels) {
+    for (const [canalNombre, channel] of sortedChannels) {
+      // Determine if this channel is an empresa channel by its name
+      const isEmpresaChannel = canalNombre.includes(':empresa:');
       const state = channel.presenceState() as PresenceState;
       for (const key of Object.keys(state)) {
         const presences = state[key] as PresencePayload[];
@@ -117,22 +148,31 @@ export function usePresenceChannels({
             continue;
           }
 
-          // ── Same-company detection via empresa_id in payload ──────────
-          // Race condition fix: when a user reconnects, the publico channel
-          // may fire 'sync' before the empresa channel has their track().
-          // The publico payload carries empresa_id in payloadBase (line 200).
-          // If it matches our own empresa_id, this user is a same-company
-          // colleague arriving via the publico channel — treat as empresa
-          // to prevent them appearing as "Miembro de otra empresa" ghost.
-          const isSameCompanyViaPublico =
+          // ── Same-company detection (3-layer) ─────────────────────────
+          // Layer 1: Channel name is authoritative — if user appears in
+          //          our empresa channel, they ARE same-company.
+          // Layer 2: Phase 1 pre-scan — empresaUserIds set (deterministic).
+          // Layer 3: Payload empresa_id match (fallback for edge cases).
+          const isSameCompanyByChannel = isEmpresaChannel;
+          const isSameCompanyByPrescan = empresaUserIds.has(presence.user_id);
+          const isSameCompanyByPayload =
             nivelDetalle === 'publico' &&
             !!currentEmpresaId &&
             !!presence.empresa_id &&
             presence.empresa_id === currentEmpresaId;
 
-          const effectiveNivel = isSameCompanyViaPublico ? 'empresa' : nivelDetalle;
+          const isSameCompany =
+            isSameCompanyByChannel || isSameCompanyByPrescan || isSameCompanyByPayload;
+
+          const effectiveNivel = isSameCompany ? 'empresa' : nivelDetalle;
 
           detalleMap.set(presence.user_id, effectiveNivel);
+
+          // Resolve empresa_id: channel-name pre-scan is authoritative
+          const resolvedEmpresaId = isSameCompanyByPrescan || isSameCompanyByChannel
+            ? currentEmpresaId
+            : (presence.empresa_id || undefined);
+
           usuariosMap.set(presence.user_id, {
             id: presence.user_id,
             name:
@@ -149,16 +189,16 @@ export function usePresenceChannels({
               accessory: 'none',
             },
             avatar3DConfig: presence.avatar3DConfig || null,
-            empresa_id: presence.empresa_id || undefined,
+            empresa_id: resolvedEmpresaId,
             departamento_id: presence.departamento_id || undefined,
             x: presence.x || 500,
             y: presence.y || 500,
             direction: presence.direction || 'front',
             isOnline: true,
-            isMicOn: presence.isMicOn || false,
-            isCameraOn: presence.isCameraOn || false,
+            isMicOn: isSameCompany ? (presence.isMicOn || false) : false,
+            isCameraOn: isSameCompany ? (presence.isCameraOn || false) : false,
             isScreenSharing: false,
-            isPrivate: presence.isPrivate ?? effectiveNivel === 'publico',
+            isPrivate: isSameCompany ? false : (presence.isPrivate ?? effectiveNivel === 'publico'),
             status: (presence.status || 'available') as PresenceStatus,
           });
         }
@@ -386,6 +426,31 @@ export function usePresenceChannels({
   );
 
   /**
+   * Force re-track in ALL joined channels, bypassing the throttle.
+   *
+   * Called when empresa_id loads to ensure all payloads carry the correct
+   * empresa_id. Without this, payloads tracked during the initial subscription
+   * (before empresa_id loaded) would have stale data until the next throttled
+   * update (up to 5s later). Also triggers a recalculation to re-read all
+   * channels with the now-correct empresa_id for same-company detection.
+   */
+  const forceRetrackAll = useCallback((): void => {
+    if (!userId) return;
+    lastTrackRef.current = Date.now();
+    presenceChannelsRef.current.forEach(
+      (channel: RealtimeChannel, canalNombre: string) => {
+        if (channel.state === 'joined') {
+          const nivel = canalNombre.includes(':publico') ? 'publico' : 'empresa';
+          trackPresenceEnCanal(channel, nivel);
+        }
+      },
+    );
+    // Force recalculation with updated empresa_id
+    recalcularUsuarios();
+    log.info('Force re-tracked all channels after empresa_id change');
+  }, [userId, trackPresenceEnCanal, recalcularUsuarios]);
+
+  /**
    * Cleanup all presence channels on unmount
    */
   const cleanup = useCallback((): void => {
@@ -403,6 +468,7 @@ export function usePresenceChannels({
   return {
     syncPresenceByChunk,
     updatePresenceInChannels,
+    forceRetrackAll,
     cleanup,
   };
 }
