@@ -23,6 +23,16 @@ import { StableVideo } from './Overlays';
 // ECS imports (PR-6/7/9/10)
 import { avatarStore } from '@/lib/ecs/AvatarECS';
 import { movementSystem, cullingSystem, animationSystem } from '@/lib/ecs/AvatarSystems';
+
+// Shared singleton geometries — prevent geometry leak on re-render (DEBT-004)
+import {
+  hitTestCylinderCurrentUser,
+  hitTestCylinderRemote,
+  statusDotGeometry,
+  crowdMarkerGeometry,
+  teleportCylinderGeometry,
+  teleportRingGeometry,
+} from '../3d/sharedGeometries';
 import { resolveAvatarRenderPolicy } from '@/lib/ecs/avatarRenderPolicy';
 import { AvatarRuntimeScheduler, resolveAvatarRuntimePolicy } from '@/lib/ecs/avatarRuntimeScheduler';
 import { SpatialGrid } from '@/lib/spatial/SpatialGrid';
@@ -209,8 +219,7 @@ export const Avatar: React.FC<AvatarProps> = ({
 
   return (
     <group position={position} onClick={handleClick} onPointerDown={handlePointerDown} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp}>
-      <mesh visible={false}>
-        <cylinderGeometry args={[isCurrentUser ? 0.65 : 0.8, isCurrentUser ? 0.65 : 0.8, isCurrentUser ? 2.6 : 3, 8]} />
+      <mesh visible={false} geometry={isCurrentUser ? hitTestCylinderCurrentUser : hitTestCylinderRemote}>
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
 
@@ -273,8 +282,7 @@ export const Avatar: React.FC<AvatarProps> = ({
             <Text position={[0, 0, 0]} fontSize={0.24} color={isCurrentUser ? '#60a5fa' : '#ffffff'} anchorX="center" anchorY="middle" outlineWidth={0.015} outlineColor="#000000" renderOrder={10} depthOffset={-1} onClick={(e) => { e.stopPropagation(); !isCurrentUser && setShowStatusLabel(true); }}>
               {name}
             </Text>
-            <mesh position={[name.length * 0.08 + 0.05, 0, 0]}>
-              <sphereGeometry args={[0.06, 16, 16]} />
+            <mesh position={[name.length * 0.08 + 0.05, 0, 0]} geometry={statusDotGeometry}>
               <meshBasicMaterial color={statusColors[status]} />
             </mesh>
           </group>
@@ -324,8 +332,7 @@ const CrowdAvatarMarker: React.FC<{
   status: PresenceStatus;
   onClick?: () => void;
 }> = ({ status, onClick }) => (
-  <mesh onClick={(e) => { e.stopPropagation(); onClick?.(); }}>
-    <sphereGeometry args={[0.28, 10, 10]} />
+  <mesh onClick={(e) => { e.stopPropagation(); onClick?.(); }} geometry={crowdMarkerGeometry}>
     <meshBasicMaterial color={statusColors[status]} toneMapped={false} />
   </mesh>
 );
@@ -921,8 +928,7 @@ export const TeleportEffect: React.FC<{ position: [number, number, number]; phas
 
   return (
     <group position={position}>
-      <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.1, 0]}>
-        <ringGeometry args={[0.5, 1.2, 32]} />
+      <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.1, 0]} geometry={teleportRingGeometry}>
         <meshBasicMaterial ref={materialRef} color="#818cf8" transparent opacity={0.8} side={THREE.DoubleSide} />
       </mesh>
       <pointLight color="#818cf8" intensity={phase === 'out' ? 5 : 8} distance={6} />

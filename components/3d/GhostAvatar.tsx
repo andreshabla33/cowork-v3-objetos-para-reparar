@@ -1,9 +1,10 @@
 import React from 'react';
 import { Text } from '@react-three/drei';
-import * as THREE from 'three';
+import type { Vector3 } from 'three';
+import { ghostHeadGeometry, ghostBodyGeometry, ghostShadowGeometry } from './sharedGeometries';
 
 interface GhostAvatarProps {
-  position?: THREE.Vector3 | [number, number, number];
+  position?: Vector3 | [number, number, number];
   escala?: number;
   opacidad?: number;
   mostrarEtiqueta?: boolean;
@@ -19,16 +20,13 @@ export const GhostAvatar: React.FC<GhostAvatarProps> = ({
 }) => {
   return (
     <group position={position} scale={escala}>
-      <mesh position={[0, 1.1, 0]} castShadow>
-        <sphereGeometry args={[0.45, 18, 18]} />
+      <mesh position={[0, 1.1, 0]} castShadow geometry={ghostHeadGeometry}>
         <meshStandardMaterial color="#94a3b8" transparent opacity={opacidad} />
       </mesh>
-      <mesh position={[0, 0.45, 0]} castShadow>
-        <cylinderGeometry args={[0.35, 0.5, 0.9, 16]} />
+      <mesh position={[0, 0.45, 0]} castShadow geometry={ghostBodyGeometry}>
         <meshStandardMaterial color="#94a3b8" transparent opacity={opacidad} />
       </mesh>
-      <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.7, 20]} />
+      <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} geometry={ghostShadowGeometry}>
         <meshStandardMaterial color="#94a3b8" transparent opacity={opacidad * 0.45} />
       </mesh>
       {mostrarEtiqueta && (

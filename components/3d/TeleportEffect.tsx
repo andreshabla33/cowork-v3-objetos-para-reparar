@@ -1,7 +1,8 @@
 'use client';
 import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
-import * as THREE from 'three';
+import type { Mesh, MeshBasicMaterial } from 'three';
+import { teleportCylinderGeometry } from './sharedGeometries';
 
 interface TeleportEffectProps {
   position: [number, number, number];
@@ -14,8 +15,8 @@ interface TeleportEffectProps {
  * Fase "in": partículas bajan y aparecen.
  */
 export const TeleportEffect: React.FC<TeleportEffectProps> = ({ position, phase }) => {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const materialRef = useRef<THREE.MeshBasicMaterial>(null);
+  const meshRef = useRef<Mesh>(null);
+  const materialRef = useRef<MeshBasicMaterial>(null);
   const startTime = useMemo(() => performance.now(), []);
 
   useFrame(() => {
@@ -36,8 +37,7 @@ export const TeleportEffect: React.FC<TeleportEffectProps> = ({ position, phase 
   });
 
   return (
-    <mesh ref={meshRef} position={position}>
-      <cylinderGeometry args={[0.5, 0.5, 2, 8]} />
+    <mesh ref={meshRef} position={position} geometry={teleportCylinderGeometry}>
       <meshBasicMaterial
         ref={materialRef}
         color={phase === 'out' ? '#8b5cf6' : '#6366f1'}
