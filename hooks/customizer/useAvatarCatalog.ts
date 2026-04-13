@@ -118,7 +118,7 @@ export interface UseAvatarCatalogReturn extends AvatarCatalogState, UseAvatarCat
  * Carga catálogos en paralelo, maneja selecciones, captura de thumbnails y errores de modelos.
  */
 export const useAvatarCatalog = (): UseAvatarCatalogReturn => {
-  const { currentUser, session } = useStore();
+  const { currentUser, session, setAvatar3DConfig } = useStore();
 
   // Estado
   const [availableAvatars, setAvailableAvatars] = useState<AvatarModelData[]>([]);
@@ -321,7 +321,18 @@ export const useAvatarCatalog = (): UseAvatarCatalogReturn => {
         if (success) {
           setEquippedAvatarId(avatarId);
           setAvatarSaved(true);
-          log.info('Avatar equipado cambiado exitosamente', { avatarId });
+
+          // 3. Sync avatar3DConfig al store global para que la escena 3D
+          //    use el nuevo avatar inmediatamente (sin requerir re-bootstrap).
+          const cachedConfig = previewAvatarConfigCache.has(avatarId)
+            ? await previewAvatarConfigCache.get(avatarId)
+            : null;
+          if (cachedConfig) {
+            setAvatar3DConfig(cachedConfig);
+            log.info('Avatar equipado cambiado exitosamente — store synced', { avatarId });
+          } else {
+            log.info('Avatar equipado cambiado exitosamente', { avatarId });
+          }
 
           // Reset después de 2 segundos
           setTimeout(() => setAvatarSaved(false), 2000);

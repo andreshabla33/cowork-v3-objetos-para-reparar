@@ -171,6 +171,7 @@ export function createInstancedSkinningMaterial(
   const texHeight = numFrames;
 
   return new THREE.ShaderMaterial({
+    name: 'InstancedSkinning',
     vertexShader: instancedSkinningVertexShader,
     fragmentShader: instancedSkinningFragmentShader,
     uniforms: THREE.UniformsUtils.merge([
