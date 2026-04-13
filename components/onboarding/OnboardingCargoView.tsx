@@ -15,6 +15,7 @@ import React, { useEffect, useState } from 'react';
 import { useStore } from '../../store/useStore';
 import { logger } from '../../lib/logger';
 import { CargoSelector } from './CargoSelector';
+import { OnboardingAvatarStep } from './OnboardingAvatarStep';
 import type { CargoLaboral, CargoDB } from './CargoSelector';
 import type { Departamento, OnboardingCargoState } from '../../src/core/domain/entities/onboarding';
 
@@ -117,7 +118,8 @@ export const OnboardingCargoView: React.FC = () => {
         await fetchWorkspaces();
         setPendingOnboardingEspacioId(null);
         setAuthFeedback({ type: 'success', message: '¡Perfil configurado!' });
-        setView('dashboard');
+        // Redirigir al paso de avatar en vez de dashboard directo
+        setState((prev) => ({ ...prev, paso: 'avatar' }));
       } catch (err: unknown) {
         log.error('Failed to save role', { error: err instanceof Error ? err.message : String(err) });
         setState((prev) => ({ ...prev, error: 'Error al guardar' }));
@@ -144,7 +146,8 @@ export const OnboardingCargoView: React.FC = () => {
       await fetchWorkspaces();
       setPendingOnboardingEspacioId(null);
       setAuthFeedback({ type: 'success', message: `¡Perfil configurado! ${deptNombre}` });
-      setView('dashboard');
+      // Redirigir al paso de avatar en vez de dashboard directo
+      setState((prev) => ({ ...prev, paso: 'avatar' }));
     } catch (err: unknown) {
       log.error('Failed to save department', { error: err instanceof Error ? err.message : String(err) });
       setState((prev) => ({ ...prev, error: 'Error al guardar' }));
@@ -268,6 +271,16 @@ export const OnboardingCargoView: React.FC = () => {
     );
   }
 
+  // ─── Step 2.5: Avatar selection (post-cargo/departamento) ─────────────
+  if (state.paso === 'avatar') {
+    return (
+      <OnboardingAvatarStep
+        onComplete={() => setView('dashboard')}
+        onSkip={() => setView('dashboard')}
+      />
+    );
+  }
+
   // ─── Step 1: Role selection ───────────────────────────────────────────
   if (state.paso === 'cargo') {
     return (
@@ -298,7 +311,7 @@ export const OnboardingCargoView: React.FC = () => {
             ← Volver a selección de cargo
           </button>
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-violet-600/20 to-fuchsia-600/20 border border-violet-500/30 rounded-full text-violet-400 text-[9px] font-bold uppercase tracking-wider mb-3">
-            Paso 2 de 2
+            Paso 2 de 3
           </div>
           <h1 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-1">¿A qué departamento perteneces?</h1>
           <p className="text-zinc-500 text-xs lg:text-[10px]">

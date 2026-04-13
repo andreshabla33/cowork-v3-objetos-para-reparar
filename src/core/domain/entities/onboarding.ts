@@ -44,7 +44,7 @@ export interface OnboardingCargoState {
     analisis_disponibles: string[];
     solo_admin: boolean;
   }>;
-  paso: 'bienvenida' | 'cargo' | 'departamento';
+  paso: 'bienvenida' | 'cargo' | 'departamento' | 'avatar';
   cargoSeleccionado: string | null;
   rolSistema: string;
   invitadorNombre: string;
