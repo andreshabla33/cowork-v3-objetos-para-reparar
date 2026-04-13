@@ -46,48 +46,63 @@ import type {
 
 // ─── Shader sources ───────────────────────────────────────────────────────────
 
+/**
+ * Vertex shader for GPU instanced skinning via bone matrix DataTexture.
+ *
+ * Ref: Three.js ShaderMaterial — custom shaders MUST use `#include <common>`
+ * to receive built-in uniforms (projectionMatrix, modelViewMatrix) and
+ * attributes (position, normal, uv, skinIndex, skinWeight).
+ * https://threejs.org/docs/pages/ShaderMaterial.html
+ *
+ * Ref: Three.js skinning shader chunks — `skinIndex` and `skinWeight` are
+ * injected by `#include <common>` when the geometry has skinning attributes.
+ * Using raw `attribute vec4 skinIndex` fails on WebGL2/GLSL300 because
+ * Three.js auto-upgrades to `in` keywords and provides them via chunks.
+ *
+ * Pattern aligned with lib/gpu/instancedSkinningShader.ts (PR-8/9) which
+ * works correctly in production.
+ */
 const VERTEX_SHADER = /* glsl */ `
-  // Bone matrix DataTexture uniforms
-  uniform sampler2D boneMatrixTexture;
-  uniform int numBones;
+precision highp float;
 
-  // Reads a mat4 from the DataTexture at (row=instanceID, column=boneIndex)
-  mat4 getBoneMatrix(int boneIndex) {
-    int instanceID = gl_InstanceID;
-    // Each bone occupies 4 consecutive texels (one per column of the mat4)
-    int texelX = boneIndex * 4;
-    int texelY = instanceID;
-    ivec2 size = textureSize(boneMatrixTexture, 0);
-    vec2 uvBase = vec2(float(texelX) / float(size.x), float(texelY) / float(size.y));
-    float du = 1.0 / float(size.x);
+#include <common>
 
-    vec4 c0 = texture2D(boneMatrixTexture, uvBase + vec2(0.0,  0.0));
-    vec4 c1 = texture2D(boneMatrixTexture, uvBase + vec2(du,   0.0));
-    vec4 c2 = texture2D(boneMatrixTexture, uvBase + vec2(du*2.0, 0.0));
-    vec4 c3 = texture2D(boneMatrixTexture, uvBase + vec2(du*3.0, 0.0));
+// Bone matrix DataTexture uniforms
+uniform sampler2D boneMatrixTexture;
+uniform float numBones;
+uniform vec2 boneTexSize;
 
-    return mat4(c0, c1, c2, c3);
-  }
+// Reads a mat4 from the DataTexture at (row=instanceID, column=boneIndex)
+mat4 getBoneMatrix(float boneIndex) {
+  int instanceID = gl_InstanceID;
+  float pixelX = boneIndex * 4.0;
+  float texelSize = 1.0 / boneTexSize.x;
+  float texelSizeY = 1.0 / boneTexSize.y;
+  float y = (float(instanceID) + 0.5) * texelSizeY;
 
-  // Standard Three.js skinning attributes (provided by SkinnedMesh geometry)
-  attribute vec4 skinIndex;
-  attribute vec4 skinWeight;
+  vec4 c0 = texture2D(boneMatrixTexture, vec2((pixelX + 0.5) * texelSize, y));
+  vec4 c1 = texture2D(boneMatrixTexture, vec2((pixelX + 1.5) * texelSize, y));
+  vec4 c2 = texture2D(boneMatrixTexture, vec2((pixelX + 2.5) * texelSize, y));
+  vec4 c3 = texture2D(boneMatrixTexture, vec2((pixelX + 3.5) * texelSize, y));
 
-  void main() {
-    // Build skinned position
-    mat4 boneMatX = getBoneMatrix(int(skinIndex.x));
-    mat4 boneMatY = getBoneMatrix(int(skinIndex.y));
-    mat4 boneMatZ = getBoneMatrix(int(skinIndex.z));
-    mat4 boneMatW = getBoneMatrix(int(skinIndex.w));
+  return mat4(c0, c1, c2, c3);
+}
 
-    vec4 skinnedPos =
-      boneMatX * vec4(position, 1.0) * skinWeight.x +
-      boneMatY * vec4(position, 1.0) * skinWeight.y +
-      boneMatZ * vec4(position, 1.0) * skinWeight.z +
-      boneMatW * vec4(position, 1.0) * skinWeight.w;
+void main() {
+  // Build skinned position from 4 bone influences
+  mat4 boneMatX = getBoneMatrix(skinIndex.x);
+  mat4 boneMatY = getBoneMatrix(skinIndex.y);
+  mat4 boneMatZ = getBoneMatrix(skinIndex.z);
+  mat4 boneMatW = getBoneMatrix(skinIndex.w);
 
-    gl_Position = projectionMatrix * modelViewMatrix * skinnedPos;
-  }
+  vec4 skinnedPos =
+    boneMatX * vec4(position, 1.0) * skinWeight.x +
+    boneMatY * vec4(position, 1.0) * skinWeight.y +
+    boneMatZ * vec4(position, 1.0) * skinWeight.z +
+    boneMatW * vec4(position, 1.0) * skinWeight.w;
+
+  gl_Position = projectionMatrix * modelViewMatrix * skinnedPos;
+}
 `;
 
 const FRAGMENT_SHADER = /* glsl */ `
@@ -147,12 +162,15 @@ export class GPUSkinnedInstanceAdapter implements IGPUSkinnedInstanceService {
     // Create the ShaderMaterial with bone matrix texture uniform
     // Note: `skinning` property was removed from Material in r137 (PR #21788).
     // Skinning is handled manually in our custom vertex shader via DataTexture.
+    // Ref: Three.js ShaderMaterial docs — uniforms must match GLSL uniform names.
     this._material = new THREE.ShaderMaterial({
+      name: 'GPUSkinnedInstance',
       vertexShader: VERTEX_SHADER,
       fragmentShader: FRAGMENT_SHADER,
       uniforms: {
         boneMatrixTexture: { value: this._texture },
         numBones: { value: boneCount },
+        boneTexSize: { value: new THREE.Vector2(this._textureWidth, maxAvatars) },
         color: { value: new THREE.Color(0xffffff) },
       },
     });

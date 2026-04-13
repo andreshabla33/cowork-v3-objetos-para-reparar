@@ -222,6 +222,22 @@ export function usePresenceChannels({
     if (!activeWorkspaceId || !userId) return;
 
     const usuario = userRef.current;
+
+    // ── Race condition guard ────────────────────────────────────────────────
+    // empresa_id loads asynchronously via CargarDatosEmpresaUseCase.
+    // If we subscribe to publico channels BEFORE empresa_id arrives, the user
+    // tracks with payloadPublico (name: "Miembro de otra empresa") and same-
+    // company users appear as cross-company ghosts until the empresa channel
+    // syncs — which may never override the publico data due to deduplication
+    // order. Deferring subscription until empresa_id is loaded ensures we
+    // always subscribe to the empresa channel first.
+    // The WorkspaceLayout useEffect has currentUser.empresa_id as dependency,
+    // so this callback will re-fire once empresa_id loads.
+    if (!usuario.empresa_id) {
+      log.debug('Deferring syncPresenceByChunk — empresa_id not yet loaded');
+      return;
+    }
+
     const nearbyCount = prevOnlineUsersRef.current.size;
 
     // Application-layer policy decides radius and throttling
@@ -235,7 +251,7 @@ export function usePresenceChannels({
     if (decision.shouldSkip) return;
     lastSyncRef.current = Date.now();
 
-    const empresaId = usuario.empresa_id ?? null;
+    const empresaId = usuario.empresa_id;
     const canalesDeseados = new Map<string, 'publico' | 'empresa'>();
 
     for (const clave of decision.desiredChunks) {
@@ -243,12 +259,10 @@ export function usePresenceChannels({
         `workspace:${activeWorkspaceId}:${clave}:publico`,
         'publico',
       );
-      if (empresaId) {
-        canalesDeseados.set(
-          `workspace:${activeWorkspaceId}:${clave}:empresa:${empresaId}`,
-          'empresa',
-        );
-      }
+      canalesDeseados.set(
+        `workspace:${activeWorkspaceId}:${clave}:empresa:${empresaId}`,
+        'empresa',
+      );
     }
 
     // Subscribe to new channels
