@@ -4,8 +4,7 @@
  * Clean Architecture: Domain layer defines the contract.
  */
 
-import type { Departamento, OnboardingInvitadorData } from '../entities/onboarding';
-import type { CargoDB } from '../../../components/onboarding/CargoSelector';
+import type { Departamento, OnboardingInvitadorData, CargoDB } from '../entities/onboarding';
 
 /** Raw membership data returned when verifying onboarding status */
 export interface MiembroOnboarding {

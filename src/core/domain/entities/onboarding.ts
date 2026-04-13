@@ -22,6 +22,25 @@ export interface OnboardingInvitadorData {
   nombre: string;
 }
 
+/**
+ * Cargo (role) record from the `cargos` DB table.
+ * Previously defined in CargoSelector.tsx (Presentation layer).
+ * Moved to Domain to fix dependency inversion violation in IOnboardingRepository.
+ */
+export interface CargoDB {
+  id: string;
+  nombre: string;
+  clave: string;
+  descripcion: string | null;
+  categoria: string;
+  icono: string;
+  orden: number;
+  activo: boolean;
+  tiene_analisis_avanzado: boolean;
+  analisis_disponibles: string[];
+  solo_admin: boolean;
+}
+
 /** Full state for the onboarding flow component */
 export interface OnboardingCargoState {
   isLoading: boolean;
@@ -31,19 +50,7 @@ export interface OnboardingCargoState {
   cargoSugerido: string | null;
   miembroId: string | null;
   departamentos: Departamento[];
-  cargosDB: Array<{
-    id: string;
-    nombre: string;
-    clave: string;
-    descripcion: string;
-    categoria: string;
-    icono: string;
-    orden: number;
-    activo: boolean;
-    tiene_analisis_avanzado: boolean;
-    analisis_disponibles: string[];
-    solo_admin: boolean;
-  }>;
+  cargosDB: CargoDB[];
   paso: 'bienvenida' | 'cargo' | 'departamento' | 'avatar';
   cargoSeleccionado: string | null;
   rolSistema: string;

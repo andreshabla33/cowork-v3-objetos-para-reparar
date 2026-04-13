@@ -47,20 +47,9 @@ export type CargoInfo = {
   soloAdmin?: boolean;
 };
 
-// Cargo desde BD
-export interface CargoDB {
-  id: string;
-  nombre: string;
-  clave: string;
-  descripcion: string | null;
-  categoria: string;
-  icono: string;
-  orden: number;
-  activo: boolean;
-  tiene_analisis_avanzado: boolean;
-  analisis_disponibles: string[];
-  solo_admin: boolean;
-}
+// Cargo desde BD — tipo canónico en Domain, importado + re-exportado para backward compat
+import type { CargoDB } from '../../src/core/domain/entities/onboarding';
+export type { CargoDB };
 
 // Mapeo de nombre de icono (BD) a componente Lucide
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {

@@ -12,8 +12,7 @@ import type {
   IOnboardingRepository,
   MiembroOnboarding,
 } from '../../domain/ports/IOnboardingRepository';
-import type { Departamento, MiembroEspacioData, OnboardingInvitadorData } from '../../domain/entities/onboarding';
-import type { CargoDB } from '../../../../components/onboarding/CargoSelector';
+import type { Departamento, MiembroEspacioData, OnboardingInvitadorData, CargoDB } from '../../domain/entities/onboarding';
 
 const log = logger.child('onboarding-repo');
 
