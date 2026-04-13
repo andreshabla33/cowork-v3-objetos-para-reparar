@@ -19,6 +19,42 @@
 
 import * as THREE from 'three';
 
+// ─── Fallback Texture ──────────────────────────────────────────────────────
+//
+// new THREE.Texture() has image=null. When THREE.UniformsUtils.merge() clones
+// it, the clone gets needsUpdate=true but image stays null. Three.js
+// WebGLTextures.setTexture2D then:
+//   1. Detects image === null → emits "Texture marked for update but no
+//      image data found."
+//   2. Returns WITHOUT updating textureProperties.__version
+//   3. Next frame the version check fails again → warning repeats EVERY frame
+//
+// Additionally, the fragment shader samples texture2D(map, vUv) on the null
+// texture, which returns (0,0,0,0) on most GPUs → the mesh is fully
+// transparent/invisible. On some GPUs, uninitialised texture memory appears
+// as a green/magenta rectangle.
+//
+// Fix: use a 1×1 opaque white DataTexture with real pixel data.
+// Ref: three.js/src/renderers/webgl/WebGLTextures.js → setTexture2D
+// Ref: https://github.com/mrdoob/three.js/issues/7299
+// ────────────────────────────────────────────────────────────────────────────
+const _fallbackWhitePixel = new Uint8Array([255, 255, 255, 255]);
+
+/**
+ * Singleton 1×1 white DataTexture used as fallback when a model has no
+ * diffuse map. Provides valid image data so Three.js can upload to GPU
+ * without warnings, and the fragment shader reads opaque white instead of
+ * transparent black.
+ */
+const FALLBACK_WHITE_MAP = new THREE.DataTexture(
+  _fallbackWhitePixel,
+  1,
+  1,
+  THREE.RGBAFormat,
+  THREE.UnsignedByteType,
+);
+FALLBACK_WHITE_MAP.needsUpdate = true;
+
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
 export interface InstancedSkinningUniforms {
@@ -194,7 +230,7 @@ export function createInstancedSkinningMaterial(
         numBones: { value: numBones },
         numFrames: { value: numFrames },
         animTexSize: { value: new THREE.Vector2(texWidth, texHeight) },
-        map: { value: diffuseMap || new THREE.Texture() },
+        map: { value: diffuseMap ?? FALLBACK_WHITE_MAP },
         diffuse: { value: diffuseColor || new THREE.Color(1, 1, 1) },
         opacity: { value: 1.0 },
       },
