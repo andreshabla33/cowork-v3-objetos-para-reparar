@@ -67,6 +67,11 @@ export function usePresenceChannels({
   onOnlineUsersChange,
 }: UsePresenceChannelsProps): UsePresenceChannelsReturn {
   const presenceChannelsRef = useRef<Map<string, RealtimeChannel>>(new Map());
+  /** Global empresa discovery channel — ensures same-company users discover
+   *  each other regardless of chunk distance. Without this, users in non-
+   *  overlapping chunks never enter onlineUsers and the "always include
+   *  same-company" filter in useChunkSystem has nothing to include. */
+  const globalChannelRef = useRef<RealtimeChannel | null>(null);
   const prevOnlineUsersRef = useRef<Set<string>>(new Set());
   const lastNotificationRef = useRef<Map<string, number>>(new Map());
   const userRef = useRef(currentUser);
@@ -98,6 +103,52 @@ export function usePresenceChannels({
     const usuariosMap = new Map<string, User>();
     const detalleMap = new Map<string, 'empresa' | 'publico'>();
     const currentEmpresaId = userRef.current.empresa_id;
+
+    // ── Phase 0: Read global empresa discovery channel ──────────────────
+    // The global channel ensures ALL same-company users are discoverable
+    // regardless of chunk distance. Without this, users in non-overlapping
+    // chunks never enter onlineUsers. Ref: Gather/Kumospace use workspace-
+    // wide presence for discovery + spatial channels for detailed data.
+    if (globalChannelRef.current && currentEmpresaId) {
+      const globalState = globalChannelRef.current.presenceState() as PresenceState;
+      for (const key of Object.keys(globalState)) {
+        const presences = globalState[key] as PresencePayload[];
+        for (const presence of presences) {
+          if (!presence.user_id || presence.user_id === userId) continue;
+          // Seed the map with minimal data from global channel.
+          // Chunk-based channels will OVERWRITE this with richer data
+          // if the user is also within chunk range (empresa always wins).
+          if (!usuariosMap.has(presence.user_id)) {
+            usuariosMap.set(presence.user_id, {
+              id: presence.user_id,
+              name: presence.name || 'Usuario',
+              role: (presence.role || 'miembro') as Role,
+              avatar: presence.profilePhoto || '',
+              profilePhoto: presence.profilePhoto || '',
+              avatarConfig: presence.avatarConfig || {
+                skinColor: '#fcd34d',
+                clothingColor: '#6366f1',
+                hairColor: '#4b2c20',
+                accessory: 'none',
+              },
+              avatar3DConfig: presence.avatar3DConfig || null,
+              empresa_id: currentEmpresaId,
+              departamento_id: presence.departamento_id || undefined,
+              x: presence.x || 500,
+              y: presence.y || 500,
+              direction: presence.direction || 'front',
+              isOnline: true,
+              isMicOn: presence.isMicOn || false,
+              isCameraOn: presence.isCameraOn || false,
+              isScreenSharing: false,
+              isPrivate: false,
+              status: (presence.status || 'available') as PresenceStatus,
+            });
+            detalleMap.set(presence.user_id, 'empresa');
+          }
+        }
+      }
+    }
 
     // ── Phase 1: Collect empresa user IDs from channel names ────────────
     // The channel name is AUTHORITATIVE for empresa membership:
@@ -219,7 +270,17 @@ export function usePresenceChannels({
     });
 
     prevOnlineUsersRef.current = nextIds;
-    onOnlineUsersChange(Array.from(usuariosMap.values()));
+    const usersArray = Array.from(usuariosMap.values());
+    if (import.meta.env.DEV) {
+      log.debug('recalcularUsuarios result', {
+        totalUsers: usersArray.length,
+        userIds: usersArray.map(u => u.id.slice(0, 8)),
+        chunkChannels: presenceChannelsRef.current.size,
+        hasGlobalChannel: !!globalChannelRef.current,
+        currentEmpresaId: currentEmpresaId?.slice(0, 8) ?? 'null',
+      });
+    }
+    onOnlineUsersChange(usersArray);
   }, [userId, onOnlineUsersChange]);
 
   /**
@@ -346,6 +407,36 @@ export function usePresenceChannels({
     lastSyncRef.current = Date.now();
 
     const empresaId = usuario.empresa_id;
+
+    // ── Global empresa discovery channel ───────────────────────────────
+    // Subscribe once per workspace+empresa — ensures same-company users
+    // discover each other regardless of chunk position. This is the
+    // equivalent of Gather's workspace-wide presence layer.
+    // Ref: LiveKit docs "Connecting to LiveKit" — after connection,
+    //      participants can "exchange data with other participants"
+    //      The discovery channel fills the same role for Supabase Presence.
+    const globalChannelName = `workspace:${activeWorkspaceId}:global:empresa:${empresaId}`;
+    if (!globalChannelRef.current) {
+      const channel = supabase.channel(globalChannelName, {
+        config: { presence: { key: userId } },
+      });
+
+      channel
+        .on('presence', { event: 'sync' }, () => {
+          recalcularUsuarios();
+        })
+        .subscribe(async (status: string) => {
+          if (status === 'SUBSCRIBED') {
+            await trackPresenceEnCanal(channel, 'empresa');
+            log.info('Global empresa discovery channel subscribed', {
+              channelName: globalChannelName,
+            });
+          }
+        });
+
+      globalChannelRef.current = channel;
+    }
+
     const canalesDeseados = new Map<string, 'publico' | 'empresa'>();
 
     for (const clave of decision.desiredChunks) {
@@ -413,6 +504,7 @@ export function usePresenceChannels({
       if (!subscriptionPolicy.shouldTrack(lastTrackRef.current)) return;
       lastTrackRef.current = Date.now();
 
+      // Update chunk-based channels
       presenceChannelsRef.current.forEach(
         (channel: RealtimeChannel, canalNombre: string) => {
           if (channel.state === 'joined') {
@@ -421,6 +513,10 @@ export function usePresenceChannels({
           }
         },
       );
+      // Update global discovery channel
+      if (globalChannelRef.current?.state === 'joined') {
+        trackPresenceEnCanal(globalChannelRef.current, 'empresa');
+      }
     },
     [userId, trackPresenceEnCanal, subscriptionPolicy],
   );
@@ -437,6 +533,7 @@ export function usePresenceChannels({
   const forceRetrackAll = useCallback((): void => {
     if (!userId) return;
     lastTrackRef.current = Date.now();
+    // Re-track chunk-based channels
     presenceChannelsRef.current.forEach(
       (channel: RealtimeChannel, canalNombre: string) => {
         if (channel.state === 'joined') {
@@ -445,6 +542,10 @@ export function usePresenceChannels({
         }
       },
     );
+    // Re-track global discovery channel
+    if (globalChannelRef.current?.state === 'joined') {
+      trackPresenceEnCanal(globalChannelRef.current, 'empresa');
+    }
     // Force recalculation with updated empresa_id
     recalcularUsuarios();
     log.info('Force re-tracked all channels after empresa_id change');
@@ -458,10 +559,16 @@ export function usePresenceChannels({
       clearTimeout(recalcTimerRef.current);
       recalcTimerRef.current = null;
     }
+    // Clean up chunk-based channels
     presenceChannelsRef.current.forEach((channel: RealtimeChannel) => {
       supabase.removeChannel(channel);
     });
     presenceChannelsRef.current.clear();
+    // Clean up global discovery channel
+    if (globalChannelRef.current) {
+      supabase.removeChannel(globalChannelRef.current);
+      globalChannelRef.current = null;
+    }
     prevOnlineUsersRef.current = new Set();
   }, []);
 

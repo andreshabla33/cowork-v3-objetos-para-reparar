@@ -222,7 +222,15 @@ export function useBroadcast(params: {
     lastMovementSentRef.current = now;
     const currentUserId = session?.user?.id;
     if (!currentUserId) return;
+    // Always update local ECS state regardless of LiveKit connection
     actualizarEstadoUsuarioEcs(ecsStateRef.current, currentUserId, x / 16, y / 16, direction, isMoving);
+    // Skip LiveKit publish if room not connected — avoids 60fps warn spam.
+    // Ref: LiveKit JS SDK docs — Room.state must be 'connected' before
+    //      publishData(). The guard in RealtimeDataPublisher catches this too,
+    //      but checking here avoids serialization overhead + console pollution.
+    //      Per R3F pitfalls: "useFrame should not trigger side-effects" —
+    //      the less work per frame, the better.
+    if (!livekitConnected) return;
     if (enviarDataLivekit(createMovementDataPacket({
       id: currentUserId,
       x,
@@ -233,7 +241,7 @@ export function useBroadcast(params: {
       chunk: obtenerChunk(x, y).clave,
       timestamp: Date.now(),
     }), reliable)) return;
-  }, [enviarDataLivekit, session?.user?.id]);
+  }, [enviarDataLivekit, session?.user?.id, livekitConnected]);
 
   // ========== bloquearConversacion ==========
   const bloquearConversacion = useCallback(() => {
