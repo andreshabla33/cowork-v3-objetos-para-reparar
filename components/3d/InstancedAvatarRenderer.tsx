@@ -114,7 +114,7 @@ export const InstancedAvatarRenderer: React.FC<InstancedAvatarRendererProps> = (
       return null;
     }
 
-    return getOrBakeAnimations(modelUrl, skinnedMesh, animations, 30);
+    return getOrBakeAnimations(modelUrl, skinnedMesh, animations, 30, scene);
   }, [scene, animations, modelUrl]);
 
   // ── Report unsupported model (no embedded animations) to parent ──

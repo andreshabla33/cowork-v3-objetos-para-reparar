@@ -63,7 +63,23 @@ export interface BakedAnimationSet {
 export function bakeAnimationClip(
   mesh: THREE.SkinnedMesh,
   clip: THREE.AnimationClip,
-  fps: number = 30
+  fps: number = 30,
+  /**
+   * Root of the GLTF scene graph. AnimationMixer MUST be created with the
+   * scene root (not the SkinnedMesh) because in most GLTF models, bones
+   * are siblings of the SkinnedMesh under the Armature node — not children.
+   *
+   * If mixer root = SkinnedMesh → mixer can't find bones → animation
+   * doesn't play → all frames baked as bind pose → T-POSE.
+   *
+   * If mixer root = scene (or Armature) → mixer finds bones as descendants
+   * → animation plays correctly → frames baked with actual poses.
+   *
+   * Ref: Three.js AnimationMixer traverses root.getObjectByName() to resolve
+   *      PropertyBinding targets. Bones must be descendants of root.
+   * Ref: GLTF spec — skeleton bones are often siblings of the mesh node.
+   */
+  sceneRoot?: THREE.Object3D,
 ): BakedAnimation {
   const skeleton = mesh.skeleton;
   const numBones = skeleton.bones.length;
@@ -75,8 +91,13 @@ export function bakeAnimationClip(
   const height = numFrames;
   const data = new Float32Array(width * height * 4); // RGBA
 
-  // Crear mixer temporal para samplear
-  const mixer = new THREE.AnimationMixer(mesh);
+  // Crear mixer temporal para samplear.
+  // CRITICAL: Use sceneRoot (GLTF scene) as mixer root, not mesh.
+  // Most GLTF skeletons have bones as siblings of the SkinnedMesh,
+  // not children. The mixer resolves clip targets by traversing
+  // descendants of its root — wrong root = bones not found = T-pose.
+  const mixerRoot = sceneRoot || mesh.parent || mesh;
+  const mixer = new THREE.AnimationMixer(mixerRoot);
   const action = mixer.clipAction(clip);
   action.play();
 
@@ -164,12 +185,18 @@ export function bakeAnimationClip(
 export function bakeAllAnimations(
   skinnedMesh: THREE.SkinnedMesh,
   clips: THREE.AnimationClip[],
-  fps: number = 30
+  fps: number = 30,
+  /**
+   * Root of the GLTF scene graph — forwarded to bakeAnimationClip.
+   * Required so AnimationMixer can find bones as descendants.
+   * See bakeAnimationClip JSDoc for full explanation.
+   */
+  sceneRoot?: THREE.Object3D,
 ): BakedAnimationSet {
   const animations = new Map<string, BakedAnimation>();
 
   for (const clip of clips) {
-    const baked = bakeAnimationClip(skinnedMesh, clip, fps);
+    const baked = bakeAnimationClip(skinnedMesh, clip, fps, sceneRoot);
     animations.set(clip.name, baked);
   }
 
@@ -193,13 +220,20 @@ export function getOrBakeAnimations(
   modelUrl: string,
   skinnedMesh: THREE.SkinnedMesh,
   clips: THREE.AnimationClip[],
-  fps: number = 30
+  fps: number = 30,
+  /**
+   * Root of the GLTF scene graph — forwarded through the bake chain.
+   * Required so AnimationMixer can resolve bone targets correctly.
+   * Without this, bones (siblings of SkinnedMesh under Armature)
+   * are not descendants of mixer root → bind pose → T-POSE.
+   */
+  sceneRoot?: THREE.Object3D,
 ): BakedAnimationSet {
   if (bakedAnimationCache.has(modelUrl)) {
     return bakedAnimationCache.get(modelUrl)!;
   }
 
-  const bakedSet = bakeAllAnimations(skinnedMesh, clips, fps);
+  const bakedSet = bakeAllAnimations(skinnedMesh, clips, fps, sceneRoot);
   bakedAnimationCache.set(modelUrl, bakedSet);
   return bakedSet;
 }
