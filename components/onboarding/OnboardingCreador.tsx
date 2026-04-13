@@ -65,9 +65,28 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
 
   useEffect(() => {
     const verificarRol = async () => {
+      // Guard 1: Si hay un token de invitación pendiente en sessionStorage,
+      // este usuario llegó por invitación pero perdió el token en la URL.
+      // Redirigir al flujo de invitación para que lo procese correctamente.
+      const pendingToken = sessionStorage.getItem('pendingInvitationToken');
+      if (pendingToken) {
+        setView('invitation');
+        return;
+      }
+
+      // Guard 2: Si hay pendingOnboardingEspacioId en el store, el usuario
+      // ya aceptó una invitación y debe ir al onboarding de miembro, no de creador.
+      const pendingEspacioId = useStore.getState().pendingOnboardingEspacioId;
+      if (pendingEspacioId) {
+        setView('onboarding');
+        return;
+      }
+
+      // Guard 3: Verificar rol en la membresía más reciente.
+      // Si no es admin/super_admin, redirigir al onboarding de miembro.
       const { data: miembro } = await supabase
         .from('miembros_espacio')
-        .select('rol')
+        .select('rol, espacio_id')
         .eq('usuario_id', userId)
         .eq('aceptado', true)
         .order('aceptado_en', { ascending: false, nullsFirst: false })
@@ -75,6 +94,8 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
         .maybeSingle();
 
       if (miembro && miembro.rol !== 'admin' && miembro.rol !== 'super_admin') {
+        // Setear el espacioId para que OnboardingCargoView filtre correctamente
+        useStore.getState().setPendingOnboardingEspacioId(miembro.espacio_id);
         setView('onboarding');
       }
     };

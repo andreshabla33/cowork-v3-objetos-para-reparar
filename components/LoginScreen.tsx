@@ -77,7 +77,7 @@ export const LoginScreen: React.FC = () => {
                   {invitacionBanner.invitadorNombre ? `${invitacionBanner.invitadorNombre} te invitó` : 'Te invitaron'} a <span className="text-white">{invitacionBanner.espacioNombre}</span>
                 </p>
                 <p className="text-zinc-500 text-[9px] lg:text-[8px] font-bold mt-0.5">
-                  Inicia sesión con <span className="text-violet-400">{invitacionBanner.email}</span> para aceptar
+                  Crea tu cuenta con <span className="text-violet-400">{invitacionBanner.email}</span> usando Google o el formulario de abajo
                 </p>
               </div>
             </div>

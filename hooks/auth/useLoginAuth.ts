@@ -80,10 +80,17 @@ export function useLoginAuth(): UseLoginAuthReturn {
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
     if (token) {
+      // Persistir token en sessionStorage para que sobreviva a redirects
+      // (Google OAuth, confirmación por email) donde la URL pierde ?token=XYZ.
+      // El viewResolver lo usa como fallback cuando el token no está en la URL.
+      sessionStorage.setItem('pendingInvitationToken', token);
+
       void buscarInvitacionBanner.ejecutar(token).then((banner) => {
         if (banner) {
           setInvitacionBanner(banner);
           if (!email) setEmail(banner.email);
+          // El usuario invitado es nuevo — activar modo registro automáticamente
+          setIsRegister(true);
         }
       });
     }
@@ -145,11 +152,14 @@ export function useLoginAuth(): UseLoginAuthReturn {
 
       try {
         if (isRegister) {
+          // Usar window.location.href para preservar ?token=XYZ en el redirect
+          // de confirmación por email. Sin esto, el link de confirmación redirige
+          // al origin limpio y el token se pierde → el usuario cae en onboarding_creador.
           const resultado = await autenticarConEmail.registrar(
             email,
             password,
             fullName,
-            window.location.origin
+            window.location.href
           );
           if (resultado.error) throw new Error(resultado.error);
           if (resultado.session) {

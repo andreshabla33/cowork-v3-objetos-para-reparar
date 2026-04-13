@@ -36,12 +36,18 @@ export function resolverVista(input: ViewResolverInput): ViewResolverResult {
     return { view: 'dashboard', workspace: null };
   }
 
-  // Check for invitation token in URL
+  // Check for invitation token in URL or sessionStorage fallback.
+  // sessionStorage es necesario porque redirects de OAuth y confirmación por email
+  // pueden perder el ?token=XYZ de la URL. useLoginAuth persiste el token antes
+  // del redirect para que este fallback funcione.
   const urlParams = new URLSearchParams(window.location.search);
-  const invitationToken = urlParams.get('token');
+  const invitationToken =
+    urlParams.get('token') || sessionStorage.getItem('pendingInvitationToken');
 
   if (invitationToken) {
-    log.info('Invitation token found, going to invitation view');
+    log.info('Invitation token found, going to invitation view', {
+      source: urlParams.get('token') ? 'url' : 'sessionStorage',
+    });
     return { view: 'invitation', workspace: null };
   }
 

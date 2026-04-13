@@ -85,8 +85,9 @@ export const InvitationProcessor: React.FC = () => {
 
       setEstado('aceptado');
 
-      // Clean token from URL for security
+      // Clean token from URL and sessionStorage for security
       window.history.replaceState({}, '', window.location.pathname);
+      sessionStorage.removeItem('pendingInvitationToken');
 
       // Refresh workspaces list to avoid redirect to "Create Space"
       await fetchWorkspaces();
