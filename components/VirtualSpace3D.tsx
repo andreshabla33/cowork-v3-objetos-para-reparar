@@ -7,11 +7,12 @@ import { Grid, Loader } from '@react-three/drei';
 import { Room, Track } from 'livekit-client';
 import { User, PresenceStatus, Role, ZonaEmpresa } from '@/types';
 import { FloorType } from '../src/core/domain/entities';
-import { RecordingManager } from './meetings/recording/RecordingManager';
+// RecordingManager, ConsentimientoPendiente y AvatarCustomizer3D ya no
+// se importan aquí: viven dentro de <VirtualSpace3DModals> (root).
 import type { CargoLaboral } from './meetings/recording/types/analysis';
-import { ConsentimientoPendiente } from './meetings/recording/ConsentimientoPendiente';
 import { BottomControlBar } from './BottomControlBar';
-import { AvatarCustomizer3D } from './AvatarCustomizer3D';
+import { VirtualSpace3DModals } from './space3d/root/VirtualSpace3DModals';
+import { VirtualSpace3DAdminOverlay } from './space3d/root/VirtualSpace3DAdminOverlay';
 import { useLiveKitVideoBackground, useLocalCameraTrack } from '@/modules/realtime-room';
 import type { LocalVideoTrack } from 'livekit-client';
 import { useRendererMetrics } from '@/hooks/space3d/useRendererMetrics';
@@ -37,9 +38,10 @@ import type { InteraccionObjetoAccion } from '@/src/core/application/usecases/In
 // GameHub ahora se importa en WorkspaceLayout
 // Nota (F3): ya no importamos `toastEmitter` directamente. Los toasts se
 // emiten a través del port `INotificationBus` (vía useApplicationServices).
-import { EditModeHUD, EditModeToast, InspectorEdicionObjeto, PlacementHUD, PlacementToast, ToastContainer } from './3d/PlacementHUD';
+// Nota (F4): EditModeHUD, PlacementHUD, InspectorEdicionObjeto, BuildModePanel
+// ya no se importan aquí — viven dentro de <VirtualSpace3DAdminOverlay>.
+import { EditModeToast, PlacementToast, ToastContainer } from './3d/PlacementHUD';
 import { AdminZoneHUD } from './3d/AdminZoneHUD';
-import { BuildModePanel } from './3d/BuildModePanel';
 import type { CatalogoObjeto3D, ObjetoPreview3D } from '@/types/objetos3d';
 import type { AsientoRuntime3D } from './space3d/asientosRuntime';
 // `normalizarInteraccionConfigObjeto` / `resolverDisplayObjeto` / `resolverUseObjeto`
@@ -1399,132 +1401,44 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
         }}
       />
       
-      {/* Recording Manager V2 con análisis conductual avanzado */}
-      {hasActiveCall && (
-        <RecordingManager
-          espacioId={activeWorkspace?.id || ''}
-          userId={session?.user?.id || ''}
-          userName={currentUser.name}
-          reunionTitulo={`Reunión ${new Date().toLocaleDateString()}`}
-          stream={stream}
-          cargoUsuario={cargoUsuario as CargoLaboral}
-          usuariosEnLlamada={usersInCall.map(u => ({ id: u.id, nombre: u.name }))}
-          onRecordingStateChange={(recording) => {
-            setIsRecording(recording);
-            if (!recording) {
-              setRecordingDuration(0);
-              setConsentimientoAceptado(false);
-              setTipoGrabacionActual(null);
-            }
-          }}
-          onDurationChange={(duration) => setRecordingDuration(duration)}
-          onTipoGrabacionChange={(tipo) => setTipoGrabacionActual(tipo)}
-          onProcessingComplete={(resultado) => {
-            log.info('✅ Análisis conductual completado', { tipoGrabacion: resultado?.tipo_grabacion, analisis: resultado?.analisis });
-          }}
-          headlessMode={true}
-          externalTrigger={recordingTrigger}
-          onExternalTriggerHandled={() => setRecordingTrigger(false)}
-        />
-      )}
-
-      {/* Modal de consentimiento para usuarios evaluados */}
-      <ConsentimientoPendiente
-        onConsentimientoRespondido={(grabacionId, acepto) => {
-          log.info('📝 Consentimiento respondido para grabación', { grabacionId, aceptado: acepto });
-        }}
+      {/* Modales (Recording, Consentimiento, Avatar/Perfil) — F4 */}
+      <VirtualSpace3DModals
+        hasActiveCall={hasActiveCall}
+        espacioId={activeWorkspace?.id || ''}
+        userId={session?.user?.id || ''}
+        userName={currentUser.name}
+        stream={stream}
+        cargoUsuario={cargoUsuario as CargoLaboral}
+        usuariosEnLlamada={usersInCall.map((u) => ({ id: u.id, nombre: u.name }))}
+        recordingTrigger={recordingTrigger}
+        setIsRecording={setIsRecording}
+        setRecordingDuration={setRecordingDuration}
+        setConsentimientoAceptado={setConsentimientoAceptado}
+        setTipoGrabacionActual={setTipoGrabacionActual}
+        setRecordingTrigger={setRecordingTrigger}
+        showAvatarModal={showAvatarModal}
+        setShowAvatarModal={setShowAvatarModal}
+        handlePrepararObjeto={handlePrepararObjeto}
+        objetoEnColocacionActivo={Boolean(objetoEnColocacion)}
+        modoReemplazoActivo={Boolean(isEditMode && selectedObjectId)}
       />
-      
-      {/* GameHub ahora se controla desde la barra superior en WorkspaceLayout */}
 
-      {/* Modal de Avatar/Perfil - Glassmorphism 2.0 */}
-      {showAvatarModal && (
-        <div 
-          className="fixed inset-0 z-[300] flex items-center justify-center p-3 sm:p-2"
-          onClick={(e) => { e.stopPropagation(); if (e.target === e.currentTarget) setShowAvatarModal(false); }}
-          onKeyDown={(e) => { if (e.key === 'Escape') setShowAvatarModal(false); }}
-        >
-          {/* Backdrop con blur profundo */}
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={() => setShowAvatarModal(false)} />
-          
-          {/* Modal - responsivo y con Glassmorphism */}
-          <div className="relative w-full max-w-[960px] h-[90vh] max-h-[720px] sm:max-h-[95vh] bg-[#0a0a14]/95 backdrop-blur-2xl rounded-3xl sm:rounded-2xl border border-white/[0.08] shadow-2xl shadow-violet-900/20 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            {/* Neon glow aura */}
-            <div className="absolute -inset-px rounded-3xl sm:rounded-2xl bg-gradient-to-r from-violet-600/10 via-fuchsia-600/5 to-cyan-500/10 pointer-events-none" />
-            
-            {/* Header */}
-            <div className="relative flex items-center justify-between px-5 py-3 border-b border-white/[0.06] flex-shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600/30 to-fuchsia-600/20 flex items-center justify-center border border-violet-500/20">
-                  <svg className="w-3.5 h-3.5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <div>
-                  <h2 className="text-xs font-black text-white tracking-wide">Mi Perfil y Avatar</h2>
-                  <p className="text-[9px] text-white/30">Personaliza tu apariencia en el espacio</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowAvatarModal(false)}
-                className="w-7 h-7 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] flex items-center justify-center transition-all group border border-white/[0.06] hover:border-violet-500/20"
-              >
-                <svg className="w-3.5 h-3.5 text-white/30 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Body - AvatarCustomizer3D */}
-            <div className="relative flex-1 overflow-hidden">
-               <AvatarCustomizer3D 
-                onClose={() => setShowAvatarModal(false)}
-                onPrepararObjeto={handlePrepararObjeto}
-                modoColocacionActivo={Boolean(objetoEnColocacion)}
-                modoReemplazoActivo={Boolean(isEditMode && selectedObjectId)}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {objetoEnColocacion && (
-        <PlacementHUD
-          objectName={objetoEnColocacion.nombre}
-          objectCategory={objetoEnColocacion.categoria}
-          onCancel={handleCancelarColocacion}
-        />
-      )}
-
-      {/* Se eliminó el PlacementToast a petición del usuario debido a problemas de renderizado */}
-
-      {isEditMode && (
-        <EditModeHUD
-          onCancel={() => setIsEditMode(false)}
-          onUndo={() => { void deshacer(); }}
-          onRedo={() => { void rehacer(); }}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          modoActual={modoEdicionObjeto}
-          onCambiarModo={setModoEdicionObjeto}
-        />
-      )}
-
-      {/* Panel lateral de construcción */}
-      {isEditMode && modoEdicionObjeto === 'add' && !objetoEnColocacion && (
-        <BuildModePanel
-          onClose={() => setIsEditMode(false)}
-          onPrepararObjeto={handlePrepararObjeto}
-        />
-      )}
-
-      {isEditMode && modoEdicionObjeto !== 'add' && (
-        <InspectorEdicionObjeto
-          objeto={objetoSeleccionado}
-          modoActual={modoEdicionObjeto}
-          onTransformar={handleTransformarObjeto}
-        />
-      )}
+      {/* Overlays del modo edición (PlacementHUD + EditModeHUD + BuildModePanel + Inspector) — F4 */}
+      <VirtualSpace3DAdminOverlay
+        isEditMode={isEditMode}
+        setIsEditMode={setIsEditMode}
+        modoEdicionObjeto={modoEdicionObjeto}
+        setModoEdicionObjeto={setModoEdicionObjeto}
+        objetoEnColocacion={objetoEnColocacion}
+        onCancelarColocacion={handleCancelarColocacion}
+        onPrepararObjeto={handlePrepararObjeto}
+        objetoSeleccionado={objetoSeleccionado}
+        onTransformarObjeto={handleTransformarObjeto}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={deshacer}
+        onRedo={rehacer}
+      />
 
       {/* Toast stack — screen-space overlay, immune to camera zoom */}
       <ToastContainer />
