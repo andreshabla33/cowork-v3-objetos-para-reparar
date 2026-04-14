@@ -609,14 +609,12 @@ export const useMeetingMediaBridge = ({
    * track publicado y este previewVideoTrack queda en null (liberado).
    */
   useEffect(() => {
-    // Solo se necesita el preview track cuando no hay room conectada
+    // Solo se necesita el preview track cuando no hay room conectada.
+    // El ciclo de vida del processor (stopProcessor/detach) lo gestiona
+    // el hook compartido `useLiveKitVideoBackground` via `attachedTrackRef`
+    // + deferred detach — aquí NO llamamos stopProcessor para no duplicar.
     if (room) {
-      setPreviewVideoTrack((prev) => {
-        if (prev) {
-          void prev.stopProcessor();
-        }
-        return null;
-      });
+      setPreviewVideoTrack(null);
       return;
     }
 
@@ -625,22 +623,11 @@ export const useMeetingMediaBridge = ({
       .find((t) => t.readyState === 'live') ?? null;
 
     setPreviewVideoTrack((prev) => {
-      if (!rawVideoTrack) {
-        if (prev) { void prev.stopProcessor(); }
-        return null;
-      }
+      if (!rawVideoTrack) return null;
 
       // Reutilizar si ya wrapeamos este mismo track
       if (prev?.mediaStreamTrack.id === rawVideoTrack.id) {
         return prev;
-      }
-
-      // Limpiar wrapper anterior antes de crear uno nuevo.
-      // Nota: la factory cachea por rawTrack.id, así que si rawVideoTrack
-      // es el mismo track, wrapRawTrack() retornará el wrapper existente
-      // sin crear uno nuevo — garantizando referencia estable.
-      if (prev && prev.mediaStreamTrack.id !== rawVideoTrack.id) {
-        void prev.stopProcessor();
       }
 
       // Delegar la creación/caché del wrapper a la factory de infraestructura.
@@ -683,11 +670,10 @@ export const useMeetingMediaBridge = ({
 
   const stopMediaCapture = useCallback(() => {
     cleanupProcessedAudio();
-    // Limpiar el processor del previewVideoTrack antes de parar el stream
-    setPreviewVideoTrack((prev) => {
-      if (prev) { void prev.stopProcessor(); }
-      return null;
-    });
+    // El processor del previewVideoTrack se libera vía el detach diferido
+    // del hook compartido (`useLiveKitVideoBackground`) cuando detecta que
+    // el track activo pasa a null — no duplicamos el stopProcessor aquí.
+    setPreviewVideoTrack(null);
     coordinatorRef.current?.stopMedia();
   }, [cleanupProcessedAudio]);
 

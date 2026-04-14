@@ -11,19 +11,19 @@
  * MediaStream a un elemento <video> del DOM. NO gestiona el ciclo de
  * vida del background processor (attach/detach/setEffect).
  *
- * El lifecycle del processor es responsabilidad de la capa de
- * Application, gestionado por useMeetingMediaBridge via
- * GestionarBackgroundVideoUseCase.
+ * El lifecycle del processor es responsabilidad del hook compartido
+ * `useLiveKitVideoBackground` (capa Presentation del módulo realtime-room),
+ * que a su vez consume `GestionarBackgroundVideoUseCase` (capa Application).
  *
  * PATH NATIVO (LocalVideoTrack proporcionado):
  *   Usa track.attach(videoEl) / track.detach(videoEl) del SDK de LiveKit.
- *   El processor ya fue aplicado por el bridge → el video muestra
- *   el output procesado directamente.
+ *   El processor ya fue aplicado por el hook → el video muestra el output
+ *   procesado directamente.
  *
  * PATH FALLBACK (solo MediaStream, sin LocalVideoTrack):
  *   Asigna stream crudo al <video>.srcObject.
  *
- * @see components/meetings/videocall/hooks/useMeetingMediaBridge.ts
+ * @see src/modules/realtime-room/presentation/useLiveKitVideoBackground.ts
  * @see src/core/application/usecases/GestionarBackgroundVideoUseCase.ts
  */
 

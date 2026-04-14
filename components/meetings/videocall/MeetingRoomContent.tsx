@@ -287,9 +287,10 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
         }
       `}</style>
 
-      {/* El background processor se gestiona en useMeetingMediaBridge via
-          GestionarBackgroundVideoUseCase. No se necesita un componente headless —
-          el processor se aplica in-place sobre el LocalVideoTrack publicado. */}
+      {/* El background processor se gestiona en `useLiveKitVideoBackground`
+          (hook compartido con el espacio 3D) via GestionarBackgroundVideoUseCase.
+          No se necesita un componente headless — el processor se aplica in-place
+          sobre el LocalVideoTrack publicado. */}
 
       <MeetingGuidedOnboarding
         userId={userId}
