@@ -27,6 +27,8 @@ import type { ThreeEvent } from '@react-three/fiber';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import { obtenerDimensionesObjetoRuntime } from '../space3d/objetosRuntime';
 import { ObjetoEscena3D } from './ObjetoEscena3D';
+import { useStore } from '@/store/useStore';
+import { hapticFeedback } from '@/lib/mobileDetect';
 import { logger } from '@/lib/logger';
 
 const log = logger.child('ObjetosInstanciados');
@@ -222,15 +224,29 @@ const GrupoModeloGLTF: React.FC<GrupoModeloProps> = ({
   }, [objetosParaInstancing, meshInfos, gltfScene, matrizInstancia, posicion, rotacion, euler, escalaVec]);
 
   // ── Click handler ─────────────────────────────────────────────────────────
+  // En edit mode → selecciona/deselecciona el objeto (shift = toggle múltiple).
+  //   (Fix issue 7211b649: los InstancedMesh no disparaban toggleObjectSelection,
+  //   por lo que en modo construcción los objetos eran invisibles al flujo de
+  //   selección. Una vez seleccionado, el objeto pasa al fallback ObjetoEscena3D
+  //   donde se habilita drag/drop y gizmos.)
+  // Fuera de edit mode → ejecuta la interacción (sit/teleport/display/use) si
+  // el jugador está cerca (distancia < 3).
   const handleClick = useCallback(
     (e: ThreeEvent<MouseEvent>) => {
       e.stopPropagation();
       const instanceId = e.instanceId;
       if (instanceId === undefined) return;
       const obj = objetosParaInstancing[instanceId];
-      if (!obj || !onInteractuar) return;
+      if (!obj) return;
 
-      // Solo disparar si el jugador está cerca
+      if (isEditMode) {
+        const currentStore = useStore.getState();
+        currentStore.toggleObjectSelection?.(obj.id, e.shiftKey);
+        hapticFeedback('light');
+        return;
+      }
+
+      if (!onInteractuar) return;
       const dx = playerPosition.x - obj.posicion_x;
       const dz = playerPosition.z - obj.posicion_z;
       const dist = Math.sqrt(dx * dx + dz * dz);
@@ -238,7 +254,7 @@ const GrupoModeloGLTF: React.FC<GrupoModeloProps> = ({
         onInteractuar(obj);
       }
     },
-    [objetosParaInstancing, onInteractuar, playerPosition]
+    [objetosParaInstancing, onInteractuar, playerPosition, isEditMode]
   );
 
   if (objetosParaInstancing.length === 0 && objetosFallback.length === 0) return null;
