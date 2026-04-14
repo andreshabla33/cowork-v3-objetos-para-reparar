@@ -20,6 +20,9 @@
  */
 
 import * as THREE from 'three';
+import { logger } from '@/lib/logger';
+
+const log = logger.child('AnimationBaker');
 
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
@@ -101,6 +104,35 @@ export function bakeAnimationClip(
   const action = mixer.clipAction(clip);
   action.play();
 
+  // ── Diagnóstico: verificar que PropertyBinding resolvió los tracks ──
+  // Si los track names no coinciden con los node names en el scene graph,
+  // el mixer crea bindings "no-op" y la animación no se reproduce → T-POSE.
+  const boneNameSet = new Set(skeleton.bones.map((b) => b.name));
+  const trackBoneNames = clip.tracks.map((t) => t.name.split('.')[0]);
+  const matchedTracks = trackBoneNames.filter((n) => boneNameSet.has(n));
+  const unmatchedTracks = trackBoneNames.filter((n) => !boneNameSet.has(n));
+
+  log.info('Bake diagnostic', {
+    clip: clip.name,
+    mixerRootType: mixerRoot.type,
+    mixerRootName: mixerRoot.name || '(unnamed)',
+    numBones,
+    numFrames,
+    totalTracks: clip.tracks.length,
+    matchedTracks: matchedTracks.length,
+    unmatchedTracks: unmatchedTracks.length,
+    sampleUnmatched: unmatchedTracks.slice(0, 5),
+    sampleBoneNames: skeleton.bones.slice(0, 5).map((b) => b.name),
+  });
+
+  if (unmatchedTracks.length > 0 && matchedTracks.length === 0) {
+    log.warn('NO tracks matched bones — animation will be T-POSE', {
+      clip: clip.name,
+      trackSample: trackBoneNames.slice(0, 5),
+      boneSample: skeleton.bones.slice(0, 5).map((b) => b.name),
+    });
+  }
+
   // Matrices temporales
   const boneInverses = skeleton.boneInverses;
   const boneMatrixWorld = new THREE.Matrix4();
@@ -162,6 +194,25 @@ export function bakeAnimationClip(
       data[pixelOffset + 13] = elements[13];
       data[pixelOffset + 14] = elements[14];
       data[pixelOffset + 15] = elements[15];
+    }
+
+    // Diagnóstico frame 0: verificar si bone matrices son identidad (T-pose)
+    if (frame === 0) {
+      const identity = new THREE.Matrix4();
+      let identityCount = 0;
+      for (let boneIdx = 0; boneIdx < numBones; boneIdx++) {
+        const bone = skeleton.bones[boneIdx];
+        const mat = new THREE.Matrix4();
+        mat.multiplyMatrices(bone.matrixWorld, boneInverses[boneIdx]);
+        if (mat.equals(identity)) identityCount++;
+      }
+      log.info('Frame 0 bake result', {
+        clip: clip.name,
+        identityBones: identityCount,
+        totalBones: numBones,
+        isTPose: identityCount === numBones,
+        bone0MatrixWorld: skeleton.bones[0]?.matrixWorld.elements.slice(0, 4).map((v) => +v.toFixed(4)),
+      });
     }
   }
 
