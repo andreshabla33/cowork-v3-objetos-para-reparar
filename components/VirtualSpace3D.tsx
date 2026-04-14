@@ -3,7 +3,7 @@
 import React, { useRef, useEffect, Suspense, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
 import { Canvas } from '@react-three/fiber';
-import { Grid, Loader } from '@react-three/drei';
+import { Loader } from '@react-three/drei';
 import { Room, Track } from 'livekit-client';
 import { User, PresenceStatus, Role, ZonaEmpresa } from '@/types';
 import { FloorType } from '../src/core/domain/entities';
@@ -62,12 +62,19 @@ import type { DisplayRuntimeNormalizado3D } from './space3d/interaccionesObjetos
 import { themeColors, TELEPORT_DISTANCE } from './space3d/shared';
 
 import { Minimap, StableVideo, Avatar, RemoteUsers, CameraFollow, AvatarScreenProjector, TeleportEffect, Player, Scene, AdaptiveFrameloop, VideoHUD, ScreenSpaceProfileCard, statusColors, type VirtualSpace3DProps } from './space3d/InternalComponents';
+import { Precompile } from './space3d/Precompile';
 
+// SceneFallback — fondo plano durante la descarga del GLTF del terreno.
+// ANTES: incluía un <Grid infiniteGrid> cuyos colores (cellColor indigo /
+// sectionColor verde o arcade-neón) producían el "flash" visual justo antes
+// de que el piso real se pintara — el <Loader> de drei ya cubre la escena
+// mientras `!isSceneReady`, así que el fallback puede ser mínimo (solo
+// clearColor del tema), eliminando el primer pop-in de la cascada.
+// Ref: plan de fix pop-in — causa #1 (SceneFallback con grid visible).
 const SceneFallback: React.FC<{ theme: string }> = ({ theme }) => (
   <>
     <color attach="background" args={[themeColors[theme] || '#000000']} />
-    <ambientLight intensity={0.45} />
-    <Grid args={[200, 200]} cellSize={2} cellThickness={0.6} sectionSize={10} sectionThickness={1} fadeDistance={120} fadeStrength={1} infiniteGrid />
+    <ambientLight intensity={0.1} />
   </>
 );
 
@@ -772,10 +779,45 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     }
   }, [handlePrepararObjeto]);
 
-  const handleSceneReady = useCallback(() => {
-    markSceneReady();
-    log.debug('[3D] Scene ready signal', { dpr: Number(adaptiveDpr.toFixed(2)) });
+  // ══════════════════════════════════════════════════════════════════════════
+  // Scene-ready handshake (fix pop-in)
+  // ══════════════════════════════════════════════════════════════════════════
+  //
+  // Para evitar el pop-in de grids/piso al inicio, el Loader solo se oculta
+  // cuando se cumplen DOS condiciones:
+  //   1. <Precompile /> ha llamado `gl.compile(scene, camera)` (shaders listos).
+  //   2. <Scene /> emite su propio signal (sceneOptimization.isReady + batchers
+  //      registrados + requestAnimationFrame).
+  //
+  // Cuando ambas llegan, esperamos 2 rAF más para que Three.js haya pintado
+  // al menos un frame completo con toda la geometría batched → recién ahí
+  // invocamos `markSceneReady()` que oculta el Loader.
+  const precompileDoneRef = useRef(false);
+  const sceneInternalReadyRef = useRef(false);
+
+  const tryEmitSceneReady = useCallback(() => {
+    if (!precompileDoneRef.current || !sceneInternalReadyRef.current) return;
+    // Doble rAF: el primer frame garantiza que Three.js procese la subida de
+    // geometrías/texturas a GPU; el segundo garantiza que el browser haya
+    // pintado ese frame. Sin esto el Loader podría desaparecer en el mismo
+    // tick en que los batchers aún están registrando instancias.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        markSceneReady();
+        log.debug('[3D] Scene ready signal', { dpr: Number(adaptiveDpr.toFixed(2)) });
+      });
+    });
   }, [adaptiveDpr, markSceneReady]);
+
+  const handlePrecompiled = useCallback(() => {
+    precompileDoneRef.current = true;
+    tryEmitSceneReady();
+  }, [tryEmitSceneReady]);
+
+  const handleSceneReady = useCallback(() => {
+    sceneInternalReadyRef.current = true;
+    tryEmitSceneReady();
+  }, [tryEmitSceneReady]);
 
   // PR-4: Memoizar handlers del Canvas y la Scene para evitar re-renders
   // cuando el estado de UI (showEmojis, showChat, etc.) cambia.
@@ -965,6 +1007,11 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
             onTapFloor={floorOnTap}
             onDoubleClickFloor={floorOnDoubleClick}
           />
+          {/* Precompila shaders del subárbol antes del primer paint —
+              cierra el hueco de `useGLTF.preload()` (solo descarga, no
+              compila). Al terminar llama `onPrecompiled` → tryEmitSceneReady
+              evalúa si ya llegó también el signal interno de <Scene />. */}
+          <Precompile onPrecompiled={handlePrecompiled} />
         </Suspense>
       </Canvas>
       {!isSceneReady && (
