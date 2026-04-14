@@ -110,8 +110,22 @@ export function bakeAnimationClip(
     const time = (frame / fps) % duration;
     mixer.setTime(time);
 
-    // Actualizar matrices del skeleton
-    mesh.updateMatrixWorld(true);
+    // CRITICAL: updateMatrixWorld must be called on mixerRoot, NOT mesh.
+    // In GLTF models, bones are siblings of the SkinnedMesh under Armature,
+    // not children. Calling mesh.updateMatrixWorld only propagates to mesh's
+    // children — bones are NOT descendants of mesh, so their matrixWorld
+    // stays stale (identity/bind pose).
+    //
+    // After mixer.setTime() updates bone local matrices via PropertyBinding,
+    // we need mixerRoot.updateMatrixWorld(true) to propagate those local
+    // transforms into world matrices across the ENTIRE scene graph.
+    //
+    // Ref: Three.js Skeleton.update() reads bone.matrixWorld which requires
+    //      prior updateMatrixWorld() call on an ancestor that contains the bones.
+    // Ref: PropertyBinding.findNode() resolves tracks by searching root's
+    //      skeleton (getBoneByName) then children recursively — root must
+    //      contain both bones and mesh.
+    mixerRoot.updateMatrixWorld(true);
     skeleton.update();
 
     // Guardar matrices de huesos en la textura
@@ -151,9 +165,13 @@ export function bakeAnimationClip(
     }
   }
 
-  // Cleanup mixer
+  // Cleanup mixer — uncacheRoot must match the root passed to the constructor.
+  // Ref: Three.js AnimationMixer.uncacheRoot() traverses the provided object's
+  //      descendants to remove cached bindings. Using 'mesh' here when mixer
+  //      root is 'mixerRoot' would fail to clean up bone bindings (bones are
+  //      not descendants of mesh in GLTF).
   mixer.stopAllAction();
-  mixer.uncacheRoot(mesh);
+  mixer.uncacheRoot(mixerRoot);
 
   // Crear textura
   const texture = new THREE.DataTexture(
