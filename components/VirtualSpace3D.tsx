@@ -27,6 +27,8 @@ import { useSpace3D, useSpaceVideoHudLayoutSnapshot } from '@/hooks/space3d';
 import { useEspacioObjetos, type EspacioObjeto, type TransformacionObjetoInput } from '@/hooks/space3d/useEspacioObjetos';
 import { useHistorialEdicion } from '@/hooks/space3d/useHistorialEdicion';
 import { useOcupacionAsientos } from '@/hooks/space3d/useOcupacionAsientos';
+import { useWebGLContextRecovery } from '@/hooks/space3d/useWebGLContextRecovery';
+import { useSpace3DKeyboardShortcuts } from '@/hooks/space3d/useSpace3DKeyboardShortcuts';
 import { setBroadcastSoundFunctions } from '@/hooks/space3d/useBroadcast';
 import { XP_POR_ACCION } from '@/lib/gamificacion';
 import { useStore } from '@/store/useStore';
@@ -206,11 +208,24 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
 
   // Interactions
   const { selectedRemoteUser, setSelectedRemoteUser, followTargetId, setFollowTargetId, followTargetIdRef, handleClickRemoteAvatar, avatarInteractionsMemo, handleWaveUser, handleInviteUser, handleFollowUser } = s.interactions;
-  const canvasDomRef = useRef<HTMLCanvasElement | null>(null);
-  const canvasEventHandlersRef = useRef<{ lost: ((event: Event) => void) | null; restored: (() => void) | null }>({ lost: null, restored: null });
-  const canvasMetricsRef = useRef({ mountedAt: 0, mountCount: 0, contextLossCount: 0 });
-  const sceneReadyRef = useRef(false);
-  const [isSceneReady, setIsSceneReady] = React.useState(false);
+
+  // ── WebGL recovery (extraído a useWebGLContextRecovery) ────────────────────
+  // El hook encapsula listeners webglcontextlost/restored, métricas de mount
+  // y el flag isSceneReady. Reemplaza la gestión inline de canvasDomRef,
+  // canvasEventHandlersRef y canvasMetricsRef.
+  const {
+    handleCanvasCreated,
+    markSceneReady,
+    isSceneReady,
+    metricsRef: canvasMetricsRef,
+  } = useWebGLContextRecovery({
+    clearColor: themeColors[theme] || '#000000',
+    onConfigureRenderer: (gl) => {
+      if (gpuRenderConfig) {
+        gl.toneMappingExposure = gpuRenderConfig.toneMappingExposure;
+      }
+    },
+  });
 
   // Objetos persistentes (escritorios reclamables)
   const { objetos: espacioObjetos, refrescarObjetos, crearObjetoDesdeCatalogo, reemplazarObjetoDesdeCatalogo, reclamarObjeto, liberarObjeto, actualizarTransformacionObjeto, moverObjeto, rotarObjeto, eliminarObjeto, duplicarObjetos, restaurarObjeto, spawnPersonal, miEscritorio, guardarSpawnPersonal } = useEspacioObjetos(
@@ -603,32 +618,9 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     prevIsDraggingRef.current = isDragging;
   }, [isDragging, registrarFinArrastre, registrarInicioArrastre, selectedObjectId]);
 
-  useEffect(() => {
-    if (!objetoEnColocacion) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setObjetoEnColocacion(null);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [objetoEnColocacion]);
-
-  useEffect(() => {
-    if (!plantillaZonaEnColocacion) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        clearPlantillaZonaEnColocacion();
-        addNotification('Colocación de plantilla cancelada.', 'info');
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [addNotification, clearPlantillaZonaEnColocacion, plantillaZonaEnColocacion]);
+  // Los atajos de teclado (Escape para cancelar colocaciones, Ctrl/Cmd+C/V
+  // para copiar/pegar en modo edición) viven en `useSpace3DKeyboardShortcuts`.
+  // Ver invocación abajo tras la definición de duplicarObjetos.
 
   useEffect(() => {
     if (!ultimoObjetoColocadoId) return;
@@ -636,43 +628,38 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     return () => window.clearTimeout(timeout);
   }, [ultimoObjetoColocadoId]);
 
-  useEffect(() => {
-    if (!isEditMode) return;
-
-    const handleKeyDown = async (e: KeyboardEvent) => {
-      // Ignore if typing in an input
-      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
-
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-      const modifier = isMac ? e.metaKey : e.ctrlKey;
-
-      if (modifier && e.key.toLowerCase() === 'c') {
-        if (selectedObjectIds.length > 0) {
-          const objsToCopy = espacioObjetos.filter(obj => selectedObjectIds.includes(obj.id));
-          setCopiedObjects(objsToCopy);
-          toastEmitter.emit({ message: `📋 ${objsToCopy.length} objeto(s) copiado(s)`, variant: 'info' });
+  // ── Atajos de teclado del espacio 3D (F1.2) ────────────────────────────────
+  // Escape: cancelar colocación de objeto / plantilla de zona.
+  // Ctrl/Cmd+C / Ctrl/Cmd+V: copiar / pegar objetos en modo edición.
+  useSpace3DKeyboardShortcuts({
+    objetoEnColocacion: !!objetoEnColocacion,
+    plantillaZonaEnColocacion: !!plantillaZonaEnColocacion,
+    editMode: isEditMode,
+    onCancelObjectPlacement: () => setObjetoEnColocacion(null),
+    onCancelTemplatePlacement: () => {
+      clearPlantillaZonaEnColocacion();
+      addNotification('Colocación de plantilla cancelada.', 'info');
+    },
+    onCopySelectedObjects: () => {
+      if (selectedObjectIds.length === 0) return;
+      const objsToCopy = espacioObjetos.filter((obj) => selectedObjectIds.includes(obj.id));
+      setCopiedObjects(objsToCopy);
+      toastEmitter.emit({ message: `📋 ${objsToCopy.length} objeto(s) copiado(s)`, variant: 'info' });
+    },
+    onPasteObjects: async () => {
+      if (!copiedObjects || copiedObjects.length === 0) return;
+      try {
+        const result = await duplicarObjetos(copiedObjects);
+        if (result && result.length > 0) {
+          setSelectedObjectIds(result.map((o) => o.id));
+          toastEmitter.emit({ message: `✨ ${result.length} objeto(s) pegado(s)`, variant: 'success' });
         }
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        log.error('Error pasting objects', { error: errorMsg });
       }
-
-      if (modifier && e.key.toLowerCase() === 'v') {
-        if (copiedObjects && copiedObjects.length > 0) {
-          try {
-            const result = await duplicarObjetos(copiedObjects);
-            if (result && result.length > 0) {
-              setSelectedObjectIds(result.map(o => o.id));
-              toastEmitter.emit({ message: `✨ ${result.length} objeto(s) pegado(s)`, variant: 'success' });
-            }
-          } catch (err: unknown) {
-            const errorMsg = err instanceof Error ? err.message : String(err);
-            log.error('Error pasting objects', { error: errorMsg });
-          }
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isEditMode, selectedObjectIds, copiedObjects, espacioObjetos, duplicarObjetos, setCopiedObjects, setSelectedObjectIds]);
+    },
+  });
 
   // Teleport/correr al escritorio propio
   const handleIrAMiEscritorio = useCallback(() => {
@@ -789,13 +776,9 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   }, [handlePrepararObjeto]);
 
   const handleSceneReady = useCallback(() => {
-    if (sceneReadyRef.current) return;
-    sceneReadyRef.current = true;
-    setIsSceneReady(true);
-    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    const elapsed = Math.max(0, Math.round(now - canvasMetricsRef.current.mountedAt));
-    log.info('[3D] Scene ready', { elapsedMs: elapsed, dpr: Number(adaptiveDpr.toFixed(2)) });
-  }, [adaptiveDpr]);
+    markSceneReady();
+    log.debug('[3D] Scene ready signal', { dpr: Number(adaptiveDpr.toFixed(2)) });
+  }, [adaptiveDpr, markSceneReady]);
 
   // PR-4: Memoizar handlers del Canvas y la Scene para evitar re-renders
   // cuando el estado de UI (showEmojis, showChat, etc.) cambia.
@@ -843,28 +826,8 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     [isAdminUser, isEditMode, handleSceneZonaClick]
   );
 
-  useEffect(() => {
-    canvasMetricsRef.current.mountCount += 1;
-    canvasMetricsRef.current.mountedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    sceneReadyRef.current = false;
-    setIsSceneReady(false);
-    log.debug('[3D] VirtualSpace3D mount', { mountCount: canvasMetricsRef.current.mountCount });
-
-    return () => {
-      const canvasEl = canvasDomRef.current;
-      const handlers = canvasEventHandlersRef.current;
-      if (canvasEl && handlers.lost) {
-        canvasEl.removeEventListener('webglcontextlost', handlers.lost);
-      }
-      if (canvasEl && handlers.restored) {
-        canvasEl.removeEventListener('webglcontextrestored', handlers.restored);
-      }
-      canvasDomRef.current = null;
-      canvasEventHandlersRef.current = { lost: null, restored: null };
-      setIsSceneReady(false);
-      log.debug('[3D] VirtualSpace3D unmount', { mountCount: canvasMetricsRef.current.mountCount });
-    };
-  }, []);
+  // El mount/unmount del canvas (métricas, listeners webgl) ahora vive dentro
+  // de `useWebGLContextRecovery`. Ver sección WebGL recovery arriba.
 
   return (
     <div className="w-full h-full relative overflow-hidden" style={{ backgroundColor: themeColors[theme] || '#000000' }} onClick={handleCanvasClick} onDragOver={handleDragOver} onDrop={handleDrop}>
@@ -895,40 +858,15 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
           powerPreference: gpuRenderConfig ? gpuRenderConfig.powerPreference : (performanceSettings.batterySaver ? 'low-power' : 'default'),
           failIfMajorPerformanceCaveat: false
         }}
-        onCreated={({ gl }) => {
-          const canvasEl = gl.domElement;
-          const existingHandlers = canvasEventHandlersRef.current;
-          if (canvasDomRef.current && existingHandlers.lost) {
-            canvasDomRef.current.removeEventListener('webglcontextlost', existingHandlers.lost);
-          }
-          if (canvasDomRef.current && existingHandlers.restored) {
-            canvasDomRef.current.removeEventListener('webglcontextrestored', existingHandlers.restored);
-          }
-          canvasDomRef.current = canvasEl;
-          canvasMetricsRef.current.mountedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
-          sceneReadyRef.current = false;
-          setIsSceneReady(false);
-          const handleContextLost = (event: Event) => {
-            event.preventDefault();
-            canvasMetricsRef.current.contextLossCount += 1;
-            sceneReadyRef.current = false;
-            setIsSceneReady(false);
-            log.warn('[3D] WebGL context lost', { contextLossCount: canvasMetricsRef.current.contextLossCount });
-          };
-          const handleContextRestored = () => {
-            canvasMetricsRef.current.mountedAt = typeof performance !== 'undefined' ? performance.now() : Date.now();
-            sceneReadyRef.current = false;
-            setIsSceneReady(false);
-            log.info('[3D] WebGL context restored');
-          };
-          canvasEventHandlersRef.current = { lost: handleContextLost, restored: handleContextRestored };
-          canvasEl.addEventListener('webglcontextlost', handleContextLost);
-          canvasEl.addEventListener('webglcontextrestored', handleContextRestored);
-          log.info('Canvas created', { gpuTier: gpuInfo?.tier ?? '?', gpuApi: gpuInfo?.api ?? '?', gpuRenderer: gpuInfo?.renderer ?? '?' });
-          gl.setClearColor(themeColors[theme] || '#000000');
-          if (gpuRenderConfig) {
-            gl.toneMappingExposure = gpuRenderConfig.toneMappingExposure;
-          }
+        onCreated={(state) => {
+          // Listeners webglcontextlost/restored + setClearColor + toneMapping
+          // se gestionan en `useWebGLContextRecovery` (arriba).
+          handleCanvasCreated(state);
+          log.info('Canvas created', {
+            gpuTier: gpuInfo?.tier ?? '?',
+            gpuApi: gpuInfo?.api ?? '?',
+            gpuRenderer: gpuInfo?.renderer ?? '?',
+          });
           // NOTA (DEBT-003-B-CLOSE-2026-04-10): NO aplicamos
           // `shadowMap.autoUpdate = false` aquí. Three.js Tip 61 recomienda
           // desactivarlo SOLO en escenas estáticas. Nuestra escena contiene
@@ -936,9 +874,6 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
           // sus sombras. Una optimización futura sería gatear needsUpdate por
           // detección de movimiento desde el ECS, pero eso requiere un
           // controller dedicado fuera del alcance de este hotfix.
-          //
-          // El cierre de Flag 1 (idle-guard espurio) se logra en la capa
-          // Presentation con el sliding-window de EstabilidadRenderizado.
           // Ref DEBT-003-B-CLOSE-2026-04-10.
         }}
         onPointerMissed={handlePointerMissed}
