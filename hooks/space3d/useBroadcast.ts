@@ -60,6 +60,13 @@ export function useBroadcast(params: {
   setPrivacy: (value: boolean) => void;
   hasActiveCall: boolean;
   proximidadNotificadaRef: React.MutableRefObject<boolean>;
+  /**
+   * Setters de notificaciones entrantes de nudge / invite. Se pasan desde
+   * `useSpace3D` porque el state vive allí (compartido con el handler
+   * `handleAcceptInvite`). Sin ellos el toast nunca aparece en el receptor.
+   */
+  setIncomingNudge: React.Dispatch<React.SetStateAction<{ from: string; fromName: string } | null>>;
+  setIncomingInvite: React.Dispatch<React.SetStateAction<{ from: string; fromName: string; x: number; y: number } | null>>;
 }): UseBroadcastReturn {
   const {
     session, currentUser, currentUserEcs, activeWorkspace, usersInCall,
@@ -70,6 +77,7 @@ export function useBroadcast(params: {
     conversacionBloqueada, setConversacionBloqueada,
     setConversacionesBloqueadasRemoto, grantXP, notifSettings,
     setPrivacy, hasActiveCall, proximidadNotificadaRef,
+    setIncomingNudge, setIncomingInvite,
   } = params;
 
   // ========== UI State ==========
@@ -157,7 +165,10 @@ export function useBroadcast(params: {
       if (now - (lastInteractionRef.current.get(dedupKey) || 0) < 500) return;
       lastInteractionRef.current.set(dedupKey, now);
       playNudgeSound();
-      // Nudge se maneja en useGatherInteractions
+      // Muestra el toast al receptor (auto-dismiss a los 4s, mismo patrón que wave).
+      setIncomingNudge({ from: mensaje.payload.from, fromName: mensaje.payload.fromName });
+      setTimeout(() => setIncomingNudge(null), 4000);
+      sendDesktopNotification(`🔔 ${mensaje.payload.fromName}`, 'quiere tu atención');
       return;
     }
 
@@ -169,6 +180,15 @@ export function useBroadcast(params: {
       if (now - (lastInteractionRef.current.get(dedupKey) || 0) < 500) return;
       lastInteractionRef.current.set(dedupKey, now);
       playInviteSound();
+      // Muestra el toast con botón 'Ir' que usa handleAcceptInvite para
+      // teleportar al invitante. No usamos timeout aquí: el toast invite
+      // persiste hasta que el receptor decide aceptar o cerrar.
+      setIncomingInvite({
+        from: mensaje.payload.from,
+        fromName: mensaje.payload.fromName,
+        x: mensaje.payload.x,
+        y: mensaje.payload.y,
+      });
       sendDesktopNotification(`📍 ${mensaje.payload.fromName}`, 'te invita a unirte');
       return;
     }

@@ -369,6 +369,10 @@ export function useSpace3D(props: {
     setPrivacy,
     hasActiveCall: proximity.hasActiveCall,
     proximidadNotificadaRef,
+    // Fix issue 4bed1af1: useBroadcast ahora setea los incoming cuando
+    // llegan los data packets de nudge/invite.
+    setIncomingNudge,
+    setIncomingInvite,
   });
 
   // ========== 10. Gather Interactions ==========
