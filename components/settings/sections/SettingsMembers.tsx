@@ -86,6 +86,48 @@ export const SettingsMembers: React.FC<SettingsMembersProps> = ({
     loadData();
   }, [workspaceId]);
 
+  // REALTIME-MEMBERS-SYNC (2026-04-14):
+  // Suscripción a cambios en miembros_espacio e invitaciones_pendientes
+  // para que las eliminaciones/invitaciones se reflejen sin recargar.
+  // Requiere que las tablas estén en la publicación supabase_realtime
+  // (migración: add_miembros_espacio_and_espacio_objetos_to_realtime).
+  // Sigue el mismo patrón que useEspacioObjetos para consistencia.
+  useEffect(() => {
+    if (!workspaceId) return;
+
+    const canal = supabase
+      .channel(`settings_members:${workspaceId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'miembros_espacio',
+          filter: `espacio_id=eq.${workspaceId}`,
+        },
+        () => {
+          void loadData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'invitaciones_pendientes',
+          filter: `espacio_id=eq.${workspaceId}`,
+        },
+        () => {
+          void loadData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(canal);
+    };
+  }, [workspaceId]);
+
   const cancelarInvitacion = async (id: string) => {
     await supabase.from('invitaciones_pendientes').delete().eq('id', id);
     setInvitaciones(prev => prev.filter(i => i.id !== id));

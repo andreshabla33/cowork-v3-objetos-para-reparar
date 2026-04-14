@@ -42,6 +42,19 @@ export function useBootstrapAplicacion({ initialize, setSession, setView, setAut
       return currentSession?.access_token !== nextSession?.access_token || currentSession?.user?.id !== nextSession?.user?.id;
     };
 
+    // INVITATION-TOKEN-PERSIST (2026-04-14):
+    // Persistir el token de invitación en sessionStorage ANTES de cualquier
+    // limpieza de URL. El link de confirmación por email abre un tab nuevo
+    // con sessionStorage vacío; sin este paso, viewResolver no encuentra el
+    // token ni en URL (lo borra replaceState) ni en sessionStorage (tab nuevo),
+    // y envía al usuario a onboarding_creador (admin) en vez de 'invitation'.
+    // El flujo de Google no sufría esto porque el redirect OAuth ocurre en
+    // el mismo tab que sí tiene sessionStorage poblado por useLoginAuth.
+    const invitationToken = urlParams.get('token');
+    if (invitationToken) {
+      sessionStorage.setItem('pendingInvitationToken', invitationToken);
+    }
+
     const verificarEInicializar = async () => {
       if (tokenHash && (type === 'signup' || type === 'email')) {
         try {
