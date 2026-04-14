@@ -14,6 +14,7 @@ import { BottomControlBar } from './BottomControlBar';
 import { VirtualSpace3DModals } from './space3d/root/VirtualSpace3DModals';
 import { VirtualSpace3DAdminOverlay } from './space3d/root/VirtualSpace3DAdminOverlay';
 import { VirtualSpace3DStatusBanners } from './space3d/root/VirtualSpace3DStatusBanners';
+import { VirtualSpace3DStatusOverlays } from './space3d/root/VirtualSpace3DStatusOverlays';
 import { useLiveKitVideoBackground, useLocalCameraTrack } from '@/modules/realtime-room';
 import type { LocalVideoTrack } from 'livekit-client';
 import { useRendererMetrics } from '@/hooks/space3d/useRendererMetrics';
@@ -985,17 +986,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       {/* Background effects are applied directly on the LiveKit track via useLiveKitVideoBackground (setProcessor/switchTo). Shared with meetings. */}
       
       {/* Indicador discreto de grabación para otros usuarios (no el grabador) */}
-      {isRecording && (tipoGrabacionActual === null || !['rrhh_entrevista', 'rrhh_one_to_one'].includes(tipoGrabacionActual) || consentimientoAceptado) && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] pointer-events-none">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-red-500/30">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-            </span>
-            <span className="text-red-400 text-xs font-medium">Grabando</span>
-          </div>
-        </div>
-      )}
+      {/* Indicador de grabación migrado a <VirtualSpace3DStatusOverlays> */}
       
       {/* Botón de resetear vista */}
       <button
@@ -1162,59 +1153,24 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
 
       {/* Nudge / Invite / Follow cards migradas a <VirtualSpace3DStatusBanners> */}
 
-      {/* CTA: Solicitar acceso a zona privada */}
-      {zonaAccesoProxima && (
-        <div className="fixed bottom-32 right-4 z-[201] animate-slide-in">
-          <div className="bg-slate-950/80 border border-slate-700/50 backdrop-blur-xl px-4 py-3 rounded-xl shadow-2xl w-64">
-            <div className="text-xs text-slate-300">
-              Estás cerca de una zona privada
-            </div>
-            <div className="text-sm text-white font-semibold">
-              {zonaAccesoProxima.zona.nombre_zona || zonaAccesoProxima.zona.empresa?.nombre || 'Zona privada'}
-            </div>
-            <button
-              onClick={handleSolicitarAccesoZona}
-              disabled={zonaAccesoProxima.pendiente || solicitandoAcceso}
-              className="mt-2 w-full rounded-lg bg-emerald-500/90 text-white text-xs py-2 font-semibold disabled:opacity-50"
-            >
-              {zonaAccesoProxima.pendiente ? 'Solicitud pendiente' : solicitandoAcceso ? 'Enviando...' : 'Solicitar acceso'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Toast notificaciones de autorizaciones */}
-      {notificacionAutorizacion && (
-        <div className="fixed top-36 right-4 z-[202] animate-slide-in">
-          <div className="bg-slate-900/90 border border-slate-700/60 backdrop-blur-xl px-4 py-3 rounded-xl shadow-2xl w-72">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-white">{notificacionAutorizacion.titulo}</p>
-                {notificacionAutorizacion.mensaje && (
-                  <p className="text-xs text-slate-300 mt-1">{notificacionAutorizacion.mensaje}</p>
-                )}
-              </div>
-              <button
-                onClick={() => setNotificacionAutorizacion(null)}
-                className="text-slate-400 hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
-            {notificacionAutorizacion.datos_extra?.canal_compartido_id && (
-              <button
-                onClick={() => {
-                  setActiveChatGroupId(notificacionAutorizacion.datos_extra?.canal_compartido_id || null);
-                  setActiveSubTab('chat');
-                }}
-                className="mt-2 w-full rounded-lg bg-sky-500/80 text-white text-xs py-2 font-semibold"
-              >
-                Abrir canal compartido
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Status overlays (grabando / zona privada / autorización) — F4.2b */}
+      <VirtualSpace3DStatusOverlays
+        showRecordingIndicator={
+          isRecording &&
+          (tipoGrabacionActual === null ||
+            !['rrhh_entrevista', 'rrhh_one_to_one'].includes(tipoGrabacionActual) ||
+            consentimientoAceptado)
+        }
+        zonaAccesoProxima={zonaAccesoProxima}
+        solicitandoAcceso={solicitandoAcceso}
+        onSolicitarAccesoZona={handleSolicitarAccesoZona}
+        notificacionAutorizacion={notificacionAutorizacion}
+        onDismissNotificacionAutorizacion={() => setNotificacionAutorizacion(null)}
+        onAbrirCanalCompartido={(canalId) => {
+          setActiveChatGroupId(canalId);
+          setActiveSubTab('chat');
+        }}
+      />
       
       {/* Controles de ayuda — desktop: WASD, mobile: oculto (tiene joystick) */}
       {!isMobile && (
