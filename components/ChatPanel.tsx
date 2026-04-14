@@ -249,7 +249,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                 >
                   <UserAvatar
                     name={u.nombre || ''}
-                    profilePhoto={u.avatar_url}
+                    profilePhoto={u.avatar_url ?? undefined}
                     size="xs"
                     showStatus
                     status={isOnline ? onlineUsers.find(ou => ou.id === u.id)?.status : undefined}
@@ -359,7 +359,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                   <div className="shrink-0">
                     <UserAvatar
                       name={m.usuario?.nombre || ''}
-                      profilePhoto={m.usuario_id === currentUser.id ? currentUser.profilePhoto : miembrosEspacio.find((u) => u.id === m.usuario_id)?.avatar_url}
+                      profilePhoto={(m.usuario_id === currentUser.id ? currentUser.profilePhoto : miembrosEspacio.find((u) => u.id === m.usuario_id)?.avatar_url) ?? undefined}
                       size="sm"
                     />
                   </div>
@@ -451,7 +451,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                 onClick={() => insertMention(user)}
                 className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-500/20 transition-colors flex items-center gap-3"
               >
-                <UserAvatar name={user.nombre || ''} profilePhoto={user.avatar_url} size="xs" />
+                <UserAvatar name={user.nombre || ''} profilePhoto={user.avatar_url ?? undefined} size="xs" />
                 <span className="text-[13px] font-medium">@{user.nombre}</span>
               </button>
             ))}
@@ -516,7 +516,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           </div>
         </form>
       </div>
-      {showAddMembers && <AgregarMiembros grupoId={grupoActivo} espacioId={activeWorkspace!.id} onClose={() => {
+      {showAddMembers && grupoActivo && <AgregarMiembros grupoId={grupoActivo} espacioId={activeWorkspace!.id} onClose={() => {
         setShowAddMembers(false);
         refetchGrupos();
       }} />}

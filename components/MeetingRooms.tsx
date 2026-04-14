@@ -288,16 +288,21 @@ const RoomCard: React.FC<RoomCardProps> = ({
 interface CreateRoomModalProps {
   isOpen: boolean;
   onClose: () => void;
-  newRoom: {
-    nombre: string;
-    descripcion: string;
-    es_privada: boolean;
-    password: string;
-    max_participantes: number;
-  };
-  onRoomChange: (room: typeof newRoom) => void;
+  newRoom: NewRoomData;
+  onRoomChange: (room: NewRoomData) => void;
   onCreateRoom: () => Promise<void>;
   loading: boolean;
+}
+
+// Extraído para poder referenciar el tipo en `onRoomChange` sin usar
+// `typeof newRoom` (que referenciaba un nombre de campo, no un valor).
+// Fix plan-correcciones Fase 1 — bug crítico TS2304.
+interface NewRoomData {
+  nombre: string;
+  descripcion: string;
+  es_privada: boolean;
+  password: string;
+  max_participantes: number;
 }
 
 const CreateRoomModal: React.FC<CreateRoomModalProps> = ({

@@ -951,7 +951,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
             remoteStreams={remoteStreamsRouted}
             showVideoBubbles={true}
             videoIsProcessed={isProcessorActive}
-            localMessage={localMessage}
+            localMessage={localMessage ?? undefined}
             remoteMessages={remoteMessages}
             localReactions={localReactions}
             remoteReaction={remoteReaction}
@@ -1051,7 +1051,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
           visitorId={session?.user?.id || 'visitor'}
           camOn={mediaState.isCameraEnabled}
           sharingOn={isScreenSharingActive}
-          isPrivate={currentUser.isPrivate}
+          isPrivate={currentUser.isPrivate ?? false}
           layoutSnapshot={videoHudLayoutSnapshot}
           stream={stream}
           localVideoTrack={localCameraTrack}
@@ -1340,8 +1340,8 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
         onTransformarObjeto={handleTransformarObjeto}
         canUndo={canUndo}
         canRedo={canRedo}
-        onUndo={deshacer}
-        onRedo={rehacer}
+        onUndo={async () => { await deshacer(); }}
+        onRedo={async () => { await rehacer(); }}
       />
 
       {/* Toast stack — screen-space overlay, immune to camera zoom */}

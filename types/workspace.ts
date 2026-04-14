@@ -4,7 +4,9 @@
  * Used by WorkspaceLayout and workspace hooks.
  */
 
-import type { Role, PresenceStatus } from './index';
+// Los tipos `Role` y `PresenceStatus` viven en `/types.ts` (nivel raíz),
+// no en un barrel `./index`. Fix plan-correcciones Fase 1 — TS2307.
+import type { Role, PresenceStatus } from '@/types';
 
 /**
  * Game invitation data structure

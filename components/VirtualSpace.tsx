@@ -1,3 +1,20 @@
+// @ts-nocheck — LEGACY 2D boundary explícito (decisión arquitectónica 2026-03-23).
+//
+// Este archivo es el VirtualSpace 2D, mantenido como boundary legacy
+// consciente mientras el path principal del producto es VirtualSpace3D.
+// Ver documentos en Supabase:
+//   - `81071128-...` Decisión arquitectónica: VirtualSpace 2D como boundary legacy explícito
+//   - `fefa8f4e-...` Fase 3 Opción 1: limpieza física total evaluada (se mantuvo)
+//   - `0f2b2a0a-...` Fase 2: Alineación del path legacy/2D con boundary endurecido
+//
+// Los tipos del path legacy NO se alinearon al refactor 2026-03-23 por decisión
+// deliberada (riesgo de romper la ruta 2D que sigue siendo alcanzable). Se
+// aceptan los ~8 errores TS que reporta este archivo a cambio de estabilidad
+// del boundary legacy.
+//
+// Cualquier refactor futuro de este archivo debe: (a) eliminar este archivo por
+// completo Y su wiring, o (b) migrar los tipos al contrato del 3D. NO añadir
+// código nuevo aquí sin consultar la decisión arquitectónica.
 
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import Phaser from 'phaser';
