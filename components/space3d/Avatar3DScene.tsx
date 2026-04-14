@@ -581,16 +581,36 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
   //   Phase 1 (mount): InstancedAvatarRenderer loads model, bakes, reports ready/unsupported
   //   Phase 2 (switch): Only after "ready" do we tell Avatar to stop rendering GLTFAvatar
   const { instancedGroups, instancedUserIds } = useMemo(() => {
-    // ⚠️ TEMPORARILY DISABLED: AnimationBaker produces bind-pose (T-pose) for
-    // models whose track names don't match skeleton bone names without remapping.
-    // GLTFAvatar uses remapAnimationTracks() which handles this; AnimationBaker
-    // does not. Until AnimationBaker integrates track remapping, all remote
-    // avatars render via GLTFAvatar (working AnimationMixer pipeline).
-    // TODO: Re-enable after AnimationBaker is fixed with track name remapping.
-    return {
-      instancedGroups: new Map<string, Set<string>>(),
-      instancedUserIds: new Set<string>(),
-    };
+    const groups = new Map<string, Set<string>>();
+    const confirmedInstancedIds = new Set<string>();
+
+    for (const entity of fullEntities) {
+      if (entity.esFantasma) continue;
+      const user = usersById.get(entity.userId);
+      if (!user) continue;
+
+      // Resolve model URL from avatar3DConfig or fallback to default
+      const modelUrl = user.avatar3DConfig?.modelo_url || DEFAULT_MODEL_URL;
+
+      // Skip models known to lack embedded animations — they'll use GLTFAvatar instead
+      if (unsupportedInstancedModels.has(modelUrl)) continue;
+
+      let userSet = groups.get(modelUrl);
+      if (!userSet) {
+        userSet = new Set<string>();
+        groups.set(modelUrl, userSet);
+      }
+      userSet.add(entity.userId);
+
+      // Only mark user as "instanced" (skip GLTFAvatar) if the model is CONFIRMED ready.
+      // Before confirmation, both InstancedAvatarRenderer and GLTFAvatar may render
+      // for 1-2 frames (acceptable overdraw) — but no green triangle.
+      if (readyInstancedModels.has(modelUrl)) {
+        confirmedInstancedIds.add(entity.userId);
+      }
+    }
+
+    return { instancedGroups: groups, instancedUserIds: confirmedInstancedIds };
   }, [fullEntities, usersById, unsupportedInstancedModels, readyInstancedModels]);
 
   return (

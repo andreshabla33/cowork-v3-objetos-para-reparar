@@ -21,6 +21,7 @@
 
 import * as THREE from 'three';
 import { logger } from '@/lib/logger';
+import { remapAnimationTracks } from '@/components/avatar3d/rigUtils';
 
 const log = logger.child('AnimationBaker');
 
@@ -94,69 +95,46 @@ export function bakeAnimationClip(
   const height = numFrames;
   const data = new Float32Array(width * height * 4); // RGBA
 
-  // Crear mixer temporal para samplear.
-  // CRITICAL: Use sceneRoot (GLTF scene) as mixer root, not mesh.
-  // Most GLTF skeletons have bones as siblings of the SkinnedMesh,
-  // not children. The mixer resolves clip targets by traversing
-  // descendants of its root — wrong root = bones not found = T-pose.
-  const mixerRoot = sceneRoot || mesh.parent || mesh;
-  const mixer = new THREE.AnimationMixer(mixerRoot);
-  const action = mixer.clipAction(clip);
-  action.play();
-
-  // ── Diagnóstico: verificar que PropertyBinding resolvió los tracks ──
-  // Si los track names no coinciden con los node names en el scene graph,
-  // el mixer crea bindings "no-op" y la animación no se reproduce → T-POSE.
+  // ── Remap de nombres de tracks → nombres de huesos ──────────────────────
+  // GLTFAvatar aplica esto (rigUtils.remapAnimationTracks) antes de pasar
+  // los clips al mixer; si no se hace, cualquier desajuste de nombres
+  // (prefijos mixamorig:, Armature|, aliases, etc.) rompe los bindings de
+  // PropertyBinding y el resultado es bind pose (T-pose) en la textura.
+  //
+  // Canonizamos el clip aquí para que todo el pipeline de instancing tenga
+  // la misma garantía de matching que GLTFAvatar.
   const boneNameSet = new Set(skeleton.bones.map((b) => b.name));
-  const trackBoneNames = clip.tracks.map((t) => t.name.split('.')[0]);
-  const matchedTracks = trackBoneNames.filter((n) => boneNameSet.has(n));
-  const unmatchedTracks = trackBoneNames.filter((n) => !boneNameSet.has(n));
+  const normalizedClip = remapAnimationTracks(clip, boneNameSet);
+  const matchRate = (normalizedClip as unknown as { _matchRate?: number })._matchRate ?? 0;
 
-  log.info('Bake diagnostic', {
-    clip: clip.name,
-    mixerRootType: mixerRoot.type,
-    mixerRootName: mixerRoot.name || '(unnamed)',
-    numBones,
-    numFrames,
-    totalTracks: clip.tracks.length,
-    matchedTracks: matchedTracks.length,
-    unmatchedTracks: unmatchedTracks.length,
-    sampleUnmatched: unmatchedTracks.slice(0, 5),
-    sampleBoneNames: skeleton.bones.slice(0, 5).map((b) => b.name),
-  });
-
-  if (unmatchedTracks.length > 0 && matchedTracks.length === 0) {
-    log.warn('NO tracks matched bones — animation will be T-POSE', {
+  if (normalizedClip.tracks.length === 0 && clip.tracks.length > 0) {
+    log.warn('Clip sin tracks tras remap — skeleton incompatible', {
       clip: clip.name,
-      trackSample: trackBoneNames.slice(0, 5),
-      boneSample: skeleton.bones.slice(0, 5).map((b) => b.name),
+      originalTracks: clip.tracks.length,
     });
   }
+
+  // Crear mixer temporal para samplear.
+  // IMPORTANT: Use sceneRoot (GLTF scene) as mixer root, not mesh.
+  // En la mayoría de GLTF los huesos son hermanos del SkinnedMesh dentro
+  // del nodo Armature; el mixer resuelve los targets de clip recorriendo
+  // los descendientes de su root → root incorrecto = no encuentra los huesos.
+  const mixerRoot = sceneRoot || mesh.parent || mesh;
+  const mixer = new THREE.AnimationMixer(mixerRoot);
+  const action = mixer.clipAction(normalizedClip);
+  action.play();
 
   // Matrices temporales
   const boneInverses = skeleton.boneInverses;
   const boneMatrixWorld = new THREE.Matrix4();
-  const identityMatrix = new THREE.Matrix4();
 
   for (let frame = 0; frame < numFrames; frame++) {
     const time = (frame / fps) % duration;
     mixer.setTime(time);
 
-    // CRITICAL: updateMatrixWorld must be called on mixerRoot, NOT mesh.
-    // In GLTF models, bones are siblings of the SkinnedMesh under Armature,
-    // not children. Calling mesh.updateMatrixWorld only propagates to mesh's
-    // children — bones are NOT descendants of mesh, so their matrixWorld
-    // stays stale (identity/bind pose).
-    //
-    // After mixer.setTime() updates bone local matrices via PropertyBinding,
-    // we need mixerRoot.updateMatrixWorld(true) to propagate those local
-    // transforms into world matrices across the ENTIRE scene graph.
-    //
-    // Ref: Three.js Skeleton.update() reads bone.matrixWorld which requires
-    //      prior updateMatrixWorld() call on an ancestor that contains the bones.
-    // Ref: PropertyBinding.findNode() resolves tracks by searching root's
-    //      skeleton (getBoneByName) then children recursively — root must
-    //      contain both bones and mesh.
+    // updateMatrixWorld sobre mixerRoot (no mesh): en GLTF los huesos son
+    // hermanos del SkinnedMesh bajo Armature, así que mesh.updateMatrixWorld
+    // no propagaría los matrices locales actualizados por el mixer a los huesos.
     mixerRoot.updateMatrixWorld(true);
     skeleton.update();
 
@@ -171,56 +149,36 @@ export function bakeAnimationClip(
       const pixelOffset = (frame * width + boneIdx * 4) * 4;
       const elements = boneMatrixWorld.elements;
 
-      // Fila 0: (m11, m21, m31, m41) — column-major
       data[pixelOffset + 0] = elements[0];
       data[pixelOffset + 1] = elements[1];
       data[pixelOffset + 2] = elements[2];
       data[pixelOffset + 3] = elements[3];
 
-      // Fila 1
       data[pixelOffset + 4] = elements[4];
       data[pixelOffset + 5] = elements[5];
       data[pixelOffset + 6] = elements[6];
       data[pixelOffset + 7] = elements[7];
 
-      // Fila 2
       data[pixelOffset + 8] = elements[8];
       data[pixelOffset + 9] = elements[9];
       data[pixelOffset + 10] = elements[10];
       data[pixelOffset + 11] = elements[11];
 
-      // Fila 3
       data[pixelOffset + 12] = elements[12];
       data[pixelOffset + 13] = elements[13];
       data[pixelOffset + 14] = elements[14];
       data[pixelOffset + 15] = elements[15];
     }
-
-    // Diagnóstico frame 0: verificar si bone matrices son identidad (T-pose)
-    if (frame === 0) {
-      const identity = new THREE.Matrix4();
-      let identityCount = 0;
-      for (let boneIdx = 0; boneIdx < numBones; boneIdx++) {
-        const bone = skeleton.bones[boneIdx];
-        const mat = new THREE.Matrix4();
-        mat.multiplyMatrices(bone.matrixWorld, boneInverses[boneIdx]);
-        if (mat.equals(identity)) identityCount++;
-      }
-      log.info('Frame 0 bake result', {
-        clip: clip.name,
-        identityBones: identityCount,
-        totalBones: numBones,
-        isTPose: identityCount === numBones,
-        bone0MatrixWorld: skeleton.bones[0]?.matrixWorld.elements.slice(0, 4).map((v) => +v.toFixed(4)),
-      });
-    }
   }
 
-  // Cleanup mixer — uncacheRoot must match the root passed to the constructor.
-  // Ref: Three.js AnimationMixer.uncacheRoot() traverses the provided object's
-  //      descendants to remove cached bindings. Using 'mesh' here when mixer
-  //      root is 'mixerRoot' would fail to clean up bone bindings (bones are
-  //      not descendants of mesh in GLTF).
+  log.debug('Bake complete', {
+    clip: clip.name,
+    numFrames,
+    numBones,
+    matchRate: Math.round(matchRate * 100) + '%',
+  });
+
+  // Cleanup mixer — uncacheRoot debe coincidir con el root usado en el constructor.
   mixer.stopAllAction();
   mixer.uncacheRoot(mixerRoot);
 
