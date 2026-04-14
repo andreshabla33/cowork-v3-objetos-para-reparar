@@ -960,6 +960,8 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
             theme={theme}
             orbitControlsRef={orbitControlsRef}
             stream={stream}
+            localVideoTrack={localCameraTrack}
+            backgroundEffect={cameraSettings.backgroundEffect}
             remoteStreams={remoteStreamsRouted}
             showVideoBubbles={true}
             videoIsProcessed={isProcessorActive}

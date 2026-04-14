@@ -66,6 +66,10 @@ export interface SceneProps {
   theme: string;
   orbitControlsRef: React.MutableRefObject<any>;
   stream: MediaStream | null;
+  /** LocalVideoTrack del usuario actual con processor aplicado (blur/virtual bg). */
+  localVideoTrack?: import('livekit-client').LocalVideoTrack | null;
+  /** Efecto activo — reenviado al Player para la burbuja local. */
+  backgroundEffect?: import('@/src/core/domain/ports/IVideoTrackProcessor').EffectType;
   remoteStreams: Map<string, MediaStream>;
   showVideoBubbles?: boolean;
   videoIsProcessed?: boolean;
@@ -295,6 +299,8 @@ export const Scene: React.FC<SceneProps> = ({
   theme,
   orbitControlsRef,
   stream,
+  localVideoTrack,
+  backgroundEffect = 'none',
   remoteStreams,
   showVideoBubbles = true,
   videoIsProcessed = false,
@@ -1076,6 +1082,8 @@ export const Scene: React.FC<SceneProps> = ({
         currentUser={currentUser}
         setPosition={setPosition}
         stream={stream}
+        localVideoTrack={localVideoTrack}
+        backgroundEffect={backgroundEffect}
         showVideoBubble={showVideoBubbles && !usersInCallIds?.size} // Bug 1 Fix: Ocultar bubble local si hay llamada activa (HUD visible)
         videoIsProcessed={videoIsProcessed}
         message={localMessage}

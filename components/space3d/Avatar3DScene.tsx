@@ -17,8 +17,11 @@ import {
   TELEPORT_DISTANCE, LOD_NEAR_DISTANCE, LOD_MID_DISTANCE, CULL_DISTANCE,
   playTeleportSound, obtenerDireccionDesdeVector
 } from './shared';
+import type { LocalVideoTrack } from 'livekit-client';
 import { statusColors, type VirtualSpace3DProps } from './spaceTypes';
 import { StableVideo } from './Overlays';
+import { VideoWithBackground } from '@/components/VideoWithBackground';
+import type { EffectType } from '@/src/core/domain/ports/IVideoTrackProcessor';
 
 // ECS imports (PR-6/7/9/10)
 import { avatarStore } from '@/lib/ecs/AvatarECS';
@@ -98,6 +101,18 @@ export interface AvatarProps {
   seatForwardRotation?: number;
   reaction?: string | null;
   videoStream?: MediaStream | null;
+  /**
+   * `LocalVideoTrack` wrapper del usuario actual con el processor aplicado
+   * (blur / virtual background). Solo se pasa para `isCurrentUser=true`.
+   * Cuando está disponible, la burbuja local renderiza via `track.attach()`
+   * del SDK de LiveKit → muestra el `processedTrack`. Los avatares remotos
+   * NO usan esto: siguen con `videoStream` crudo porque el processor ya
+   * fue aplicado en el lado del emisor antes de publicar.
+   */
+  localVideoTrack?: LocalVideoTrack | null;
+  /** Tipo de efecto activo (para clases CSS / debug; el procesamiento lo
+   * hace el SDK en el track). Solo aplica a `isCurrentUser`. */
+  effectType?: EffectType;
   videoIsProcessed?: boolean;
   camOn?: boolean;
   showVideoBubble?: boolean;
@@ -135,7 +150,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   position, config, name, status, isCurrentUser,
   animationState = 'idle', direction,
   isSitting = false, seatForwardRotation = 0,
-  reaction, videoStream, videoIsProcessed = false,
+  reaction, videoStream, localVideoTrack, effectType = 'none', videoIsProcessed = false,
   camOn, showVideoBubble = true, message,
   onClickAvatar, onClickRemoteAvatar, userId,
   mirrorVideo: mirrorVideoProp, hideSelfView: hideSelfViewProp,
@@ -256,8 +271,25 @@ export const Avatar: React.FC<AvatarProps> = ({
       {allowVideo && showVideoBubble && !(isCurrentUser && hideSelfView) && (
         <Html position={[0, videoY, 0]} center distanceFactor={12} zIndexRange={[100, 0]}>
           <div className="w-24 h-16 rounded-[12px] overflow-hidden border-[2px] border-[#6366f1] shadow-lg bg-black relative">
-            {videoStream && videoStream.getVideoTracks().length > 0 ? (
-              <StableVideo stream={videoStream} muted={isCurrentUser} className={`w-full h-full object-cover ${isCurrentUser && mirrorVideo && !videoIsProcessed ? '-scale-x-100' : ''}`} />
+            {isCurrentUser && (localVideoTrack || (videoStream && videoStream.getVideoTracks().length > 0)) ? (
+              // Path nativo para el usuario actual: VideoWithBackground usa
+              // track.attach() → muestra el processedTrack del background
+              // processor (blur / virtual bg). Fallback a stream crudo si
+              // el wrapper aún no existe.
+              // MIRROR: depende sólo de mirrorVideo (el processor no invierte).
+              <VideoWithBackground
+                stream={videoStream ?? null}
+                localVideoTrack={localVideoTrack ?? null}
+                effectType={effectType}
+                mirrorVideo={!!mirrorVideo}
+                muted
+                className="w-full h-full object-cover"
+              />
+            ) : videoStream && videoStream.getVideoTracks().length > 0 ? (
+              // Avatares remotos: stream crudo. El emisor ya aplicó el
+              // processor antes de publicar, así que este stream ya llega
+              // con blur cuando corresponde.
+              <StableVideo stream={videoStream} muted={false} className="w-full h-full object-cover" />
             ) : (
               <div className="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-indigo-900/80 to-purple-900/80">
                 <span className="text-[9px] text-white/80 font-medium">{name.split(' ')[0]}</span>
@@ -266,6 +298,9 @@ export const Avatar: React.FC<AvatarProps> = ({
           </div>
         </Html>
       )}
+      {/* videoIsProcessed queda como hint semántico para futuras optimizaciones
+          (p.ej. desactivar post-process CSS redundantes), pero no se usa aquí. */}
+      {false && videoIsProcessed /* reserved */}
 
       {allowReaction && (
         <Html position={[0, reactionY, 0]} center distanceFactor={8} zIndexRange={[200, 0]}>

@@ -49,6 +49,13 @@ export interface PlayerProps {
   currentUser: User;
   setPosition: (x: number, y: number, direction: string, isSitting: boolean, isMoving: boolean) => void;
   stream: MediaStream | null;
+  /** LocalVideoTrack del usuario actual con processor aplicado. Se usa
+   *  para que la burbuja del avatar propio renderice el stream procesado
+   *  (blur / virtual bg) desde el primer frame, independiente de si la
+   *  publicación a LiveKit ocurrió (gating por proximidad). */
+  localVideoTrack?: import('livekit-client').LocalVideoTrack | null;
+  /** Tipo de efecto activo — reenviado al Avatar para su burbuja local. */
+  backgroundEffect?: import('@/src/core/domain/ports/IVideoTrackProcessor').EffectType;
   showVideoBubble?: boolean;
   videoIsProcessed?: boolean;
   message?: string | null;
@@ -79,7 +86,7 @@ export interface PlayerProps {
   obstaculos?: ObstaculoColision3D[];
 }
 
-export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream, showVideoBubble = true, videoIsProcessed = false, message, reactions = [], onClickAvatar, moveTarget, onReachTarget, teleportTarget, onTeleportDone, broadcastMovement, moveSpeed, runSpeed, ecsStateRef, onPositionUpdate, zonasEmpresa = [], spawnPersonal = { spawn_x: null, spawn_z: null }, onGuardarPosicionPersistente, empresasAutorizadas = [], usersInCallIds, mobileInputRef, onXPEvent, espacioObjetos = [], asientos = [], ocupacionesAsientosPorObjetoId = new Map(), onOcuparAsiento, onLiberarAsiento, onRefrescarAsiento, obstaculos = [] }) => {
+export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream, localVideoTrack, backgroundEffect = 'none', showVideoBubble = true, videoIsProcessed = false, message, reactions = [], onClickAvatar, moveTarget, onReachTarget, teleportTarget, onTeleportDone, broadcastMovement, moveSpeed, runSpeed, ecsStateRef, onPositionUpdate, zonasEmpresa = [], spawnPersonal = { spawn_x: null, spawn_z: null }, onGuardarPosicionPersistente, empresasAutorizadas = [], usersInCallIds, mobileInputRef, onXPEvent, espacioObjetos = [], asientos = [], ocupacionesAsientosPorObjetoId = new Map(), onOcuparAsiento, onLiberarAsiento, onRefrescarAsiento, obstaculos = [] }) => {
   const groupRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
   // Refs para acceso seguro dentro de useFrame
@@ -1041,6 +1048,8 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
             seatForwardRotation={(seatRuntime || seatRuntimeRef.current)?.rotacion ?? 0}
             reaction={reactions.length > 0 ? reactions[reactions.length - 1].emoji : null}
             videoStream={stream}
+            localVideoTrack={localVideoTrack}
+            effectType={backgroundEffect}
             videoIsProcessed={videoIsProcessed}
             camOn={currentUser.isCameraOn}
             showVideoBubble={showVideoBubble}
