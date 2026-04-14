@@ -79,8 +79,9 @@ export const VideoHUD: React.FC<VideoHUDProps> = ({
   const [waveAnimation, setWaveAnimation] = useState<string | null>(null);
   const [useGridLayout, setUseGridLayout] = useState(false);
   // El processor se aplica in-place sobre el track via track.setProcessor()
-  // (gestionado por useBackgroundProcessor). El stream base ya contiene
-  // el output procesado — no se necesita un effectiveStream separado.
+  // (gestionado por `useLiveKitVideoBackground`, compartido con meetings).
+  // El stream base ya contiene el output procesado — no se necesita un
+  // effectiveStream separado.
   const localExpandedStream = stream;
   const localExpandedClass = `w-full h-full object-contain ${cameraSettings.backgroundEffect === 'none' && cameraSettings.mirrorVideo ? 'mirror' : ''}`;
   const localBubbleStream = localExpandedStream;

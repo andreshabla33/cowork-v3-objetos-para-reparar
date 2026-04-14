@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { Room, RoomEvent, Track, LocalVideoTrack } from 'livekit-client';
-import { TrackPublicationCoordinator, crearOpcionesPublicacionTrackLiveKit, loadCameraSettings, saveCameraSettings, loadAudioSettings, saveAudioSettings, type CameraSettings, type AudioSettings } from '@/modules/realtime-room';
+import { TrackPublicationCoordinator, crearOpcionesPublicacionTrackLiveKit, loadCameraSettings, saveCameraSettings, loadAudioSettings, saveAudioSettings, useLiveKitVideoBackground, type CameraSettings, type AudioSettings } from '@/modules/realtime-room';
 import { createProcessedAudioTrack, type ProcessedAudioTrackHandle } from '@/lib/audioProcessing';
 import { SpaceMediaCoordinator, type SpaceMediaCoordinatorState } from '@/modules/realtime-room';
 import { getLocalVideoTrackFactory } from '@/src/core/infrastructure/adapters/LocalVideoTrackFactory';
-import { GestionarBackgroundVideoUseCase } from '@/src/core/application/usecases/GestionarBackgroundVideoUseCase';
-import { getLiveKitBackgroundAdapter } from '@/src/core/infrastructure/adapters/LiveKitOfficialBackgroundAdapter';
 import { logger } from '@/lib/logger';
 
 const log = logger.child('useMeetingMediaBridge');
@@ -703,139 +701,35 @@ export const useMeetingMediaBridge = ({
   }, [previewVideoTrack]);
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // BACKGROUND PROCESSOR LIFECYCLE — Application layer (Clean Architecture)
+  // BACKGROUND PROCESSOR LIFECYCLE — delegado al hook compartido
   //
-  // El processor vive en el bridge, NO en el componente de presentación.
-  // Ciclo de vida:
-  //   1. Track disponible (publicado o preview) → attachToTrack() [una vez]
-  //   2. Camera ON  + effect ≠ none → setEffect(blur|image)
-  //   3. Camera OFF ó effect = none → disableEffect() [processor vivo, passthrough]
-  //   4. Unmount real (salir de reunión) → detachFromTrack() [libera WASM]
-  //
-  // Esto elimina el problema de mount/unmount de VideoWithBackground que
-  // destruía y recreaba el WASM en cada toggle de cámara.
+  // `useLiveKitVideoBackground` vive en `realtime-room/presentation/` y
+  // encapsula attach → setEffect → disableEffect → detach siguiendo la
+  // doc oficial de LiveKit (track-processors-js). Este hook se usa también
+  // en el espacio 3D (`VirtualSpace3D`) para evitar duplicación.
   // ═══════════════════════════════════════════════════════════════════════════
 
-  const backgroundUseCaseRef = useRef<GestionarBackgroundVideoUseCase | null>(null);
-  if (!backgroundUseCaseRef.current) {
-    backgroundUseCaseRef.current = new GestionarBackgroundVideoUseCase(getLiveKitBackgroundAdapter());
-  }
-
-  /** Ref al último LocalVideoTrack sobre el que se hizo attachProcessor */
-  const attachedBgTrackRef = useRef<LocalVideoTrack | null>(null);
-
   /**
-   * Deferred detach para el processor (React Strict Mode safe).
-   * Mismo patrón que deferredMediaCleanupRef: el cleanup programa un
-   * detachFromTrack() vía setTimeout(0). Si hay remount, mount#2 lo cancela.
-   */
-  const deferredBgDetachRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  /**
-   * Resolve el LocalVideoTrack activo: el publicado en room tiene prioridad,
-   * fallback al preview track del lobby.
+   * Resuelve el `LocalVideoTrack` activo: prioridad al publicado en la room;
+   * fallback al preview track del lobby (antes de unirse a la reunión).
+   * La identidad del callback cambia con `[room, previewVideoTrack]` → el
+   * hook compartido re-ejecuta su lifecycle cuando cualquiera cambia.
    */
   const resolveActiveVideoTrack = useCallback((): LocalVideoTrack | null => {
-    // Track publicado en la room (ya gestionado por LiveKit)
     if (room) {
       const publication = room.localParticipant.getTrackPublication(Track.Source.Camera);
       const published = (publication?.track as LocalVideoTrack | undefined) ?? null;
       if (published) return published;
     }
-    // Preview track del lobby (wrapper con userProvidedTrack=true)
     return previewVideoTrack;
   }, [room, previewVideoTrack]);
 
-  useEffect(() => {
-    const useCase = backgroundUseCaseRef.current;
-    if (!useCase) return;
-
-    // ── Cancelar deferred detach de cleanup anterior (Strict Mode safe) ──
-    if (deferredBgDetachRef.current !== null) {
-      clearTimeout(deferredBgDetachRef.current);
-      deferredBgDetachRef.current = null;
-      log.info('[Bridge:BG] deferred detach cancelado → Strict Mode remount');
-    }
-
-    const track = resolveActiveVideoTrack();
-    const wantEffect = cameraSettings.backgroundEffect !== 'none'
-      && mediaState.desiredCameraEnabled;
-
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        if (!track) {
-          // Sin track: nada que hacer. Si había uno attached, el deferred
-          // detach del cleanup anterior se encargará.
-          return;
-        }
-
-        // ── Attach idempotente al track actual ────────────────────────────
-        if (attachedBgTrackRef.current !== track) {
-          // Si había un track diferente attached, detach primero
-          if (attachedBgTrackRef.current) {
-            await useCase.detachFromTrack(attachedBgTrackRef.current);
-          }
-          await useCase.attachToTrack(track);
-          if (cancelled) return;
-          attachedBgTrackRef.current = track;
-          log.info('[Bridge:BG] processor attached', {
-            trackId: track.sid ?? track.mediaStreamTrack.id,
-          });
-        }
-
-        // ── Aplicar o desactivar efecto ───────────────────────────────────
-        if (cancelled) return;
-
-        if (wantEffect) {
-          await useCase.setEffect(track, {
-            effectType: cameraSettings.backgroundEffect,
-            blurRadius: 12,
-            backgroundImageUrl: cameraSettings.backgroundImage ?? undefined,
-          });
-          if (!cancelled) {
-            log.info('[Bridge:BG] effect applied', {
-              effectType: cameraSettings.backgroundEffect,
-            });
-          }
-        } else {
-          await useCase.disableEffect(track);
-          if (!cancelled) {
-            log.info('[Bridge:BG] effect disabled (passthrough)');
-          }
-        }
-      } catch (err) {
-        if (!cancelled) {
-          log.error('[Bridge:BG] error en lifecycle', {
-            error: err instanceof Error ? err.message : String(err),
-          });
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      // Diferir detach al siguiente macrotask.
-      // Si React Strict Mode hace remount, mount#2 cancela este timer.
-      // En unmount real, el timer dispara y libera WASM/WebGL.
-      const trackToDetach = attachedBgTrackRef.current;
-      deferredBgDetachRef.current = setTimeout(() => {
-        deferredBgDetachRef.current = null;
-        if (trackToDetach) {
-          log.info('[Bridge:BG] deferred detach ejecutado (unmount real)');
-          void useCase.detachFromTrack(trackToDetach).catch(() => {});
-          attachedBgTrackRef.current = null;
-        }
-      }, 0);
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
+  useLiveKitVideoBackground({
     resolveActiveVideoTrack,
-    cameraSettings.backgroundEffect,
-    cameraSettings.backgroundImage,
-    mediaState.desiredCameraEnabled,
-  ]);
+    effectType: cameraSettings.backgroundEffect,
+    backgroundImage: cameraSettings.backgroundImage,
+    enabled: mediaState.desiredCameraEnabled,
+  });
 
   return {
     cameraSettings,

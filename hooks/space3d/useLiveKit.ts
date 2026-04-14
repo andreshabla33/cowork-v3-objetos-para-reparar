@@ -880,7 +880,7 @@ export function useLiveKit(params: {
     return () => { if (publishDelayTimerRef.current) { clearTimeout(publishDelayTimerRef.current); publishDelayTimerRef.current = null; } };
   }, [livekitConnected, hasActiveCall, hasAnyoneNearby, usersInAudioRange.length, despublicarTrackLocal, sincronizarTracksLocales, stream]);
 
-  // Background effects are now handled via useBackgroundProcessor + track.setProcessor()
+  // Background effects are handled via `useLiveKitVideoBackground` (shared with meetings) + track.setProcessor()
   // No need to re-publish video when effect changes — the processor modifies the track in-place
 
   // ========== DataChannel send ==========
@@ -899,7 +899,14 @@ export function useLiveKit(params: {
 
   /**
    * Obtiene el LocalVideoTrack de cámara publicado actualmente en LiveKit.
-   * Usado por useBackgroundProcessor para aplicar setProcessor() nativo.
+   * Consumido por `useLiveKitVideoBackground` para aplicar el processor
+   * siguiendo el patrón oficial (setProcessor/switchTo).
+   *
+   * IMPORTANTE: las deps incluyen `realtimeCoordinatorState` para que la
+   * identidad del callback cambie cuando la publicación cambie. Sin esto,
+   * el consumidor nunca detectaría la publicación inicial ni un republish
+   * (el hook de background depende de la referencia para re-ejecutar su
+   * lifecycle de attach/detach).
    */
   const getPublishedVideoTrack = useCallback((): LocalVideoTrack | null => {
     const coordinator = realtimeCoordinatorRef.current;
@@ -908,7 +915,7 @@ export function useLiveKit(params: {
     if (!pub?.track) return null;
     if (pub.track instanceof LocalVideoTrack) return pub.track;
     return null;
-  }, []);
+  }, [realtimeCoordinatorState]);
 
   return {
     realtimeTransportMode: 'livekit',

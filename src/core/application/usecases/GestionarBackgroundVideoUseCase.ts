@@ -13,7 +13,7 @@
  *   disableEffect(track)   → switchTo(disabled) — processor vivo, sin efecto
  *   detachFromTrack(track) → stopProcessor() [cleanup final, unmount]
  *
- * La capa de presentación (VideoWithBackground, useBackgroundProcessor)
+ * La capa de presentación (VideoWithBackground, useLiveKitVideoBackground)
  * no conoce detalles del SDK de LiveKit: solo orquesta a través de este
  * Use Case, manteniendo el desacoplamiento de Clean Architecture.
  *

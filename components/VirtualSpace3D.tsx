@@ -12,7 +12,7 @@ import type { CargoLaboral } from './meetings/recording/types/analysis';
 import { ConsentimientoPendiente } from './meetings/recording/ConsentimientoPendiente';
 import { BottomControlBar } from './BottomControlBar';
 import { AvatarCustomizer3D } from './AvatarCustomizer3D';
-import { useBackgroundProcessor } from '@/hooks/space3d/useBackgroundProcessor';
+import { useLiveKitVideoBackground } from '@/modules/realtime-room';
 import { useRendererMetrics } from '@/hooks/space3d/useRendererMetrics';
 import { SpatialAudio } from './3d/SpatialAudio';
 import { type GpuInfo } from '@/lib/gpuCapabilities';
@@ -163,12 +163,16 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   const remoteStreams = s.livekit.remoteStreams;
   const remoteScreenStreams = s.livekit.remoteScreenStreams;
 
-  // Background processor — aplicado directamente al track de LiveKit via setProcessor()
-  const { isProcessorActive } = useBackgroundProcessor({
+  // Background processor — hook compartido con meetings. Aplica
+  // setProcessor(disabled) + switchTo() siguiendo el patrón oficial de
+  // LiveKit. La identidad de `getPublishedVideoTrack` cambia cuando se
+  // publica/republica la cámara → el hook reacciona y re-attacha.
+  const { isLocalVideoProcessed: isProcessorActive } = useLiveKitVideoBackground({
+    resolveActiveVideoTrack: getPublishedVideoTrack,
     effectType: cameraSettings.backgroundEffect as 'none' | 'blur' | 'image',
     blurRadius: 12,
     backgroundImage: cameraSettings.backgroundImage,
-    getPublishedVideoTrack,
+    enabled: mediaState.isCameraEnabled,
   });
 
   // Proximity
@@ -1045,7 +1049,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
         />
       )}
 
-      {/* Background effects are now applied directly on the LiveKit track via useBackgroundProcessor (setProcessor API) */}
+      {/* Background effects are applied directly on the LiveKit track via useLiveKitVideoBackground (setProcessor/switchTo). Shared with meetings. */}
       
       {/* Indicador discreto de grabación para otros usuarios (no el grabador) */}
       {isRecording && (tipoGrabacionActual === null || !['rrhh_entrevista', 'rrhh_one_to_one'].includes(tipoGrabacionActual) || consentimientoAceptado) && (

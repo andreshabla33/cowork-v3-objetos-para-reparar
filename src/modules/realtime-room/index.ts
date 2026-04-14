@@ -92,6 +92,8 @@ export { Gatekeeper } from './application/Gatekeeper';
 export type { GatekeeperOptions } from './application/Gatekeeper';
 export { getPreflightFeedback, getPreflightFeedbackMessage, getPrimaryPreflightError } from './presentation/preflightFeedback';
 export type { PreflightFeedback } from './presentation/preflightFeedback';
+export { useLiveKitVideoBackground } from './presentation/useLiveKitVideoBackground';
+export type { UseLiveKitVideoBackgroundParams, UseLiveKitVideoBackgroundReturn } from './presentation/useLiveKitVideoBackground';
 
 // Infrastructure
 export { DeviceManager } from './infrastructure/browser/DeviceManager';
