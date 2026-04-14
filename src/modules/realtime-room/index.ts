@@ -94,6 +94,8 @@ export { getPreflightFeedback, getPreflightFeedbackMessage, getPrimaryPreflightE
 export type { PreflightFeedback } from './presentation/preflightFeedback';
 export { useLiveKitVideoBackground } from './presentation/useLiveKitVideoBackground';
 export type { UseLiveKitVideoBackgroundParams, UseLiveKitVideoBackgroundReturn } from './presentation/useLiveKitVideoBackground';
+export { useLocalCameraTrack } from './presentation/useLocalCameraTrack';
+export type { UseLocalCameraTrackParams } from './presentation/useLocalCameraTrack';
 
 // Infrastructure
 export { DeviceManager } from './infrastructure/browser/DeviceManager';

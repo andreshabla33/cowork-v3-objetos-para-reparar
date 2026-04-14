@@ -12,7 +12,8 @@ import type { CargoLaboral } from './meetings/recording/types/analysis';
 import { ConsentimientoPendiente } from './meetings/recording/ConsentimientoPendiente';
 import { BottomControlBar } from './BottomControlBar';
 import { AvatarCustomizer3D } from './AvatarCustomizer3D';
-import { useLiveKitVideoBackground } from '@/modules/realtime-room';
+import { useLiveKitVideoBackground, useLocalCameraTrack } from '@/modules/realtime-room';
+import type { LocalVideoTrack } from 'livekit-client';
 import { useRendererMetrics } from '@/hooks/space3d/useRendererMetrics';
 import { SpatialAudio } from './3d/SpatialAudio';
 import { type GpuInfo } from '@/lib/gpuCapabilities';
@@ -163,12 +164,25 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   const remoteStreams = s.livekit.remoteStreams;
   const remoteScreenStreams = s.livekit.remoteScreenStreams;
 
+  // Preview LocalVideoTrack: wrapper del MediaStreamTrack crudo de la
+  // cámara que existe ANTES de cualquier publicación a LiveKit. En el
+  // espacio 3D la publicación está gated por proximidad (solo se publica
+  // cuando hay usuarios cercanos), así que sin este preview el processor
+  // no tendría sobre qué actuar hasta que otro usuario se acercara.
+  const localCameraTrack = useLocalCameraTrack({ mediaStream: stream });
+
   // Background processor — hook compartido con meetings. Aplica
   // setProcessor(disabled) + switchTo() siguiendo el patrón oficial de
-  // LiveKit. La identidad de `getPublishedVideoTrack` cambia cuando se
-  // publica/republica la cámara → el hook reacciona y re-attacha.
+  // LiveKit. El `resolveActiveVideoTrack` prefiere el track publicado
+  // (para que el processor aplique sobre el stream enviado a remotos)
+  // y cae al preview local cuando aún no hay publicación (para que el
+  // HUD local muestre el efecto desde el primer momento).
+  const resolveActiveVideoTrack = useCallback((): LocalVideoTrack | null => {
+    return getPublishedVideoTrack() ?? localCameraTrack;
+  }, [getPublishedVideoTrack, localCameraTrack]);
+
   const { isLocalVideoProcessed: isProcessorActive } = useLiveKitVideoBackground({
-    resolveActiveVideoTrack: getPublishedVideoTrack,
+    resolveActiveVideoTrack,
     effectType: cameraSettings.backgroundEffect as 'none' | 'blur' | 'image',
     blurRadius: 12,
     backgroundImage: cameraSettings.backgroundImage,
@@ -1089,6 +1103,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
           isPrivate={currentUser.isPrivate}
           layoutSnapshot={videoHudLayoutSnapshot}
           stream={stream}
+          localVideoTrack={localCameraTrack}
           screenStream={screenStream}
           remoteReaction={remoteReaction}
           onWaveUser={handleWaveUser}

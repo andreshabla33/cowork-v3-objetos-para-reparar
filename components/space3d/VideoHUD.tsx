@@ -1,5 +1,7 @@
 ﻿'use client';
 import React, { useRef, useEffect, useMemo, Suspense, useState, useCallback } from 'react';
+import type { LocalVideoTrack } from 'livekit-client';
+import { VideoWithBackground } from '@/components/VideoWithBackground';
 import { useFrame, useThree } from '@react-three/fiber';
 import { OrthographicCamera, PerspectiveCamera, Grid, Text, Html, PerformanceMonitor, useGLTF } from '@react-three/drei';
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';
@@ -43,6 +45,16 @@ export interface VideoHUDProps {
   isPrivate: boolean;
   layoutSnapshot: SpaceVideoHudLayoutModel<User>;
   stream: MediaStream | null;
+  /**
+   * `LocalVideoTrack` wrapper de la cámara local (producido por
+   * `useLocalCameraTrack`). Cuando está disponible se usa `track.attach()`
+   * del SDK de LiveKit para que el `<video>` muestre directamente el
+   * `processedTrack` del background processor. Cuando es `null`, se cae al
+   * `stream` crudo (fallback). Gracias a este track el blur/virtual
+   * background se ve en el HUD local aun sin publicación a LiveKit
+   * (gating por proximidad).
+   */
+  localVideoTrack?: LocalVideoTrack | null;
   screenStream: MediaStream | null;
   remoteReaction: { emoji: string; from: string; fromName: string } | null;
   onWaveUser: (userId: string) => void;
@@ -63,6 +75,7 @@ export const VideoHUD: React.FC<VideoHUDProps> = ({
   isPrivate,
   layoutSnapshot,
   stream,
+  localVideoTrack,
   screenStream,
   remoteReaction,
   onWaveUser,
@@ -78,14 +91,20 @@ export const VideoHUD: React.FC<VideoHUDProps> = ({
   const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
   const [waveAnimation, setWaveAnimation] = useState<string | null>(null);
   const [useGridLayout, setUseGridLayout] = useState(false);
-  // El processor se aplica in-place sobre el track via track.setProcessor()
-  // (gestionado por `useLiveKitVideoBackground`, compartido con meetings).
-  // El stream base ya contiene el output procesado — no se necesita un
-  // effectiveStream separado.
+  // El processor se aplica in-place sobre el `LocalVideoTrack` via
+  // `track.setProcessor()` (gestionado por `useLiveKitVideoBackground`,
+  // compartido con meetings). Cuando `localVideoTrack` está disponible el
+  // <video> se conecta via `track.attach()` y muestra el `processedTrack`.
+  //
+  // MIRROR: depende ÚNICAMENTE de `cameraSettings.mirrorVideo`. El processor
+  // de LiveKit NO invierte la imagen → antes acoplarlo a `backgroundEffect`
+  // producía que al activar blur se quitara el mirror y el usuario viera
+  // el video invertido.
   const localExpandedStream = stream;
-  const localExpandedClass = `w-full h-full object-contain ${cameraSettings.backgroundEffect === 'none' && cameraSettings.mirrorVideo ? 'mirror' : ''}`;
+  const mirrorClass = cameraSettings.mirrorVideo ? 'mirror' : '';
+  const localExpandedClass = `w-full h-full object-contain ${mirrorClass}`;
   const localBubbleStream = localExpandedStream;
-  const localBubbleClass = `w-full h-full object-cover block ${cameraSettings.backgroundEffect === 'none' && cameraSettings.mirrorVideo ? 'mirror' : ''}`;
+  const localBubbleClass = `w-full h-full object-cover block ${mirrorClass}`;
   const orderedUsersInCall = layoutSnapshot.orderedUsers;
   const usersInCall = orderedUsersInCall;
   const expandedRemoteParticipantId = expandedId?.startsWith('screen-') ? expandedId.replace('screen-', '') : expandedId;
@@ -108,13 +127,27 @@ export const VideoHUD: React.FC<VideoHUDProps> = ({
                 transition: 'transform 0.2s ease-out'
               }}
             >
-              {(expandedId === 'local' && localExpandedStream) || (expandedId === 'screen' && screenStream) || (expandedId?.startsWith('screen-') && layoutSnapshot.remoteScreenStreamsById.get(expandedId.replace('screen-', ''))) || (expandedId && layoutSnapshot.remoteVideoStreamsById.get(expandedId)) ? (
-                <StableVideo 
-                  stream={expandedId === 'local' ? localExpandedStream : expandedId === 'screen' ? screenStream : expandedId?.startsWith('screen-') ? layoutSnapshot.remoteScreenStreamsById.get(expandedId.replace('screen-', '')) || null : layoutSnapshot.remoteVideoStreamsById.get(expandedId) || null}
-                  muted={expandedId === 'local'}
-                  className={expandedId === 'local' ? localExpandedClass : 'w-full h-full object-contain'}
-                  speakerDeviceId={expandedId === 'local' ? undefined : speakerDeviceId}
-                />
+              {(expandedId === 'local' && (localVideoTrack || localExpandedStream)) || (expandedId === 'screen' && screenStream) || (expandedId?.startsWith('screen-') && layoutSnapshot.remoteScreenStreamsById.get(expandedId.replace('screen-', ''))) || (expandedId && layoutSnapshot.remoteVideoStreamsById.get(expandedId)) ? (
+                expandedId === 'local' ? (
+                  // Path nativo LiveKit: si hay wrapper, el processor ya está
+                  // aplicado y el <video> muestra el processedTrack. Fallback a
+                  // stream crudo si el wrapper aún no existe.
+                  <VideoWithBackground
+                    stream={localExpandedStream}
+                    localVideoTrack={localVideoTrack ?? null}
+                    effectType={cameraSettings.backgroundEffect}
+                    mirrorVideo={cameraSettings.mirrorVideo}
+                    muted
+                    className={localExpandedClass}
+                  />
+                ) : (
+                  <StableVideo
+                    stream={expandedId === 'screen' ? screenStream : expandedId?.startsWith('screen-') ? layoutSnapshot.remoteScreenStreamsById.get(expandedId.replace('screen-', '')) || null : layoutSnapshot.remoteVideoStreamsById.get(expandedId) || null}
+                    muted={false}
+                    className="w-full h-full object-contain"
+                    speakerDeviceId={speakerDeviceId}
+                  />
+                )
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <div className="w-32 h-32 rounded-full bg-zinc-800 flex items-center justify-center text-6xl font-black text-white">
@@ -232,7 +265,14 @@ export const VideoHUD: React.FC<VideoHUDProps> = ({
             </div>
           )}
           <div className={`relative w-full h-full overflow-hidden flex items-center justify-center transition-opacity ${!camOn ? 'opacity-0' : 'opacity-100'}`}>
-            <StableVideo stream={localBubbleStream} muted={true} className={localBubbleClass} />
+            <VideoWithBackground
+              stream={localBubbleStream}
+              localVideoTrack={localVideoTrack ?? null}
+              effectType={cameraSettings.backgroundEffect}
+              mirrorVideo={cameraSettings.mirrorVideo}
+              muted
+              className={localBubbleClass}
+            />
           </div>
           {!camOn && (
             <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center">
