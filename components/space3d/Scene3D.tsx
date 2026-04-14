@@ -45,7 +45,7 @@ import {
   AvatarLodLevel, DireccionAvatar, themeColors,
   MOVE_SPEED, RUN_SPEED, WORLD_SIZE, TELEPORT_DISTANCE,
   CHAIR_SIT_RADIUS, CHAIR_POSITIONS_3D, LOD_NEAR_DISTANCE, LOD_MID_DISTANCE,
-  playTeleportSound, IconPrivacy, IconExpand,
+  IconPrivacy, IconExpand,
   FACTOR_ESCALA_OBJETOS_ESCENA,
 } from './shared';
 import { crearAsientosObjetos3D, type AsientoRuntime3D } from './asientosRuntime';
@@ -70,6 +70,10 @@ export interface SceneProps {
   localVideoTrack?: import('livekit-client').LocalVideoTrack | null;
   /** Efecto activo — reenviado al Player para la burbuja local. */
   backgroundEffect?: import('@/src/core/domain/ports/IVideoTrackProcessor').EffectType;
+  /** Issue 49120587 — si está seteado, la cámara sigue al avatar de ese userId. */
+  followTargetId?: string | null;
+  /** Resuelve la posición actual del target de follow desde el ECS. */
+  getFollowTargetPosition?: (userId: string) => { x: number; z: number } | null;
   remoteStreams: Map<string, MediaStream>;
   showVideoBubbles?: boolean;
   videoIsProcessed?: boolean;
@@ -301,6 +305,8 @@ export const Scene: React.FC<SceneProps> = ({
   stream,
   localVideoTrack,
   backgroundEffect = 'none',
+  followTargetId = null,
+  getFollowTargetPosition,
   remoteStreams,
   showVideoBubbles = true,
   videoIsProcessed = false,
@@ -1113,7 +1119,16 @@ export const Scene: React.FC<SceneProps> = ({
         onRefrescarAsiento={onRefrescarAsiento}
         obstaculos={obstaculosMundo}
       />
-      <CameraFollow controlsRef={orbitControlsRef} zonasEmpresa={zonasEmpresa} empresaId={currentUser.empresa_id} espacioObjetos={espacioObjetos} usersInCallIds={usersInCallIds} usersInAudioRangeIds={usersInAudioRangeIds} />
+      <CameraFollow
+        controlsRef={orbitControlsRef}
+        zonasEmpresa={zonasEmpresa}
+        empresaId={currentUser.empresa_id}
+        espacioObjetos={espacioObjetos}
+        usersInCallIds={usersInCallIds}
+        usersInAudioRangeIds={usersInAudioRangeIds}
+        followTargetId={followTargetId}
+        getFollowTargetPosition={getFollowTargetPosition}
+      />
 
       {/* Usuarios remotos */}
       <RemoteUsers users={remoteUsers} remoteStreams={remoteStreams} showVideoBubble={showVideoBubbles} usersInCallIds={usersInCallIds} usersInAudioRangeIds={usersInAudioRangeIds} remoteMessages={remoteMessages} remoteReaction={remoteReaction ?? null} realtimePositionsRef={realtimePositionsRef} interpolacionWorkerRef={interpolacionWorkerRef} posicionesInterpoladasRef={posicionesInterpoladasRef} ecsStateRef={ecsStateRef} zonasEmpresa={zonasEmpresa} frustumRef={frustumRef} onClickRemoteAvatar={onClickRemoteAvatar} avatarInteractions={avatarInteractions} />

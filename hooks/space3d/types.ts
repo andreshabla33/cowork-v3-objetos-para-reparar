@@ -65,10 +65,14 @@ export interface VirtualSpace3DProps {
 
 export interface UseUserSettingsReturn {
   userSettingsVersion: number;
-  space3dSettings: ReturnType<typeof import('@/lib/userSettings').getSettingsSection>;
-  meetingsSettings: ReturnType<typeof import('@/lib/userSettings').getSettingsSection>;
-  notifSettings: ReturnType<typeof import('@/lib/userSettings').getSettingsSection>;
-  performanceSettings: ReturnType<typeof import('@/lib/userSettings').getSettingsSection>;
+  // Fix pendiente #2: `ReturnType<typeof getSettingsSection>` sin genérico
+  // colapsaba a la union de TODAS las secciones y rompía el narrowing
+  // downstream. Usar `UserSettings['<section>']` directamente preserva
+  // el tipo concreto de cada sección.
+  space3dSettings: import('@/lib/userSettings').UserSettings['space3d'];
+  meetingsSettings: import('@/lib/userSettings').UserSettings['meetings'];
+  notifSettings: import('@/lib/userSettings').UserSettings['notifications'];
+  performanceSettings: import('@/lib/userSettings').UserSettings['performance'];
   gpuInfo: GpuInfo | null;
   gpuRenderConfig: ReturnType<typeof import('@/lib/gpuCapabilities').adaptiveConfigFromTier> | null;
   radioInteresChunks: number;

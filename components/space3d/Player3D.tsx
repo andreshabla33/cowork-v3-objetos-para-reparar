@@ -6,6 +6,7 @@ import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { logger } from '@/lib/logger';
 import type { AccionXP } from '@/lib/gamificacion';
+import { getApplicationServices } from '@/src/core/application/ApplicationServicesContainer';
 import { User, PresenceStatus, ZonaEmpresa } from '@/types';
 import { GLTFAvatar } from '../avatar3d/GLTFAvatar';
 import { useAvatarControls } from '../avatar3d/useAvatarControls';
@@ -29,7 +30,7 @@ import {
   AvatarLodLevel, DireccionAvatar, themeColors,
   MOVE_SPEED, RUN_SPEED, WORLD_SIZE, TELEPORT_DISTANCE,
   CHAIR_SIT_RADIUS, CHAIR_POSITIONS_3D, LOD_NEAR_DISTANCE, LOD_MID_DISTANCE,
-  playTeleportSound, IconPrivacy, IconExpand, obtenerDireccionDesdeVector,
+  IconPrivacy, IconExpand, obtenerDireccionDesdeVector,
   STAND_UP_GRACE_PERIOD, ANIMATION_SIT_DOWN_DURATION, RADIO_COLISION_AVATAR,
   ALTURA_AVATAR_ESTANDAR, ALTURA_CADERA_AVATAR_SENTADO,
 } from './shared';
@@ -579,10 +580,11 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     setTeleportOrigin(originPos);
     setTeleportDest(destPos);
     setTeleportPhase('out');
-    playTeleportSound({
-      sourceId: currentUser.id,
-      position: { x: originPos[0], z: originPos[2] },
-      listenerPosition: { x: originPos[0], z: originPos[2] },
+    // Plan 328c3152 #5: migrado al port ISoundBus del container.
+    // Nota: el port no expone sourceId ni listenerPosition por ahora; si se
+    // necesitan en el futuro, extender `PlaySoundOptions` del port.
+    getApplicationServices().sounds.play('teleport', {
+      posicion: { x: originPos[0], z: originPos[2] },
     });
 
     // Fase 2: Mover al destino después de 300ms

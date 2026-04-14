@@ -33,7 +33,9 @@ import { useOcupacionAsientos } from '@/hooks/space3d/useOcupacionAsientos';
 import { useWebGLContextRecovery } from '@/hooks/space3d/useWebGLContextRecovery';
 import { useSpace3DKeyboardShortcuts } from '@/hooks/space3d/useSpace3DKeyboardShortcuts';
 import { useFloorClickHandlers } from '@/hooks/space3d/useFloorClickHandlers';
-import { setBroadcastSoundFunctions } from '@/hooks/space3d/useBroadcast';
+import { obtenerEstadoUsuarioEcs } from '@/lib/ecs/espacioEcs';
+// `setBroadcastSoundFunctions` eliminado: useBroadcast recibe ISoundBus
+// por inyección via container (plan 328c3152 #3).
 import { XP_POR_ACCION } from '@/lib/gamificacion';
 import { useStore } from '@/store/useStore';
 import { useApplicationServices } from '@/src/core/application/useApplicationServices';
@@ -53,12 +55,11 @@ import type { AsientoRuntime3D } from './space3d/asientosRuntime';
 // que sigue siendo el param de `ejecutarDestinoVisual`.
 import type { DisplayRuntimeNormalizado3D } from './space3d/interaccionesObjetosRuntime';
 
-// `playObjectInteractionSound` ya no se importa aquí: lo invoca el port
-// `soundBus.play('object_interaction')` dentro del ejecutor de acciones.
-// Las otras tres siguen importadas porque `setBroadcastSoundFunctions`
-// (hook legacy) requiere las funciones directamente — migrarlo a `ISoundBus`
-// queda pendiente para cuando se refactorice `useBroadcast`.
-import { themeColors, TELEPORT_DISTANCE, playWaveSound, playNudgeSound, playInviteSound } from './space3d/shared';
+// Los efectos de sonido se consumen via `services.sounds.play(...)` del
+// container (`useApplicationServices`). Los helpers globales `playXxxSound`
+// ya no se importan en este componente — la migración al port ISoundBus se
+// cerró en `328c3152` #3.
+import { themeColors, TELEPORT_DISTANCE } from './space3d/shared';
 
 import { Minimap, StableVideo, Avatar, RemoteUsers, CameraFollow, AvatarScreenProjector, TeleportEffect, Player, Scene, AdaptiveFrameloop, VideoHUD, ScreenSpaceProfileCard, statusColors, type VirtualSpace3DProps } from './space3d/InternalComponents';
 
@@ -676,10 +677,8 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     }
   }, [miEscritorio, currentUserEcs]);
 
-  // Inyectar funciones de sonido al hook de broadcast
-  useEffect(() => {
-    setBroadcastSoundFunctions(playWaveSound, playNudgeSound, playInviteSound);
-  }, []);
+  // Los sonidos de useBroadcast ahora vienen por inyección directa del
+  // container (plan 328c3152 #3) — ya no se usa setBroadcastSoundFunctions.
 
   // Ref para OrbitControls (usado en JSX/Scene)
   const orbitControlsRef = useRef<{ target: THREE.Vector3; update: () => void; object?: THREE.Camera } | null>(null);
@@ -895,6 +894,18 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
             stream={stream}
             localVideoTrack={localCameraTrack}
             backgroundEffect={cameraSettings.backgroundEffect}
+            followTargetId={followTargetId}
+            getFollowTargetPosition={(userId) => {
+              // Issue 49120587 — resuelve posición del avatar remoto desde el ECS
+              // para que CameraFollow orbite alrededor del target. Retorna null
+              // si el usuario no está en el espacio (follow se auto-desactiva).
+              const ecsState = ecsStateRef?.current;
+              if (!ecsState) return null;
+              const data = obtenerEstadoUsuarioEcs(ecsState, userId);
+              if (!data) return null;
+              // Las coords del ECS están en unidades de píxel (*16); el mundo 3D usa mundo/16.
+              return { x: data.x, z: data.z };
+            }}
             remoteStreams={remoteStreamsRouted}
             showVideoBubbles={true}
             videoIsProcessed={isProcessorActive}

@@ -27,7 +27,7 @@ import {
   AvatarLodLevel, DireccionAvatar, themeColors,
   MOVE_SPEED, RUN_SPEED, WORLD_SIZE, TELEPORT_DISTANCE,
   CHAIR_SIT_RADIUS, CHAIR_POSITIONS_3D, LOD_NEAR_DISTANCE, LOD_MID_DISTANCE,
-  playTeleportSound, IconPrivacy, IconExpand,
+  IconPrivacy, IconExpand,
 } from './shared';
 import { statusColors, STATUS_LABELS, type VirtualSpace3DProps } from './spaceTypes';
 

@@ -24,19 +24,13 @@ import {
   RaiseHandUseCase,
   type RealtimeEventBus,
 } from '@/modules/realtime-room';
+import type { ISoundBus } from '@/src/core/domain/ports/ISoundBus';
 import { MOVEMENT_BROADCAST_MS, type RealtimePositionEntry, type UseBroadcastReturn } from './types';
 
-// Sonidos (importados como funciones puras — se definen en VirtualSpace3D)
-let playWaveSound: () => void = () => {};
-let playNudgeSound: () => void = () => {};
-let playInviteSound: () => void = () => {};
-
-/** Permite al componente padre inyectar las funciones de sonido */
-export function setBroadcastSoundFunctions(wave: () => void, nudge: () => void, invite: () => void) {
-  playWaveSound = wave;
-  playNudgeSound = nudge;
-  playInviteSound = invite;
-}
+// Los sonidos ahora se reciben como `soundBus` prop del hook (ver
+// UseBroadcastParams). El mecanismo legacy de inyección global
+// (`setBroadcastSoundFunctions` + module-level state) se eliminó al
+// cerrar el refactor F3 — ver plan `328c3152`, pendiente #3.
 
 export function useBroadcast(params: {
   session: Session | null;
@@ -67,6 +61,12 @@ export function useBroadcast(params: {
    */
   setIncomingNudge: React.Dispatch<React.SetStateAction<{ from: string; fromName: string } | null>>;
   setIncomingInvite: React.Dispatch<React.SetStateAction<{ from: string; fromName: string; x: number; y: number } | null>>;
+  /**
+   * Port ISoundBus del `ApplicationServicesContainer`. Reemplaza el
+   * mecanismo legacy `setBroadcastSoundFunctions` con inyección limpia.
+   * (Plan `328c3152` pendiente #3.)
+   */
+  soundBus: ISoundBus;
 }): UseBroadcastReturn {
   const {
     session, currentUser, currentUserEcs, activeWorkspace, usersInCall,
@@ -78,6 +78,7 @@ export function useBroadcast(params: {
     setConversacionesBloqueadasRemoto, grantXP, notifSettings,
     setPrivacy, hasActiveCall, proximidadNotificadaRef,
     setIncomingNudge, setIncomingInvite,
+    soundBus,
   } = params;
 
   // ========== UI State ==========
@@ -133,7 +134,7 @@ export function useBroadcast(params: {
       const now = Date.now();
       if (now - (lastInteractionRef.current.get(dedupKey) || 0) < 500) return;
       lastInteractionRef.current.set(dedupKey, now);
-      playWaveSound();
+      soundBus.play('wave');
       setIncomingWave({ from: mensaje.payload.from, fromName: mensaje.payload.fromName });
       setTimeout(() => setIncomingWave(null), 4000);
       sendDesktopNotification(`👋 ${mensaje.payload.fromName}`, 'te está saludando');
@@ -164,7 +165,7 @@ export function useBroadcast(params: {
       const now = Date.now();
       if (now - (lastInteractionRef.current.get(dedupKey) || 0) < 500) return;
       lastInteractionRef.current.set(dedupKey, now);
-      playNudgeSound();
+      soundBus.play('nudge');
       // Muestra el toast al receptor (auto-dismiss a los 4s, mismo patrón que wave).
       setIncomingNudge({ from: mensaje.payload.from, fromName: mensaje.payload.fromName });
       setTimeout(() => setIncomingNudge(null), 4000);
@@ -179,7 +180,7 @@ export function useBroadcast(params: {
       const now = Date.now();
       if (now - (lastInteractionRef.current.get(dedupKey) || 0) < 500) return;
       lastInteractionRef.current.set(dedupKey, now);
-      playInviteSound();
+      soundBus.play('invite');
       // Muestra el toast con botón 'Ir' que usa handleAcceptInvite para
       // teleportar al invitante. No usamos timeout aquí: el toast invite
       // persiste hasta que el receptor decide aceptar o cerrar.

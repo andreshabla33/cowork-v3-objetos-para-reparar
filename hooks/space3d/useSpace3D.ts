@@ -23,7 +23,8 @@ import { useChunkSystem } from './useChunkSystem';
 import { useMediaStream } from './useMediaStream';
 import { useLiveKit } from './useLiveKit';
 import { useProximity } from './useProximity';
-import { useBroadcast, setBroadcastSoundFunctions } from './useBroadcast';
+import { useBroadcast } from './useBroadcast';
+import { getApplicationServices } from '@/src/core/application/ApplicationServicesContainer';
 import { useGatherInteractions } from './useGatherInteractions';
 import { Gatekeeper, PreflightSessionStore, SpaceMediaCoordinator, getPreflightFeedback, getPreflightFeedbackMessage } from '@/modules/realtime-room';
 import type { PreflightCheck, SpaceMediaCoordinatorState } from '@/modules/realtime-room';
@@ -71,10 +72,13 @@ export function useSpace3D(props: {
     errors: [],
     ready: false,
   });
+  // Default a `false` cuando `currentUser.isXxxOn` es `undefined` para
+  // mantener la forma estricta `{ isCameraEnabled: boolean; ... }` que
+  // consume el coordinator y sus downstream.
   const [initialDesiredMediaState] = useState(() => ({
-    isCameraEnabled: currentUser.isCameraOn,
-    isMicrophoneEnabled: currentUser.isMicOn,
-    isScreenShareEnabled: currentUser.isScreenSharing,
+    isCameraEnabled: currentUser.isCameraOn ?? false,
+    isMicrophoneEnabled: currentUser.isMicOn ?? false,
+    isScreenShareEnabled: currentUser.isScreenSharing ?? false,
   }));
   const [mediaCoordinatorState, setMediaCoordinatorState] = useState<SpaceMediaCoordinatorState | null>(null);
   const [canJoinRealtimeRoom, setCanJoinRealtimeRoom] = useState(false);
@@ -373,6 +377,9 @@ export function useSpace3D(props: {
     // llegan los data packets de nudge/invite.
     setIncomingNudge,
     setIncomingInvite,
+    // Plan 328c3152 #3: reemplaza setBroadcastSoundFunctions globals con
+    // inyección del port ISoundBus del container.
+    soundBus: getApplicationServices().sounds,
   });
 
   // ========== 10. Gather Interactions ==========

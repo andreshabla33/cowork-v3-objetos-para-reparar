@@ -15,7 +15,7 @@ import { getSettingsSection, subscribeToSettings } from '@/lib/userSettings';
 import {
   AvatarLodLevel, DireccionAvatar,
   TELEPORT_DISTANCE, LOD_NEAR_DISTANCE, LOD_MID_DISTANCE, CULL_DISTANCE,
-  playTeleportSound, obtenerDireccionDesdeVector
+  obtenerDireccionDesdeVector
 } from './shared';
 import type { LocalVideoTrack } from 'livekit-client';
 import { statusColors, type VirtualSpace3DProps } from './spaceTypes';
@@ -737,7 +737,24 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
 // ═══════════════════════════════════════════════════════════════════════════════
 // ─── CAMERA FOLLOW (OrbitControls) ──────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
-export const CameraFollow: React.FC<{ controlsRef: React.MutableRefObject<any>; zonasEmpresa?: ZonaEmpresa[]; empresaId?: string | null; espacioObjetos?: EspacioObjeto[]; usersInCallIds?: Set<string>; usersInAudioRangeIds?: Set<string> }> = ({ controlsRef, zonasEmpresa = [], empresaId = null, espacioObjetos = [], usersInCallIds, usersInAudioRangeIds }) => {
+export const CameraFollow: React.FC<{
+  controlsRef: React.MutableRefObject<any>;
+  zonasEmpresa?: ZonaEmpresa[];
+  empresaId?: string | null;
+  espacioObjetos?: EspacioObjeto[];
+  usersInCallIds?: Set<string>;
+  usersInAudioRangeIds?: Set<string>;
+  /**
+   * Issue 49120587 — cuando el usuario activa "Follow" sobre otro avatar,
+   * `followTargetId` contiene el id del target; `getFollowTargetPosition`
+   * resuelve la posición actual del avatar remoto. El CameraFollow usa esa
+   * posición en vez de la del propio jugador, haciendo que la cámara orbite
+   * al target. La chase-cam rotation se congela mientras dura el follow
+   * (no conocemos la dirección del avatar remoto con suficiente precisión).
+   */
+  followTargetId?: string | null;
+  getFollowTargetPosition?: (userId: string) => { x: number; z: number } | null;
+}> = ({ controlsRef, zonasEmpresa = [], empresaId = null, espacioObjetos = [], usersInCallIds, usersInAudioRangeIds, followTargetId = null, getFollowTargetPosition }) => {
   const { camera } = useThree();
   const lastPlayerPos = useRef<{ x: number; z: number } | null>(null);
   const initialized = useRef(false);
@@ -805,9 +822,20 @@ export const CameraFollow: React.FC<{ controlsRef: React.MutableRefObject<any>; 
   const CAMERA_DEFAULT_TARGET_HEIGHT = hayVideoProximidad ? 1.26 : 1.18;
 
   useFrame(() => {
-    const playerPos = (camera as any).userData?.playerPosition;
+    const selfPos = (camera as any).userData?.playerPosition;
     const controls = controlsRef.current;
-    if (!playerPos || !controls || !controls.target) return;
+    if (!selfPos || !controls || !controls.target) return;
+
+    // Issue 49120587 — si hay un target de follow, sustituimos la posición
+    // del jugador propio por la del target remoto. El resto de la lógica
+    // (zone detection, intro animation, interior camera) sigue idéntica
+    // porque solo consume `playerPos`. Si el target ya no existe en el ECS,
+    // caemos al comportamiento normal (cámara sobre el propio avatar).
+    const targetPos = followTargetId && getFollowTargetPosition
+      ? getFollowTargetPosition(followTargetId)
+      : null;
+    const playerPos = targetPos ?? selfPos;
+    const isFollowing = targetPos !== null;
 
     // Zone/interior detection: only recompute every ZONE_REEVAL_FRAMES
     zoneFrameCounter.current += 1;
@@ -879,7 +907,11 @@ export const CameraFollow: React.FC<{ controlsRef: React.MutableRefObject<any>; 
       up: 0,               // alias de front en algunos mapeos
     };
 
-    if (playerDir && playerMoving && DIRECTION_TO_ANGLE[playerDir] !== undefined) {
+    // Chase-cam SOLO sobre el avatar propio. Al estar siguiendo a otro usuario
+    // no tenemos `playerDirection` fiable del remoto, así que congelamos el
+    // ángulo objetivo — la cámara orbita al target manteniendo la orientación
+    // actual y el usuario puede rotar con el mouse.
+    if (!isFollowing && playerDir && playerMoving && DIRECTION_TO_ANGLE[playerDir] !== undefined) {
       targetAngleRef.current = DIRECTION_TO_ANGLE[playerDir];
       // Reset user interaction flag cuando el avatar se mueve
       // (el usuario espera que la cámara siga)
