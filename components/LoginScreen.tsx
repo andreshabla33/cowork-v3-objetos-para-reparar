@@ -127,10 +127,55 @@ export const LoginScreen: React.FC = () => {
           </div>
         )}
 
-        <form onSubmit={handleEmailAuth} className="space-y-3 lg:space-y-2.5">
+        {/* ── LOGIN-UX-REDESIGN (2026-04-14) ─────────────────────────────
+            Jerarquía visual: Google = primario (arriba, glassmorphism con
+            colores Google), email+password = secundario (abajo, estilo más
+            discreto), invitado = terciario (link). Mejores prácticas B2B
+            SaaS — Linear/Notion/Figma — reducen fricción sin excluir a
+            usuarios sin cuenta Google. Toda la lógica del hook intacta. */}
+
+        {/* ── PRIMARIO: Continuar con Google ─────────────────────────── */}
+        <button
+          onClick={handleGoogleLogin}
+          disabled={loading}
+          className="group relative w-full flex items-center justify-center gap-3 lg:gap-2.5 overflow-hidden backdrop-blur-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/20 hover:border-white/30 text-white py-4 lg:py-3.5 px-5 rounded-2xl font-black text-sm lg:text-xs transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-black/30"
+        >
+          {/* Glow interior al hover */}
+          <span className="absolute inset-0 bg-gradient-to-r from-violet-500/0 via-fuchsia-500/10 to-cyan-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          {/* Google G multicolor oficial */}
+          <svg className="relative w-5 h-5 lg:w-[18px] lg:h-[18px] shrink-0" viewBox="0 0 48 48">
+            <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+            <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+            <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+            <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+          </svg>
+          <div className="relative flex flex-col items-start">
+            <span className="uppercase tracking-[0.15em]">
+              {loading ? 'Conectando…' : 'Continuar con Google'}
+            </span>
+            <span className="text-[8px] lg:text-[7px] font-bold normal-case tracking-wider text-zinc-400 group-hover:text-violet-300 transition-colors">
+              Recomendado · 1 paso, sin confirmación por correo
+            </span>
+          </div>
+          {loading && (
+            <div className="relative w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          )}
+        </button>
+
+        {/* ── Divider ─────────────────────────────────────────────────── */}
+        <div className="my-5 lg:my-4 flex items-center gap-3">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+          <span className="text-[9px] lg:text-[8px] font-black text-zinc-500 uppercase tracking-[0.25em]">
+            {isRegister ? 'o regístrate con email' : 'o entra con email'}
+          </span>
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+        </div>
+
+        {/* ── SECUNDARIO: Email + contraseña ──────────────────────────── */}
+        <form onSubmit={handleEmailAuth} className="space-y-2.5 lg:space-y-2">
           {isRegister && (
             <div className="relative group animate-in slide-in-from-top-2 duration-300">
-              <div className="absolute inset-y-0 left-4 lg:left-3 flex items-center pointer-events-none opacity-20 group-focus-within:opacity-100 transition-opacity">
+              <div className="absolute inset-y-0 left-4 lg:left-3 flex items-center pointer-events-none opacity-30 group-focus-within:opacity-100 transition-opacity">
                  <svg className="w-4 h-4 lg:w-3.5 lg:h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
               </div>
               <input
@@ -141,13 +186,13 @@ export const LoginScreen: React.FC = () => {
                 value={fullName}
                 onChange={e => setFullName(e.target.value)}
                 autoComplete="name"
-                className="w-full bg-black/40 border border-white/5 rounded-xl pl-11 lg:pl-9 pr-4 lg:pr-3 py-3.5 lg:py-3 text-sm lg:text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all placeholder:text-zinc-700 text-white"
+                className="w-full bg-black/30 backdrop-blur-sm border border-white/[0.06] rounded-xl pl-11 lg:pl-9 pr-4 lg:pr-3 py-3 lg:py-2.5 text-xs lg:text-[11px] focus:outline-none focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500/40 transition-all placeholder:text-zinc-600 text-white"
               />
             </div>
           )}
 
           <div className="relative group">
-            <div className="absolute inset-y-0 left-4 lg:left-3 flex items-center pointer-events-none opacity-20 group-focus-within:opacity-100 transition-opacity">
+            <div className="absolute inset-y-0 left-4 lg:left-3 flex items-center pointer-events-none opacity-30 group-focus-within:opacity-100 transition-opacity">
                <svg className="w-4 h-4 lg:w-3.5 lg:h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
             </div>
             <input
@@ -158,12 +203,12 @@ export const LoginScreen: React.FC = () => {
               value={email}
               onChange={e => setEmail(e.target.value)}
               autoComplete="email"
-              className="w-full bg-black/40 border border-white/5 rounded-xl pl-11 lg:pl-9 pr-4 lg:pr-3 py-3.5 lg:py-3 text-sm lg:text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all placeholder:text-zinc-700 text-white"
+              className="w-full bg-black/30 backdrop-blur-sm border border-white/[0.06] rounded-xl pl-11 lg:pl-9 pr-4 lg:pr-3 py-3 lg:py-2.5 text-xs lg:text-[11px] focus:outline-none focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500/40 transition-all placeholder:text-zinc-600 text-white"
             />
           </div>
 
           <div className="relative group">
-            <div className="absolute inset-y-0 left-4 lg:left-3 flex items-center pointer-events-none opacity-20 group-focus-within:opacity-100 transition-opacity">
+            <div className="absolute inset-y-0 left-4 lg:left-3 flex items-center pointer-events-none opacity-30 group-focus-within:opacity-100 transition-opacity">
                <svg className="w-4 h-4 lg:w-3.5 lg:h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
             </div>
             <input
@@ -175,59 +220,58 @@ export const LoginScreen: React.FC = () => {
               value={password}
               onChange={e => setPassword(e.target.value)}
               autoComplete={isRegister ? "new-password" : "current-password"}
-              className="w-full bg-black/40 border border-white/5 rounded-xl pl-11 lg:pl-9 pr-4 lg:pr-3 py-3.5 lg:py-3 text-sm lg:text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all placeholder:text-zinc-700 text-white"
+              className="w-full bg-black/30 backdrop-blur-sm border border-white/[0.06] rounded-xl pl-11 lg:pl-9 pr-4 lg:pr-3 py-3 lg:py-2.5 text-xs lg:text-[11px] focus:outline-none focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500/40 transition-all placeholder:text-zinc-600 text-white"
             />
           </div>
 
           {/* Enlace ¿Olvidaste tu contraseña? — solo en modo login */}
           {!isRegister && (
-            <div className="flex justify-end">
+            <div className="flex justify-end pt-0.5">
               <button
                 id="forgot-password-link"
                 type="button"
                 onClick={() => setShowForgot(true)}
-                className="text-[9px] lg:text-[8px] text-violet-400 hover:text-violet-300 font-bold uppercase tracking-widest transition-colors underline decoration-violet-400/40 underline-offset-4"
+                className="text-[9px] lg:text-[8px] text-zinc-500 hover:text-violet-400 font-bold uppercase tracking-widest transition-colors"
               >
                 ¿Olvidaste tu contraseña?
               </button>
             </div>
           )}
 
+          {/* CTA de email — secundario (menos peso visual que Google) */}
           <button
             type="submit"
             disabled={loading}
-            className="relative w-full group overflow-hidden bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500 text-white px-5 py-3.5 lg:py-3 rounded-xl font-black text-xs lg:text-[10px] uppercase tracking-[0.15em] transition-all shadow-2xl shadow-violet-600/30 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-violet-500/40 text-zinc-200 hover:text-white px-5 py-2.5 lg:py-2 rounded-xl font-black text-[10px] lg:text-[9px] uppercase tracking-[0.15em] transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            <span className="absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <span className="relative flex items-center gap-2">
-              {loading ? <div className="w-4 h-4 lg:w-3.5 lg:h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : isRegister ? 'Crear Cuenta' : 'Entrar'}
-            </span>
+            {loading ? (
+              <div className="w-3.5 h-3.5 lg:w-3 lg:h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <>
+                <span>{isRegister ? 'Crear cuenta con email' : 'Entrar con email'}</span>
+                <svg className="w-3 h-3 lg:w-2.5 lg:h-2.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+              </>
+            )}
           </button>
         </form>
 
-        <div className="my-6 lg:my-5 flex items-center gap-3">
-          <div className="h-px flex-1 bg-white/5" />
-          <span className="text-[9px] lg:text-[8px] font-black text-zinc-600 uppercase tracking-[0.2em]">O entrar con</span>
-          <div className="h-px flex-1 bg-white/5" />
+        {/* ── TERCIARIO: invitado + toggle login/register ─────────────── */}
+        <div className="mt-6 lg:mt-5 pt-4 lg:pt-3 border-t border-white/[0.04] flex flex-col items-center gap-2.5 lg:gap-2">
+          <button
+            onClick={handleGuestLogin}
+            disabled={loading}
+            className="flex items-center gap-1.5 text-[9px] lg:text-[8px] text-zinc-500 hover:text-zinc-300 font-bold uppercase tracking-widest transition-colors disabled:opacity-50"
+          >
+            <svg className="w-3 h-3 lg:w-2.5 lg:h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+            Explorar como invitado
+          </button>
+          <p className="text-center text-[9px] lg:text-[8px] text-zinc-600 font-bold uppercase tracking-widest">
+            {isRegister ? '¿Ya tienes cuenta?' : '¿Nuevo por aquí?'}
+            <button onClick={() => setIsRegister(!isRegister)} className="ml-2 text-violet-400 font-black hover:text-violet-300 transition-colors underline decoration-2 underline-offset-4">
+              {isRegister ? 'Inicia Sesión' : 'Crea una aquí'}
+            </button>
+          </p>
         </div>
-
-        <div className="grid grid-cols-2 gap-2.5 lg:gap-2">
-          <button onClick={handleGoogleLogin} disabled={loading} className="flex items-center justify-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-white/5 text-white px-3 py-3 lg:py-2.5 rounded-xl font-black text-[9px] lg:text-[8px] uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-50">
-            <svg className="w-3.5 h-3.5 lg:w-3 lg:h-3" viewBox="0 0 24 24"><path fill="currentColor" d="M12.48 10.92v3.28h7.84c-.24 1.84-.908 3.152-1.928 4.176-1.288 1.288-3.312 2.688-6.832 2.688-5.4 0-9.672-4.392-9.672-9.792s4.272-9.792 9.672-9.792c3.144 0 5.384 1.248 7.128 2.896l2.304-2.304C18.592 1.304 15.856 0 12.48 0 5.864 0 0 5.304 0 12s5.864 12 12.48 12c3.752 0 6.84-1.24 9.144-3.6 2.304-2.304 3.112-5.504 3.112-8.08 0-.792-.072-1.544-.216-2.24l-12.04.08z" /></svg>
-            Google
-          </button>
-          <button onClick={handleGuestLogin} disabled={loading} className="flex items-center justify-center gap-2 bg-zinc-800/50 hover:bg-zinc-800 border border-white/5 text-zinc-400 hover:text-white px-3 py-3 lg:py-2.5 rounded-xl font-black text-[9px] lg:text-[8px] uppercase tracking-widest transition-all active:scale-[0.98] disabled:opacity-50">
-            <svg className="w-3.5 h-3.5 lg:w-3 lg:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-            Invitado
-          </button>
-        </div>
-
-        <p className="mt-6 lg:mt-5 text-center text-[9px] lg:text-[8px] text-zinc-500 font-bold uppercase tracking-widest">
-          {isRegister ? '¿Ya tienes cuenta?' : '¿Nuevo por aquí?'}
-          <button onClick={() => setIsRegister(!isRegister)} className="ml-2 text-violet-400 font-black hover:text-violet-300 transition-colors underline decoration-2 underline-offset-4">
-            {isRegister ? 'Inicia Sesión' : 'Crea una aquí'}
-          </button>
-        </p>
         </div>
       </div>
     </div>
