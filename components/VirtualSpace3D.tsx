@@ -35,7 +35,9 @@ import { useStore } from '@/store/useStore';
 import { useApplicationServices } from '@/src/core/application/useApplicationServices';
 import type { InteraccionObjetoAccion } from '@/src/core/application/usecases/InteraccionObjetoUseCase';
 // GameHub ahora se importa en WorkspaceLayout
-import { EditModeHUD, EditModeToast, InspectorEdicionObjeto, PlacementHUD, PlacementToast, ToastContainer, toastEmitter } from './3d/PlacementHUD';
+// Nota (F3): ya no importamos `toastEmitter` directamente. Los toasts se
+// emiten a través del port `INotificationBus` (vía useApplicationServices).
+import { EditModeHUD, EditModeToast, InspectorEdicionObjeto, PlacementHUD, PlacementToast, ToastContainer } from './3d/PlacementHUD';
 import { AdminZoneHUD } from './3d/AdminZoneHUD';
 import { BuildModePanel } from './3d/BuildModePanel';
 import type { CatalogoObjeto3D, ObjetoPreview3D } from '@/types/objetos3d';
@@ -46,7 +48,12 @@ import type { AsientoRuntime3D } from './space3d/asientosRuntime';
 // que sigue siendo el param de `ejecutarDestinoVisual`.
 import type { DisplayRuntimeNormalizado3D } from './space3d/interaccionesObjetosRuntime';
 
-import { themeColors, TELEPORT_DISTANCE, playWaveSound, playNudgeSound, playInviteSound, playObjectInteractionSound } from './space3d/shared';
+// `playObjectInteractionSound` ya no se importa aquí: lo invoca el port
+// `soundBus.play('object_interaction')` dentro del ejecutor de acciones.
+// Las otras tres siguen importadas porque `setBroadcastSoundFunctions`
+// (hook legacy) requiere las funciones directamente — migrarlo a `ISoundBus`
+// queda pendiente para cuando se refactorice `useBroadcast`.
+import { themeColors, TELEPORT_DISTANCE, playWaveSound, playNudgeSound, playInviteSound } from './space3d/shared';
 
 import { Minimap, StableVideo, Avatar, RemoteUsers, CameraFollow, AvatarScreenProjector, TeleportEffect, Player, Scene, AdaptiveFrameloop, VideoHUD, ScreenSpaceProfileCard, statusColors, type VirtualSpace3DProps } from './space3d/InternalComponents';
 
@@ -132,7 +139,13 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   // inyector de plantilla) una sola vez por sesión y los comparte. Elimina
   // los `new … Adapter()` que antes vivían en este componente (violación
   // Clean Arch: Presentation instanciando Infrastructure).
-  const { aplicarPlantillaZona: aplicarPlantillaZonaUseCase, eliminarPlantillaZona: eliminarPlantillaZonaUseCase, interaccionObjeto: interaccionObjetoUseCase } = useApplicationServices();
+  const {
+    aplicarPlantillaZona: aplicarPlantillaZonaUseCase,
+    eliminarPlantillaZona: eliminarPlantillaZonaUseCase,
+    interaccionObjeto: interaccionObjetoUseCase,
+    notifications: notificationBus,
+    sounds: soundBus,
+  } = useApplicationServices();
 
   // Top-level state
   const { moveTarget, setMoveTarget, teleportTarget, setTeleportTarget, showAvatarModal, setShowAvatarModal, showEmoteWheel, setShowEmoteWheel, showGamificacion, setShowGamificacion, cargoUsuario, incomingNudge, setIncomingNudge, incomingInvite, setIncomingInvite, mobileInputRef, isMobile, cardScreenPosRef, realtimePositionsRef, grantXP, handleAcceptInvite, preflightFeedbackMessage } = s;
@@ -243,7 +256,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     actualizarTransformacionObjeto,
     eliminarObjeto,
     restaurarObjeto,
-    onNotificar: (msg: string) => toastEmitter.emit({ message: msg, variant: 'info' }),
+    onNotificar: (msg: string) => notificationBus.emit({ mensaje: msg, variante: 'info' }),
   });
   const {
     ocupacionesPorObjetoId: ocupacionesAsientosPorObjetoId,
@@ -381,7 +394,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
         hapticFeedback(accion.intensidad);
         return true;
       case 'sonido':
-        if (accion.clip === 'object_interaction') playObjectInteractionSound();
+        soundBus.play(accion.clip);
         return true;
       default:
         return false;
@@ -417,7 +430,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       void (async () => {
         const reemplazado = await reemplazarObjetoDesdeCatalogo(selectedObjectId, catalogo);
         if (!reemplazado) return;
-        toastEmitter.emit({ message: `♻ ${reemplazado.nombre || catalogo.nombre} reemplazado`, variant: 'success' });
+        notificationBus.emit({ mensaje: `♻ ${reemplazado.nombre || catalogo.nombre} reemplazado`, variante: 'success' });
       })();
       return;
     }
@@ -465,7 +478,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
 
     registrarCreacion(creado);
     setPlacementToastName(objetoEnColocacion.nombre);
-    toastEmitter.emit({ message: `📦 ${objetoEnColocacion.nombre} — listo para editar`, variant: 'success' });
+    notificationBus.emit({ mensaje: `📦 ${objetoEnColocacion.nombre} — listo para editar`, variante: 'success' });
     setUltimoObjetoColocadoId(creado.id);
     setObjetoEnColocacion(null);
     setIsEditMode(true);
@@ -546,7 +559,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     const ok = await rotarObjeto(id, rotationY);
     if (ok) {
       registrarTransformacion(snapshotAntes, snapshotDespues);
-      toastEmitter.emit({ message: '↻ Objeto rotado', variant: 'success' });
+      notificationBus.emit({ mensaje: '↻ Objeto rotado', variante: 'success' });
     }
     return ok;
   }, [espacioObjetos, registrarTransformacion, rotarObjeto]);
@@ -559,7 +572,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     const ok = await eliminarObjeto(id);
     if (ok) {
       registrarEliminacion(snapshotAntes);
-      toastEmitter.emit({ message: '🗑 Objeto eliminado', variant: 'warning' });
+      notificationBus.emit({ mensaje: '🗑 Objeto eliminado', variante: 'warning' });
     }
     return ok;
   }, [eliminarObjeto, espacioObjetos, registrarEliminacion]);
@@ -610,7 +623,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       if (selectedObjectIds.length === 0) return;
       const objsToCopy = espacioObjetos.filter((obj) => selectedObjectIds.includes(obj.id));
       setCopiedObjects(objsToCopy);
-      toastEmitter.emit({ message: `📋 ${objsToCopy.length} objeto(s) copiado(s)`, variant: 'info' });
+      notificationBus.emit({ mensaje: `📋 ${objsToCopy.length} objeto(s) copiado(s)`, variante: 'info' });
     },
     onPasteObjects: async () => {
       if (!copiedObjects || copiedObjects.length === 0) return;
@@ -618,7 +631,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
         const result = await duplicarObjetos(copiedObjects);
         if (result && result.length > 0) {
           setSelectedObjectIds(result.map((o) => o.id));
-          toastEmitter.emit({ message: `✨ ${result.length} objeto(s) pegado(s)`, variant: 'success' });
+          notificationBus.emit({ mensaje: `✨ ${result.length} objeto(s) pegado(s)`, variante: 'success' });
         }
       } catch (err: unknown) {
         const errorMsg = err instanceof Error ? err.message : String(err);

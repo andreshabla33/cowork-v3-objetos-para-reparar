@@ -26,6 +26,10 @@ import { EliminarPlantillaZonaUseCase } from './usecases/EliminarPlantillaZonaUs
 import { InteraccionObjetoUseCase } from './usecases/InteraccionObjetoUseCase';
 import { InyectorPlantillaZona } from '../infrastructure/adapters/InyectorPlantillaZonaAdapter';
 import { RepositorioPlantillaZonaSupabase } from '../infrastructure/adapters/RepositorioPlantillaZonaSupabaseAdapter';
+import { ToastEmitterAdapter } from '../infrastructure/adapters/ToastEmitterAdapter';
+import { WebAudioSoundAdapter } from '../infrastructure/adapters/WebAudioSoundAdapter';
+import type { INotificationBus } from '../domain/ports/INotificationBus';
+import type { ISoundBus } from '../domain/ports/ISoundBus';
 
 // ─── Contrato público ─────────────────────────────────────────────────────────
 
@@ -33,6 +37,10 @@ export interface ApplicationServices {
   readonly aplicarPlantillaZona: AplicarPlantillaZonaUseCase;
   readonly eliminarPlantillaZona: EliminarPlantillaZonaUseCase;
   readonly interaccionObjeto: InteraccionObjetoUseCase;
+  /** Port para emitir notificaciones (toasts) sin conocer la implementación. */
+  readonly notifications: INotificationBus;
+  /** Port para reproducir efectos de sonido del espacio 3D. */
+  readonly sounds: ISoundBus;
 }
 
 // ─── Container ────────────────────────────────────────────────────────────────
@@ -48,6 +56,8 @@ class ApplicationServicesContainerImpl implements ApplicationServices {
   // duplicar conexiones a Supabase / estado de caché):
   private _repositorioPlantilla: RepositorioPlantillaZonaSupabase | null = null;
   private _inyectorPlantilla: InyectorPlantillaZona | null = null;
+  private _notifications: INotificationBus | null = null;
+  private _sounds: ISoundBus | null = null;
 
   get aplicarPlantillaZona(): AplicarPlantillaZonaUseCase {
     if (!this._aplicarPlantillaZona) {
@@ -73,6 +83,20 @@ class ApplicationServicesContainerImpl implements ApplicationServices {
       this._interaccionObjeto = new InteraccionObjetoUseCase();
     }
     return this._interaccionObjeto;
+  }
+
+  get notifications(): INotificationBus {
+    if (!this._notifications) {
+      this._notifications = new ToastEmitterAdapter();
+    }
+    return this._notifications;
+  }
+
+  get sounds(): ISoundBus {
+    if (!this._sounds) {
+      this._sounds = new WebAudioSoundAdapter();
+    }
+    return this._sounds;
   }
 
   private get repositorioPlantilla(): RepositorioPlantillaZonaSupabase {
