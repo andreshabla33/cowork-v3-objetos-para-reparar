@@ -32,17 +32,19 @@ import { useSpace3DKeyboardShortcuts } from '@/hooks/space3d/useSpace3DKeyboardS
 import { setBroadcastSoundFunctions } from '@/hooks/space3d/useBroadcast';
 import { XP_POR_ACCION } from '@/lib/gamificacion';
 import { useStore } from '@/store/useStore';
-import { AplicarPlantillaZonaUseCase } from '@/src/core/application/usecases/AplicarPlantillaZonaUseCase';
-import { EliminarPlantillaZonaUseCase } from '@/src/core/application/usecases/EliminarPlantillaZonaUseCase';
-import { InyectorPlantillaZona } from '@/src/core/infrastructure/adapters/InyectorPlantillaZonaAdapter';
-import { RepositorioPlantillaZonaSupabase } from '@/src/core/infrastructure/adapters/RepositorioPlantillaZonaSupabaseAdapter';
+import { useApplicationServices } from '@/src/core/application/useApplicationServices';
+import type { InteraccionObjetoAccion } from '@/src/core/application/usecases/InteraccionObjetoUseCase';
 // GameHub ahora se importa en WorkspaceLayout
 import { EditModeHUD, EditModeToast, InspectorEdicionObjeto, PlacementHUD, PlacementToast, ToastContainer, toastEmitter } from './3d/PlacementHUD';
 import { AdminZoneHUD } from './3d/AdminZoneHUD';
 import { BuildModePanel } from './3d/BuildModePanel';
 import type { CatalogoObjeto3D, ObjetoPreview3D } from '@/types/objetos3d';
 import type { AsientoRuntime3D } from './space3d/asientosRuntime';
-import { normalizarInteraccionConfigObjeto, resolverDestinoTeleportObjeto, resolverDisplayObjeto, resolverUseObjeto, type DisplayRuntimeNormalizado3D } from './space3d/interaccionesObjetosRuntime';
+// `normalizarInteraccionConfigObjeto` / `resolverDisplayObjeto` / `resolverUseObjeto`
+// ya no se importan aquí: son detalles de dominio consumidos por
+// `InteraccionObjetoUseCase`. Solo mantenemos el tipo `DisplayRuntimeNormalizado3D`
+// que sigue siendo el param de `ejecutarDestinoVisual`.
+import type { DisplayRuntimeNormalizado3D } from './space3d/interaccionesObjetosRuntime';
 
 import { themeColors, TELEPORT_DISTANCE, playWaveSound, playNudgeSound, playInviteSound, playObjectInteractionSound } from './space3d/shared';
 
@@ -125,16 +127,12 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   const prevIsDraggingRef = useRef(false);
   const lastPreflightFeedbackRef = useRef<string | null>(null);
 
-  const aplicarPlantillaZonaUseCase = React.useMemo(() => {
-    return new AplicarPlantillaZonaUseCase(
-      new RepositorioPlantillaZonaSupabase(),
-      new InyectorPlantillaZona(),
-    );
-  }, []);
-
-  const eliminarPlantillaZonaUseCase = React.useMemo(() => {
-    return new EliminarPlantillaZonaUseCase(new RepositorioPlantillaZonaSupabase());
-  }, []);
+  // ── DI: Use Cases inyectados vía container singleton ───────────────────────
+  // El ApplicationServicesContainer instancia los adapters (Supabase repo,
+  // inyector de plantilla) una sola vez por sesión y los comparte. Elimina
+  // los `new … Adapter()` que antes vivían en este componente (violación
+  // Clean Arch: Presentation instanciando Infrastructure).
+  const { aplicarPlantillaZona: aplicarPlantillaZonaUseCase, eliminarPlantillaZona: eliminarPlantillaZonaUseCase, interaccionObjeto: interaccionObjetoUseCase } = useApplicationServices();
 
   // Top-level state
   const { moveTarget, setMoveTarget, teleportTarget, setTeleportTarget, showAvatarModal, setShowAvatarModal, showEmoteWheel, setShowEmoteWheel, showGamificacion, setShowGamificacion, cargoUsuario, incomingNudge, setIncomingNudge, incomingInvite, setIncomingInvite, mobileInputRef, isMobile, cardScreenPosRef, realtimePositionsRef, grantXP, handleAcceptInvite, preflightFeedbackMessage } = s;
@@ -338,113 +336,81 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     return ejecutoAccion;
   }, [addNotification, setActiveSubTab, setShowAvatarModal, setShowChat, setShowEmojis, setShowEmoteWheel, setShowGamificacion, setShowStatusPicker]);
 
-  const ejecutarTeleportObjeto = useCallback((objeto: EspacioObjeto) => {
-    const config = normalizarInteraccionConfigObjeto(objeto.interaccion_config);
-    const destino = resolverDestinoTeleportObjeto(objeto, config);
-    const playerX = (currentUserEcs?.x || 400) / 16;
-    const playerZ = (currentUserEcs?.y || 400) / 16;
-    const dx = destino.x - playerX;
-    const dz = destino.z - playerZ;
-    const dist = Math.sqrt(dx * dx + dz * dz);
+  // `ejecutarTeleportObjeto` eliminado: la lógica vive ahora en
+  // `InteraccionObjetoUseCase.execute()` (caso 'teleport') y la presentación
+  // la ejecuta vía `ejecutarAccionInteraccion` (más abajo).
 
-    playObjectInteractionSound();
-
-    if (destino.modo === 'teleport') {
-      setMoveTarget(null);
-      setTeleportTarget({ x: destino.x, z: destino.z });
-    } else if (destino.modo === 'caminar') {
-      setTeleportTarget(null);
-      setMoveTarget({ x: destino.x, z: destino.z });
-    } else if (dist > TELEPORT_DISTANCE) {
-      setMoveTarget(null);
-      setTeleportTarget({ x: destino.x, z: destino.z });
-    } else {
-      setTeleportTarget(null);
-      setMoveTarget({ x: destino.x, z: destino.z });
+  /**
+   * Ejecutor de acciones del plan devuelto por `InteraccionObjetoUseCase`.
+   * Aísla la translación dominio→side-effect (setMoveTarget, addNotification,
+   * grantXP, playSound, etc.) para que el componente no conozca la lógica
+   * de switch-case de tipos de interacción.
+   */
+  const ejecutarAccionInteraccion = useCallback((accion: InteraccionObjetoAccion, fallbackLabel: string | null) => {
+    switch (accion.tipo) {
+      case 'caminar':
+        setTeleportTarget(null);
+        setMoveTarget(accion.destino);
+        return true;
+      case 'teleport':
+        setMoveTarget(null);
+        setTeleportTarget(accion.destino);
+        return true;
+      case 'destinoVisual': {
+        const ejecuto = ejecutarDestinoVisual(accion.config, accion.fallbackMensaje);
+        if (!ejecuto && fallbackLabel) {
+          addNotification(fallbackLabel, 'info');
+        }
+        return ejecuto;
+      }
+      case 'otorgarXP':
+        if (accion.accion in XP_POR_ACCION) {
+          grantXP(accion.accion as keyof typeof XP_POR_ACCION, accion.cooldownMs);
+        }
+        return true;
+      case 'notificar': {
+        // `addNotification` acepta 'info' | 'error' | 'mention' | 'entry' | 'success'.
+        // Mapeamos el nivel del use case al conjunto soportado por el store.
+        const nivel: 'info' | 'error' | 'success' =
+          accion.nivel === 'error' ? 'error' :
+          accion.nivel === 'success' ? 'success' : 'info';
+        addNotification(accion.mensaje, nivel);
+        return true;
+      }
+      case 'haptic':
+        hapticFeedback(accion.intensidad);
+        return true;
+      case 'sonido':
+        if (accion.clip === 'object_interaction') playObjectInteractionSound();
+        return true;
+      default:
+        return false;
     }
-
-    hapticFeedback('medium');
-  }, [currentUserEcs, setMoveTarget, setTeleportTarget]);
+  }, [addNotification, ejecutarDestinoVisual, grantXP, setMoveTarget, setTeleportTarget]);
 
   const handleInteraccionObjeto = useCallback((objeto: EspacioObjeto, asiento: AsientoRuntime3D | null) => {
-    const tipoInteraccion = (objeto.interaccion_tipo || '').trim().toLowerCase();
-    const config = normalizarInteraccionConfigObjeto(objeto.interaccion_config);
+    const asientoOcupadoPorUsuarioId = asiento?.objetoId
+      ? ocupacionesAsientosPorObjetoId.get(asiento.objetoId)?.usuario_id ?? null
+      : null;
 
-    if (tipoInteraccion === 'sit' && asiento) {
-      if (asiento.objetoId) {
-        const ocupacion = ocupacionesAsientosPorObjetoId.get(asiento.objetoId);
-        if (ocupacion && ocupacion.usuario_id !== session?.user?.id) {
-          addNotification('Ese asiento está ocupado actualmente.', 'info');
-          return;
-        }
-      }
+    const plan = interaccionObjetoUseCase.execute({
+      objeto,
+      asiento,
+      posicionJugador: {
+        x: (currentUserEcs?.x || 400) / 16,
+        z: (currentUserEcs?.y || 400) / 16,
+      },
+      teleportThreshold: TELEPORT_DISTANCE,
+      usuarioActualId: session?.user?.id ?? null,
+      asientoOcupadoPorUsuarioId,
+      xpAccionesConocidas: XP_POR_ACCION,
+    });
 
-      const destinoX = asiento.posicion.x;
-      const destinoZ = asiento.posicion.z;
-      const playerX = (currentUserEcs?.x || 400) / 16;
-      const playerZ = (currentUserEcs?.y || 400) / 16;
-      const dx = destinoX - playerX;
-      const dz = destinoZ - playerZ;
-      const dist = Math.sqrt(dx * dx + dz * dz);
-
-      playObjectInteractionSound();
-
-      if (dist > TELEPORT_DISTANCE) {
-        setMoveTarget(null);
-        setTeleportTarget({ x: destinoX, z: destinoZ });
-      } else {
-        setTeleportTarget(null);
-        setMoveTarget({ x: destinoX, z: destinoZ });
-      }
-      hapticFeedback('light');
-      return;
+    const fallbackLabel = objeto.interaccion_label || null;
+    for (const accion of plan.acciones) {
+      ejecutarAccionInteraccion(accion, fallbackLabel);
     }
-
-    if (tipoInteraccion === 'teleport') {
-      ejecutarTeleportObjeto(objeto);
-      return;
-    }
-
-    if (tipoInteraccion === 'display') {
-      playObjectInteractionSound();
-      const displayConfig = resolverDisplayObjeto(config);
-      const ejecuto = ejecutarDestinoVisual(
-        displayConfig,
-        objeto.interaccion_label || (objeto.nombre ? `Mostrando ${objeto.nombre}.` : null)
-      );
-      if (!ejecuto) {
-        addNotification(objeto.interaccion_label || 'Interacción visual configurada sin destino válido.', 'info');
-      }
-      hapticFeedback('light');
-      return;
-    }
-
-    if (tipoInteraccion === 'use') {
-      playObjectInteractionSound();
-      const useConfig = resolverUseObjeto(config);
-      let ejecuto = ejecutarDestinoVisual(
-        useConfig,
-        objeto.interaccion_label || (objeto.nombre ? `Usaste ${objeto.nombre}.` : null)
-      );
-
-      if (useConfig.xpAccion && useConfig.xpAccion in XP_POR_ACCION) {
-        grantXP(useConfig.xpAccion as keyof typeof XP_POR_ACCION, useConfig.cooldownMs || 10000);
-        ejecuto = true;
-      }
-
-      if (!ejecuto) {
-        addNotification(objeto.interaccion_label || 'Interacción de uso configurada sin acción válida.', 'info');
-      }
-
-      hapticFeedback('medium');
-      return;
-    }
-
-    if (tipoInteraccion) {
-      addNotification(objeto.interaccion_label || `Interacción ${tipoInteraccion} aún no soportada por el dispatcher.`, 'info');
-      return;
-    }
-  }, [addNotification, currentUserEcs, ejecutarDestinoVisual, ejecutarTeleportObjeto, grantXP, ocupacionesAsientosPorObjetoId, session?.user?.id, setMoveTarget, setTeleportTarget]);
+  }, [currentUserEcs, ejecutarAccionInteraccion, interaccionObjetoUseCase, ocupacionesAsientosPorObjetoId, session?.user?.id]);
 
   const handlePrepararObjeto = useCallback((catalogo: CatalogoObjeto3D) => {
     if (isEditMode && selectedObjectId) {
