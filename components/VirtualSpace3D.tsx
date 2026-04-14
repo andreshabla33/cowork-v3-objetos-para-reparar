@@ -32,6 +32,7 @@ import { useHistorialEdicion } from '@/hooks/space3d/useHistorialEdicion';
 import { useOcupacionAsientos } from '@/hooks/space3d/useOcupacionAsientos';
 import { useWebGLContextRecovery } from '@/hooks/space3d/useWebGLContextRecovery';
 import { useSpace3DKeyboardShortcuts } from '@/hooks/space3d/useSpace3DKeyboardShortcuts';
+import { useFloorClickHandlers } from '@/hooks/space3d/useFloorClickHandlers';
 import { setBroadcastSoundFunctions } from '@/hooks/space3d/useBroadcast';
 import { XP_POR_ACCION } from '@/lib/gamificacion';
 import { useStore } from '@/store/useStore';
@@ -644,6 +645,20 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     },
   });
 
+  // Handlers de click sobre el suelo (single tap mobile, double-click desktop).
+  // Extraídos a `useFloorClickHandlers` para no duplicar la heurística
+  // "caminar vs teleport" en el JSX del Canvas.
+  const { onTapFloor: floorOnTap, onDoubleClickFloor: floorOnDoubleClick } = useFloorClickHandlers({
+    getPlayerPosition: () => ({
+      x: (currentUserEcs?.x || 400) / 16,
+      z: (currentUserEcs?.y || 400) / 16,
+    }),
+    teleportThreshold: TELEPORT_DISTANCE,
+    setMoveTarget,
+    setTeleportTarget,
+    isMobile,
+  });
+
   // Teleport/correr al escritorio propio
   const handleIrAMiEscritorio = useCallback(() => {
     if (!miEscritorio) return;
@@ -936,40 +951,8 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
             onConfirmarPlantillaZonaEnColocacion={handleConfirmarPlantillaZonaEnColocacion}
             ultimoObjetoColocadoId={ultimoObjetoColocadoId}
             onDrawZoneEnd={handleSceneDrawZoneEnd}
-            onTapFloor={isMobile ? (point) => {
-              // Mobile: single tap = walk/teleport (misma lógica que double-click en desktop)
-              const playerX = (currentUserEcs.x || 400) / 16;
-              const playerZ = (currentUserEcs.y || 400) / 16;
-              const dx = point.x - playerX;
-              const dz = point.z - playerZ;
-              const dist = Math.sqrt(dx * dx + dz * dz);
-              if (dist > TELEPORT_DISTANCE) {
-                setMoveTarget(null);
-                setTeleportTarget({ x: point.x, z: point.z });
-              } else if (dist > 0.5) {
-                setTeleportTarget(null);
-                setMoveTarget({ x: point.x, z: point.z });
-              }
-              hapticFeedback('light');
-            } : undefined}
-            onDoubleClickFloor={(point) => {
-              // Calcular distancia desde posición actual del avatar
-              const playerX = (currentUserEcs.x || 400) / 16;
-              const playerZ = (currentUserEcs.y || 400) / 16;
-              const dx = point.x - playerX;
-              const dz = point.z - playerZ;
-              const dist = Math.sqrt(dx * dx + dz * dz);
-
-              if (dist > TELEPORT_DISTANCE) {
-                // Distancia larga → teletransportación estilo Goku
-                setMoveTarget(null);
-                setTeleportTarget({ x: point.x, z: point.z });
-              } else {
-                // Distancia corta → caminar/correr
-                setTeleportTarget(null);
-                setMoveTarget({ x: point.x, z: point.z });
-              }
-            }}
+            onTapFloor={floorOnTap}
+            onDoubleClickFloor={floorOnDoubleClick}
           />
         </Suspense>
       </Canvas>
