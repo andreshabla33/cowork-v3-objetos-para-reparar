@@ -176,11 +176,23 @@ export const ModalInvitarUsuario: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Feedback */}
+        {/* Feedback — RESEND-FAILURE-FEEDBACK (2026-04-14):
+            Error persistente y prominente para que el admin NO crea que
+            la invitación se envió cuando Resend rechaza el correo
+            (dominio inválido, rate limit, etc.). */}
         {error && (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-            <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-            <p className="text-xs text-red-400">{error}</p>
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/30 shadow-lg shadow-red-500/10"
+          >
+            <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-[10px] font-black uppercase tracking-widest text-red-400 mb-1">
+                No se envió la invitación
+              </p>
+              <p className="text-xs text-red-300 leading-relaxed">{error}</p>
+            </div>
           </div>
         )}
         {exito && (

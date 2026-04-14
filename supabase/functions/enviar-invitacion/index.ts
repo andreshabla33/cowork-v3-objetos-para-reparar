@@ -135,7 +135,10 @@ serve(async (req) => {
     const hashBuffer = await crypto.subtle.digest('SHA-256', tokenBytes);
     const tokenHash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 
-    const { error: insertError } = await supabaseClient
+    // INVITATION-ROLLBACK (2026-04-14): capturamos el id para poder hacer
+    // rollback si Resend falla y evitar invitaciones huérfanas que luego
+    // bloquean el reintento con 409 Conflict.
+    const { data: invRow, error: insertError } = await supabaseClient
       .from('invitaciones_pendientes')
       .insert({
         email: normalizedEmail,
@@ -147,13 +150,18 @@ serve(async (req) => {
         creada_por: user.id,
         usada: false,
         expira_en: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
-      });
+      })
+      .select('id')
+      .single();
 
-    if (insertError) {
-      return new Response(JSON.stringify({ error: 'DB Insert Error', detail: insertError.message }), {
+    if (insertError || !invRow) {
+      return new Response(JSON.stringify({ error: 'DB Insert Error', detail: insertError?.message }), {
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const invitacionId = invRow.id;
 
     // Hardcoded: env vars FRONTEND_URL/APP_URL tenían dominio viejo (mvp-cowork)
     const frontendUrl = PRODUCTION_URL;
@@ -289,12 +297,51 @@ serve(async (req) => {
     });
 
     if (!resendResponse.ok) {
+        // RESEND-FAILURE-FEEDBACK (2026-04-14): traducir errores técnicos de
+        // Resend a mensajes accionables para el admin, y hacer rollback de la
+        // fila huérfana en invitaciones_pendientes para permitir reintento
+        // sin topar con 409 Conflict.
         const errText = await resendResponse.text();
-        return new Response(JSON.stringify({ 
-            error: `Resend API Error: ${resendResponse.status}`, 
-            detail: errText 
+        let resendDetail = errText;
+        let resendName = '';
+        try {
+            const parsed = JSON.parse(errText);
+            resendName = typeof parsed?.name === 'string' ? parsed.name : '';
+            resendDetail = typeof parsed?.message === 'string' ? parsed.message : errText;
+        } catch (_parseErr) {
+            // errText ya es el fallback
+        }
+
+        // Mensaje accionable según el tipo de error
+        let mensajeUsuario = `No se pudo enviar el correo a ${email}.`;
+        if (resendResponse.status === 422 || resendName === 'validation_error') {
+            mensajeUsuario = `Correo inválido o dominio inexistente: ${email}. Verifica la dirección.`;
+        } else if (resendResponse.status === 403) {
+            mensajeUsuario = 'El remitente no está autorizado en Resend. Contacta al administrador.';
+        } else if (resendResponse.status === 429) {
+            mensajeUsuario = 'Demasiados envíos en corto tiempo. Intenta en unos segundos.';
+        } else if (resendResponse.status >= 500) {
+            mensajeUsuario = 'El servicio de correo (Resend) no está disponible. Intenta más tarde.';
+        }
+
+        // Rollback: borrar la invitación huérfana
+        const { error: rollbackError } = await supabaseClient
+            .from('invitaciones_pendientes')
+            .delete()
+            .eq('id', invitacionId);
+
+        if (rollbackError) {
+            console.error('[enviar-invitacion] Rollback falló', { invitacionId, error: rollbackError.message });
+        }
+
+        return new Response(JSON.stringify({
+            error: mensajeUsuario,
+            detail: resendDetail,
+            resend_status: resendResponse.status,
+            rollback: !rollbackError,
         }), {
-            // Mantenemos 200 OK para que el frontend muestre el detalle del error en el modal
+            // 502 Bad Gateway: fallo del upstream (Resend), no del servidor nuestro
+            status: 502,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
     }

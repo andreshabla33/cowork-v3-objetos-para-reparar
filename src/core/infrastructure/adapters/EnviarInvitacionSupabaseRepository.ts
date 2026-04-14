@@ -11,6 +11,7 @@
  *  - Consistencia con otros adapters del proyecto (ObtenerAccesoReunionUseCase, etc.).
  */
 
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '../../../../lib/supabase';
 import { logger } from '../../../../lib/logger';
 import type {
@@ -25,6 +26,27 @@ interface EdgeFunctionResponse {
   error?: string;
   detail?: string;
   message?: string;
+  resend_status?: number;
+}
+
+/**
+ * Extrae el cuerpo JSON del FunctionsHttpError para preservar el mensaje
+ * accionable que envía la edge function. En supabase-js v2.47+, cuando la
+ * respuesta es non-2xx, `data` es null y `error` es FunctionsHttpError con
+ * el Response original en `context`. Sin este parseo el admin vería solo
+ * "Edge Function returned a non-2xx status code" (genérico e inútil).
+ *
+ * REMEDIATION RESEND-FAILURE-FEEDBACK (2026-04-14)
+ */
+async function extractEdgeErrorBody(err: unknown): Promise<EdgeFunctionResponse | null> {
+  if (!(err instanceof FunctionsHttpError)) return null;
+  try {
+    const context = err.context as Response | undefined;
+    if (!context || typeof context.json !== 'function') return null;
+    return (await context.json()) as EdgeFunctionResponse;
+  } catch {
+    return null;
+  }
 }
 
 export class EnviarInvitacionSupabaseRepository implements IEnviarInvitacionRepository {
@@ -46,10 +68,20 @@ export class EnviarInvitacionSupabaseRepository implements IEnviarInvitacionRepo
       );
 
       if (error) {
-        log.warn('Edge Function error', { error: error.message });
+        // Caso crítico: status 4xx/5xx (e.g. 502 Resend fail, 409 Conflict, 500 DB).
+        // supabase-js v2.47+ deja data=null y guarda el Response en error.context.
+        // Extraemos el JSON para preservar el mensaje accionable.
+        const bodyError = await extractEdgeErrorBody(error);
+        if (bodyError?.error) {
+          const msg = [bodyError.error, bodyError.detail].filter(Boolean).join(' — ');
+          log.warn('Invitación rechazada (HTTP no-2xx)', { msg, resend_status: bodyError.resend_status });
+          return { exito: false, mensaje: msg };
+        }
+        log.warn('Edge Function error sin body parseable', { error: error.message });
         return { exito: false, mensaje: error.message };
       }
 
+      // Caso legacy: status 200 con { error } en body (retrocompatibilidad).
       if (data?.error) {
         const msg = [data.error, data.detail].filter(Boolean).join(' — ');
         log.warn('Invitación rechazada por el servidor', { msg });
