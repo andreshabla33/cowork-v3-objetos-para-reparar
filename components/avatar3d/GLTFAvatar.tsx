@@ -806,7 +806,14 @@ export const GLTFAvatar: React.FC<GLTFAvatarProps> = (props) => {
 
   return (
     <AvatarErrorBoundary fallbackConfig={fallbackConfig} avatarProps={props}>
-      <GLTFAvatarInner key={props.avatarConfig?.modelo_url || 'default'} {...props} />
+      {/*
+        Key estable por identidad del avatar (UUID de DB). El modelo_url puede
+        ser momentáneamente undefined durante la resolución del config, lo que
+        causaba remounts repetidos (bug 2026-04-15). Si no hay id, usamos un
+        string constante 'pending' — el remount ocurre una sola vez cuando el
+        config se hidrata, que es el comportamiento deseado.
+      */}
+      <GLTFAvatarInner key={props.avatarConfig?.id ?? 'pending'} {...props} />
     </AvatarErrorBoundary>
   );
 };

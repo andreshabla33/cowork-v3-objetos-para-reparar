@@ -236,8 +236,13 @@ export const Avatar: React.FC<AvatarProps> = ({
       </mesh>
 
       {renderGLTF && (
+        // Key estable por entidad (userId) + calidad de asset.
+        // React docs: https://react.dev/learn/rendering-lists#rules-of-keys
+        // El key NO debe basarse en campos derivados (modelo_url) que pueden
+        // ser momentáneamente undefined durante la resolución del config —
+        // eso provocaba remounts repetidos en avatares remotos (bug 2026-04-15).
         <GLTFAvatar
-          key={`${isCurrentUser ? (avatar3DConfig?.modelo_url || 'default') : (remoteAvatar3DConfig?.modelo_url || 'remote')}:${assetQuality}`}
+          key={`${userId ?? (isCurrentUser ? 'self' : 'remote')}:${assetQuality}`}
           avatarConfig={isCurrentUser ? avatar3DConfig : (remoteAvatar3DConfig || FALLBACK_AVATAR_3D_CONFIG)}
           animationState={effectiveAnimState}
           direction={direction}
