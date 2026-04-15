@@ -101,7 +101,10 @@ export function useOnboarding(): UseOnboardingReturn {
         .eq('usada', true)
         .single();
 
-      const espacioData = miembro.espacios_trabajo as Record<string, unknown> | null;
+      // PostgREST devuelve la relación 1:1 como array. `as unknown` evita
+      // la conversión directa hostil y deja que consumamos el primer elemento.
+      const espacioRaw = miembro.espacios_trabajo as unknown;
+      const espacioData = (Array.isArray(espacioRaw) ? espacioRaw[0] : espacioRaw) as Record<string, unknown> | null;
 
       setState({
         isLoading: false,

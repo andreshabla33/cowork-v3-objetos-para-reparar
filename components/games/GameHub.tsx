@@ -7,6 +7,9 @@ import {
 } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import type { GameType } from '../../types/games';
+// El contrato `PendingGameInvitation` vive en Domain (`types/workspace`).
+// Se elimina la interfaz local duplicada para mantener Single Source of Truth.
+import type { PendingGameInvitation } from '../../types/workspace';
 
 import { EscapeRoomGame } from './minigames/EscapeRoomGame';
 import { TriviaBattleGame } from './minigames/TriviaBattleGame';
@@ -15,20 +18,6 @@ import { SpeedNetworkingGame } from './minigames/SpeedNetworkingGame';
 import { MysteryRoleplayGame } from './minigames/MysteryRoleplayGame';
 import { BuildingChallengeGame } from './minigames/BuildingChallengeGame';
 import { ChessGame } from './minigames/ChessGame';
-
-interface PendingGameInvitation {
-  invitacion: {
-    id: string;
-    juego: string;
-    invitador_id: string;
-    configuracion: {
-      tiempo: number;
-      invitador_nombre: string;
-      invitador_color: 'w' | 'b';
-    };
-  };
-  partidaId: string;
-}
 
 interface GameHubProps {
   isOpen: boolean;

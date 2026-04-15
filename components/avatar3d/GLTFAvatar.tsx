@@ -226,9 +226,16 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
     let worldHeight = 0;
     let worldHipHeight = 0;
 
-    if (targetBone) {
+    // Narrow manual: TS no puede seguir las asignaciones dentro del closure
+    // de `clone.traverse`; los locales quedan tipados como `never` tras el
+    // control-flow analysis. Forzamos el tipo correcto vía `unknown` para
+    // romper el narrow. Fix P2 — plan 34919757.
+    const resolvedTargetBone = targetBone as unknown as THREE.Bone | null;
+    const resolvedHipsBone = hipsBone as unknown as THREE.Bone | null;
+
+    if (resolvedTargetBone) {
       const bonePos = new THREE.Vector3();
-      targetBone.getWorldPosition(bonePos);
+      resolvedTargetBone.getWorldPosition(bonePos);
       worldHeight = bonePos.y - rootPos.y;
     } else {
       const box = new THREE.Box3().setFromObject(clone);
@@ -238,9 +245,9 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
       }
     }
 
-    if (hipsBone) {
+    if (resolvedHipsBone) {
       const hipsPos = new THREE.Vector3();
-      hipsBone.getWorldPosition(hipsPos);
+      resolvedHipsBone.getWorldPosition(hipsPos);
       worldHipHeight = Math.max(0, hipsPos.y - rootPos.y);
     }
 

@@ -32,7 +32,8 @@ import { logger } from '@/lib/logger';
 import { obtenerChunk } from '@/lib/chunkSystem';
 import { getSettingsSection } from '@/lib/userSettings';
 import { EvaluarPresenceSubscriptionUseCase } from '@/src/core/application/usecases/EvaluarPresenceSubscriptionUseCase';
-import type { User, Role, PresenceStatus } from '@/types';
+import { PresenceStatus } from '@/types';
+import type { User, Role } from '@/types';
 import type { PresencePayload } from '@/types/workspace';
 
 const log = logger.child('presence-channels');
@@ -306,11 +307,13 @@ export function usePresenceChannels({
       const privacy = getSettingsSection('privacy');
       const usuario = userRef.current;
 
-      const statusPrivado =
+      // Fix P2 — usar valores del enum PresenceStatus en lugar de strings
+      // literales para respetar el contrato del Domain. Plan 34919757.
+      const statusPrivado: PresenceStatus =
         !privacy.showOnlineStatus
-          ? ('away' as const)
+          ? PresenceStatus.AWAY
           : !privacy.showActivityStatus
-            ? ('available' as const)
+            ? PresenceStatus.AVAILABLE
             : usuario.status;
 
       const payloadBase: Partial<PresencePayload> = {

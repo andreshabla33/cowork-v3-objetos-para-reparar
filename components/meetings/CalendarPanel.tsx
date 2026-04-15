@@ -360,7 +360,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                               {/* Copiar link directo (para equipo interno ya logueado) */}
                               {meeting.meeting_link && (
                                 <button
-                                  onClick={() => copyMeetingLink(meeting.meeting_link, meeting.id)}
+                                  onClick={() => copyMeetingLink(meeting.meeting_link ?? '', meeting.id)}
                                   className={`flex-1 px-3 py-1.5 ${copiedLink === meeting.id ? 'bg-green-500/30 text-green-300' : 'bg-white/10 hover:bg-white/20'} rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 justify-center`}
                                   title="Copiar link para equipo interno"
                                 >
@@ -923,7 +923,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                       className={`flex-1 ${s.input} border rounded-lg px-2 py-1.5 text-xs opacity-70`}
                     />
                     <button
-                      onClick={() => copyMeetingLink(selectedMeeting.meeting_link, selectedMeeting.id)}
+                      onClick={() => copyMeetingLink(selectedMeeting.meeting_link ?? '', selectedMeeting.id)}
                       className={`px-3 py-1.5 text-xs ${copiedLink === selectedMeeting.id ? 'bg-green-500/30 text-green-300' : theme === 'arcade' ? 'bg-[#00ff41]/20 text-[#00ff41]' : 'bg-indigo-500/20 text-indigo-300'} rounded-lg font-medium transition-all`}
                     >
                       {copiedLink === selectedMeeting.id ? '✓' : 'Copiar'}

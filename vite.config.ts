@@ -11,7 +11,7 @@
  * - Import condicional: si el paquete no está instalado, el build continúa.
  */
 import path from 'path';
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, type Plugin, type UserConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 async function resolveSentryPlugin(): Promise<Plugin[]> {
@@ -31,25 +31,26 @@ async function resolveSentryPlugin(): Promise<Plugin[]> {
 
   try {
     const { sentryVitePlugin } = await import('@sentry/vite-plugin');
-    return [
-      sentryVitePlugin({
-        org,
-        project,
-        authToken: token,
-        sourcemaps: {
-          // Borra los .map del directorio dist después del upload para no exponerlos
-          filesToDeleteAfterUpload: ['./dist/**/*.map'],
-        },
-        telemetry: false,
-      }),
-    ];
+    // sentryVitePlugin devuelve Plugin[] (un array de plugins internos).
+    // Lo retornamos directamente para que el spread en `plugins` lo expanda
+    // a Plugin[], evitando Plugin[][]. Fix P3 — plan 34919757.
+    return sentryVitePlugin({
+      org,
+      project,
+      authToken: token,
+      sourcemaps: {
+        // Borra los .map del directorio dist después del upload para no exponerlos
+        filesToDeleteAfterUpload: ['./dist/**/*.map'],
+      },
+      telemetry: false,
+    }) as Plugin[];
   } catch {
     console.warn('[vite.config] @sentry/vite-plugin no encontrado. Ejecuta: npm install @sentry/vite-plugin');
     return [];
   }
 }
 
-export default defineConfig(async () => {
+export default defineConfig(async (): Promise<UserConfig> => {
   const sentryPlugins = await resolveSentryPlugin();
 
   return {
@@ -65,7 +66,7 @@ export default defineConfig(async () => {
       chunkSizeWarningLimit: 2300,
       rollupOptions: {
         output: {
-          manualChunks(id) {
+          manualChunks(id: string) {
             if (!id.includes('node_modules')) return undefined;
 
             if (id.includes('/three/') || id.includes('three-stdlib') || id.includes('troika-') || id.includes('camera-controls')) {

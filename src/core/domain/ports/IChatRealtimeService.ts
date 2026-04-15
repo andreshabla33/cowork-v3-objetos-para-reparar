@@ -10,6 +10,8 @@
  * Ref: Clean Architecture — Dependency Inversion Principle.
  */
 
+import type { MensajeChatRealtimePayload } from './IChatRepository';
+
 /**
  * Subscription handle for unsubscribing from realtime events.
  */
@@ -40,7 +42,7 @@ export interface IChatRealtimeService {
    */
   suscribirMensajesCanal(
     grupoId: string,
-    onMensaje: (payload: Record<string, unknown>) => void,
+    onMensaje: (payload: MensajeChatRealtimePayload) => void,
     onStatus: (status: string) => void
   ): ChatRealtimeSubscription;
 
@@ -57,7 +59,7 @@ export interface IChatRealtimeService {
   suscribirNotificacionesGlobales(
     espacioId: string,
     userId: string,
-    onMensaje: (payload: Record<string, unknown>) => void,
+    onMensaje: (payload: MensajeChatRealtimePayload) => void,
     onStatus: (status: string) => void
   ): ChatRealtimeSubscription;
 

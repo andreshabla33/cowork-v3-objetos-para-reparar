@@ -85,7 +85,7 @@ export const Escritorio3D: React.FC<Escritorio3DProps> = ({
     e.stopPropagation();
 
     if (isEditMode) {
-      toggleObjectSelection(objeto.id, e.shiftKey);
+      toggleObjectSelection(objeto.id, e.shiftKey ?? false);
       hapticFeedback('light');
       return;
     }

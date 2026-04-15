@@ -32,7 +32,9 @@ interface RolConfig {
   id: RolInvitacion;
   label: string;
   desc: string;
-  icon: React.ElementType;
+  // Tipamos explícitamente para que TS acepte className en el JSX.
+  // React.ElementType es demasiado genérico (no expone props concretas).
+  icon: React.ComponentType<{ className?: string }>;
   color: 'violet' | 'cyan' | 'amber';
 }
 

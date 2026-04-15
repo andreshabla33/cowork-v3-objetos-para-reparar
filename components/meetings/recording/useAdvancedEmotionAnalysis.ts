@@ -478,7 +478,9 @@ export const useAdvancedEmotionAnalysis = (options: UseAdvancedEmotionAnalysisOp
     const currentTime = (Date.now() - startTimeRef.current) / 1000;
     const emotionScores = calculateEmotionScores(blendshapes);
     const { emotion, score } = getDominantEmotion(emotionScores);
-    const mirandoCamara = hasTransformMatrix ? isLookingAtCamera(null) : true;
+    // Passing an empty matrices array — `isLookingAtCamera` returns true por
+    // defecto cuando no hay transform matrix; mantenemos ese contrato.
+    const mirandoCamara = hasTransformMatrix ? isLookingAtCamera([]) : true;
     const engagement = calculateEngagement(blendshapes, mirandoCamara);
     const stress = calculateStressScore(blendshapes);
     const confidence = calculateConfidenceScore(blendshapes);

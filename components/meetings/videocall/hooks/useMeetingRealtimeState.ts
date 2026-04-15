@@ -18,6 +18,7 @@ import type { GuestPermissions, MeetingConsentRequest, MeetingQualityState } fro
 import type { ViewMode } from '../ViewModeSelector';
 import type { TipoReunion } from '../MeetingControlBar';
 import { useOptimizacionSalaGrande } from './useOptimizacionSalaGrande';
+import { toUndefined } from '@/src/core/domain/utils/nullSafe';
 
 const log = logger.child('use-meeting-realtime-state');
 const gestionarChat = new GestionarChatReunionUseCase(chatRepository);
@@ -873,7 +874,7 @@ export const useMeetingRealtimeState = ({
     tracks: validTracks,
     viewMode,
     screenShareTrack,
-    speakerIdentity,
+    speakerIdentity: toUndefined(speakerIdentity),
     pinnedParticipantId,
     raisedHandParticipantIds,
   });

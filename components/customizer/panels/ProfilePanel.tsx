@@ -11,6 +11,7 @@ import React from 'react';
 import { UserAvatar } from '../../UserAvatar';
 import { glass, composites, typography, radius } from '@/styles/design-tokens';
 import type { UseProfileEditorReturn } from '@/hooks/customizer/useProfileEditor';
+import type { PresenceStatus } from '@/types';
 
 export interface ProfilePanelProps {
   profile: UseProfileEditorReturn;
@@ -18,7 +19,9 @@ export interface ProfilePanelProps {
     name: string;
     profilePhoto?: string;
     cargo?: string;
-    status: string;
+    // El status debe respetar el union del Domain (`PresenceStatus`) para
+    // que UserAvatar acepte el valor sin cast. Plan 34919757.
+    status: PresenceStatus;
   };
 }
 

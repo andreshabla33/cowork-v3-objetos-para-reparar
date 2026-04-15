@@ -14,6 +14,7 @@ import type {
   ChatRealtimeSubscription,
   TypingPayload,
 } from '../../domain/ports/IChatRealtimeService';
+import type { MensajeChatRealtimePayload } from '../../domain/ports/IChatRepository';
 
 const log = logger.child('chat-realtime');
 
@@ -28,7 +29,7 @@ export class ChatRealtimeSupabaseService implements IChatRealtimeService {
    */
   suscribirMensajesCanal(
     grupoId: string,
-    onMensaje: (payload: Record<string, unknown>) => void,
+    onMensaje: (payload: MensajeChatRealtimePayload) => void,
     onStatus: (status: string) => void
   ): ChatRealtimeSubscription {
     try {
@@ -44,9 +45,13 @@ export class ChatRealtimeSupabaseService implements IChatRealtimeService {
             table: 'mensajes_chat',
             filter: `grupo_id=eq.${grupoId}`,
           },
-          (payload: Record<string, unknown>) => {
+          (payload) => {
+            // El runtime de Supabase Realtime emite la estructura descrita en
+            // `MensajeChatRealtimePayload`. Casteamos en el borde de
+            // Infrastructure para mantener el tipo en Presentation.
+            const typedPayload = payload as unknown as MensajeChatRealtimePayload;
             log.debug('Message received', { grupoId });
-            onMensaje(payload);
+            onMensaje(typedPayload);
           }
         )
         .subscribe((status: any) => {
@@ -83,7 +88,7 @@ export class ChatRealtimeSupabaseService implements IChatRealtimeService {
   suscribirNotificacionesGlobales(
     espacioId: string,
     userId: string,
-    onMensaje: (payload: Record<string, unknown>) => void,
+    onMensaje: (payload: MensajeChatRealtimePayload) => void,
     onStatus: (status: string) => void
   ): ChatRealtimeSubscription {
     try {
@@ -98,9 +103,13 @@ export class ChatRealtimeSupabaseService implements IChatRealtimeService {
             schema: 'public',
             table: 'mensajes_chat',
           },
-          (payload: Record<string, unknown>) => {
+          (payload) => {
+            // El runtime de Supabase Realtime emite la estructura descrita en
+            // `MensajeChatRealtimePayload`. Casteamos en el borde de
+            // Infrastructure para mantener el tipo en Presentation.
+            const typedPayload = payload as unknown as MensajeChatRealtimePayload;
             log.debug('Global notification received', { espacioId });
-            onMensaje(payload);
+            onMensaje(typedPayload);
           }
         )
         .subscribe((status: any) => {
@@ -148,7 +157,11 @@ export class ChatRealtimeSupabaseService implements IChatRealtimeService {
         .on(
           'broadcast',
           { event: 'typing' },
-          (payload: Record<string, unknown>) => {
+          (payload) => {
+            // El runtime de Supabase Realtime emite la estructura descrita en
+            // `MensajeChatRealtimePayload`. Casteamos en el borde de
+            // Infrastructure para mantener el tipo en Presentation.
+            const typedPayload = payload as unknown as MensajeChatRealtimePayload;
             log.debug('Typing event received', { grupoId });
             onTyping({
               user_id: (payload as any)?.user_id || '',

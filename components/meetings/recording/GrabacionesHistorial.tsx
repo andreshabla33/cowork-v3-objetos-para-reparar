@@ -30,18 +30,10 @@ import {
   AnalisisDeals,
   AnalisisEquipo,
   EmotionType,
+  MicroexpresionData,
 } from './types/analysis';
 
 const log = logger.child('grabaciones-historial');
-
-// Local component-level interfaces for UI state
-interface Microexpresion {
-  timestamp_segundos: number;
-  emocion: string;
-  duracion_ms: number;
-  intensidad: number;
-  confianza: number;
-}
 
 const ESTADO_CONFIG: Record<string, { color: string; icon: string; label: string }> = {
   grabando: { color: 'bg-red-500', icon: '🔴', label: 'Grabando' },
@@ -293,8 +285,10 @@ export const GrabacionesHistorial: React.FC = () => {
     // Generar análisis específico por tipo
     const analisisEspecifico = generateAnalisisFromFrames(tipoGrab, frames, grabacion.duracion_segundos || 0);
 
-    // Detectar microexpresiones desde cambios abruptos de emoción
-    const microexpresionesDetectadas: Microexpresion[] = [];
+    // Detectar microexpresiones desde cambios abruptos de emoción.
+    // Se usa el contrato de Domain `MicroexpresionData` directamente —
+    // el shape local previo fue consolidado en el refactor P0 (34919757).
+    const microexpresionesDetectadas: MicroexpresionData[] = [];
     for (let i = 1; i < frames.length; i++) {
       const prev = frames[i - 1];
       const curr = frames[i];
@@ -305,11 +299,12 @@ export const GrabacionesHistorial: React.FC = () => {
         curr.emocion_dominante !== 'neutral'
       ) {
         microexpresionesDetectadas.push({
-          timestamp_segundos: curr.timestamp_segundos,
+          timestamp_ms: Math.round(curr.timestamp_segundos * 1000),
           emocion: curr.emocion_dominante,
-          duracion_ms: 300,
           intensidad: 0.7,
-          confianza: 0.8,
+          duracion_ms: 300,
+          es_microexpresion: true,
+          action_units: curr.action_units ?? {},
         });
       }
     }
@@ -742,7 +737,7 @@ export const GrabacionesHistorial: React.FC = () => {
                         }`}
                       >
                         <span>📅 {formatFecha(grabacion.creado_en)}</span>
-                        <span>⏱️ {formatDuracion(grabacion.duracion_segundos)}</span>
+                        <span>⏱️ {formatDuracion(grabacion.duracion_segundos ?? null)}</span>
                         {grabacion.usuario && (
                           <span>
                             👤 {grabacion.usuario.nombre} {grabacion.usuario.apellido}

@@ -72,6 +72,11 @@ export const InvitationProcessor: React.FC = () => {
 
   const aceptarInvitacion = async () => {
     if (!token || !invitacion) return;
+    // Guard explícito: el Use Case requiere un userId real. Fix P2 — plan 34919757.
+    if (!session?.user?.id) {
+      setErrorLocal('Sesión inválida — vuelve a iniciar sesión.');
+      return;
+    }
     setProcesando(true);
     setErrorLocal('');
 

@@ -299,14 +299,13 @@ describe('hashToken', () => {
       expect(typeof hash).toBe('string');
     });
 
-    it('can be chained with then()', (done) => {
-      hashToken('test-token')
-        .then((hash) => {
-          expect(typeof hash).toBe('string');
-          expect(hash).toHaveLength(64);
-          done();
-        })
-        .catch(done);
+    it('can be chained with then()', async () => {
+      // Vitest 3.x eliminó el callback `done`. Convertimos a Promise-based
+      // y lanzamos si falla — vitest awaita el resultado. Fix P3 — plan 34919757.
+      await hashToken('test-token').then((hash) => {
+        expect(typeof hash).toBe('string');
+        expect(hash).toHaveLength(64);
+      });
     });
 
     it('works with Promise.all for parallel hashing', async () => {

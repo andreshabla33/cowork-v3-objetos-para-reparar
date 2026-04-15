@@ -33,7 +33,7 @@ export const useSpaceVideoHudLayoutSnapshot = ({
       raisedHandParticipantIds,
       userDistances,
       getParticipantId: (user) => user.id,
-      getParticipantCameraEnabled: (user) => user.isCameraOn,
+      getParticipantCameraEnabled: (user) => user.isCameraOn ?? false,
     }),
     [orderedUsersInCall, raisedHandParticipantIds, remoteScreenStreams, remoteStreams, speakingUsers, userDistances, usersInCall, visualSnapshotService],
   );

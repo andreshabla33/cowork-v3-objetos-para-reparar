@@ -105,7 +105,7 @@ export const actualizarEstadoZonaEmpresa = async (payload: {
 
   await registrarActividad({
     usuario_id: payload.usuarioId ?? null,
-    empresa_id: payload.empresaId,
+    empresa_id: payload.empresaId ?? null,
     espacio_id: payload.espacioId,
     accion,
     entidad: 'zonas_empresa',

@@ -71,7 +71,15 @@ export interface AvatarCatalogState {
   // Selecciones
   selectedAvatarId: string | null;
   selectedObjectId: string | null;
-  selectedCategory: 'avatares' | 'objetos';
+  /**
+   * Categoría seleccionada en el filtro de objetos. Valores canónicos:
+   *  - 'todos'    → no filtrar (devuelve todos los objetos)
+   *  - 'avatares' → vista avatares
+   *  - 'objetos'  → vista objetos generales
+   *  - {string}   → categoría específica emitida por el catálogo Supabase.
+   * Plan 34919757 — Domain drift resolved.
+   */
+  selectedCategory: string;
 
   // Estados de carga
   loadingAvatars: boolean;
@@ -94,7 +102,7 @@ export interface UseAvatarCatalogActions {
   // Selección de avatares
   selectAvatar: (avatarId: string) => Promise<void>;
   selectObject: (objectId: string) => void;
-  selectCategory: (category: 'avatares' | 'objetos') => void;
+  selectCategory: (category: string) => void;
 
   // Avatar equipado
   changeEquippedAvatar: (avatarId: string) => Promise<void>;
@@ -126,7 +134,7 @@ export const useAvatarCatalog = (): UseAvatarCatalogReturn => {
   const [equippedAvatarId, setEquippedAvatarId] = useState<string | null>(null);
   const [selectedAvatarId, setSelectedAvatarId] = useState<string | null>(null);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<'avatares' | 'objetos'>('avatares');
+  const [selectedCategory, setSelectedCategory] = useState<string>('avatares');
   const [loadingAvatars, setLoadingAvatars] = useState(false);
   const [loadingObjects, setLoadingObjects] = useState(false);
   const [avatarSaved, setAvatarSaved] = useState(false);
@@ -294,7 +302,7 @@ export const useAvatarCatalog = (): UseAvatarCatalogReturn => {
   /**
    * Cambia la categoría de visualización.
    */
-  const selectCategory = useCallback((category: 'avatares' | 'objetos'): void => {
+  const selectCategory = useCallback((category: string): void => {
     setSelectedCategory(category);
   }, []);
 

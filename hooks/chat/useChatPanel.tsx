@@ -83,12 +83,13 @@ export interface UseChatPanelReturn {
   channelMembers: MiembroCanal[];
 
   // Refs
-  fileInputRef: React.RefObject<HTMLInputElement>;
-  inputRef: React.RefObject<HTMLInputElement>;
-  mensajesRef: React.RefObject<HTMLDivElement>;
+  // React 19: useRef<T>(null) devuelve RefObject<T | null>. Fix P0 — plan 34919757.
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+  mensajesRef: React.RefObject<HTMLDivElement | null>;
 
   // State setters
-  setNuevoMensaje: (msg: string) => void;
+  setNuevoMensaje: React.Dispatch<React.SetStateAction<string>>;
   setShowCreateModal: (show: boolean) => void;
   setShowAddMembers: (show: boolean) => void;
   setShowEmojiPicker: (show: boolean) => void;
@@ -118,7 +119,10 @@ export interface UseChatPanelReturn {
   insertMention: (user: MiembroChatData) => void;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   detectMentions: (text: string) => string[];
-  renderMessageContent: (content: string) => (string | JSX.Element)[];
+  // React 19 deja de exportar el namespace JSX global sin `@types/react`
+  // vieja compatibilidad. Usamos `React.ReactNode` que cubre strings, elements,
+  // fragments, etc. — apropiado para render de mensajes chat.
+  renderMessageContent: (content: string) => React.ReactNode[];
 }
 
 /**
@@ -310,13 +314,14 @@ export function useChatPanel({
       const subscription = chatRealtimeService.suscribirNotificacionesGlobales(
         activeWorkspace.id,
         currentUser.id,
-        async (payload: Record<string, unknown>) => {
+        async (payload) => {
           // Skip own messages
-          if (payload.new?.usuario_id === currentUser.id) return;
+          const nuevoMensaje = payload.new;
+          if (nuevoMensaje.usuario_id === currentUser.id) return;
 
           // Increment unread count
           incrementUnreadChat();
-          const grupoId = payload.new?.grupo_id as string;
+          const grupoId = nuevoMensaje.grupo_id;
           setUnreadByChannel((prev) => ({
             ...prev,
             [grupoId]: (prev[grupoId] || 0) + 1,
@@ -324,15 +329,14 @@ export function useChatPanel({
 
           // Get sender name
           try {
-            const senderName = await chatRepository.obtenerNombreUsuario(
-              payload.new?.usuario_id as string
-            );
+            const senderData = await chatRepository.obtenerNombreUsuario(nuevoMensaje.usuario_id);
             const grupoInfo = await chatRepository.obtenerInfoGrupo(grupoId);
 
-            if (senderName && grupoInfo) {
+            if (senderData && grupoInfo) {
               const isDirect = grupoInfo.tipo === 'directo';
-              const menciones = (payload.new?.menciones as string[]) || [];
+              const menciones = nuevoMensaje.menciones ?? [];
               const isMentioned = menciones.includes(currentUser.id);
+              const senderName = `${senderData.nombre}${senderData.apellido ? ' ' + senderData.apellido : ''}`;
 
               log.debug('Toast notification triggered', {
                 sender: senderName,
@@ -343,8 +347,8 @@ export function useChatPanel({
               addToastNotification(
                 senderName,
                 isMentioned
-                  ? `📢 Te mencionó: ${payload.new?.contenido}`
-                  : (payload.new?.contenido as string),
+                  ? `📢 Te mencionó: ${nuevoMensaje.contenido}`
+                  : nuevoMensaje.contenido,
                 grupoId,
                 isDirect ? undefined : grupoInfo.nombre,
                 isDirect

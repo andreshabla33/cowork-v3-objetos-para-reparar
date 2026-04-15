@@ -30,7 +30,7 @@ import { useWorkspaceData } from '../hooks/workspace/useWorkspaceData';
 import { usePresenceChannels } from '../hooks/workspace/usePresenceChannels';
 import { usePresenceLifecycle } from '../hooks/workspace/usePresenceLifecycle';
 import type { ThemeType } from '../types';
-import type { GameInvitationData } from '../types/workspace';
+import type { GameInvitationData, PendingGameInvitation } from '../types/workspace';
 
 const VirtualSpace3D = lazy(() => import('./VirtualSpace3D'));
 const ChatPanel = lazy(() => import('./ChatPanel').then(m => ({ default: m.ChatPanel })));
@@ -67,7 +67,7 @@ export const WorkspaceLayout: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showGameHub, setShowGameHub] = useState(false);
   const [isPlayingGame, setIsPlayingGame] = useState(false);
-  const [pendingGameInvitation, setPendingGameInvitation] = useState<{ invitacion: GameInvitationData; partidaId: string } | null>(null);
+  const [pendingGameInvitation, setPendingGameInvitation] = useState<PendingGameInvitation | null>(null);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < 768);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

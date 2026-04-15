@@ -204,11 +204,19 @@ export function useNotifications(params: UseNotificationsParams): UseNotificatio
     if (!activeWorkspace?.id || !currentUser.empresa_id || !session?.user?.id) return;
     if (zonaAccesoProxima.pendiente) return;
 
+    // Guard: solicitarAccesoEmpresa requiere `empresaDestinoId: string`.
+    // La zona puede tener empresa_id nullable — abortamos sin silenciar errores.
+    const empresaDestinoId = zonaAccesoProxima.zona.empresa_id;
+    if (!empresaDestinoId) {
+      console.warn('[useNotifications] Zona sin empresa_id — no se puede solicitar acceso');
+      return;
+    }
+
     setSolicitandoAcceso(true);
     const solicitudId = await solicitarAccesoEmpresa({
       espacioId: activeWorkspace.id,
       empresaOrigenId: currentUser.empresa_id,
-      empresaDestinoId: zonaAccesoProxima.zona.empresa_id,
+      empresaDestinoId,
       usuarioId: session.user.id,
     });
     if (solicitudId) {
@@ -218,7 +226,7 @@ export function useNotifications(params: UseNotificationsParams): UseNotificatio
         titulo: 'Solicitud enviada',
         mensaje: 'La empresa recibirá tu solicitud en instantes.',
         tipo: 'solicitud_autorizacion_empresa',
-        datos_extra: { empresa_destino_id: zonaAccesoProxima.zona.empresa_id },
+        datos_extra: { empresa_destino_id: zonaAccesoProxima.zona.empresa_id ?? '' },
       });
     }
     setSolicitandoAcceso(false);

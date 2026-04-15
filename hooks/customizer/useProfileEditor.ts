@@ -153,11 +153,13 @@ export const useProfileEditor = (options: UseProfileEditorOptions = {}): UseProf
       if (success) {
         setProfilePhoto(null);
 
-        // Actualizar Zustand store
+        // Actualizar Zustand store — usamos undefined para cumplir con
+        // el shape del Domain (`User.profilePhoto?: string`). Fix P1 del
+        // plan 34919757 (adapter null↔undefined boundary).
         useStore.setState((state) => ({
           currentUser: {
             ...state.currentUser,
-            profilePhoto: null,
+            profilePhoto: undefined,
           },
         }));
 

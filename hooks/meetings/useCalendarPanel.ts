@@ -27,6 +27,19 @@ import { getTiposReunionPorCargo, TIPOS_REUNION_CONFIG } from '@/types/meeting-t
 // Adapters (singleton instances per Dependency Injection pattern)
 import { meetingRepository } from '@/src/core/infrastructure/adapters/MeetingSupabaseRepository';
 import { meetingRealtimeService } from '@/src/core/infrastructure/adapters/MeetingRealtimeSupabaseService';
+import type { ReunionProgramadaData } from '@/src/core/domain/ports/IMeetingRepository';
+import { toUndefined } from '@/src/core/domain/utils/nullSafe';
+
+/**
+ * Mapper Application→Presentation: convierte el DTO de Supabase
+ * (`ReunionProgramadaData`, con `null` en columnas nullables) a la
+ * entidad de UI `ScheduledMeeting` (que usa `undefined`). Centraliza el
+ * boundary null↔undefined del plan 34919757.
+ */
+const mapReunionToScheduledMeeting = (reunion: ReunionProgramadaData): ScheduledMeeting => ({
+  ...reunion,
+  sala_id: toUndefined(reunion.sala_id),
+} as ScheduledMeeting);
 
 // Use cases
 import { CargarReunionesUseCase } from '@/src/core/application/usecases/CargarReunionesUseCase';
@@ -111,7 +124,7 @@ export interface UseCalendarPanelReturn {
   setShowroomDuracion: (duracion: number) => void;
   setNewMeeting: (meeting: NewMeetingForm) => void;
   updateMeetingField: <K extends keyof NewMeetingForm>(field: K, value: NewMeetingForm[K]) => void;
-  setInvitadosExternos: (invitados: InvitadoExterno[]) => void;
+  setInvitadosExternos: React.Dispatch<React.SetStateAction<InvitadoExterno[]>>;
   setNuevoInvitado: (invitado: NuevoInvitadoForm) => void;
   setErroresInvitado: (errores: string[]) => void;
 
@@ -212,7 +225,7 @@ export function useCalendarPanel(): UseCalendarPanelReturn {
       const result = await cargarReuniones.ejecutar({
         espacioId: activeWorkspace.id,
       });
-      setMeetings(result.reuniones);
+      setMeetings(result.reuniones.map(mapReunionToScheduledMeeting));
       log.debug('Meetings loaded', { count: result.reuniones.length });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);

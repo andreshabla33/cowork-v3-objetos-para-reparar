@@ -3,6 +3,7 @@ import type { StoreState } from '../state';
 import type { Role, Workspace } from '../../types';
 import { supabase } from '../../lib/supabase';
 import { logger } from '../../lib/logger';
+import { toUndefined } from '../../src/core/domain/utils/nullSafe';
 
 const log = logger.child('workspace-store');
 
@@ -43,11 +44,13 @@ export const createFetchWorkspacesAction = (
         miembros_espacio: Array<{ rol: Role; aceptado: boolean }>;
       }
 
+      // Clean Arch boundary: Supabase (null) → Domain (undefined) via toUndefined.
+      // Fix P0 — Domain drift del plan 34919757.
       const workspaces: Workspace[] = (data as WorkspaceRow[] || []).map((workspace) => ({
         id: workspace.id,
         name: workspace.nombre,
-        descripcion: workspace.descripcion,
-        slug: workspace.slug,
+        descripcion: toUndefined(workspace.descripcion),
+        slug: toUndefined(workspace.slug),
         width: 2000,
         height: 2000,
         items: [],

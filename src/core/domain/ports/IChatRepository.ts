@@ -137,6 +137,31 @@ export interface NombreUsuario {
  */
 export type OnNuevoMensajeCallback = (mensaje: MensajeChatRecord) => void;
 
+/**
+ * Payload shape for postgres_changes INSERT events on `mensajes_chat`.
+ * El adapter lo emite tal cual lo recibe de Supabase Realtime, pero con
+ * un contrato de Domain para que la Presentation no consuma `unknown`.
+ */
+export interface MensajeChatRealtimeRecord {
+  id: string;
+  grupo_id: string;
+  usuario_id: string;
+  contenido: string;
+  menciones: string[] | null;
+  respuesta_a: string | null;
+  editado: boolean;
+  creado_en: string;
+}
+
+export interface MensajeChatRealtimePayload {
+  schema: string;
+  table: 'mensajes_chat';
+  commit_timestamp: string;
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+  new: MensajeChatRealtimeRecord;
+  old?: Partial<MensajeChatRealtimeRecord> | null;
+}
+
 // ─── Port ─────────────────────────────────────────────────────────────────────
 
 /**

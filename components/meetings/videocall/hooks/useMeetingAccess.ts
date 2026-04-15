@@ -168,7 +168,9 @@ export const useMeetingAccess = ({
       }
 
       if (response.status < 200 || response.status >= 300) {
-        const errorData = data as Record<string, unknown>;
+        // `TokenData` no tiene index signature; pasamos por `unknown` para
+        // inspeccionar errores opcionales sin romper el contrato del tipo.
+        const errorData = data as unknown as Record<string, unknown>;
         throw new Error(String(errorData.error) || `Error ${response.status}: ${response.statusText}`);
       }
 

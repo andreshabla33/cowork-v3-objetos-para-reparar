@@ -77,7 +77,11 @@ export interface PresencePayload {
 }
 
 /**
- * Sub-tab types for workspace navigation
+ * Sub-tab types for workspace navigation.
+ *
+ * `builder` corresponde al modo construcción 3D (Scene builder). Vive
+ * junto a los demás subtabs para que WorkspaceLayout pueda cambiar de
+ * vista sin unions ad-hoc. Fix P0 — Domain drift del plan 34919757.
  */
 export type SubTabType =
   | 'space'
@@ -88,4 +92,5 @@ export type SubTabType =
   | 'miembros'
   | 'avatar'
   | 'calendar'
+  | 'builder'
   | 'settings';

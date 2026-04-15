@@ -69,13 +69,14 @@ export const LobbyVideoPreview: React.FC<LobbyVideoPreviewProps> = ({
 
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-black">
-      {/* ── Video con efectos de fondo ─────────────────────────────── */}
+      {/* ── Video con efectos de fondo ───────────────────────────────
+           Los props `backgroundImage`/`blurAmount` ya no existen en el
+           contrato (el processor se aplica en el bridge, no en el
+           <video>). Fix P2 — plan 34919757. */}
       {showBgVideo && (
         <VideoWithBackground
           stream={stream!}
           effectType={cameraSettings.backgroundEffect}
-          backgroundImage={cameraSettings.backgroundImage}
-          blurAmount={12}
           muted
           className="absolute inset-0 h-full w-full object-cover"
           mirrorVideo={cameraSettings.mirrorVideo}

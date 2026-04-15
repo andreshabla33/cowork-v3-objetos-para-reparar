@@ -40,14 +40,9 @@ export class CargarHistorialGrabacionesUseCase {
 
     // 2. Get recordings where user is participant
     const idsParticipante = await this.repo.obtenerGrabacionesParticipante(userId);
-    let grabacionesParticipante = [];
-    if (idsParticipante.length > 0) {
-      grabacionesParticipante = await this.repo.obtenerGrabacionesPorIds(
-        espacioId,
-        idsParticipante,
-        userId,
-      );
-    }
+    const grabacionesParticipante = idsParticipante.length > 0
+      ? await this.repo.obtenerGrabacionesPorIds(espacioId, idsParticipante, userId)
+      : [];
 
     // 3. Combine and sort by date (descending)
     const todas: GrabacionConDatos[] = [
