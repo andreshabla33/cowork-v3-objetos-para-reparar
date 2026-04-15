@@ -25,6 +25,33 @@ import { remapAnimationTracks } from '@/components/avatar3d/rigUtils';
 
 const log = logger.child('AnimationBaker');
 
+/**
+ * Minimum proportion of source bones that must match the target skeleton
+ * after `remapAnimationTracks` for a clip to be considered viable.
+ *
+ * Clips with matchRate below this threshold are discarded: baking them would
+ * produce mostly identity-matrix frames (T-pose) because `PropertyBinding`
+ * targets resolve to null for the unmatched bones.
+ *
+ * This mirrors the guard already enforced in `components/avatar3d/GLTFAvatar.tsx`
+ * (search `matchRate < 0.3`) — keeping both pipelines consistent, so an avatar
+ * rejected by the GLTFAvatar path is also rejected by the instanced path.
+ *
+ * Rationale (Three.js official docs):
+ * - `AnimationMixer` binds tracks via `PropertyBinding.findNode()`. When the
+ *   name does not resolve, the binding becomes a no-op and the track does not
+ *   contribute matrices — the bone stays at bind pose.
+ * - Baking such a clip produces a DataTexture filled with identity matrices.
+ *   When the shader samples those matrices, the avatar renders in bind pose
+ *   (T-pose). This is indistinguishable visually from "no animation".
+ * - Per GLTF spec, animation channel targets must match existing nodes; a low
+ *   match rate means the clip is effectively incompatible with the skeleton.
+ *
+ * @see https://threejs.org/docs/#api/en/animation/AnimationMixer
+ * @see https://www.khronos.org/registry/glTF/specs/2.0/glTF-2.0.html#animations
+ */
+const MIN_MATCH_RATE_FOR_BAKE = 0.3;
+
 // ─── Tipos ──────────────────────────────────────────────────────────────────
 
 export interface BakedAnimation {
@@ -84,7 +111,7 @@ export function bakeAnimationClip(
    * Ref: GLTF spec — skeleton bones are often siblings of the mesh node.
    */
   sceneRoot?: THREE.Object3D,
-): BakedAnimation {
+): BakedAnimation | null {
   const skeleton = mesh.skeleton;
   const numBones = skeleton.bones.length;
   const duration = clip.duration;
@@ -112,6 +139,26 @@ export function bakeAnimationClip(
       clip: clip.name,
       originalTracks: clip.tracks.length,
     });
+    return null;
+  }
+
+  // Guard: clips con bajo matchRate producirían mayormente identity matrices
+  // (T-pose) porque sus tracks no matchean los huesos del skeleton target.
+  // Descartarlos activa el fallback a GLTFAvatar (animaciones universales
+  // externas) en el consumer (InstancedAvatarRenderer → Avatar3DScene).
+  // Mismo umbral que GLTFAvatar.tsx:443 (consistencia entre pipelines).
+  if (matchRate < MIN_MATCH_RATE_FOR_BAKE) {
+    log.warn(
+      'Clip descartado — matchRate insuficiente para instancing',
+      {
+        clip: clip.name,
+        matchRate: Math.round(matchRate * 100) + '%',
+        threshold: Math.round(MIN_MATCH_RATE_FOR_BAKE * 100) + '%',
+        originalTracks: clip.tracks.length,
+        remappedTracks: normalizedClip.tracks.length,
+      }
+    );
+    return null;
   }
 
   // Crear mixer temporal para samplear.
@@ -208,6 +255,12 @@ export function bakeAnimationClip(
 /**
  * Hornea todas las animaciones de un GLTF en un BakedAnimationSet.
  * Busca los clips estándar (idle, walk, run, sit) o usa todos los disponibles.
+ *
+ * Retorna `null` si NINGÚN clip pudo bakearse (todos rechazados por
+ * matchRate bajo o sin tracks tras remap). Eso activa el fallback a
+ * GLTFAvatar en el consumer — ver InstancedAvatarRenderer `bakedSet === null`
+ * ⇒ `onModelUnsupported(modelUrl)` ⇒ Avatar3DScene excluye el modelo del
+ * pool de instancing ⇒ usuarios caen a GLTFAvatar con universales.
  */
 export function bakeAllAnimations(
   skinnedMesh: THREE.SkinnedMesh,
@@ -219,12 +272,23 @@ export function bakeAllAnimations(
    * See bakeAnimationClip JSDoc for full explanation.
    */
   sceneRoot?: THREE.Object3D,
-): BakedAnimationSet {
+): BakedAnimationSet | null {
   const animations = new Map<string, BakedAnimation>();
 
   for (const clip of clips) {
     const baked = bakeAnimationClip(skinnedMesh, clip, fps, sceneRoot);
+    if (baked === null) continue; // Clip incompatible — descartar.
     animations.set(clip.name, baked);
+  }
+
+  if (animations.size === 0) {
+    log.warn(
+      'bakeAllAnimations: todos los clips descartados — skeleton incompatible con instancing',
+      {
+        totalClips: clips.length,
+      }
+    );
+    return null;
   }
 
   return {
@@ -255,13 +319,20 @@ export function getOrBakeAnimations(
    * are not descendants of mixer root → bind pose → T-POSE.
    */
   sceneRoot?: THREE.Object3D,
-): BakedAnimationSet {
+): BakedAnimationSet | null {
   if (bakedAnimationCache.has(modelUrl)) {
     return bakedAnimationCache.get(modelUrl)!;
   }
 
   const bakedSet = bakeAllAnimations(skinnedMesh, clips, fps, sceneRoot);
-  bakedAnimationCache.set(modelUrl, bakedSet);
+  // Solo cachear bakes exitosos. Cachear `null` es indeseable porque el mismo
+  // modelUrl podría ser reintentado con otro sceneRoot / otros clips externos
+  // (ej. si la estrategia de carga cambia), y devolver `null` cacheado
+  // impediría reintentos legítimos. Dejamos que el consumer maneje la
+  // no-disponibilidad (fallback a GLTFAvatar).
+  if (bakedSet !== null) {
+    bakedAnimationCache.set(modelUrl, bakedSet);
+  }
   return bakedSet;
 }
 
