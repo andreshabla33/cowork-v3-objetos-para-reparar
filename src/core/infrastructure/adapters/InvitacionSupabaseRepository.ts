@@ -9,6 +9,7 @@
 
 import { supabase } from '../../../../lib/supabase';
 import { logger } from '../../../../lib/logger';
+import { pickOneRelation } from '../../domain/utils/supabaseRelations';
 import type { IInvitacionRepository, AceptarInvitacionPayload } from '../../domain/ports/IInvitacionRepository';
 import type {
   InvitacionInfo,
@@ -51,13 +52,13 @@ export class InvitacionSupabaseRepository implements IInvitacionRepository {
         return { data: null, estado: 'expirado' };
       }
 
-      const espacioData = data.espacio as InvitacionEspacioData | null;
+      const espacioData = pickOneRelation<InvitacionEspacioData>(data.espacio);
       if (!espacioData || !espacioData.nombre) {
         log.error('Workspace data is null (possible RLS restriction)');
         return { data: null, estado: 'error' };
       }
 
-      const invitadorData = data.invitador as InvitacionInvitadorData | null;
+      const invitadorData = pickOneRelation<InvitacionInvitadorData>(data.invitador);
 
       const info: InvitacionInfo = {
         email: data.email,

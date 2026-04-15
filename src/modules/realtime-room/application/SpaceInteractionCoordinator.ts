@@ -1,5 +1,5 @@
 import type { User } from '@/types';
-import type { InviteDataPacket, NudgeDataPacket, WaveDataPacket } from '../domain/types';
+import type { InviteDataPacket, NudgeDataPacket, Unsealed, WaveDataPacket } from '../domain/types';
 import type { AccionXP } from '@/lib/gamificacion';
 
 export interface SpaceInteractionCoordinatorState {
@@ -17,7 +17,7 @@ export interface SpaceInteractionCoordinatorRuntime {
     y: number;
     profilePhoto: string | null;
   };
-  sendInteraction: (packet: WaveDataPacket | NudgeDataPacket | InviteDataPacket) => void;
+  sendInteraction: (packet: Unsealed<WaveDataPacket> | Unsealed<NudgeDataPacket> | Unsealed<InviteDataPacket>) => void;
   grantXP: (action: AccionXP, cooldownMs?: number) => void;
   setTeleportTarget: (target: { x: number; z: number } | null) => void;
   setMoveTarget: (target: { x: number; z: number } | null) => void;

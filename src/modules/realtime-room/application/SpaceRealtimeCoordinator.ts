@@ -13,6 +13,7 @@ import { logger } from '@/lib/logger';
 import {
   PreflightError,
   DataPacketContract,
+  type PublishableDataPacketContract,
   type RaiseHandPayload,
   type ConsentRequestPayload,
   type ConsentResponsePayload,
@@ -339,7 +340,7 @@ export class SpaceRealtimeCoordinator {
    * Publica un paquete de datos en la sala LiveKit.
    * Delegado a RealtimeDataPublisher que resuelve automáticamente lossy/reliable.
    */
-  async publishData(data: DataPacketContract, reliableOverride?: boolean): Promise<boolean> {
+  async publishData(data: PublishableDataPacketContract, reliableOverride?: boolean): Promise<boolean> {
     return this.dataPublisher.publish(data, reliableOverride);
   }
 
@@ -470,14 +471,18 @@ export class SpaceRealtimeCoordinator {
 
     this.room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
       this.log.info('Remote track subscribed', { trackSid: track.sid, participantId: participant.identity });
-      this.remoteTrackSubscriptions.set(track.sid, track);
+      if (track.sid) {
+        this.remoteTrackSubscriptions.set(track.sid, track);
+      }
       this.options.onRemoteTrackSubscribed?.(track, publication, participant);
       this.notifyStateChange();
     });
 
     this.room.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
       this.log.info('Remote track unsubscribed', { trackSid: track.sid, participantId: participant.identity });
-      this.remoteTrackSubscriptions.delete(track.sid);
+      if (track.sid) {
+        this.remoteTrackSubscriptions.delete(track.sid);
+      }
       this.options.onRemoteTrackUnsubscribed?.(track, publication, participant);
       this.notifyStateChange();
     });

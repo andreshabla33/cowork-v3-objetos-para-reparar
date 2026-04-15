@@ -19,6 +19,7 @@ import type { Room } from 'livekit-client';
 import { logger } from '@/lib/logger';
 import {
   type DataPacketContract,
+  type PublishableDataPacketContract,
   type ReactionPayload,
   type RecordingStatusPayload,
   type ConsentRequestPayload,
@@ -66,7 +67,7 @@ export class RealtimeDataPublisher {
    * @param data             — Paquete tipado (DataPacketContract)
    * @param reliableOverride — Si se proporciona, sobreescribe la política automática.
    */
-  async publish(data: DataPacketContract, reliableOverride?: boolean): Promise<boolean> {
+  async publish(data: PublishableDataPacketContract, reliableOverride?: boolean): Promise<boolean> {
     const room = this.roomProvider();
     if (!room || room.state !== 'connected') {
       log.warn('Cannot publish data — room not connected', { type: data.type });

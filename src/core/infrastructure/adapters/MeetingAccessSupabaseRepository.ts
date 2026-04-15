@@ -159,7 +159,7 @@ class MeetingAccessSupabaseRepository implements IMeetingAccessRepository {
 
       const { data, error } = await supabase
         .from('salas_reunion')
-        .select('nombre, tipo, configuracion, creador_id, espacio_id')
+        .select('id, nombre, tipo, configuracion, creador_id, espacio_id')
         .eq('codigo_acceso', codigoAcceso)
         .eq('activa', true)
         .maybeSingle();

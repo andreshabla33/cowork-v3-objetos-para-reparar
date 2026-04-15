@@ -306,7 +306,7 @@ export class SpaceMediaCoordinator {
           this.trackStates.set('video', {
             trackId: videoStream.getVideoTracks()[0]?.id || '',
             kind: 'video',
-            deviceId: this.devicePreferences.selectedCameraId,
+            deviceId: this.devicePreferences.selectedCameraId ?? '',
             enabled: true,
             muted: false,
             state: 'published',
@@ -361,7 +361,7 @@ export class SpaceMediaCoordinator {
           this.trackStates.set('audio', {
             trackId: this.stream.getAudioTracks()[0]?.id || '',
             kind: 'audio',
-            deviceId: this.devicePreferences.selectedMicrophoneId,
+            deviceId: this.devicePreferences.selectedMicrophoneId ?? '',
             enabled: true,
             muted: false,
             state: 'published',

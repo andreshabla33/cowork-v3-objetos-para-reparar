@@ -22,6 +22,7 @@ import {
   type ConsentRequestPayload,
   type ConsentResponsePayload,
   type DataPacketContract,
+  type PublishableDataPacketContract,
   type ModerationNoticePayload,
   type PinParticipantPayload,
   type RaiseHandPayload,
@@ -112,55 +113,55 @@ export class LiveKitRoomGateway {
 
   // ─── Data Publishing (delegado a RealtimeDataPublisher) ──────────
 
-  async publishData(data: DataPacketContract, reliableOverride?: boolean): Promise<boolean> {
+  async publishData(data: PublishableDataPacketContract, reliableOverride?: boolean): Promise<boolean> {
     return this.dataPublisher.publish(data, reliableOverride);
   }
 
   async sendReaction(payload: ReactionPayload, reliable?: boolean): Promise<boolean> {
     return reliable !== undefined
-      ? this.dataPublisher.publish(await this._createPacket('reaction', payload), reliable)
+      ? this.dataPublisher.publish({ type: 'reaction', payload }, reliable)
       : this.dataPublisher.sendReaction(payload);
   }
 
   async sendRecordingStatus(payload: RecordingStatusPayload, reliable?: boolean): Promise<boolean> {
     return reliable !== undefined
-      ? this.dataPublisher.publish(await this._createPacket('recording_status', payload), reliable)
+      ? this.dataPublisher.publish({ type: 'recording_status', payload }, reliable)
       : this.dataPublisher.sendRecordingStatus(payload);
   }
 
   async sendConsentRequest(payload: ConsentRequestPayload, reliable?: boolean): Promise<boolean> {
     return reliable !== undefined
-      ? this.dataPublisher.publish(await this._createPacket('consent_request', payload), reliable)
+      ? this.dataPublisher.publish({ type: 'consent_request', payload }, reliable)
       : this.dataPublisher.sendConsentRequest(payload);
   }
 
   async sendConsentResponse(payload: ConsentResponsePayload, reliable?: boolean): Promise<boolean> {
     return reliable !== undefined
-      ? this.dataPublisher.publish(await this._createPacket('consent_response', payload), reliable)
+      ? this.dataPublisher.publish({ type: 'consent_response', payload }, reliable)
       : this.dataPublisher.sendConsentResponse(payload);
   }
 
   async sendRaiseHand(payload: RaiseHandPayload, reliable?: boolean): Promise<boolean> {
     return reliable !== undefined
-      ? this.dataPublisher.publish(await this._createPacket('raise_hand', payload), reliable)
+      ? this.dataPublisher.publish({ type: 'raise_hand', payload }, reliable)
       : this.dataPublisher.sendRaiseHand(payload);
   }
 
   async sendPinParticipant(payload: PinParticipantPayload, reliable?: boolean): Promise<boolean> {
     return reliable !== undefined
-      ? this.dataPublisher.publish(await this._createPacket('pin_participant', payload), reliable)
+      ? this.dataPublisher.publish({ type: 'pin_participant', payload }, reliable)
       : this.dataPublisher.sendPinParticipant(payload);
   }
 
   async sendSpeakerHint(payload: SpeakerHintPayload, reliable?: boolean): Promise<boolean> {
     return reliable !== undefined
-      ? this.dataPublisher.publish(await this._createPacket('speaker_hint', payload), reliable)
+      ? this.dataPublisher.publish({ type: 'speaker_hint', payload }, reliable)
       : this.dataPublisher.sendSpeakerHint(payload);
   }
 
   async sendModerationNotice(payload: ModerationNoticePayload, reliable?: boolean): Promise<boolean> {
     return reliable !== undefined
-      ? this.dataPublisher.publish(await this._createPacket('moderation_notice', payload), reliable)
+      ? this.dataPublisher.publish({ type: 'moderation_notice', payload }, reliable)
       : this.dataPublisher.sendModerationNotice(payload);
   }
 
@@ -189,14 +190,6 @@ export class LiveKitRoomGateway {
 
   private notifyStateChange(): void {
     this.options.onStateChange?.(this.getState());
-  }
-
-  /**
-   * Helper para construir paquetes cuando se necesita reliable override.
-   * Evita duplicar los create*DataPacket imports en esta clase.
-   */
-  private async _createPacket(type: string, payload: Record<string, unknown>): Promise<DataPacketContract> {
-    return { type, payload } as DataPacketContract;
   }
 
   private setupEventHandlers(room: Room): void {

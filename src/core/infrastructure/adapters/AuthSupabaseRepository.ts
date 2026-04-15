@@ -9,6 +9,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { logger } from '@/lib/logger';
+import { pickOneRelation } from '../../domain/utils/supabaseRelations';
 import type {
   IAuthRepository,
   ResultadoAuth,
@@ -119,8 +120,10 @@ export class AuthSupabaseRepository implements IAuthRepository {
         return null;
       }
 
-      const espacio = data.espacio as { nombre: string } | null;
-      const invitador = data.invitador as { nombre: string } | null;
+      // PostgREST devuelve relaciones FK como array incluso cuando son 1:1.
+      // `pickOneRelation` normaliza el shape (helper de domain/utils).
+      const espacio = pickOneRelation<{ nombre: string }>(data.espacio);
+      const invitador = pickOneRelation<{ nombre: string }>(data.invitador);
 
       return {
         email: data.email,

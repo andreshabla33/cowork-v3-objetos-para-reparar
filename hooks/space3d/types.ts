@@ -12,7 +12,7 @@ import type { GpuInfo } from '@/lib/gpuCapabilities';
 import type { UserSettings } from '@/lib/userSettings';
 import type { Room } from 'livekit-client';
 import type { Session } from '@supabase/supabase-js';
-import type { DataPacketContract, RealtimeEventBus, SpaceRealtimeCoordinator, SpaceRealtimeCoordinatorState } from '@/modules/realtime-room';
+import type { DataPacketContract, PublishableDataPacketContract, RealtimeEventBus, SpaceRealtimeCoordinator, SpaceRealtimeCoordinatorState } from '@/modules/realtime-room';
 import type { AccionXP } from '@/lib/gamificacion';
 import type { SpaceMediaCoordinatorState } from '@/modules/realtime-room';
 
@@ -170,7 +170,7 @@ export interface UseLiveKitReturn {
   sincronizarTracksLocales: () => Promise<void>;
   conectarLivekit: (roomName: string) => Promise<void>;
   limpiarLivekit: () => Promise<void>;
-  enviarDataLivekit: (mensaje: DataPacketContract, reliable?: boolean) => boolean;
+  enviarDataLivekit: (mensaje: PublishableDataPacketContract, reliable?: boolean) => boolean;
   permitirMediaParticipante: (metadata?: string | null) => boolean;
   getPublishedVideoTrack: () => import('livekit-client').LocalVideoTrack | null;
 }
@@ -287,7 +287,7 @@ export interface UseBroadcastParams {
   currentUserEcs: User;
   activeWorkspace: Workspace | null;
   usersInCall: User[];
-  enviarDataLivekit: (mensaje: DataPacketContract, reliable?: boolean) => boolean;
+  enviarDataLivekit: (mensaje: PublishableDataPacketContract, reliable?: boolean) => boolean;
   ecsStateRef: React.MutableRefObject<EstadoEcsEspacio>;
   usuariosVisiblesRef: React.MutableRefObject<Set<string>>;
   realtimePositionsRef: React.MutableRefObject<Map<string, RealtimePositionEntry>>;
@@ -308,7 +308,7 @@ export interface UseGatherInteractionsParams {
   currentUserEcs: User;
   usuariosEnChunks: User[];
   ecsStateRef: React.MutableRefObject<EstadoEcsEspacio>;
-  enviarDataLivekit: (mensaje: DataPacketContract, reliable?: boolean) => boolean;
+  enviarDataLivekit: (mensaje: PublishableDataPacketContract, reliable?: boolean) => boolean;
   grantXP: (accion: AccionXP, cooldownMs?: number) => void;
   setTeleportTarget: React.Dispatch<React.SetStateAction<{ x: number; z: number } | null>>;
   setMoveTarget: React.Dispatch<React.SetStateAction<{ x: number; z: number } | null>>;

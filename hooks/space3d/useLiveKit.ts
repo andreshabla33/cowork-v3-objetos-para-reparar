@@ -15,7 +15,7 @@ import { logger } from '@/lib/logger';
 import { crearSalaLivekitPorEspacio, obtenerTokenLivekitEspacio } from '@/lib/livekitService';
 import { supabase } from '@/lib/supabase';
 import { getTurnIceServers } from '@/lib/network/turnCredentialsService';
-import type { DataPacketContract } from '@/modules/realtime-room';
+import type { PublishableDataPacketContract } from '@/modules/realtime-room';
 import type { SpaceMediaCoordinatorState } from '@/modules/realtime-room';
 import type { SpaceRealtimeCoordinatorState } from '@/modules/realtime-room';
 import { RealtimeEventBus, RealtimeSessionTelemetry, RemoteMediaLifecycleDiagnostics, RemoteRenderLifecyclePolicy, RemoteTrackAttachmentPolicy, SpaceRealtimeCoordinator, SubscriptionPolicyService, TrackPublicationCoordinator } from '@/modules/realtime-room';
@@ -890,7 +890,7 @@ export function useLiveKit(params: {
    * - movement/speaker_hint → lossy (UDP, baja latencia)
    * - chat/invite/recording/etc → reliable (entrega garantizada)
    */
-  const enviarDataLivekit = useCallback((mensaje: DataPacketContract, reliableOverride?: boolean) => {
+  const enviarDataLivekit = useCallback((mensaje: PublishableDataPacketContract, reliableOverride?: boolean) => {
     const coordinator = realtimeCoordinatorRef.current;
     if (!coordinator) return false;
     coordinator.publishData(mensaje, reliableOverride).catch((e: unknown) => log.warn('Error enviando data LiveKit', { error: e instanceof Error ? e.message : String(e) }));

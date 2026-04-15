@@ -21,6 +21,7 @@ import {
   createRaiseHandDataPacket,
   createReactionDataPacket,
   type DataPacketContract,
+  type PublishableDataPacketContract,
   RaiseHandUseCase,
   type RealtimeEventBus,
 } from '@/modules/realtime-room';
@@ -38,7 +39,7 @@ export function useBroadcast(params: {
   currentUserEcs: User;
   activeWorkspace: Workspace | null;
   usersInCall: User[];
-  enviarDataLivekit: (mensaje: DataPacketContract, reliable?: boolean) => boolean;
+  enviarDataLivekit: (mensaje: PublishableDataPacketContract, reliable?: boolean) => boolean;
   ecsStateRef: React.MutableRefObject<EstadoEcsEspacio>;
   usuariosVisiblesRef: React.MutableRefObject<Set<string>>;
   realtimePositionsRef: React.MutableRefObject<Map<string, RealtimePositionEntry>>;

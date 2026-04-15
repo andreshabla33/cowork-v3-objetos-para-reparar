@@ -225,33 +225,60 @@ export type DataPacketContract =
 
 export type DataPacketByType<TType extends DataPacketType> = Extract<DataPacketContract, { type: TType }>;
 
+/**
+ * Packets "desempaquetados" — sin el mixin `ReliablePacketMeta` (seq).
+ * El publisher inyecta `seq` al enviar; los creators retornan shapes sin sello.
+ * Esto evita que la capa de aplicación tenga que conocer la numeración.
+ */
+export type Unsealed<T> = Omit<T, keyof ReliablePacketMeta>;
+
+/**
+ * Contrato público para publicar paquetes. Admite paquetes desempaquetados
+ * (sin seq) porque el publisher inyecta `seq` al enviar paquetes Reliable.
+ */
+export type PublishableDataPacketContract =
+  | MovementDataPacket
+  | SpeakerHintDataPacket
+  | Unsealed<ChatDataPacket>
+  | Unsealed<ReactionDataPacket>
+  | Unsealed<WaveDataPacket>
+  | Unsealed<NudgeDataPacket>
+  | Unsealed<InviteDataPacket>
+  | Unsealed<LockConversationDataPacket>
+  | Unsealed<RecordingStatusDataPacket>
+  | Unsealed<ConsentRequestDataPacket>
+  | Unsealed<ConsentResponseDataPacket>
+  | Unsealed<RaiseHandDataPacket>
+  | Unsealed<PinParticipantDataPacket>
+  | Unsealed<ModerationNoticeDataPacket>;
+
 export const createMovementDataPacket = (payload: MovementPayload): MovementDataPacket => ({ type: 'movement', payload });
 
-export const createChatDataPacket = (payload: ChatPayload): ChatDataPacket => ({ type: 'chat', payload });
+export const createChatDataPacket = (payload: ChatPayload): Unsealed<ChatDataPacket> => ({ type: 'chat', payload });
 
-export const createReactionDataPacket = (payload: ReactionPayload): ReactionDataPacket => ({ type: 'reaction', payload });
+export const createReactionDataPacket = (payload: ReactionPayload): Unsealed<ReactionDataPacket> => ({ type: 'reaction', payload });
 
-export const createWaveDataPacket = (payload: WavePayload): WaveDataPacket => ({ type: 'wave', payload });
+export const createWaveDataPacket = (payload: WavePayload): Unsealed<WaveDataPacket> => ({ type: 'wave', payload });
 
-export const createNudgeDataPacket = (payload: NudgePayload): NudgeDataPacket => ({ type: 'nudge', payload });
+export const createNudgeDataPacket = (payload: NudgePayload): Unsealed<NudgeDataPacket> => ({ type: 'nudge', payload });
 
-export const createInviteDataPacket = (payload: InvitePayload): InviteDataPacket => ({ type: 'invite', payload });
+export const createInviteDataPacket = (payload: InvitePayload): Unsealed<InviteDataPacket> => ({ type: 'invite', payload });
 
-export const createLockConversationDataPacket = (payload: LockConversationPayload): LockConversationDataPacket => ({ type: 'lock_conversation', payload });
+export const createLockConversationDataPacket = (payload: LockConversationPayload): Unsealed<LockConversationDataPacket> => ({ type: 'lock_conversation', payload });
 
-export const createRecordingStatusDataPacket = (payload: RecordingStatusPayload): RecordingStatusDataPacket => ({ type: 'recording_status', payload });
+export const createRecordingStatusDataPacket = (payload: RecordingStatusPayload): Unsealed<RecordingStatusDataPacket> => ({ type: 'recording_status', payload });
 
-export const createConsentRequestDataPacket = (payload: ConsentRequestPayload): ConsentRequestDataPacket => ({ type: 'consent_request', payload });
+export const createConsentRequestDataPacket = (payload: ConsentRequestPayload): Unsealed<ConsentRequestDataPacket> => ({ type: 'consent_request', payload });
 
-export const createConsentResponseDataPacket = (payload: ConsentResponsePayload): ConsentResponseDataPacket => ({ type: 'consent_response', payload });
+export const createConsentResponseDataPacket = (payload: ConsentResponsePayload): Unsealed<ConsentResponseDataPacket> => ({ type: 'consent_response', payload });
 
-export const createRaiseHandDataPacket = (payload: RaiseHandPayload): RaiseHandDataPacket => ({ type: 'raise_hand', payload });
+export const createRaiseHandDataPacket = (payload: RaiseHandPayload): Unsealed<RaiseHandDataPacket> => ({ type: 'raise_hand', payload });
 
-export const createPinParticipantDataPacket = (payload: PinParticipantPayload): PinParticipantDataPacket => ({ type: 'pin_participant', payload });
+export const createPinParticipantDataPacket = (payload: PinParticipantPayload): Unsealed<PinParticipantDataPacket> => ({ type: 'pin_participant', payload });
 
 export const createSpeakerHintDataPacket = (payload: SpeakerHintPayload): SpeakerHintDataPacket => ({ type: 'speaker_hint', payload });
 
-export const createModerationNoticeDataPacket = (payload: ModerationNoticePayload): ModerationNoticeDataPacket => ({ type: 'moderation_notice', payload });
+export const createModerationNoticeDataPacket = (payload: ModerationNoticePayload): Unsealed<ModerationNoticeDataPacket> => ({ type: 'moderation_notice', payload });
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;

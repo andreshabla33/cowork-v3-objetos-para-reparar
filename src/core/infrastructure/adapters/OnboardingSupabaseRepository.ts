@@ -8,6 +8,7 @@
 
 import { supabase } from '../../../../lib/supabase';
 import { logger } from '../../../../lib/logger';
+import { pickOneRelation } from '../../domain/utils/supabaseRelations';
 import type {
   IOnboardingRepository,
   MiembroOnboarding,
@@ -49,7 +50,7 @@ export class OnboardingSupabaseRepository implements IOnboardingRepository {
       return null;
     }
 
-    const espacioData = miembro.espacios_trabajo as MiembroEspacioData | null;
+    const espacioData = pickOneRelation<MiembroEspacioData>(miembro.espacios_trabajo);
 
     return {
       id: miembro.id,
@@ -93,7 +94,7 @@ export class OnboardingSupabaseRepository implements IOnboardingRepository {
         .maybeSingle(),
     ]);
 
-    const invitadorData = invitacionRes.data?.invitador as OnboardingInvitadorData | null;
+    const invitadorData = pickOneRelation<OnboardingInvitadorData>(invitacionRes.data?.invitador);
 
     return {
       departamentos: (departamentosRes.data || []) as Departamento[],

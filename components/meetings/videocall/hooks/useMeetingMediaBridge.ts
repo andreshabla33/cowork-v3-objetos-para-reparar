@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Room, RoomEvent, Track, LocalVideoTrack } from 'livekit-client';
 import { TrackPublicationCoordinator, crearOpcionesPublicacionTrackLiveKit, loadCameraSettings, saveCameraSettings, loadAudioSettings, saveAudioSettings, useLiveKitVideoBackground, type CameraSettings, type AudioSettings } from '@/modules/realtime-room';
 import { createProcessedAudioTrack, type ProcessedAudioTrackHandle } from '@/lib/audioProcessing';
@@ -320,18 +320,23 @@ export const useMeetingMediaBridge = ({
     if (!nextSettings || !coordinator) {
       return false;
     }
+    // Narrow manual: TS no narrow `nextSettings` después del guard porque
+    // la asignación vive dentro del closure de `setCameraSettings`. Una
+    // vez validado, copiamos a un local tipado para que el resto del bloque
+    // consuma un `CameraSettings` no-null. Fix strict-mode Fase 4.
+    const settings: CameraSettings = nextSettings;
 
     if (partial.selectedCameraId !== undefined) {
       // Compare BEFORE calling updateDevicePreferences to avoid an unnecessary
       // notifyStateChange() that disrupts the LiveKit publish cycle.
       const activeVideoTrack = coordinator.getState().stream?.getVideoTracks()[0];
       const activeDeviceId = activeVideoTrack?.getSettings().deviceId;
-      const cameraActuallyChanged = nextSettings.selectedCameraId !== activeDeviceId;
+      const cameraActuallyChanged = settings.selectedCameraId !== activeDeviceId;
 
       if (cameraActuallyChanged) {
-        coordinator.updateDevicePreferences({ selectedCameraId: nextSettings.selectedCameraId || null });
-        if (coordinator.getState().desiredCameraEnabled && nextSettings.selectedCameraId) {
-          return coordinator.switchCamera(nextSettings.selectedCameraId);
+        coordinator.updateDevicePreferences({ selectedCameraId: settings.selectedCameraId || null });
+        if (coordinator.getState().desiredCameraEnabled && settings.selectedCameraId) {
+          return coordinator.switchCamera(settings.selectedCameraId);
         }
       }
       // If camera didn't change, skip updateDevicePreferences entirely to avoid
@@ -354,6 +359,11 @@ export const useMeetingMediaBridge = ({
     if (!nextSettings || !coordinator) {
       return false;
     }
+    // Narrow manual: TS no narrow `nextSettings` después del guard porque
+    // la asignación vive dentro del closure de `setAudioSettings`. Una
+    // vez validado, copiamos a un local tipado para que el resto del bloque
+    // consuma un `AudioSettings` no-null. Fix strict-mode Fase 4.
+    const settings: AudioSettings = nextSettings;
 
     const selectedMicrophoneChanged = partial.selectedMicrophoneId !== undefined;
     const selectedSpeakerChanged = partial.selectedSpeakerId !== undefined;
@@ -365,34 +375,34 @@ export const useMeetingMediaBridge = ({
     const activeAudioTrack = coordinator.getState().stream?.getAudioTracks()[0];
     const activeMicrophoneId = activeAudioTrack?.getSettings().deviceId || null;
     const microphoneActuallyChanged = selectedMicrophoneChanged
-      && (nextSettings.selectedMicrophoneId || null) !== activeMicrophoneId;
+      && (settings.selectedMicrophoneId || null) !== activeMicrophoneId;
 
     const currentSpeakerId = coordinator.getState().devicePreferences.selectedSpeakerId || null;
     const speakerActuallyChanged = selectedSpeakerChanged
-      && (nextSettings.selectedSpeakerId || null) !== currentSpeakerId;
+      && (settings.selectedSpeakerId || null) !== currentSpeakerId;
 
     if (microphoneActuallyChanged || speakerActuallyChanged) {
       coordinator.updateDevicePreferences({
-        selectedMicrophoneId: microphoneActuallyChanged ? (nextSettings.selectedMicrophoneId || null) : undefined,
-        selectedSpeakerId: speakerActuallyChanged ? (nextSettings.selectedSpeakerId || null) : undefined,
+        selectedMicrophoneId: microphoneActuallyChanged ? (settings.selectedMicrophoneId || null) : undefined,
+        selectedSpeakerId: speakerActuallyChanged ? (settings.selectedSpeakerId || null) : undefined,
       });
     }
 
     if (processingChanged) {
       coordinator.updateAudioProcessingOptions({
-        noiseReduction: nextSettings.noiseReduction,
-        noiseReductionLevel: nextSettings.noiseReductionLevel === 'enhanced'
+        noiseReduction: settings.noiseReduction,
+        noiseReductionLevel: settings.noiseReductionLevel === 'enhanced'
           ? 'enhanced'
-          : nextSettings.noiseReductionLevel === 'off'
+          : settings.noiseReductionLevel === 'off'
             ? 'off'
             : 'standard',
-        echoCancellation: nextSettings.echoCancellation,
-        autoGainControl: nextSettings.autoGainControl,
+        echoCancellation: settings.echoCancellation,
+        autoGainControl: settings.autoGainControl,
       }, false);
     }
 
-    if (microphoneActuallyChanged && coordinator.getState().desiredMicrophoneEnabled && nextSettings.selectedMicrophoneId) {
-      const changed = await coordinator.switchMicrophone(nextSettings.selectedMicrophoneId);
+    if (microphoneActuallyChanged && coordinator.getState().desiredMicrophoneEnabled && settings.selectedMicrophoneId) {
+      const changed = await coordinator.switchMicrophone(settings.selectedMicrophoneId);
       if (changed) {
         await ensureProcessedAudioTrack();
       }
@@ -400,7 +410,7 @@ export const useMeetingMediaBridge = ({
     }
 
     if (processingChanged) {
-      const currentMicrophoneId = nextSettings.selectedMicrophoneId || activeMicrophoneId;
+      const currentMicrophoneId = settings.selectedMicrophoneId || activeMicrophoneId;
       if (coordinator.getState().desiredMicrophoneEnabled && currentMicrophoneId) {
         const reapplied = await coordinator.switchMicrophone(currentMicrophoneId);
         if (!reapplied) {
@@ -511,7 +521,7 @@ export const useMeetingMediaBridge = ({
         const localTrack = publication?.track as unknown as MeetingMutableLocalTrack | undefined;
 
         if (item.action === 'publish_or_replace' && item.track) {
-          if (publication?.track) {
+          if (localTrack) {
             if (localTrack.mediaStreamTrack?.id !== item.track.id && typeof localTrack.replaceTrack === 'function') {
               await localTrack.replaceTrack(item.track);
             }
@@ -521,7 +531,7 @@ export const useMeetingMediaBridge = ({
           } else {
             await room.localParticipant.publishTrack(item.track, crearOpcionesPublicacionTrackLiveKit(item.source));
           }
-        } else if (item.action === 'unpublish' && publication?.track) {
+        } else if (item.action === 'unpublish' && localTrack) {
           if (!localTrack.isMuted && typeof localTrack.mute === 'function') {
             await localTrack.mute();
           }
