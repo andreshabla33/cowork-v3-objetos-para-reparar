@@ -18,6 +18,19 @@ export interface ResultadoAuth {
   error?: string;
 }
 
+/**
+ * Resultado de validar la sesión activa contra el servidor.
+ *
+ * - `valid === true`: JWT presente y aceptado por auth server (user existe).
+ * - `valid === false`: JWT inválido/expirado/user borrado → hacer signOut.
+ * - `noSession === true`: no hay sesión (ni localStorage ni cookies) → OK.
+ */
+export interface ResultadoValidacionSesion {
+  valid: boolean;
+  noSession?: boolean;
+  error?: string;
+}
+
 export interface InvitacionBannerData {
   email: string;
   espacioNombre: string;
@@ -53,4 +66,22 @@ export interface IAuthRepository {
    * Returns invitation metadata or null if not found / already used.
    */
   buscarInvitacionPorTokenHash(tokenHash: string): Promise<InvitacionBannerData | null>;
+
+  /**
+   * Valida la sesión activa contra el servidor de auth.
+   *
+   * Implementaciones deben llamar al endpoint oficial que VERIFICA el JWT
+   * contra el registro real (no solo el cache local). En Supabase esto es
+   * `supabase.auth.getUser()` — según la [doc oficial de sesiones]
+   * (https://supabase.com/docs/guides/auth/sessions), los JWT no se
+   * destruyen proactivamente cuando un user es borrado; solo el siguiente
+   * intento de verificación puede detectarlo.
+   */
+  validarSesionActiva(): Promise<ResultadoValidacionSesion>;
+
+  /**
+   * Cierra la sesión del usuario actual — borra JWT del localStorage,
+   * cookies y emite `SIGNED_OUT` a los listeners. Idempotente.
+   */
+  cerrarSesion(): Promise<void>;
 }

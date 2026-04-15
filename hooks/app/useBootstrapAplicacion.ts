@@ -18,6 +18,8 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useStore } from '@/store/useStore';
 import { logger } from '@/lib/logger';
+import { authRepository } from '@/src/core/infrastructure/adapters/AuthSupabaseRepository';
+import { ValidarSesionAlBootstrapUseCase } from '@/src/core/application/usecases/ValidarSesionAlBootstrapUseCase';
 
 const log = logger.child('bootstrap');
 
@@ -56,6 +58,32 @@ export function useBootstrapAplicacion({ initialize, setSession, setView, setAut
     }
 
     const verificarEInicializar = async () => {
+      // ─── STALE-SESSION GUARD (Supabase docs — auth.getUser) ────────────
+      // Si hay JWT en localStorage pero el user fue eliminado o el token es
+      // inválido, hacemos signOut defensivo antes de seguir. Sin esto, las
+      // queries con RLS pegan a `auth.uid()` sobre un user inexistente y
+      // fallan silenciosamente. Ver doc Supabase:
+      // https://supabase.com/docs/guides/auth/sessions
+      //   "Sessions are not proactively destroyed — the checks occur
+      //    during the next refresh attempt."
+      // El Use Case (`ValidarSesionAlBootstrapUseCase`) llama a
+      // `auth.getUser()` (NO `getSession()`) porque solo ese método hace
+      // round-trip al auth server para verificar el JWT.
+      try {
+        const validador = new ValidarSesionAlBootstrapUseCase(authRepository);
+        const resultado = await validador.ejecutar();
+        if (resultado.didSignOut) {
+          log.info('Stale session limpiada al bootstrap', { motivo: resultado.motivo });
+          // No retornamos: dejamos que `initialize()` continúe — ahora sin
+          // sesión, verá invitation token (si existe) con estado limpio,
+          // equivalente a modo incógnito.
+        }
+      } catch (err: unknown) {
+        log.warn('Stale-session guard falló (se continúa)', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+
       if (tokenHash && (type === 'signup' || type === 'email')) {
         try {
           const { data, error } = await supabase.auth.verifyOtp({

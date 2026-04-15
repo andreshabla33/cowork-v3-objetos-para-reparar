@@ -14,6 +14,7 @@ import type {
   IAuthRepository,
   ResultadoAuth,
   InvitacionBannerData,
+  ResultadoValidacionSesion,
 } from '../../domain/ports/IAuthRepository';
 
 const log = logger.child('auth-repo');
@@ -135,6 +136,54 @@ export class AuthSupabaseRepository implements IAuthRepository {
       const message = err instanceof Error ? err.message : String(err);
       log.error('Failed to query invitation banner', { error: message });
       return null;
+    }
+  }
+
+  /**
+   * Valida la sesión llamando al endpoint oficial `auth.getUser()`, que
+   * verifica el JWT contra `auth.users` en el servidor. Si el user fue
+   * borrado o el token es inválido, devuelve error y marcamos `valid:false`.
+   *
+   * Ref oficial: https://supabase.com/docs/reference/javascript/auth-getuser
+   *   "This method will also use the HTTP request to the Auth server to
+   *    retrieve the most up-to-date information about the user."
+   *
+   * Distinción crítica frente a `getSession()` (que solo lee localStorage
+   * y NO detecta JWTs corruptos): `getUser()` hace network round-trip.
+   */
+  async validarSesionActiva(): Promise<ResultadoValidacionSesion> {
+    try {
+      // Short-circuit: si no hay sesión en localStorage, no hay nada que validar.
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        return { valid: false, noSession: true };
+      }
+
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) {
+        log.warn('Stale session detected', { error: error?.message });
+        return { valid: false, error: error?.message ?? 'User not found' };
+      }
+
+      return { valid: true };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      log.error('Session validation exception', { error: message });
+      return { valid: false, error: message };
+    }
+  }
+
+  /**
+   * Idempotente — limpia localStorage + cookies + emite `SIGNED_OUT`.
+   * Ref: https://supabase.com/docs/reference/javascript/auth-signout
+   */
+  async cerrarSesion(): Promise<void> {
+    try {
+      await supabase.auth.signOut();
+    } catch (err: unknown) {
+      // Incluso si falla, el JWT local suele borrarse. Logeamos pero no propagamos.
+      const message = err instanceof Error ? err.message : String(err);
+      log.warn('Sign out exception (ignored — local state clears anyway)', { error: message });
     }
   }
 }

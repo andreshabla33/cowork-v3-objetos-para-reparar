@@ -35,3 +35,4 @@ export { CrearReunionCompletaUseCase, type CrearReunionCompletaInput, type Crear
 export { EliminarReunionUseCase, type EliminarReunionInput, type EliminarReunionOutput } from './EliminarReunionUseCase';
 export { ResponderInvitacionReunionUseCase, type ResponderInvitacionReunionInput, type ResponderInvitacionReunionOutput } from './ResponderInvitacionReunionUseCase';
 export { GestionarSalasReunionUseCase, type CargarSalasInput, type CargarSalasOutput, type CrearSalaInput, type CrearSalaOutput, type EliminarSalaInput, type EliminarSalaOutput, type ObtenerParticipantesSalaInput, type ObtenerParticipantesSalaOutput, type AgregarParticipanteSalaInput, type AgregarParticipanteSalaOutput, type EliminarParticipanteSalaInput, type EliminarParticipanteSalaOutput, type TerminarSalaInput, type TerminarSalaOutput } from './GestionarSalasReunionUseCase';
+export { ValidarSesionAlBootstrapUseCase, type ResultadoValidarSesionAlBootstrap } from './ValidarSesionAlBootstrapUseCase';
