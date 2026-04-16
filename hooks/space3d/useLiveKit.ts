@@ -361,8 +361,13 @@ export function useLiveKit(params: {
     realtimeCoordinatorRef.current = null;
     realtimeEventBusRef.current = null;
     Array.from(remoteVideoTrackListenerCleanupRef.current.keys()).forEach((listenerKey) => {
-      clearRemoteVideoTrackListener(listenerKey);
+      try {
+        clearRemoteVideoTrackListener(listenerKey);
+      } catch (e) {
+        console.warn('Error clearing video track listener:', listenerKey, e);
+      }
     });
+    remoteVideoTrackListenerCleanupRef.current.clear();  // ← Ensure ref is emptied
     logRemoteMediaLifecycle('remote_cleanup', {
       attachedCameraCount: remoteAttachedTrackIdsRef.current.camera.size,
       attachedScreenShareCount: remoteAttachedTrackIdsRef.current.screen_share.size,
@@ -732,6 +737,13 @@ export function useLiveKit(params: {
         pendingUnsubscribeTimersRef.current.delete(userId);
       }
 
+      // Clear cache entries for this user to force fresh state evaluation
+      Array.from(appliedRemotePublicationStateRef.current.keys()).forEach((stateKey) => {
+        if (stateKey.startsWith(userId + ':')) {
+          appliedRemotePublicationStateRef.current.delete(stateKey);
+        }
+      });
+
       participant.trackPublications.forEach((pub) => {
         if (!(pub instanceof RemoteTrackPublication)) return;
         const stateKey = `${userId}:${pub.trackSid}`;
@@ -779,6 +791,11 @@ export function useLiveKit(params: {
             previousState.enabled = false;
             previousState.subscribed = true;
             appliedRemotePublicationStateRef.current.set(stateKey, previousState);
+            // Clear listener state for this track
+            const listenerKey = `${userId}:${pub.trackSid}`;
+            clearRemoteVideoTrackListener(listenerKey);
+            remoteAttachedTrackIdsRef.current.camera.delete(userId);
+            remoteAttachedTrackIdsRef.current.audio.delete(userId);
           }
         });
       }
@@ -858,6 +875,10 @@ export function useLiveKit(params: {
       ['audio', 'video', 'screen'].forEach(t => despublicarTrackLocal(t as any).catch(() => {}));
     } else if (!hasActiveCall && prevHasActiveCall && usersInAudioRange.length > 0) {
       if (publishDelayTimerRef.current) { clearTimeout(publishDelayTimerRef.current); publishDelayTimerRef.current = null; }
+      // Unpublish screen only (audio is OK for audio-range users)
+      // DO NOT clear remoteVideoTrackListenerCleanupRef here — clearing the Map
+      // without invoking the cleanup functions leaves zombie track-event listeners
+      // that can block subsequent publications from reaching the peer.
       despublicarTrackLocal('screen').catch(() => {});
     } else if (hasActiveCall && !prevHasActiveCall) {
       if (publishDelayTimerRef.current) clearTimeout(publishDelayTimerRef.current);

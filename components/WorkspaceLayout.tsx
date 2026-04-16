@@ -243,6 +243,7 @@ export const WorkspaceLayout: React.FC = () => {
 
     presenceChannelsRef.current.forEach((channel, canalNombre) => {
       if (!canalesDeseados.has(canalNombre)) {
+        channel.unsubscribe();
         supabase.removeChannel(channel);
         presenceChannelsRef.current.delete(canalNombre);
       }
@@ -343,6 +344,7 @@ export const WorkspaceLayout: React.FC = () => {
     sincronizarCanalesPorChunk();
     return () => {
       presenceChannelsRef.current.forEach((channel) => {
+        channel.unsubscribe();
         supabase.removeChannel(channel);
       });
       presenceChannelsRef.current.clear();

@@ -125,12 +125,22 @@ export class SpaceRealtimeCoordinator {
    */
   disconnect(): void {
     if (this.room) {
-      // Unpublish all tracks first
+      // Unpublish all tracks first - save refs BEFORE calling unpublishTrack
+      // because LiveKit nullifies pub.track after the call completes.
       this.localTrackPublications.forEach((pub) => {
-        if (pub.track) {
-          this.room?.localParticipant.unpublishTrack(pub.track as LocalTrack);
-          if (typeof (pub.track as LocalTrack).stop === 'function') {
-            (pub.track as LocalTrack).stop();
+        const track = pub.track as LocalTrack | undefined;
+        if (track) {
+          try {
+            this.room?.localParticipant.unpublishTrack(track);
+          } catch (e) {
+            console.warn('[SpaceRealtimeCoordinator] Error unpublishing during disconnect:', e);
+          }
+          if (typeof track.stop === 'function') {
+            try {
+              track.stop();
+            } catch (e) {
+              console.warn('[SpaceRealtimeCoordinator] Error stopping track during disconnect:', e);
+            }
           }
         }
       });
@@ -210,9 +220,15 @@ export class SpaceRealtimeCoordinator {
         return false;
       }
 
-      await this.room.localParticipant.unpublishTrack(publication.track as LocalTrack);
-      if (typeof (publication.track as LocalTrack).stop === 'function') {
-        (publication.track as LocalTrack).stop();
+      // Save track reference BEFORE await - LiveKit nullifies publication.track after unpublishTrack
+      const track = publication.track as LocalTrack;
+      await this.room.localParticipant.unpublishTrack(track);
+      if (track && typeof track.stop === 'function') {
+        try {
+          track.stop();
+        } catch (stopError) {
+          console.warn('[SpaceRealtimeCoordinator] Error stopping track:', stopError);
+        }
       }
       this.localTrackPublications.delete(trackSid);
       this.notifyStateChange();
@@ -221,6 +237,8 @@ export class SpaceRealtimeCoordinator {
       return true;
     } catch (error) {
       console.error('[SpaceRealtimeCoordinator] Failed to unpublish track:', error);
+      // Still clean up local state to avoid zombie publications
+      this.localTrackPublications.delete(trackSid);
       return false;
     }
   }

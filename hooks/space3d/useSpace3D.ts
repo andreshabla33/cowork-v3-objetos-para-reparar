@@ -5,7 +5,7 @@
  * al componente VirtualSpace3D.
  */
 
-import { useRef, useState, useMemo, useEffect, useCallback } from 'react';
+import { useRef, useState, useMemo, useEffect, useCallback, useLayoutEffect } from 'react';
 import { useStore } from '@/store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 import type { User } from '@/types';
@@ -338,7 +338,17 @@ export function useSpace3D(props: {
     handleToggleScreenShare: media.handleToggleScreenShare,
   });
 
-  // Sync refs para LiveKit
+  // Sync proximity state earlier in effect lifecycle so useLiveKit can access fresh data
+  // This useLayoutEffect runs after proximity is calculated but before next render
+  useLayoutEffect(() => {
+    hasActiveCallComputed.current = proximity.hasActiveCall;
+    hasActiveCallRef.current = proximity.hasActiveCall;
+    usersInCallRef.current = proximity.usersInCall;
+    usersInAudioRangeRef.current = proximity.usersInAudioRange;
+    conversacionesBloqueadasRemotoRef.current = proximity.conversacionesBloqueadasRemoto;
+  }, [proximity]);
+
+  // Final sync refs para LiveKit (for consistency)
   hasActiveCallComputed.current = proximity.hasActiveCall;
   hasActiveCallRef.current = proximity.hasActiveCall;
   usersInCallRef.current = proximity.usersInCall;

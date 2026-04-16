@@ -91,12 +91,12 @@ export class DeviceManager {
 
       if (kind === 'video') {
         constraints.video = deviceId
-          ? { deviceId: { exact: deviceId } }
+          ? { deviceId: { ideal: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
           : { width: { ideal: 1280 }, height: { ideal: 720 } };
       } else {
         constraints.audio = deviceId
           ? {
-              deviceId: { exact: deviceId },
+              deviceId: { ideal: deviceId },
               noiseSuppression: options.noiseReduction,
               echoCancellation: options.echoCancellation,
               autoGainControl: options.autoGainControl,
@@ -111,9 +111,16 @@ export class DeviceManager {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       return stream;
     } catch (error) {
-      console.error(`[DeviceManager] Failed to get ${kind} stream:`, error);
+      const err = error as Error;
+      console.error(`[DeviceManager] Failed to get ${kind} stream:`, err.name, err.message);
 
-      // Try fallback to default device
+      // OverconstrainedError / NotFoundError → try fallback without specific device
+      if (deviceId && (err.name === 'OverconstrainedError' || err.name === 'NotFoundError' || err.name === 'NotReadableError')) {
+        console.log(`[DeviceManager] Retrying ${kind} without specific deviceId...`);
+        return this.getDeviceStream(kind, null, options);
+      }
+
+      // Generic fallback: try without deviceId at all
       if (deviceId) {
         console.log(`[DeviceManager] Trying fallback for ${kind}...`);
         return this.getDeviceStream(kind, null, options);
