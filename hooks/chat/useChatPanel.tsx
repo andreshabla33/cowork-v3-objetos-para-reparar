@@ -43,6 +43,7 @@ export interface UseChatPanelProps {
  */
 export interface UseChatPanelReturn {
   // State
+  grupoActivo: string | null;
   grupos: ChatGroup[];
   mensajes: ChatMessage[];
   nuevoMensaje: string;
@@ -173,6 +174,7 @@ export function useChatPanel({
 
   return {
     // State — channels
+    grupoActivo: channels.grupoActivo,
     grupos: channels.grupos,
     loading: channels.loading,
     showCreateModal: channels.showCreateModal,

@@ -53,7 +53,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 
   const hook = useChatPanel({ sidebarOnly, chatOnly, showNotifications, onChannelSelect });
 
-  const grupoActivo = activeWorkspace?.id;
+  const grupoActivo = hook.grupoActivo;
   const grupoActivoData = hook.grupos.find((g: ChatGroup) => g.id === grupoActivo);
 
   const filteredMentionUsers = hook.miembrosEspacio.filter(

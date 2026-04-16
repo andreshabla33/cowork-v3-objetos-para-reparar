@@ -42,15 +42,16 @@ export class GestionarChatDirectoUseCase {
     usuarioActualId: string,
     usuarioTargetId: string
   ): Promise<ResultadoObtenerChatDirecto | null> {
+    // DM naming convention: sorted user IDs joined by '|'.
+    // Both sidebar display and DM lookup depend on this format.
+    const nombreDM = [usuarioActualId, usuarioTargetId].sort().join('|');
+
     // Load all groups to find an existing DM
     const grupos = await this.chatRepository.obtenerGrupos(espacioId);
 
-    // Look for a directo type group between these two users
-    // (This assumes a naming convention or metadata that identifies
-    // DM channels between specific users)
+    // Match by exact name — deterministic because IDs are sorted.
     const chatDirecto = grupos.find(
-      (g) => g.tipo === 'directo' &&
-            (g.creado_por === usuarioActualId || g.creado_por === usuarioTargetId)
+      (g) => g.tipo === 'directo' && g.nombre === nombreDM,
     );
 
     if (chatDirecto) {
@@ -61,9 +62,6 @@ export class GestionarChatDirectoUseCase {
         espacio_id: chatDirecto.espacio_id,
       };
     }
-
-    // If no existing DM found, create one
-    const nombreDM = [usuarioActualId, usuarioTargetId].sort().join('-');
 
     const nuevoGrupo = await this.chatRepository.crearGrupo({
       espacio_id: espacioId,
