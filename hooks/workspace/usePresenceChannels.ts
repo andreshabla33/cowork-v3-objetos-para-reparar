@@ -100,6 +100,20 @@ export function usePresenceChannels({
    *  overlapping chunks never enter onlineUsers and the "always include
    *  same-company" filter in useChunkSystem has nothing to include. */
   const globalChannelRef = useRef<RealtimeChannel | null>(null);
+  /**
+   * Re-entrancy guard for removeChannel calls.
+   *
+   * supabase.removeChannel(ch) synchronously calls ch.leave() → trigger('close')
+   * → which re-fires the subscribe callback with status='CLOSED' — INSIDE the
+   * same call stack. Without this guard, the callback calls removeChannel again
+   * → infinite recursion → "Maximum call stack size exceeded".
+   *
+   * Ref: GitHub Discussion #27513 — recursive re-subscription within status
+   *      callback creates a loop between SUBSCRIBED and CLOSED states.
+   * Ref: supabase/realtime-js RealtimeChannel.ts — leave() triggers state
+   *      transition synchronously via stateChangeCallbacks.
+   */
+  const removingChannelsRef = useRef<Set<string>>(new Set());
   const prevOnlineUsersRef = useRef<Set<string>>(new Set());
   const lastNotificationRef = useRef<Map<string, number>>(new Map());
   const userRef = useRef(currentUser);
@@ -115,6 +129,27 @@ export function usePresenceChannels({
 
   // Application-layer policy for subscription decisions
   const subscriptionPolicy = useMemo(() => new EvaluarPresenceSubscriptionUseCase(), []);
+
+  /**
+   * Safely remove a Supabase Realtime channel with re-entrancy protection.
+   *
+   * supabase.removeChannel() synchronously triggers leave() → close callback
+   * → which would call removeChannel again from inside the subscribe handler.
+   * This guard breaks the cycle by tracking which channels are mid-removal.
+   *
+   * Ref: Supabase docs "removeChannel" — "Unsubscribes and removes Realtime
+   *      channel from Realtime client."
+   * Ref: supabase/realtime-js — leave() triggers stateChangeCallbacks sync.
+   */
+  const safeRemoveChannel = useCallback((channel: RealtimeChannel, channelName: string): void => {
+    if (removingChannelsRef.current.has(channelName)) return; // Already mid-removal
+    removingChannelsRef.current.add(channelName);
+    try {
+      supabase.removeChannel(channel);
+    } finally {
+      removingChannelsRef.current.delete(channelName);
+    }
+  }, []);
 
   /**
    * Recalculate online users from all subscribed presence channels.
@@ -473,12 +508,13 @@ export function usePresenceChannels({
             // only works if socket.isConnected() — which may not be true
             // after ERR_CONNECTION_CLOSED). Safest path: remove + recreate.
             // Ref: GitHub Discussion #27513 — "removeChannel and subscribe again"
+            if (removingChannelsRef.current.has(globalChannelName)) return;
             log.warn('Global discovery channel failed — scheduling recovery', {
               status,
               channelName: globalChannelName,
               retryCount: retryCountRef.current,
             });
-            supabase.removeChannel(channel);
+            safeRemoveChannel(channel, globalChannelName);
             globalChannelRef.current = null;
             scheduleChannelRetry();
           } else if (status === 'TIMED_OUT') {
@@ -523,13 +559,15 @@ export function usePresenceChannels({
             if (status === 'SUBSCRIBED') {
               await trackPresenceEnCanal(channel, nivelDetalle);
             } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-              // Same recovery pattern as global channel — remove dead channel
-              // so next syncPresenceByChunk recreates it.
+              // Re-entrancy guard: removeChannel() synchronously triggers
+              // leave() → close callback → this handler again. Without
+              // this check → infinite recursion → stack overflow.
+              if (removingChannelsRef.current.has(canalNombre)) return;
               log.warn('Chunk channel failed — removing for recreation', {
                 status,
                 channelName: canalNombre,
               });
-              supabase.removeChannel(channel);
+              safeRemoveChannel(channel, canalNombre);
               presenceChannelsRef.current.delete(canalNombre);
               scheduleChannelRetry();
             }
@@ -543,7 +581,7 @@ export function usePresenceChannels({
     presenceChannelsRef.current.forEach(
       (channel: RealtimeChannel, canalNombre: string) => {
         if (!canalesDeseados.has(canalNombre)) {
-          supabase.removeChannel(channel);
+          safeRemoveChannel(channel, canalNombre);
           presenceChannelsRef.current.delete(canalNombre);
         }
       },
@@ -554,7 +592,7 @@ export function usePresenceChannels({
       channels: presenceChannelsRef.current.size,
       nearbyAvatars: nearbyCount,
     });
-  }, [activeWorkspaceId, userId, recalcularUsuarios, trackPresenceEnCanal, subscriptionPolicy]);
+  }, [activeWorkspaceId, userId, recalcularUsuarios, trackPresenceEnCanal, subscriptionPolicy, safeRemoveChannel]);
 
   /**
    * Update presence in all active channels (throttled).
@@ -676,27 +714,34 @@ export function usePresenceChannels({
 
     // Check global discovery channel
     if (globalChannelRef.current) {
+      const globalName = `global-empresa-discovery`;
       const state = globalChannelRef.current.state;
       if (DEAD_CHANNEL_STATES.has(state)) {
         log.warn('Health check: global discovery channel dead', { state });
-        supabase.removeChannel(globalChannelRef.current);
+        safeRemoveChannel(globalChannelRef.current, globalName);
         globalChannelRef.current = null;
         purgedCount++;
       }
     }
 
-    // Check chunk channels
+    // Check chunk channels — collect dead ones first, then remove.
+    // Iterating + deleting inside forEach is safe for Map, but
+    // safeRemoveChannel triggers callbacks that could mutate state.
+    const deadChannels: Array<[string, RealtimeChannel]> = [];
     presenceChannelsRef.current.forEach(
       (channel: RealtimeChannel, canalNombre: string) => {
-        const state = channel.state;
-        if (DEAD_CHANNEL_STATES.has(state)) {
-          log.warn('Health check: chunk channel dead', { channelName: canalNombre, state });
-          supabase.removeChannel(channel);
-          presenceChannelsRef.current.delete(canalNombre);
-          purgedCount++;
+        if (DEAD_CHANNEL_STATES.has(channel.state)) {
+          deadChannels.push([canalNombre, channel]);
         }
       },
     );
+
+    for (const [canalNombre, channel] of deadChannels) {
+      log.warn('Health check: chunk channel dead', { channelName: canalNombre, state: channel.state });
+      safeRemoveChannel(channel, canalNombre);
+      presenceChannelsRef.current.delete(canalNombre);
+      purgedCount++;
+    }
 
     if (purgedCount > 0) {
       log.info('Health check purged dead channels — scheduling recreation', {
@@ -704,7 +749,7 @@ export function usePresenceChannels({
       });
       scheduleChannelRetry();
     }
-  }, [scheduleChannelRetry]);
+  }, [scheduleChannelRetry, safeRemoveChannel]);
 
   /**
    * Cleanup all presence channels on unmount
@@ -720,18 +765,18 @@ export function usePresenceChannels({
       retryTimerRef.current = null;
     }
     retryCountRef.current = 0;
-    // Clean up chunk-based channels
-    presenceChannelsRef.current.forEach((channel: RealtimeChannel) => {
-      supabase.removeChannel(channel);
+    // Clean up chunk-based channels (safeRemoveChannel prevents re-entrancy)
+    presenceChannelsRef.current.forEach((channel: RealtimeChannel, canalNombre: string) => {
+      safeRemoveChannel(channel, canalNombre);
     });
     presenceChannelsRef.current.clear();
     // Clean up global discovery channel
     if (globalChannelRef.current) {
-      supabase.removeChannel(globalChannelRef.current);
+      safeRemoveChannel(globalChannelRef.current, 'global-empresa-discovery');
       globalChannelRef.current = null;
     }
     prevOnlineUsersRef.current = new Set();
-  }, []);
+  }, [safeRemoveChannel]);
 
   return {
     syncPresenceByChunk,
