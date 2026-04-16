@@ -144,9 +144,41 @@ export function useMediaStream(params: {
 
           // Actualizar estado de tracks
           if (activeStreamRef.current) {
-            activeStreamRef.current.getAudioTracks().forEach(track => track.enabled = desiredMediaState.isMicrophoneEnabled);
+            const audioTracks = activeStreamRef.current.getAudioTracks();
+            // AUDIO: si el mic está ON y no hay track, pedir uno on-demand.
+            // Sin esta rama, encender el mic después de la cámara no produce
+            // audio porque el primer getUserMedia se pidió con `audio:false`.
+            if (desiredMediaState.isMicrophoneEnabled && audioTracks.length === 0) {
+              log.info('Microphone ON - requesting new audio track', {});
+              try {
+                const audioConstraints: MediaTrackConstraints = {
+                  noiseSuppression: audioSettings.noiseReduction,
+                  echoCancellation: audioSettings.echoCancellation,
+                  autoGainControl: audioSettings.autoGainControl,
+                };
+                if (audioSettings.selectedMicrophoneId) {
+                  audioConstraints.deviceId = { exact: audioSettings.selectedMicrophoneId };
+                }
+                const audioStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+                let newAudioTrack: MediaStreamTrack | null = audioStream.getAudioTracks()[0] ?? null;
+                if (newAudioTrack && audioSettings.noiseReduction) {
+                  const nivel = audioSettings.noiseReductionLevel === 'enhanced' ? 'enhanced' : 'standard';
+                  const processedTrack = await crearAudioProcesado(newAudioTrack, nivel);
+                  if (processedTrack) newAudioTrack = processedTrack;
+                }
+                if (newAudioTrack && activeStreamRef.current) {
+                  activeStreamRef.current.addTrack(newAudioTrack);
+                  setStream(new MediaStream(activeStreamRef.current.getTracks()));
+                  log.info('Audio track added', { noiseReduction: audioSettings.noiseReduction });
+                }
+              } catch (e) {
+                log.error('Error getting audio track', { error: e instanceof Error ? e.message : String(e) });
+              }
+            } else {
+              audioTracks.forEach(track => track.enabled = desiredMediaState.isMicrophoneEnabled);
+            }
 
-            const videoTracks = activeStreamRef.current.getVideoTracks();
+            const videoTracks = activeStreamRef.current?.getVideoTracks() ?? [];
             if (!desiredMediaState.isCameraEnabled && videoTracks.length > 0) {
               log.info('Camera OFF - stopping video track to release hardware', { trackCount: videoTracks.length });
               videoTracks.forEach(track => {
