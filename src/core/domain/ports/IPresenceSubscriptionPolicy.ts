@@ -108,7 +108,12 @@ export interface IPresenceSubscriptionPolicy {
 export const PRESENCE_DEFAULTS: PresenceSubscriptionConfig = {
   chunkSize: 200,
   baseRadius: 1,
-  maxRadius: 2,
+  // Hard cap at 1 ring. With maxRadius=2 the density-expansion rule
+  // (nearbyCount<20 → radius+1) spawns 5×5=25 chunks × 2 scopes = 50
+  // channels, which saturates the socket heartbeat window and triggers
+  // RealtimeClient._triggerChanError across ALL channels at once.
+  // Ref: realtime-js CONNECTION_TIMEOUTS.HEARTBEAT_INTERVAL = 25000ms.
+  maxRadius: 1,
   densityThresholdForReduction: 100,
   syncThrottleMs: 2_000,
   trackThrottleMs: 5_000,

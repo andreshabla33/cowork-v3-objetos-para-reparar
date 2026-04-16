@@ -51,8 +51,20 @@ const MAX_CHANNEL_RETRIES = 5;
 /** Base delay (ms) for exponential backoff on channel retry. */
 const CHANNEL_RETRY_BASE_MS = 3_000;
 /** Dead channel states that require removal + recreation.
- * Ref: supabase/realtime-js CHANNEL_STATES enum. */
-const DEAD_CHANNEL_STATES = new Set(['errored', 'closed']);
+ *
+ * Only 'closed' qualifies: CLOSED has NO rejoinTimer and must be recreated
+ * manually. 'errored' is transient and driven by the socket's own
+ * _triggerChanError on heartbeat timeout — RealtimeChannel has an internal
+ * rejoinTimer (1,2,5,10s backoff) that reconnects automatically once the
+ * WebSocket reopens. Removing errored channels pre-emptively races against
+ * that timer and turns a single transport hiccup into a 50-channel flood.
+ *
+ * Ref: realtime-js RealtimeClient.ts — _triggerChanError broadcasts
+ *      CHANNEL_EVENTS.error to every channel when heartbeat times out.
+ * Ref: realtime-js RealtimeChannel.ts — CHANNEL_STATES enum
+ *      (closed | joined | joining | errored | leaving) and rejoinTimer.
+ */
+const DEAD_CHANNEL_STATES = new Set(['closed']);
 
 interface UsePresenceChannelsProps {
   activeWorkspaceId: string | undefined;
@@ -501,15 +513,18 @@ export function usePresenceChannels({
             log.info('Global empresa discovery channel subscribed', {
               channelName: globalChannelName,
             });
-          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
-            // ── Recovery for dead channels ─────────────────────────────
-            // Ref: supabase/realtime-js RealtimeChannel.ts — CLOSED has
-            // NO rejoinTimer (unlike CHANNEL_ERROR which has one, but it
-            // only works if socket.isConnected() — which may not be true
-            // after ERR_CONNECTION_CLOSED). Safest path: remove + recreate.
+          } else if (status === 'CLOSED') {
+            // ── Recovery for CLOSED only ───────────────────────────────
+            // CLOSED has NO rejoinTimer → must remove + recreate.
+            // CHANNEL_ERROR, in contrast, is handled by RealtimeChannel's
+            // internal rejoinTimer; removing it pre-emptively races against
+            // that timer and turns a socket heartbeat timeout (which fires
+            // CHANNEL_ERROR on EVERY channel at once via _triggerChanError)
+            // into a mass remove+recreate flood.
             // Ref: GitHub Discussion #27513 — "removeChannel and subscribe again"
+            //      applies ONLY to CLOSED; errored channels self-heal.
             if (removingChannelsRef.current.has(globalChannelName)) return;
-            log.warn('Global discovery channel failed — scheduling recovery', {
+            log.warn('Global discovery channel CLOSED — scheduling recovery', {
               status,
               channelName: globalChannelName,
               retryCount: retryCountRef.current,
@@ -517,6 +532,12 @@ export function usePresenceChannels({
             safeRemoveChannel(channel, globalChannelName);
             globalChannelRef.current = null;
             scheduleChannelRetry();
+          } else if (status === 'CHANNEL_ERROR') {
+            // Transient: trust the rejoinTimer. Health-check will promote
+            // to CLOSED and purge only if the channel never recovers.
+            log.debug('Global discovery channel CHANNEL_ERROR — trusting rejoinTimer', {
+              channelName: globalChannelName,
+            });
           } else if (status === 'TIMED_OUT') {
             // Supabase's rejoinTimer handles TIMED_OUT automatically.
             // Log for diagnostics; if it persists, checkChannelHealth will catch it.
@@ -558,18 +579,24 @@ export function usePresenceChannels({
           .subscribe(async (status: string) => {
             if (status === 'SUBSCRIBED') {
               await trackPresenceEnCanal(channel, nivelDetalle);
-            } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+            } else if (status === 'CLOSED') {
               // Re-entrancy guard: removeChannel() synchronously triggers
               // leave() → close callback → this handler again. Without
               // this check → infinite recursion → stack overflow.
               if (removingChannelsRef.current.has(canalNombre)) return;
-              log.warn('Chunk channel failed — removing for recreation', {
+              log.warn('Chunk channel CLOSED — removing for recreation', {
                 status,
                 channelName: canalNombre,
               });
               safeRemoveChannel(channel, canalNombre);
               presenceChannelsRef.current.delete(canalNombre);
               scheduleChannelRetry();
+            } else if (status === 'CHANNEL_ERROR') {
+              // Transient: RealtimeChannel.rejoinTimer handles it.
+              // Health-check escalates to CLOSED if it never recovers.
+              log.debug('Chunk channel CHANNEL_ERROR — trusting rejoinTimer', {
+                channelName: canalNombre,
+              });
             }
           });
 
