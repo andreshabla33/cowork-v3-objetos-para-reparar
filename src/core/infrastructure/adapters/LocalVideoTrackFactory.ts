@@ -35,6 +35,7 @@
 
 import { LocalVideoTrack } from 'livekit-client';
 import { logger } from '@/lib/logger';
+import type { IVideoTrackPublishResolver, VideoPublishSource } from '../../domain/ports/IVideoTrackPublishResolver';
 
 const log = logger.child('LocalVideoTrackFactory');
 
@@ -46,7 +47,7 @@ const log = logger.child('LocalVideoTrackFactory');
  *
  * La instancia singleton se obtiene via `getLocalVideoTrackFactory()`.
  */
-export class LocalVideoTrackFactory {
+export class LocalVideoTrackFactory implements IVideoTrackPublishResolver {
   /**
    * Caché: mediaStreamTrack.id → LocalVideoTrack wrapper.
    * Solo contiene tracks activos (readyState !== 'ended').
@@ -90,6 +91,28 @@ export class LocalVideoTrackFactory {
     }, { once: true });
 
     return wrapper;
+  }
+
+  /** Lookup read-only del wrapper cacheado. */
+  peekWrapper(rawTrackId: string): LocalVideoTrack | null {
+    return this.cache.get(rawTrackId) ?? null;
+  }
+
+  /**
+   * Devuelve el wrapper a publicar. Si hay un `LocalVideoTrack` cacheado para
+   * la cámara, se prefiere sobre el raw: `setProcessor()` reemplaza
+   * `wrapper.mediaStreamTrack` por un `MediaStreamTrackGenerator`, así que
+   * publicar el raw haría que LiveKit cree un segundo wrapper sin el
+   * processor aplicado — el blur dejaría de ser visible hasta ciclar cámara.
+   *
+   * @see https://github.com/livekit/track-processors-js
+   */
+  resolveForPublish<T extends MediaStreamTrack | LocalVideoTrack>(
+    track: T,
+    source: VideoPublishSource,
+  ): T | LocalVideoTrack {
+    if (track instanceof LocalVideoTrack || source !== 'camera') return track;
+    return this.cache.get(track.id) ?? track;
   }
 
   /**

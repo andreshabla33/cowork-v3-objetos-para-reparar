@@ -4,7 +4,10 @@ import { TrackPublicationCoordinator, crearOpcionesPublicacionTrackLiveKit, load
 import { createProcessedAudioTrack, type ProcessedAudioTrackHandle } from '@/lib/audioProcessing';
 import { SpaceMediaCoordinator, type SpaceMediaCoordinatorState } from '@/modules/realtime-room';
 import { getLocalVideoTrackFactory } from '@/src/core/infrastructure/adapters/LocalVideoTrackFactory';
+import { PublicarLocalTrackUseCase } from '@/src/core/application/usecases/PublicarLocalTrackUseCase';
 import { logger } from '@/lib/logger';
+
+const publicarLocalTrackUseCase = new PublicarLocalTrackUseCase(getLocalVideoTrackFactory());
 
 const log = logger.child('useMeetingMediaBridge');
 
@@ -529,7 +532,12 @@ export const useMeetingMediaBridge = ({
               await localTrack.unmute();
             }
           } else {
-            await room.localParticipant.publishTrack(item.track, crearOpcionesPublicacionTrackLiveKit(item.source));
+            await publicarLocalTrackUseCase.ejecutar({
+              room,
+              track: item.track,
+              source: item.source,
+              publishOptions: crearOpcionesPublicacionTrackLiveKit(item.source),
+            });
           }
         } else if (item.action === 'unpublish' && localTrack) {
           if (!localTrack.isMuted && typeof localTrack.mute === 'function') {

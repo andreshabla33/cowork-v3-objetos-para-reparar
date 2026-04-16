@@ -8,8 +8,10 @@
  *   con los ICE servers provistos por el SFU durante el handshake.
  */
 
-import { Room, RoomConnectOptions, RoomEvent, Track, TrackPublication, RemoteParticipant, LocalTrack, LocalTrackPublication } from 'livekit-client';
+import { Room, RoomConnectOptions, RoomEvent, Track, TrackPublication, RemoteParticipant, LocalTrack, LocalTrackPublication, LocalVideoTrack } from 'livekit-client';
 import { logger } from '@/lib/logger';
+import { PublicarLocalTrackUseCase } from '@/src/core/application/usecases/PublicarLocalTrackUseCase';
+import { getLocalVideoTrackFactory } from '@/src/core/infrastructure/adapters/LocalVideoTrackFactory';
 import {
   PreflightError,
   DataPacketContract,
@@ -82,6 +84,8 @@ export class SpaceRealtimeCoordinator {
   private readonly dataPublisher: RealtimeDataPublisher;
   /** Servicio compuesto — parsing de DataReceived (elimina duplicación con Gateway) */
   private eventParser: RealtimeEventParser;
+  /** Use-case compartido — resuelve raw→wrapper y publica en la Room. */
+  private readonly publicarLocalTrack: PublicarLocalTrackUseCase;
 
   // State
   private connected = false;
@@ -100,6 +104,7 @@ export class SpaceRealtimeCoordinator {
     this.options = options;
     this.dataPublisher = new RealtimeDataPublisher(() => this.room);
     this.eventParser = new RealtimeEventParser(this.eventBus, options.onDataReceived);
+    this.publicarLocalTrack = new PublicarLocalTrackUseCase(getLocalVideoTrackFactory());
   }
 
   /**
@@ -189,18 +194,22 @@ export class SpaceRealtimeCoordinator {
   }
 
   /**
-   * Publish local track
+   * Publica un track local. Delega al `PublicarLocalTrackUseCase` que
+   * resuelve raw→wrapper vía el port `IVideoTrackPublishResolver`.
    */
-  async publishTrack(track: MediaStreamTrack, source: 'camera' | 'microphone' | 'screen_share'): Promise<LocalTrackPublication | null> {
+  async publishTrack(track: MediaStreamTrack | LocalVideoTrack, source: 'camera' | 'microphone' | 'screen_share'): Promise<LocalTrackPublication | null> {
     if (!this.room || this.room.state !== 'connected') {
       this.log.warn('Cannot publish track - not connected');
       return null;
     }
 
     try {
-      const publishOptions = crearOpcionesPublicacionTrackLiveKit(source);
-
-      const publication = await this.room.localParticipant.publishTrack(track, publishOptions);
+      const publication = await this.publicarLocalTrack.ejecutar({
+        room: this.room,
+        track,
+        source,
+        publishOptions: crearOpcionesPublicacionTrackLiveKit(source),
+      });
 
       this.localTrackPublications.set(publication.trackSid, publication);
       this.options.onTrackPublished?.(publication.track as LocalTrack, publication);
