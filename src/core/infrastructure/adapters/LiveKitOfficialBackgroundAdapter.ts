@@ -361,11 +361,26 @@ export class LiveKitOfficialBackgroundAdapter implements IVideoTrackProcessor {
   /**
    * Aplica un cambio de modo via processor.switchTo().
    * Hot-swap sin re-init: solo actualiza shaders/config del pipeline WebGL.
+   *
+   * Idempotencia: si la `config` entrante coincide con `session.config`, se
+   * omite la llamada a `switchTo`. La doc oficial de `@livekit/track-processors`
+   * no garantiza idempotencia de `switchTo(sameMode)` y en práctica se observó
+   * que una cascada de re-aplicaciones (disparada por `ActiveSpeakersChanged`
+   * bajando por `realtimeCoordinatorState → resolveActiveVideoTrack`) agota
+   * los WebGL contexts del tab (Chromium ~16) hasta matar el canvas Three.js.
+   * Este guard es defensa local independiente del fix upstream.
    */
   private async switchEffect(
     session: ActiveSession,
     config: VideoTrackProcessorConfig,
   ): Promise<void> {
+    if (this.configEqual(session.config, config)) {
+      log.debug('switchEffect: config sin cambios, skip', {
+        effectType: config.effectType,
+      });
+      return;
+    }
+
     const switchOpts = this.configToSwitchOptions(config);
 
     try {
@@ -386,6 +401,17 @@ export class LiveKitOfficialBackgroundAdapter implements IVideoTrackProcessor {
       });
       throw err;
     }
+  }
+
+  private configEqual(
+    a: VideoTrackProcessorConfig,
+    b: VideoTrackProcessorConfig,
+  ): boolean {
+    return (
+      a.effectType === b.effectType &&
+      (a.blurRadius ?? null) === (b.blurRadius ?? null) &&
+      (a.backgroundImageUrl ?? null) === (b.backgroundImageUrl ?? null)
+    );
   }
 
   /**

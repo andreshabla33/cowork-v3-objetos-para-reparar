@@ -506,11 +506,21 @@ export class SpaceRealtimeCoordinator {
     });
 
     // Speaking events
+    //
+    // IMPORTANTE: NO llamar `notifyStateChange()` aquí. `ActiveSpeakersChanged`
+    // se emite en alta frecuencia (cada vez que cambia el ranking por
+    // audio-level), y cualquier consumidor que tenga `coordinatorState` en su
+    // dep array se re-ejecutaría en cascada. Los speakers ya se propagan por
+    // el canal dedicado `onSpeakerChange` (→ store.speakingUsers), que es
+    // independiente del snapshot estructural del coordinator.
+    //
+    // Invariante: `onStateChange` refleja sólo mutaciones estructurales
+    // (publicaciones, conexión, participantes), nunca ephemera de speaker-level
+    // o connection-quality.
     this.room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
       const speakerIds = speakers.map(s => s.identity);
       this.speakingParticipants = new Set(speakerIds);
       this.options.onSpeakerChange?.(speakerIds);
-      this.notifyStateChange();
     });
 
     // Connection quality monitoring
