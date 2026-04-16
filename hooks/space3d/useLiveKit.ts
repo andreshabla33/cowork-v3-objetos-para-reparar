@@ -876,9 +876,10 @@ export function useLiveKit(params: {
     } else if (!hasActiveCall && prevHasActiveCall && usersInAudioRange.length > 0) {
       if (publishDelayTimerRef.current) { clearTimeout(publishDelayTimerRef.current); publishDelayTimerRef.current = null; }
       // Unpublish screen only (audio is OK for audio-range users)
+      // DO NOT clear remoteVideoTrackListenerCleanupRef here — clearing the Map
+      // without invoking the cleanup functions leaves zombie track-event listeners
+      // that can block subsequent publications from reaching the peer.
       despublicarTrackLocal('screen').catch(() => {});
-      // But reset track listener state completely
-      remoteVideoTrackListenerCleanupRef.current.clear();
     } else if (hasActiveCall && !prevHasActiveCall) {
       if (publishDelayTimerRef.current) clearTimeout(publishDelayTimerRef.current);
       publishDelayTimerRef.current = setTimeout(() => {
