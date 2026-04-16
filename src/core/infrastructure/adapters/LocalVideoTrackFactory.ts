@@ -99,11 +99,16 @@ export class LocalVideoTrackFactory implements IVideoTrackPublishResolver {
   }
 
   /**
-   * Devuelve el wrapper a publicar. Si hay un `LocalVideoTrack` cacheado para
-   * la cámara, se prefiere sobre el raw: `setProcessor()` reemplaza
-   * `wrapper.mediaStreamTrack` por un `MediaStreamTrackGenerator`, así que
-   * publicar el raw haría que LiveKit cree un segundo wrapper sin el
-   * processor aplicado — el blur dejaría de ser visible hasta ciclar cámara.
+   * Resuelve el wrapper a publicar. Para cámara delega a `wrapRawTrack`
+   * (idempotente: reutiliza el cacheado o crea y cachea uno nuevo).
+   *
+   * Garantiza Single Source of Truth del `LocalVideoTrack` de cámara sin
+   * importar el orden en que corran los useEffects de Presentation
+   * (`useLocalCameraTrack`) y Application (`coordinator.publishTrack`):
+   * el primero que llegue crea el wrapper, el segundo obtiene la misma
+   * referencia. Así LiveKit nunca construye un wrapper interno adicional
+   * en `publishTrack(MediaStreamTrack)` y el `setProcessor()` del preview
+   * persiste en la publicación.
    *
    * @see https://github.com/livekit/track-processors-js
    */
@@ -112,7 +117,7 @@ export class LocalVideoTrackFactory implements IVideoTrackPublishResolver {
     source: VideoPublishSource,
   ): T | LocalVideoTrack {
     if (track instanceof LocalVideoTrack || source !== 'camera') return track;
-    return this.cache.get(track.id) ?? track;
+    return this.wrapRawTrack(track);
   }
 
   /**
