@@ -341,19 +341,18 @@ export class LiveKitOfficialBackgroundAdapter implements IVideoTrackProcessor {
   // ─── Helpers privados ─────────────────────────────────────────────────────
 
   /**
-   * Devuelve un ID estable para el track, inmune al cambio de
-   * track.mediaStreamTrack que ocurre después de setProcessor().
-   *
-   * Orden de precedencia:
-   *   1. track.sid — disponible cuando el track está publicado en una Room
-   *   2. stableTrackIds WeakMap — ID original capturado antes de setProcessor()
-   *   3. track.mediaStreamTrack.id — fallback, capturado y guardado en WeakMap
+   * Devuelve un ID estable e inmutable para el wrapper desde el primer
+   * encuentro. El cache WeakMap tiene precedencia sobre `track.sid`: si un
+   * wrapper se ve antes de publicarse (preview) y después recibe `sid` al
+   * publicar, seguimos devolviendo el ID original — de lo contrario el
+   * adapter trataría al mismo wrapper como dos sesiones y haría dos
+   * `setProcessor()`, destruyendo el generator que el HUD local ya tenía
+   * attacheado al `<video>` (blur desaparece visualmente en local).
    */
   private getTrackId(track: LocalVideoTrack): string {
-    if (track.sid) return track.sid;
     const cached = this.stableTrackIds.get(track);
     if (cached) return cached;
-    const id = track.mediaStreamTrack.id;
+    const id = track.sid ?? track.mediaStreamTrack.id;
     this.stableTrackIds.set(track, id);
     return id;
   }
