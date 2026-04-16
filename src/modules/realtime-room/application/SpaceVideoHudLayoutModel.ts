@@ -84,6 +84,12 @@ export class SpaceVideoHudLayoutModelBuilder {
       });
     });
 
+    // Orden estable por participantId — evita que las burbujas del HUD salten
+    // al cambiar el active speaker o la distancia. El highlight de quien habla
+    // se mantiene vía `isSpeaking` (borde verde), sin reordenar el layout.
+    remoteCameraTiles.sort((a, b) => a.participantId.localeCompare(b.participantId));
+    remoteScreenShareTiles.sort((a, b) => a.participantId.localeCompare(b.participantId));
+
     return {
       orderedUsers: input.orderedUsers,
       usersById,

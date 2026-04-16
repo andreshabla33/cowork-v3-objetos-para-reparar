@@ -215,9 +215,16 @@ export class SpaceRealtimeCoordinator {
   }
 
   /**
-   * Unpublish local track
+   * Unpublish local track.
+   *
+   * `stopOnUnpublish` (default `true`) controla si el `MediaStreamTrack`
+   * subyacente se detiene al despublicar. En gating por proximidad debe
+   * pasarse `false` — el stream lo posee `useMediaStream` y detenerlo aquí
+   * forzaría al usuario a re-seleccionar micro/cámara al re-entrar en
+   * proximidad (el track queda `ended` y `sincronizarTracksLocales` no lo
+   * re-publica). Ref: LiveKit SDK v2 `LocalParticipant.unpublishTrack(track, stopOnUnpublish?)`.
    */
-  async unpublishTrack(trackSid: string): Promise<boolean> {
+  async unpublishTrack(trackSid: string, stopOnUnpublish = true): Promise<boolean> {
     if (!this.room || this.room.state !== 'connected') {
       return false;
     }
@@ -230,15 +237,12 @@ export class SpaceRealtimeCoordinator {
 
       const localTrack = publication.track;
       if (localTrack instanceof LocalTrack) {
-        await this.room.localParticipant.unpublishTrack(localTrack);
-        if (typeof localTrack.stop === 'function') {
-          localTrack.stop();
-        }
+        await this.room.localParticipant.unpublishTrack(localTrack, stopOnUnpublish);
       }
       this.localTrackPublications.delete(trackSid);
       this.notifyStateChange();
 
-      this.log.info('Unpublished track', { trackSid });
+      this.log.info('Unpublished track', { trackSid, stopOnUnpublish });
       return true;
     } catch (error) {
       this.log.error('Failed to unpublish track', { trackSid, error });
@@ -247,9 +251,10 @@ export class SpaceRealtimeCoordinator {
   }
 
   /**
-   * Unpublish all tracks of a specific source
+   * Unpublish all tracks of a specific source.
+   * Ver `unpublishTrack` para la semántica de `stopOnUnpublish`.
    */
-  async unpublishTracksBySource(source: 'camera' | 'microphone' | 'screen_share'): Promise<void> {
+  async unpublishTracksBySource(source: 'camera' | 'microphone' | 'screen_share', stopOnUnpublish = true): Promise<void> {
     const trackSource = source === 'camera' ? Track.Source.Camera
       : source === 'microphone' ? Track.Source.Microphone
       : Track.Source.ScreenShare;
@@ -257,7 +262,7 @@ export class SpaceRealtimeCoordinator {
     const publications = Array.from(this.localTrackPublications.values())
       .filter(pub => pub.source === trackSource);
 
-    await Promise.all(publications.map(pub => this.unpublishTrack(pub.trackSid)));
+    await Promise.all(publications.map(pub => this.unpublishTrack(pub.trackSid, stopOnUnpublish)));
   }
 
   getLocalTrackPublicationBySource(source: 'camera' | 'microphone' | 'screen_share'): LocalTrackPublication | null {

@@ -285,12 +285,12 @@ export function useLiveKit(params: {
   }, [currentUser.empresa_id, obtenerEmpresaParticipante, empresasAutorizadas]);
 
   // ========== Track management ==========
-  const despublicarTrackLocal = useCallback(async (tipo: 'audio' | 'video' | 'screen') => {
+  const despublicarTrackLocal = useCallback(async (tipo: 'audio' | 'video' | 'screen', stopOnUnpublish = true) => {
     const coordinator = realtimeCoordinatorRef.current;
     if (!coordinator) return;
     const source = tipo === 'audio' ? 'microphone' : tipo === 'video' ? 'camera' : 'screen_share';
     try {
-      await coordinator.unpublishTracksBySource(source);
+      await coordinator.unpublishTracksBySource(source, stopOnUnpublish);
     } catch (e) {
       log.warn('Error despublicando track', { source, error: e instanceof Error ? e.message : String(e) });
     }
@@ -860,10 +860,12 @@ export function useLiveKit(params: {
 
     if (!hasAnyoneNearby && prevHasAnyoneNearby) {
       if (publishDelayTimerRef.current) { clearTimeout(publishDelayTimerRef.current); publishDelayTimerRef.current = null; }
-      (['audio', 'video', 'screen'] as const).forEach(t => despublicarTrackLocal(t).catch(() => {}));
+      // stopOnUnpublish: false — el MediaStreamTrack lo posee `useMediaStream`.
+      // Detenerlo aquí obligaría a re-seleccionar mic/cámara al re-entrar en proximidad.
+      (['audio', 'video', 'screen'] as const).forEach(t => despublicarTrackLocal(t, false).catch(() => {}));
     } else if (!hasActiveCall && prevHasActiveCall && usersInAudioRange.length > 0) {
       if (publishDelayTimerRef.current) { clearTimeout(publishDelayTimerRef.current); publishDelayTimerRef.current = null; }
-      despublicarTrackLocal('screen').catch(() => {});
+      despublicarTrackLocal('screen', false).catch(() => {});
     } else if (hasActiveCall && !prevHasActiveCall) {
       if (publishDelayTimerRef.current) clearTimeout(publishDelayTimerRef.current);
       publishDelayTimerRef.current = setTimeout(() => {
