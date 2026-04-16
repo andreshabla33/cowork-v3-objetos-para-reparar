@@ -38,6 +38,22 @@ import type { PresencePayload } from '@/types/workspace';
 
 const log = logger.child('presence-channels');
 
+// ─── Channel resilience constants ─────────────────────────────────────────────
+// Ref: supabase/realtime-js — RealtimeChannel has internal rejoinTimer for
+// CHANNEL_ERROR and TIMED_OUT, but CLOSED channels have NO auto-recovery.
+// Ref: https://github.com/orgs/supabase/discussions/27513 — community confirms
+//      that CLOSED channels must be manually removed + recreated.
+// Ref: Supabase troubleshooting — "if status is NOT subscribed, unsubscribe
+//      using removeChannel and subscribe again."
+
+/** Maximum retry attempts before giving up (prevents quota burn). */
+const MAX_CHANNEL_RETRIES = 5;
+/** Base delay (ms) for exponential backoff on channel retry. */
+const CHANNEL_RETRY_BASE_MS = 3_000;
+/** Dead channel states that require removal + recreation.
+ * Ref: supabase/realtime-js CHANNEL_STATES enum. */
+const DEAD_CHANNEL_STATES = new Set(['errored', 'closed']);
+
 interface UsePresenceChannelsProps {
   activeWorkspaceId: string | undefined;
   userId: string | undefined;
@@ -51,6 +67,17 @@ interface UsePresenceChannelsReturn {
   updatePresenceInChannels: (nivelDetalle: 'publico' | 'empresa') => Promise<void>;
   forceRetrackAll: () => void;
   cleanup: () => void;
+  /**
+   * Inspects all presence channels and purges any in dead states
+   * (errored, closed). After purging, calls syncPresenceByChunk to recreate.
+   *
+   * Ref: supabase/realtime-js RealtimeChannel.ts — CHANNEL_STATES:
+   *   closed | joined | joining | errored | leaving.
+   * The client auto-retries on CHANNEL_ERROR and TIMED_OUT via rejoinTimer,
+   * but CLOSED channels have NO automatic recovery — they must be removed
+   * and recreated. See: https://github.com/supabase/realtime-js
+   */
+  checkChannelHealth: () => void;
 }
 
 /**
@@ -79,6 +106,10 @@ export function usePresenceChannels({
   const lastSyncRef = useRef(0);
   const lastTrackRef = useRef(0);
   const recalcTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Pending retry timer for channel recovery (cleared on cleanup). */
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Monotonic retry counter for exponential backoff. Reset on successful subscribe. */
+  const retryCountRef = useRef(0);
 
   userRef.current = currentUser;
 
@@ -430,8 +461,30 @@ export function usePresenceChannels({
         })
         .subscribe(async (status: string) => {
           if (status === 'SUBSCRIBED') {
+            retryCountRef.current = 0; // Reset backoff on success
             await trackPresenceEnCanal(channel, 'empresa');
             log.info('Global empresa discovery channel subscribed', {
+              channelName: globalChannelName,
+            });
+          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+            // ── Recovery for dead channels ─────────────────────────────
+            // Ref: supabase/realtime-js RealtimeChannel.ts — CLOSED has
+            // NO rejoinTimer (unlike CHANNEL_ERROR which has one, but it
+            // only works if socket.isConnected() — which may not be true
+            // after ERR_CONNECTION_CLOSED). Safest path: remove + recreate.
+            // Ref: GitHub Discussion #27513 — "removeChannel and subscribe again"
+            log.warn('Global discovery channel failed — scheduling recovery', {
+              status,
+              channelName: globalChannelName,
+              retryCount: retryCountRef.current,
+            });
+            supabase.removeChannel(channel);
+            globalChannelRef.current = null;
+            scheduleChannelRetry();
+          } else if (status === 'TIMED_OUT') {
+            // Supabase's rejoinTimer handles TIMED_OUT automatically.
+            // Log for diagnostics; if it persists, checkChannelHealth will catch it.
+            log.warn('Global discovery channel TIMED_OUT — awaiting auto-rejoin', {
               channelName: globalChannelName,
             });
           }
@@ -469,6 +522,16 @@ export function usePresenceChannels({
           .subscribe(async (status: string) => {
             if (status === 'SUBSCRIBED') {
               await trackPresenceEnCanal(channel, nivelDetalle);
+            } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+              // Same recovery pattern as global channel — remove dead channel
+              // so next syncPresenceByChunk recreates it.
+              log.warn('Chunk channel failed — removing for recreation', {
+                status,
+                channelName: canalNombre,
+              });
+              supabase.removeChannel(channel);
+              presenceChannelsRef.current.delete(canalNombre);
+              scheduleChannelRetry();
             }
           });
 
@@ -555,6 +618,95 @@ export function usePresenceChannels({
   }, [userId, trackPresenceEnCanal, recalcularUsuarios]);
 
   /**
+   * Schedule a retry of syncPresenceByChunk with exponential backoff.
+   *
+   * Backoff formula: CHANNEL_RETRY_BASE_MS × 2^retryCount
+   *   Attempt 0 → 3s, 1 → 6s, 2 → 12s, 3 → 24s, 4 → 48s
+   *
+   * Capped at MAX_CHANNEL_RETRIES to prevent Supabase quota burn.
+   * Ref: Supabase troubleshooting — "a client that fails to authenticate
+   *       or subscribe may retry rapidly, creating thousands of short-lived
+   *       connections" — exponential backoff prevents this.
+   */
+  const scheduleChannelRetry = useCallback((): void => {
+    if (retryTimerRef.current) return; // Already scheduled
+    if (retryCountRef.current >= MAX_CHANNEL_RETRIES) {
+      log.error('Presence channel retry limit reached — giving up', {
+        maxRetries: MAX_CHANNEL_RETRIES,
+      });
+      return;
+    }
+
+    const delay = CHANNEL_RETRY_BASE_MS * Math.pow(2, retryCountRef.current);
+    retryCountRef.current += 1;
+
+    log.info('Scheduling presence channel retry', {
+      attempt: retryCountRef.current,
+      delayMs: delay,
+    });
+
+    retryTimerRef.current = setTimeout(() => {
+      retryTimerRef.current = null;
+      // Force lastSyncRef to 0 so the throttle in syncPresenceByChunk
+      // doesn't skip this recovery attempt.
+      lastSyncRef.current = 0;
+      syncPresenceByChunk();
+    }, delay);
+  }, [syncPresenceByChunk]);
+
+  /**
+   * Health check: inspects all presence channels for dead states
+   * (errored, closed) and purges them so syncPresenceByChunk can recreate.
+   *
+   * This catches channels that:
+   * - Got CLOSED after WS drop (ERR_CONNECTION_CLOSED) and the subscribe
+   *   callback fired but the ref was already set (race with creation).
+   * - Got stuck in 'errored' state where rejoinTimer exhausted its own
+   *   internal retries but the channel was never removed from our refs.
+   * - Silently disconnected (no close event) — detectable by state.
+   *
+   * Ref: supabase/realtime-js CHANNEL_STATES: closed | joined | joining | errored | leaving
+   * Ref: Supabase docs "heartbeatCallback" — "provides visibility into the
+   *       connection's health and a mechanism for explicit reconnection"
+   *
+   * Clean Architecture: Infrastructure concern — no domain logic.
+   */
+  const checkChannelHealth = useCallback((): void => {
+    let purgedCount = 0;
+
+    // Check global discovery channel
+    if (globalChannelRef.current) {
+      const state = globalChannelRef.current.state;
+      if (DEAD_CHANNEL_STATES.has(state)) {
+        log.warn('Health check: global discovery channel dead', { state });
+        supabase.removeChannel(globalChannelRef.current);
+        globalChannelRef.current = null;
+        purgedCount++;
+      }
+    }
+
+    // Check chunk channels
+    presenceChannelsRef.current.forEach(
+      (channel: RealtimeChannel, canalNombre: string) => {
+        const state = channel.state;
+        if (DEAD_CHANNEL_STATES.has(state)) {
+          log.warn('Health check: chunk channel dead', { channelName: canalNombre, state });
+          supabase.removeChannel(channel);
+          presenceChannelsRef.current.delete(canalNombre);
+          purgedCount++;
+        }
+      },
+    );
+
+    if (purgedCount > 0) {
+      log.info('Health check purged dead channels — scheduling recreation', {
+        purgedCount,
+      });
+      scheduleChannelRetry();
+    }
+  }, [scheduleChannelRetry]);
+
+  /**
    * Cleanup all presence channels on unmount
    */
   const cleanup = useCallback((): void => {
@@ -562,6 +714,12 @@ export function usePresenceChannels({
       clearTimeout(recalcTimerRef.current);
       recalcTimerRef.current = null;
     }
+    // Cancel pending retry — we're tearing down, not recovering.
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    retryCountRef.current = 0;
     // Clean up chunk-based channels
     presenceChannelsRef.current.forEach((channel: RealtimeChannel) => {
       supabase.removeChannel(channel);
@@ -580,5 +738,6 @@ export function usePresenceChannels({
     updatePresenceInChannels,
     forceRetrackAll,
     cleanup,
+    checkChannelHealth,
   };
 }
