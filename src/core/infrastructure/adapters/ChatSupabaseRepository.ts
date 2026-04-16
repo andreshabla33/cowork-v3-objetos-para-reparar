@@ -568,6 +568,20 @@ export class ChatSupabaseRepository implements IChatRepository {
     }
   }
 
+  async agregarMiembrosDM(grupoId: string, usuarioIds: string[]): Promise<void> {
+    try {
+      const { error } = await supabase.rpc('agregar_miembros_dm', {
+        p_grupo_id: grupoId,
+        p_usuario_ids: usuarioIds,
+      });
+
+      if (error) throw error;
+    } catch (err) {
+      log.error('agregarMiembrosDM failed', { grupoId, usuarioIds, error: String(err) });
+      throw err;
+    }
+  }
+
   async obtenerMiembrosEspacio(
     espacioId: string,
     usuarioActualId: string

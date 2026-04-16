@@ -75,16 +75,11 @@ export class GestionarChatDirectoUseCase {
       return null;
     }
 
-    // Add both users to the DM group
-    await this.chatRepository.agregarMiembroCanal(
+    // Add both users atomically via RPC (bypasses RLS upsert limitation:
+    // SELECT+INSERT+UPDATE all required on empty groups — see discussion #28122).
+    await this.chatRepository.agregarMiembrosDM(
       nuevoGrupo.id,
-      usuarioActualId,
-      'miembro'
-    );
-    await this.chatRepository.agregarMiembroCanal(
-      nuevoGrupo.id,
-      usuarioTargetId,
-      'miembro'
+      [usuarioActualId, usuarioTargetId]
     );
 
     return {

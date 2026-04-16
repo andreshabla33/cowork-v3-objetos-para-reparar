@@ -218,6 +218,14 @@ export interface IChatRepository {
   agregarMiembroCanal(grupoId: string, usuarioId: string, rol: string): Promise<void>;
 
   /**
+   * Add multiple members to a DM group atomically via RPC.
+   * Uses SECURITY DEFINER to bypass RLS upsert limitations
+   * (SELECT+INSERT+UPDATE all required for upsert on empty groups).
+   * Validates: group exists, is 'directo', caller is creator, users are accepted espacio members.
+   */
+  agregarMiembrosDM(grupoId: string, usuarioIds: string[]): Promise<void>;
+
+  /**
    * Get space members available to add to channels.
    * Excludes the current user.
    */
