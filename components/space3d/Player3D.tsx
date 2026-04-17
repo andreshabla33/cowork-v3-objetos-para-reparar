@@ -401,6 +401,11 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
   }, [asientoOcupadoPorOtroUsuario, currentUser.id, onOcuparAsiento]);
 
   // Auto-wave: detectar nuevos usuarios que entran en proximidad
+  // NOTE: the reset timer lives in a separate effect below — coupling it
+  // to [usersInCallIds] caused a stuck-wave bug: if usersInCallIds changed
+  // mid-wave (e.g. a third user entered) without producing new entries,
+  // React's cleanup cleared the pending reset timer but the new effect
+  // body didn't replace it → contextualAnim stayed at 'wave' indefinitely.
   useEffect(() => {
     if (!usersInCallIds || usersInCallIds.size === 0) {
       previousUsersInCallRef.current = new Set();
@@ -416,20 +421,20 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     });
     previousUsersInCallRef.current = new Set(usersInCallIds);
 
-    // Si hay nuevos usuarios y no estamos en movimiento → wave
     if (newEntries.length > 0 && animationStateRef.current !== 'walk' && animationStateRef.current !== 'run') {
       setContextualAnim('wave');
-      // XP por saludo automático (throttle 30s)
       onXPEvent?.('saludo_wave', 30000);
-      if (contextualTimerRef.current) clearTimeout(contextualTimerRef.current);
-      contextualTimerRef.current = setTimeout(() => {
-        setContextualAnim(null);
-      }, 3000);
     }
-    return () => {
-      if (contextualTimerRef.current) clearTimeout(contextualTimerRef.current);
-    };
-  }, [usersInCallIds]);
+  }, [usersInCallIds, onXPEvent]);
+
+  // Dedicated auto-reset for contextual 'wave'. Runs whenever contextualAnim
+  // becomes 'wave' and clears it 3s later. Immune to re-renders of the
+  // proximity effect because it only depends on the anim value itself.
+  useEffect(() => {
+    if (contextualAnim !== 'wave') return;
+    const timer = setTimeout(() => setContextualAnim(null), 3000);
+    return () => clearTimeout(timer);
+  }, [contextualAnim]);
 
   // --- VECTORES REUTILIZABLES (Estabilidad v2.2) ---
   const camForwardVec = useMemo(() => new THREE.Vector3(), []);

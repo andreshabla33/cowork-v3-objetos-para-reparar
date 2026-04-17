@@ -468,6 +468,20 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
       }
     }
 
+    // 1b. Staleness safety: if a walking/running entity hasn't received a
+    // DataPacket in >3s, force isMoving=false. Covers the case where the
+    // peer's "stop" packet got dropped (lossy mode) and they're stuck
+    // walking forever on our side. The 2s idle heartbeat should normally
+    // re-assert state, but on flaky networks more than one heartbeat can
+    // drop in a row. 3s is a safe threshold above the heartbeat interval.
+    const nowMs = Date.now();
+    for (const entity of avatarStore.getAll()) {
+      if (!entity.isMoving) continue;
+      if (nowMs - entity.lastServerUpdate > 3000) {
+        entity.isMoving = false;
+      }
+    }
+
     // 2. Alimentar desde ECS state (fallback)
     if (ecsStateRef?.current) {
       for (const entity of avatarStore.getAll()) {

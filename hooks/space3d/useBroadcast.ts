@@ -339,6 +339,31 @@ export function useBroadcast(params: {
 
   const isLocalHandRaised = Boolean(session?.user?.id && raisedHandParticipantIds.has(session.user.id));
 
+  // Re-assert raise_hand=true every 10s while active. Covers two failure
+  // modes: (1) a late-joiner that connected after the original toggle packet
+  // and thus never saw it; (2) a peer whose original reliable packet was
+  // dropped by a transient network blip. Cost: 1 small packet / 10s per user
+  // with hand up, which is negligible. Lowering is one-shot (reliable=true
+  // already; if that ultimate fails nothing auto-recovers — but that is rare
+  // and lowering isn't a sticky state users fixate on the way "stuck raised"
+  // bothers them).
+  useEffect(() => {
+    if (!isLocalHandRaised) return;
+    const participantId = session?.user?.id;
+    if (!participantId) return;
+    const interval = setInterval(() => {
+      enviarDataLivekit(
+        createRaiseHandDataPacket({
+          participantId,
+          by: currentUser.name,
+          raised: true,
+        }),
+        false,
+      );
+    }, 10_000);
+    return () => clearInterval(interval);
+  }, [isLocalHandRaised, session?.user?.id, currentUser.name, enviarDataLivekit]);
+
   // ========== Atajos numéricos ==========
   useEffect(() => {
     const emojiKeys = ['👍', '🔥', '❤️', '👏', '😂', '😮', '🚀', '✨'];
