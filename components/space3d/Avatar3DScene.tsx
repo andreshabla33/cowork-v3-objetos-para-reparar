@@ -428,6 +428,21 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
     avatarStore.syncWithOnlineUsers(users, currentUser.id);
   }, [users, currentUser.id]);
 
+  // Drop stale DataPacket positions when an avatar is removed from the ECS.
+  // Covers the case where LiveKit's ParticipantDisconnected never fires
+  // (peer closes tab briefly and re-joins within the 15s server grace window),
+  // but Presence CRDT did remove the user, which removes them from onlineUsers,
+  // which removes the entity via syncWithOnlineUsers. Without this, the
+  // useFrame loop keeps calling movementSystem.setTarget with the last
+  // DataPacket coords, snapping the re-joined avatar back to its old spot.
+  useEffect(() => {
+    if (!realtimePositionsRef) return;
+    const unsub = avatarStore.onRemove((userId: string) => {
+      realtimePositionsRef.current.delete(userId);
+    });
+    return unsub;
+  }, [realtimePositionsRef]);
+
   // Cleanup al desmontar
   useEffect(() => {
     return () => {
