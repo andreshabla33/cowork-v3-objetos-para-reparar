@@ -64,6 +64,11 @@ export function useLiveKit(params: {
   const [livekitConnected, setLivekitConnected] = useState(false);
   const [realtimeCoordinatorState, setRealtimeCoordinatorState] = useState<SpaceRealtimeCoordinatorState | null>(null);
   const [speakingUsers, setSpeakingUsers] = useState<Set<string>>(new Set());
+  // Authoritative set of participants currently in the LiveKit room.
+  // LiveKit guarantees room.remoteParticipants.delete(identity) runs BEFORE
+  // emitting ParticipantDisconnected, so this Set is race-free for gating UI.
+  // Ref: livekit/client-sdk-js Room.ts → handleParticipantDisconnected().
+  const [remoteParticipantIds, setRemoteParticipantIds] = useState<Set<string>>(new Set());
 
   // ========== Refs ==========
   const livekitRoomRef = useRef<Room | null>(null);
@@ -387,6 +392,7 @@ export function useLiveKit(params: {
     setRemoteScreenStreams(new Map());
     setRemoteAudioTracks(new Map());
     setSpeakingUsers(new Set());
+    setRemoteParticipantIds(new Set());
   }, []);
 
   // ========== Connect ==========
@@ -602,10 +608,19 @@ export function useLiveKit(params: {
           setRemoteStreams(prev => { const n = new Map(prev); n.delete(participant.identity); return n; });
           setRemoteScreenStreams(prev => { const n = new Map(prev); n.delete(participant.identity); return n; });
           setRemoteAudioTracks(prev => { const n = new Map(prev); n.delete(participant.identity); return n; });
+          setRemoteParticipantIds(prev => { const n = new Set(prev); n.delete(participant.identity); return n; });
           // Fallback for abrupt disconnects where Supabase Presence 'leave'
           // is late or missed. LiveKit notices the peer drop within ~15s;
           // removing from the ECS fires notifyRemoval → renderers dispose GPU.
           avatarStore.remove(participant.identity);
+        },
+        onParticipantConnected: (participant) => {
+          setRemoteParticipantIds(prev => {
+            if (prev.has(participant.identity)) return prev;
+            const n = new Set(prev);
+            n.add(participant.identity);
+            return n;
+          });
         },
         onSpeakerChange: (speakerIds) => {
           const active = new Set(speakerIds);
@@ -630,6 +645,9 @@ export function useLiveKit(params: {
 
       livekitRoomRef.current = room;
       livekitRoomNameRef.current = roomName;
+      // Seed participant set with already-connected peers (ParticipantConnected
+      // only fires for NEW participants after we join).
+      setRemoteParticipantIds(new Set(room.remoteParticipants.keys()));
       log.info('Connected to room', { roomName, remoteParticipants: room.remoteParticipants.size });
       recordRealtimeTelemetry('livekit_connected', {
         roomName,
@@ -955,6 +973,7 @@ export function useLiveKit(params: {
     remoteStreams,
     remoteScreenStreams,
     remoteAudioTracks,
+    remoteParticipantIds,
     speakingUsers,
     setSpeakingUsers,
     publicarTrackLocal,

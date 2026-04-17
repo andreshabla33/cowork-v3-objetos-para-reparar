@@ -163,6 +163,8 @@ export interface UseLiveKitReturn {
   remoteStreams: Map<string, MediaStream>;
   remoteScreenStreams: Map<string, MediaStream>;
   remoteAudioTracks: Map<string, MediaStreamTrack>;
+  /** Authoritative set of participants in the LiveKit room (race-free). */
+  remoteParticipantIds: Set<string>;
   speakingUsers: Set<string>;
   setSpeakingUsers: React.Dispatch<React.SetStateAction<Set<string>>>;
   publicarTrackLocal: (track: MediaStreamTrack, tipo: 'audio' | 'video' | 'screen') => Promise<void>;

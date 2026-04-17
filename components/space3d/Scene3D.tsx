@@ -75,6 +75,8 @@ export interface SceneProps {
   /** Resuelve la posición actual del target de follow desde el ECS. */
   getFollowTargetPosition?: (userId: string) => { x: number; z: number } | null;
   remoteStreams: Map<string, MediaStream>;
+  /** LiveKit participants in the room — authoritative for UI gating. */
+  remoteParticipantIds?: Set<string>;
   showVideoBubbles?: boolean;
   videoIsProcessed?: boolean;
   localMessage?: string;
@@ -308,6 +310,7 @@ export const Scene: React.FC<SceneProps> = ({
   followTargetId = null,
   getFollowTargetPosition,
   remoteStreams,
+  remoteParticipantIds,
   showVideoBubbles = true,
   videoIsProcessed = false,
   localMessage,
@@ -398,9 +401,22 @@ export const Scene: React.FC<SceneProps> = ({
     () => zonasEmpresa.filter((zona) => zona.estado === 'activa'),
     [zonasEmpresa]
   );
+  // Intersect Supabase Presence with LiveKit room.remoteParticipants.
+  // Presence is eventually consistent (CRDT, ~seconds to propagate 'leave'
+  // across N subscribed channels), so using it alone would leave ghost labels
+  // after a participant disconnects. LiveKit, in contrast, mutates
+  // room.remoteParticipants synchronously BEFORE emitting ParticipantDisconnected
+  // (see livekit/client-sdk-js Room.ts → handleParticipantDisconnected), so
+  // remoteParticipantIds is race-free.
+  //
+  // When remoteParticipantIds is undefined (LiveKit not yet connected),
+  // fall back to Presence-only filtering so users still render during warm-up.
   const remoteUsers = useMemo(
-    () => onlineUsers.filter((user) => user.id !== currentUser.id),
-    [onlineUsers, currentUser.id]
+    () => onlineUsers.filter((user) =>
+      user.id !== currentUser.id &&
+      (!remoteParticipantIds || remoteParticipantIds.has(user.id))
+    ),
+    [onlineUsers, currentUser.id, remoteParticipantIds]
   );
   const asientosPersistentes = useMemo(() => crearAsientosObjetos3D(espacioObjetos), [espacioObjetos]);
   const asientosRuntime = useMemo(() => [...asientosPersistentes], [asientosPersistentes]);
