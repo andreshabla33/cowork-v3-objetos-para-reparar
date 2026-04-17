@@ -92,29 +92,38 @@ export interface IPresenceSubscriptionPolicy {
 // ─── Default Configuration ───────────────────────────────────────────────────
 
 /**
- * Production defaults optimized for 500+ concurrent avatars.
+ * Production defaults tuned for ~50 concurrent users on Supabase Pro plan.
  *
- * Justification (Supabase docs):
- * - Pro plan: 500 peak connections, 5M messages/month
- * - Each channel.track() = 1 sent msg + N received per subscriber
- * - radius=1 → 9 chunks × 2 types = 18 channels max (vs 50 at radius=2)
- * - 18 channels × 500 users = 9,000 subs (vs 25,000) = 64% reduction
+ * Presupuesto (Supabase Realtime Pro):
+ * - 50 presence msgs/s hard limit with spend cap on
+ *   (https://supabase.com/docs/guides/realtime/quotas)
+ * - 5M messages/month included, $2.50 per 1M over
  *
- * Justification (Three.js LOD):
+ * Estrategia:
+ * - baseRadius=0: solo el chunk actual + global empresa discovery channel.
+ *   Con ~50 users el global channel ya entrega discovery entre miembros de
+ *   misma empresa; los chunks de anillo exterior son casi ruido.
+ *   maxRadius=1 permite expansión adaptativa cuando la densidad es baja.
+ * - trackThrottleMs=15s: con 50 users × 3 canales / 15s = ~10 msgs/s, muy
+ *   por debajo del límite 50/s. Status/cam/mic toggle tardan ~15s máximo
+ *   en propagar — aceptable dado que el cambio va también por LiveKit
+ *   DataPackets para consumidores en sala 3D.
+ *
+ * Justificación Three.js LOD:
  * - LOD_MID_DISTANCE = 60wu, CULL_DISTANCE = 100wu
- * - radius=1 at CHUNK_SIZE=200 covers 600×600wu = 6× cull distance
- * - Avatars beyond this are LOW LOD (spheres) and don't need rich presence
+ * - radius=0 at CHUNK_SIZE=200 cubre ~200×200wu = 2× cull distance dentro
+ *   del chunk actual; avatares de chunks vecinos entran via global channel
+ *   (empresa) o simplemente no se renderizan hasta acercarse.
  */
 export const PRESENCE_DEFAULTS: PresenceSubscriptionConfig = {
   chunkSize: 200,
-  baseRadius: 1,
-  // Hard cap at 1 ring. With maxRadius=2 the density-expansion rule
-  // (nearbyCount<20 → radius+1) spawns 5×5=25 chunks × 2 scopes = 50
-  // channels, which saturates the socket heartbeat window and triggers
-  // RealtimeClient._triggerChanError across ALL channels at once.
-  // Ref: realtime-js CONNECTION_TIMEOUTS.HEARTBEAT_INTERVAL = 25000ms.
+  baseRadius: 0,
+  // maxRadius=1 permite que la regla de density-expansion (nearbyCount<20)
+  // eleve el radio a 1 solo cuando el espacio está realmente vacío — evita
+  // perder awareness periférica en sesiones pequeñas sin inflar el pool
+  // cuando hay densidad normal.
   maxRadius: 1,
   densityThresholdForReduction: 100,
   syncThrottleMs: 2_000,
-  trackThrottleMs: 5_000,
+  trackThrottleMs: 15_000,
 };
