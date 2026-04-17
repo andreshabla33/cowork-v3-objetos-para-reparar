@@ -53,11 +53,12 @@ const FallbackPanel = () => (
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const WorkspaceLayout: React.FC = () => {
-  if (typeof window !== 'undefined') {
-    window.__DEBUG_WORKSPACE = true;
-    console.error('🏗️ [WorkspaceLayout] COMPONENT RENDER -Bundle is updated');
-    console.error('🏗️ If you see this, bundle is updated');
+  // IMMEDIATE TEST: if this alert appears, bundle is updated and component renders
+  if (typeof window !== 'undefined' && !(window as any).__WORKSPACE_INIT_DONE) {
+    (window as any).__WORKSPACE_INIT_DONE = true;
+    alert('✅ WorkspaceLayout is rendering - NEW BUNDLE LOADED');
   }
+
   // ── Store ──────────────────────────────────────────────────────────────
   const {
     activeWorkspace, activeSubTab, setActiveSubTab, setActiveWorkspace,
@@ -124,9 +125,12 @@ export const WorkspaceLayout: React.FC = () => {
     }
 
     const handlePageExit = (event: Event) => {
+      // IMMEDIATE TEST
+      alert(`🚪 PAGE EXIT FIRED: ${event.type}`);
       console.warn('🚪 PAGE EXIT EVENT FIRED:', event.type, 'userId:', session?.user?.id);
       try {
         untrackAll();
+        alert('📡 untrackAll() executed');
         console.log('📡 untrackAll() executed successfully');
       } catch (e) {
         console.error('❌ Error in untrackAll():', e);
