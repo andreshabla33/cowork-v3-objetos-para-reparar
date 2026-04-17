@@ -53,6 +53,7 @@ const FallbackPanel = () => (
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const WorkspaceLayout: React.FC = () => {
+  console.log('🏗️ [WorkspaceLayout] COMPONENT RENDER -Bundle is updated');
   // ── Store ──────────────────────────────────────────────────────────────
   const {
     activeWorkspace, activeSubTab, setActiveSubTab, setActiveWorkspace,
@@ -113,18 +114,31 @@ export const WorkspaceLayout: React.FC = () => {
   // If registered in usePresenceLifecycle, React unmount races with
   // browser close, and the handler gets removed before it fires.
   useEffect(() => {
+    if (!session?.user?.id) {
+      console.log('🔧 Skipping page exit handlers - no session yet');
+      return;
+    }
+
     const handlePageExit = (event: Event) => {
-      console.warn('🚪 PAGE EXIT [WorkspaceLayout]:', event.type);
-      untrackAll();
+      console.warn('🚪 PAGE EXIT EVENT FIRED:', event.type, 'userId:', session?.user?.id);
+      try {
+        untrackAll();
+        console.log('📡 untrackAll() executed successfully');
+      } catch (e) {
+        console.error('❌ Error in untrackAll():', e);
+      }
     };
-    console.log('🔧 Page exit handlers registered at WorkspaceLayout level');
+
+    console.log('🔧 REGISTERING page exit handlers - userId:', session?.user?.id);
     window.addEventListener('pagehide', handlePageExit);
     window.addEventListener('beforeunload', handlePageExit);
+
     return () => {
+      console.log('🔧 REMOVING page exit handlers');
       window.removeEventListener('pagehide', handlePageExit);
       window.removeEventListener('beforeunload', handlePageExit);
     };
-  }, [untrackAll]);
+  }, [untrackAll, session?.user?.id]);
 
   // ── Side effects (non-presence) ────────────────────────────────────────
   useEffect(() => {
