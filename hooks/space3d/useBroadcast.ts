@@ -12,6 +12,7 @@ import { obtenerChunk } from '@/lib/chunkSystem';
 import type { AccionXP } from '@/lib/gamificacion';
 import { actualizarEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
 import { getSettingsSection, sendDesktopNotification } from '@/lib/userSettings';
+import { useStore } from '@/store/useStore';
 import { audioManager } from '@/services/audioManager';
 import { ChatService } from '@/services/chatService';
 import {
@@ -119,12 +120,26 @@ export function useBroadcast(params: {
     }
 
     if (mensaje.type === 'raise_hand') {
+      const senderId = mensaje.payload.participantId;
+      const isLocal = senderId === session.user.id;
+      const wasRaising = !raisedHandParticipantIds.has(senderId);
       setRaisedHandParticipantIds((current) => raiseHandUseCaseRef.current.apply({
-        participantId: mensaje.payload.participantId,
+        participantId: senderId,
         participantName: mensaje.payload.by,
         raised: mensaje.payload.raised,
         raisedHandParticipantIds: current,
       }).raisedHandParticipantIds);
+      // Sound + desktop notif only when a REMOTE peer raises (not lowers)
+      // their hand AND they are in audio range — consistent with wave/chat
+      // gating. The meetings view (useMeetingRealtimeState) handles its own
+      // sound path; this branch was previously silent, hence the bug.
+      if (!isLocal && mensaje.payload.raised && wasRaising) {
+        const inRange = useStore.getState().usersInAudioRangeIds.has(senderId);
+        if (inRange) {
+          soundBus.play('wave');
+          sendDesktopNotification(`✋ ${mensaje.payload.by}`, 'levantó la mano');
+        }
+      }
       return;
     }
 

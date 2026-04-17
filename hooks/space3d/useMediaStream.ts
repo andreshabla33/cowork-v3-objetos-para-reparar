@@ -72,9 +72,40 @@ export function useMediaStream(params: {
 
         if (shouldHaveStream) {
           if (!activeStreamRef.current) {
+            // Validate saved deviceIds against CURRENT enumeration. Without this,
+            // a deviceId saved from a previous session (different USB mic, or a
+            // hash that rotated post-permission) leads to OverconstrainedError on
+            // the first getUserMedia call. Users with ONE device don't hit this
+            // because their default is always available; users with multiple
+            // devices frequently do. Pre-validating lets us silently fall back
+            // to the browser default without the user having to toggle.
+            let validCameraId: string | null = cameraSettings.selectedCameraId || null;
+            let validMicId: string | null = audioSettings.selectedMicrophoneId || null;
+            if (validCameraId || validMicId) {
+              try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoIds = new Set(
+                  devices.filter(d => d.kind === 'videoinput' && d.deviceId).map(d => d.deviceId),
+                );
+                const audioIds = new Set(
+                  devices.filter(d => d.kind === 'audioinput' && d.deviceId).map(d => d.deviceId),
+                );
+                if (validCameraId && !videoIds.has(validCameraId)) {
+                  log.warn('Saved camera deviceId not in current enumeration, using default', { saved: validCameraId, available: videoIds.size });
+                  validCameraId = null;
+                }
+                if (validMicId && !audioIds.has(validMicId)) {
+                  log.warn('Saved microphone deviceId not in current enumeration, using default', { saved: validMicId, available: audioIds.size });
+                  validMicId = null;
+                }
+              } catch (err) {
+                log.warn('Could not validate saved devices', { error: err instanceof Error ? err.message : String(err) });
+              }
+            }
+
             const videoConstraints: MediaTrackConstraints = getVideoConstraints();
-            if (cameraSettings.selectedCameraId) {
-              videoConstraints.deviceId = { exact: cameraSettings.selectedCameraId };
+            if (validCameraId) {
+              videoConstraints.deviceId = { exact: validCameraId };
             }
 
             const audioConstraints: MediaTrackConstraints = {
@@ -82,8 +113,8 @@ export function useMediaStream(params: {
               echoCancellation: audioSettings.echoCancellation,
               autoGainControl: audioSettings.autoGainControl,
             };
-            if (audioSettings.selectedMicrophoneId) {
-              audioConstraints.deviceId = { exact: audioSettings.selectedMicrophoneId };
+            if (validMicId) {
+              audioConstraints.deviceId = { exact: validMicId };
             }
 
             const wantVideo = desiredMediaState.isCameraEnabled || desiredMediaState.isScreenShareEnabled;
@@ -156,8 +187,24 @@ export function useMediaStream(params: {
                   echoCancellation: audioSettings.echoCancellation,
                   autoGainControl: audioSettings.autoGainControl,
                 };
-                if (audioSettings.selectedMicrophoneId) {
-                  audioConstraints.deviceId = { exact: audioSettings.selectedMicrophoneId };
+                // Validate selected mic still exists (same rationale as manageStream init)
+                let validMicIdOnDemand: string | null = audioSettings.selectedMicrophoneId || null;
+                if (validMicIdOnDemand) {
+                  try {
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const audioIds = new Set(
+                      devices.filter(d => d.kind === 'audioinput' && d.deviceId).map(d => d.deviceId),
+                    );
+                    if (!audioIds.has(validMicIdOnDemand)) {
+                      log.warn('On-demand mic deviceId not found, using default', { saved: validMicIdOnDemand });
+                      validMicIdOnDemand = null;
+                    }
+                  } catch {
+                    // ignore — falls through with validMicIdOnDemand as-is
+                  }
+                }
+                if (validMicIdOnDemand) {
+                  audioConstraints.deviceId = { exact: validMicIdOnDemand };
                 }
                 const audioStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
                 let newAudioTrack: MediaStreamTrack | null = audioStream.getAudioTracks()[0] ?? null;

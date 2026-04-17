@@ -11,7 +11,10 @@
  * Ref: Clean Architecture — Dependency Inversion Principle.
  */
 
+import { logger } from '@/lib/logger';
 import type { IChatRepository, NombreUsuario } from '../../domain/ports/IChatRepository';
+
+const log = logger.child('ProcesarNotificacionChat');
 
 // ─── Input / Output DTOs ─────────────────────────────────────────────────────
 
@@ -60,16 +63,45 @@ export class ProcesarNotificacionChatUseCase {
       this.chatRepository.obtenerInfoGrupo(datos.grupoId),
     ]);
 
-    if (!senderData || !grupoInfo) return null;
+    // Degraded-path: don't swallow the notification just because a lookup
+    // failed (common RLS edge case for DMs where the receiver hasn't opened
+    // the chat yet and their miembros_grupo entry is fresh). Use whatever
+    // data we have and log so we can diagnose if it's systemic.
+    if (!senderData && !grupoInfo) {
+      log.warn('Both lookups failed for chat notification', {
+        grupoId: datos.grupoId,
+        usuarioId: datos.usuarioId,
+      });
+      return null;
+    }
+    if (!senderData) {
+      log.warn('Sender lookup failed, using fallback name', {
+        grupoId: datos.grupoId,
+        usuarioId: datos.usuarioId,
+      });
+    }
+    if (!grupoInfo) {
+      log.warn('Group lookup failed, falling back to DM assumption', {
+        grupoId: datos.grupoId,
+        usuarioId: datos.usuarioId,
+      });
+    }
 
-    const isDirect = grupoInfo.tipo === 'directo';
+    // DM heuristic: if we couldn't load the group but the group's `nombre`
+    // format is "uid1|uid2" (set by GestionarChatDirectoUseCase), infer
+    // direct. Conservative default when unknown: treat as DM so the user
+    // is still alerted (DMs are personal → always notify).
+    const isDirect = grupoInfo
+      ? grupoInfo.tipo === 'directo'
+      : true;
     const menciones = datos.menciones ?? [];
     const isMentioned = menciones.includes(currentUserId);
-    const senderName = formatSenderName(senderData);
+    const senderName = senderData ? formatSenderName(senderData) : 'Alguien';
+    const channelName = grupoInfo?.nombre ?? 'Chat';
 
     return {
       senderName,
-      channelName: grupoInfo.nombre,
+      channelName,
       isDirect,
       isMentioned,
       contenido: datos.contenido,

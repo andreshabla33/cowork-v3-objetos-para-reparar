@@ -147,21 +147,37 @@ export function useChatNotifications({
             );
 
             if (resultado) {
-              log.debug('Toast notification triggered', {
+              // Proximity gate for group messages: if the sender is out of
+              // audio range AND this isn't a DM or @mention, suppress both
+              // sound and toast — the metaphor of the virtual space is that
+              // you only "hear" people near you. DMs and mentions always
+              // notify because they are explicitly addressed to the user.
+              // Read from store.getState() to avoid stale closure over
+              // usersInAudioRangeIds (subscription effect runs once).
+              const inRange = useStore
+                .getState()
+                .usersInAudioRangeIds.has(nuevoMensaje.usuario_id);
+              const shouldAlert = resultado.isDirect || resultado.isMentioned || inRange;
+              log.debug('Notification decision', {
                 sender: resultado.senderName,
                 isMentioned: resultado.isMentioned,
+                isDirect: resultado.isDirect,
+                inRange,
+                shouldAlert,
               });
 
-              playNotificationSound();
-              addToastNotification(
-                resultado.senderName,
-                resultado.isMentioned
-                  ? `📢 Te mencionó: ${resultado.contenido}`
-                  : resultado.contenido,
-                grupoId,
-                resultado.isDirect ? undefined : resultado.channelName,
-                resultado.isDirect,
-              );
+              if (shouldAlert) {
+                playNotificationSound();
+                addToastNotification(
+                  resultado.senderName,
+                  resultado.isMentioned
+                    ? `📢 Te mencionó: ${resultado.contenido}`
+                    : resultado.contenido,
+                  grupoId,
+                  resultado.isDirect ? undefined : resultado.channelName,
+                  resultado.isDirect,
+                );
+              }
             }
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);

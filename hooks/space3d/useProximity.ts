@@ -224,6 +224,13 @@ export function useProximity(params: {
 
   const usersInAudioRangeIds = useMemo(() => new Set(usersInAudioRange.map(u => u.id)), [usersInAudioRange]);
 
+  // Mirror to Zustand so consumers outside the 3D hook tree (chat notifications,
+  // hand-raise sounds) can spatially gate without needing props threaded down.
+  const setUsersInAudioRangeIdsInStore = useStore((s) => s.setUsersInAudioRangeIds);
+  useEffect(() => {
+    setUsersInAudioRangeIdsInStore(usersInAudioRangeIds);
+  }, [usersInAudioRangeIds, setUsersInAudioRangeIdsInStore]);
+
   // ========== Distancias ==========
   const userDistances = useMemo(() => {
     const distances = new Map<string, number>();

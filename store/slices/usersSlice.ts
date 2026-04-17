@@ -23,11 +23,19 @@ export interface UsersSlice {
    * heartbeat to fire.
    */
   participantJoinVersion: number;
+  /**
+   * IDs of users currently inside the local user's audio-proximity range.
+   * Mirrors useProximity.usersInAudioRangeIds so non-3D consumers (like chat
+   * notifications) can gate sound/toast by spatial proximity without needing
+   * the full Space3D hook tree.
+   */
+  usersInAudioRangeIds: Set<string>;
   tasks: Task[];
 
   setOnlineUsers: (users: User[]) => void;
   setRemoteParticipantIds: (ids: Set<string>) => void;
   bumpParticipantJoinVersion: () => void;
+  setUsersInAudioRangeIds: (ids: Set<string>) => void;
   addTask: (task: Task) => void;
   updateTaskStatus: (id: string, status: TaskStatus) => void;
 }
@@ -37,12 +45,14 @@ export const createUsersSlice: StateCreator<UsersSlice, [], [], UsersSlice> = (s
   onlineUsers: [],
   remoteParticipantIds: new Set<string>(),
   participantJoinVersion: 0,
+  usersInAudioRangeIds: new Set<string>(),
   tasks: [],
 
   setOnlineUsers: (users) => set({ onlineUsers: users }),
   setRemoteParticipantIds: (ids) => set({ remoteParticipantIds: ids }),
   bumpParticipantJoinVersion: () =>
     set((state) => ({ participantJoinVersion: state.participantJoinVersion + 1 })),
+  setUsersInAudioRangeIds: (ids) => set({ usersInAudioRangeIds: ids }),
   addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
   updateTaskStatus: (id, status) =>
     set((state) => ({
