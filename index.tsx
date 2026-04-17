@@ -1,11 +1,3 @@
-// ─── BUNDLE TEST ───────────────────────────────────────────────────────────
-if (typeof window !== 'undefined') {
-  (window as any).__BUNDLE_TIMESTAMP = new Date().toISOString();
-  (window as any).__BUNDLE_ENTRY_LOADED = true;
-  console.error('🔥 INDEX.TSX LOADED - Bundle is fresh:', (window as any).__BUNDLE_TIMESTAMP);
-  alert('✅ FRESH BUNDLE LOADED at ' + (window as any).__BUNDLE_TIMESTAMP);
-}
-
 // ─── SENTRY: MUST BE THE FIRST IMPORT ──────────────────────────────────────
 // Docs oficiales: "Import your Sentry configuration as the first import
 // in your application entry point, then render your app."
@@ -37,30 +29,21 @@ registerSentryForwarder((err, ctx) => {
 });
 
 // ─── PAGE EXIT: Untrack presence immediately on page close ────────────────
-// Registered at the TOP LEVEL (not in React) so it ALWAYS fires,
-// even if React unmount races with browser close.
+// Registered at the TOP LEVEL (not in React) so it ALWAYS fires, even if
+// React unmount races with browser close. WorkspaceLayout wires its
+// untrackAll() via window.__setUntrackFn when it mounts.
 if (typeof window !== 'undefined') {
   let untrackFn: (() => void) | null = null;
-
-  // Will be set by WorkspaceLayout when it mounts
   (window as any).__setUntrackFn = (fn: () => void) => {
     untrackFn = fn;
   };
 
   const handlePageExit = () => {
-    if (untrackFn) {
-      try {
-        untrackFn();
-        console.warn('✅ PAGE EXIT: untrackAll() called');
-      } catch (e) {
-        console.error('❌ PAGE EXIT: error in untrackAll()', e);
-      }
-    }
+    try { untrackFn?.(); } catch { /* noop */ }
   };
 
   window.addEventListener('pagehide', handlePageExit);
   window.addEventListener('beforeunload', handlePageExit);
-  console.log('🔒 PAGE EXIT handlers registered at top level');
 }
 
 const rootElement = document.getElementById('root');

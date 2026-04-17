@@ -54,12 +54,6 @@ const FallbackPanel = () => (
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const WorkspaceLayout: React.FC = () => {
-  // IMMEDIATE TEST: if this alert appears, bundle is updated and component renders
-  if (typeof window !== 'undefined' && !(window as any).__WORKSPACE_INIT_DONE) {
-    (window as any).__WORKSPACE_INIT_DONE = true;
-    alert('✅ WorkspaceLayout is rendering - NEW BUNDLE LOADED');
-  }
-
   // ── Store ──────────────────────────────────────────────────────────────
   const {
     activeWorkspace, activeSubTab, setActiveSubTab, setActiveWorkspace,
@@ -138,7 +132,6 @@ export const WorkspaceLayout: React.FC = () => {
   useEffect(() => {
     if ((window as any).__setUntrackFn) {
       (window as any).__setUntrackFn(untrackAll);
-      console.log('✅ untrackAll() registered globally for page exit');
     }
   }, [untrackAll]);
 
