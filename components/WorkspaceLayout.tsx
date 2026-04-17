@@ -102,11 +102,29 @@ export const WorkspaceLayout: React.FC = () => {
     forceRetrackAll,
     cleanup,
     checkChannelHealth,
-    untrackAll,
   });
 
   const { logout, isLoggingOut } = useLogoutUser();
   useIdleDetection();
+
+  // ── Page exit: untrack presence BEFORE React unmounts ────────────────
+  // Registered at WorkspaceLayout level (never unmounts during session)
+  // so pagehide/beforeunload fires and executes untrackAll().
+  // If registered in usePresenceLifecycle, React unmount races with
+  // browser close, and the handler gets removed before it fires.
+  useEffect(() => {
+    const handlePageExit = (event: Event) => {
+      console.warn('🚪 PAGE EXIT [WorkspaceLayout]:', event.type);
+      untrackAll();
+    };
+    console.log('🔧 Page exit handlers registered at WorkspaceLayout level');
+    window.addEventListener('pagehide', handlePageExit);
+    window.addEventListener('beforeunload', handlePageExit);
+    return () => {
+      window.removeEventListener('pagehide', handlePageExit);
+      window.removeEventListener('beforeunload', handlePageExit);
+    };
+  }, [untrackAll]);
 
   // ── Side effects (non-presence) ────────────────────────────────────────
   useEffect(() => {
