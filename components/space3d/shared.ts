@@ -84,6 +84,17 @@ export const themeColors: Record<string, string> = {
   arcade: '#001100',
 };
 
+// ========== Sky Colors (arte-dirección fina por tema) ==========
+// Override explícito bottom/top para el skydome. Si un tema NO aparece aquí,
+// Scene3D deriva el topColor proceduralmente desde themeColors[theme] aplicando
+// los offsets HSL definidos en DEFAULT_SCENE_POLICY.sky.derivation.
+//
+// Valores iniciales vacíos: preservamos el comportamiento previo al refactor
+// (todos los temas caían en la derivación). Añade aquí pares cuando quieras
+// un cielo arte-dirigido (p.ej. sunset con rojo→naranja saturado).
+import type { SkyColorPair } from '@/src/core/domain/entities/espacio3d/ScenePolicy';
+export const themeSkyColors: Record<string, SkyColorPair> = {};
+
 // ========== AudioContext compartido ==========
 let _sharedAudioCtx: AudioContext | null = null;
 let _audioResumed = false;

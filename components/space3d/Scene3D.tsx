@@ -25,6 +25,8 @@ import type { ObjetoPreview3D } from '@/types/objetos3d';
 import { DayNightCycle } from '../3d/DayNightCycle';
 import { ObjetosInteractivos } from '../3d/ObjetosInteractivos';
 import { ParticulasClima } from '../3d/ParticulasClima';
+import { SkyDome } from '../3d/SkyDome';
+import { DEFAULT_SCENE_POLICY, resolveSkyColors, type ScenePolicy } from '@/src/core/domain/entities/espacio3d/ScenePolicy';
 import { EmoteSync, useSyncEffects } from '../3d/EmoteSync';
 import { hapticFeedback, isMobileDevice } from '@/lib/mobileDetect';
 import { useStore } from '@/store/useStore';
@@ -42,7 +44,7 @@ import { obtenerEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espaci
 import { type JoystickInput } from '../3d/MobileJoystick';
 import { getSettingsSection } from '@/lib/userSettings';
 import {
-  AvatarLodLevel, DireccionAvatar, themeColors,
+  AvatarLodLevel, DireccionAvatar, themeColors, themeSkyColors,
   MOVE_SPEED, RUN_SPEED, WORLD_SIZE, TELEPORT_DISTANCE,
   CHAIR_SIT_RADIUS, CHAIR_POSITIONS_3D, LOD_NEAR_DISTANCE, LOD_MID_DISTANCE,
   IconPrivacy, IconExpand,
@@ -150,6 +152,12 @@ export interface SceneProps {
    * @see VirtualSpace3D — gates loading screen visibility on this callback
    */
   onSceneReady?: () => void;
+  /**
+   * Override de la política de escena (fog near/far, skydome radius/segments,
+   * derivación HSL del topColor). Si no se pasa, se usa DEFAULT_SCENE_POLICY,
+   * que preserva el comportamiento histórico (60/220, 500/16/8, +0.08/+0.14 HSL).
+   */
+  scenePolicy?: ScenePolicy;
 }
 
 const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) * paso;
@@ -369,8 +377,21 @@ export const Scene: React.FC<SceneProps> = ({
   ultimoObjetoColocadoId,
   onDrawZoneEnd,
   onSceneReady,
+  scenePolicy = DEFAULT_SCENE_POLICY,
 }) => {
   const gridColor = theme === 'arcade' ? '#00ff41' : '#6366f1';
+
+  // Dominio: resuelve colores del skydome (override explícito o derivación HSL).
+  // Memoizado por tema para evitar recalcular la conversión HSL en cada render.
+  const skyColors = useMemo(
+    () => resolveSkyColors(
+      theme,
+      themeColors,
+      themeSkyColors,
+      scenePolicy.sky.derivation,
+    ),
+    [theme, scenePolicy.sky.derivation],
+  );
   const { camera, gl } = useThree();
 
   // Fase 3: GPU rendering optimization services (BatchedMesh, TextureAtlas, GPUSkinning)
@@ -841,46 +862,25 @@ export const Scene: React.FC<SceneProps> = ({
 
   return (
     <>
-      {/* Niebla atmosférica ligada al tema — difumina avatares/objetos lejanos
-          suavemente antes de salir del culling. LINEAR fog: near empareja con
-          LOD_MID_DISTANCE para que la transición coincida con el cambio de LOD;
-          far queda por debajo de WORLD_SIZE*2 para que se desvanezca antes del
-          horizonte del skydome. Sin useFrame — R3F invalida solo cuando el
-          prop `color` cambia, así no rompe frameloop="demand". */}
-      <fog attach="fog" args={[themeColors[theme] || '#000000', 60, 220]} />
+      {/* Niebla atmosférica ligada al tema. ScenePolicy.fog.near/far evita que
+          near/far se filtren al JSX (antes 60/220 hardcoded); `skyColors.bottom`
+          mantiene la paridad de color con la base del skydome para que la
+          transición atmósfera↔horizonte sea continua. Sin useFrame — R3F
+          invalida solo cuando los args cambian (compatible con frameloop="demand").
+          Ref: https://threejs.org/docs/#api/en/scenes/Fog */}
+      <fog attach="fog" args={[skyColors.bottom, scenePolicy.fog.near, scenePolicy.fog.far]} />
 
-      {/* Skydome gradiente low-poly (16×8 segs). Esfera interior con BackSide
-          y shader simplísimo de 2 colores verticales. Se renderiza una sola
-          vez — sin useFrame ni animación. Reemplaza el "muro" de color sólido
-          por una transición hacia el horizonte coherente con la niebla. */}
-      <mesh renderOrder={-10} frustumCulled={false}>
-        <sphereGeometry args={[500, 16, 8]} />
-        <shaderMaterial
-          side={THREE.BackSide}
-          depthWrite={false}
-          uniforms={{
-            bottomColor: { value: new THREE.Color(themeColors[theme] || '#000000') },
-            topColor: { value: new THREE.Color(themeColors[theme] || '#000000').offsetHSL(0, 0.08, 0.14) },
-          }}
-          vertexShader={/* glsl */`
-            varying vec3 vWorldPos;
-            void main() {
-              vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
-              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-          `}
-          fragmentShader={/* glsl */`
-            uniform vec3 bottomColor;
-            uniform vec3 topColor;
-            varying vec3 vWorldPos;
-            void main() {
-              float h = normalize(vWorldPos).y;
-              float t = pow(max(h, 0.0), 0.6);
-              gl_FragColor = vec4(mix(bottomColor, topColor, t), 1.0);
-            }
-          `}
-        />
-      </mesh>
+      {/* Skydome encapsulado en <SkyDome /> (ver components/3d/SkyDome.tsx).
+          Los colores provienen del dominio (resolveSkyColors) y respetan
+          themeSkyColors si hay override; si no, derivan proceduralmente
+          aplicando ScenePolicy.sky.derivation. */}
+      <SkyDome
+        bottomColor={skyColors.bottom}
+        topColor={skyColors.top}
+        radius={scenePolicy.sky.radius}
+        widthSegments={scenePolicy.sky.widthSegments}
+        heightSegments={scenePolicy.sky.heightSegments}
+      />
 
       {/* Iluminación: DayNightCycle dinámico o luces estáticas */}
       {enableDayNightCycle ? (

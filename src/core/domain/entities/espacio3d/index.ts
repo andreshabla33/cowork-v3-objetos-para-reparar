@@ -80,3 +80,17 @@ export {
 // ─── Avatar Labels ───────────────────────────────────────────────────────────
 export type { AvatarLabelEntity, LabelPresenceStatus } from './AvatarLabelEntity';
 export { LABEL_CONFIG } from './AvatarLabelEntity';
+
+// ─── Scene Policy (fog + skydome) ────────────────────────────────────────────
+export type {
+  SkyColorPair,
+  SkyColorDerivation,
+  FogPolicy,
+  SkyPolicy,
+  ScenePolicy,
+} from './ScenePolicy';
+
+export {
+  DEFAULT_SCENE_POLICY,
+  resolveSkyColors,
+} from './ScenePolicy';
