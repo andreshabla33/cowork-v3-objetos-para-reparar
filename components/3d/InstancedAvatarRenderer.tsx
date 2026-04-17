@@ -223,23 +223,20 @@ export const InstancedAvatarRenderer: React.FC<InstancedAvatarRendererProps> = (
   }, [bakedSet, animAttributes]);
 
   // ── Dispose GPU resources when the renderer unmounts ──────────────────
-  // InstancedMesh, geometry, material and textures hold GPU buffers that
-  // JavaScript GC cannot free. Without explicit dispose(), remounting the
-  // 3D scene (modal open/close, navigation) leaks ~15–20 MB per avatar model.
-  // Ref: https://threejs.org/docs/#api/en/objects/InstancedMesh
+  // Only the InstancedMesh and the per-renderer ShaderMaterial are disposed —
+  // the geometry and its textures come from `bakedSet`, which getOrBakeAnimations
+  // caches globally by modelUrl (and useGLTF also caches the underlying scene).
+  // Disposing them here breaks every other renderer that still uses the same
+  // cached model and produces magenta (shader fallback when a texture is
+  // disposed mid-draw). Ref: https://threejs.org/docs/#api/en/objects/InstancedMesh
+  // and drei useGLTF cache semantics.
   React.useEffect(() => {
     return () => {
       const mesh = instancedMeshRef.current;
       if (mesh) mesh.dispose();
-      if (geometry) geometry.dispose();
-      if (material) {
-        for (const value of Object.values(material)) {
-          if ((value as THREE.Texture | null)?.isTexture) (value as THREE.Texture).dispose();
-        }
-        material.dispose();
-      }
+      if (material) material.dispose();
     };
-  }, [geometry, material]);
+  }, [material]);
 
   // ── Click handler con raycasting por instanceId ──
   const handleClick = useMemo(() => {
