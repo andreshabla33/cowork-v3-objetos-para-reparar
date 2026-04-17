@@ -13,6 +13,7 @@ import type { Session } from '@supabase/supabase-js';
 import type { User, Workspace } from '@/types';
 import { logger } from '@/lib/logger';
 import { avatarStore } from '@/lib/ecs/AvatarECS';
+import { useStore } from '@/store/useStore';
 import { crearSalaLivekitPorEspacio, obtenerTokenLivekitEspacio } from '@/lib/livekitService';
 import { supabase } from '@/lib/supabase';
 import { getTurnIceServers } from '@/lib/network/turnCredentialsService';
@@ -99,6 +100,13 @@ export function useLiveKit(params: {
     screen_share: new Map<string, string>(),
   });
   const remoteVideoTrackListenerCleanupRef = useRef<Map<string, () => void>>(new Map());
+
+  // Mirror participant set to Zustand store so WorkspaceLayout can gate
+  // onlineUsers (Supabase Presence ghosts) by LiveKit's race-free identity set.
+  const setRemoteParticipantIdsInStore = useStore((s) => s.setRemoteParticipantIds);
+  useEffect(() => {
+    setRemoteParticipantIdsInStore(remoteParticipantIds);
+  }, [remoteParticipantIds, setRemoteParticipantIdsInStore]);
   const speakingUsersRef = useRef<Set<string>>(new Set());
   speakingUsersRef.current = speakingUsers;
 

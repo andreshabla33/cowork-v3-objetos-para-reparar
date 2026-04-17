@@ -15,6 +15,7 @@
  */
 
 import React, { lazy, Suspense, useEffect, useState, useCallback } from 'react';
+import type { User } from '../types';
 import { useStore } from '../store/useStore';
 import { getThemeStyles } from '@/lib/theme';
 import { MiniModeOverlay } from './MiniModeOverlay';
@@ -67,6 +68,23 @@ export const WorkspaceLayout: React.FC = () => {
     userRoleInActiveWorkspace, setMiniMode, isMiniMode,
     setEmpresaId, setDepartamentoId, setEmpresasAutorizadas,
   } = useStore();
+  // LiveKit-authoritative participant set — race-free gate to filter ghosts
+  // out of `onlineUsers`. Supabase Presence CRDT takes ~30s to propagate
+  // abrupt disconnects; LiveKit mutates remoteParticipants synchronously
+  // before emitting ParticipantDisconnected (livekit/client-sdk-js Room.ts).
+  const remoteParticipantIds = useStore((s) => s.remoteParticipantIds);
+
+  // Raw presence output — filtered below before being pushed to the store.
+  const [onlineUsersRaw, setOnlineUsersRaw] = useState<User[]>([]);
+
+  useEffect(() => {
+    // Warm-up: if LiveKit is not connected yet, don't gate — a bootstrap user
+    // still needs to see their roster populate from Presence alone.
+    const filtered = remoteParticipantIds.size === 0
+      ? onlineUsersRaw
+      : onlineUsersRaw.filter((u) => u.id === currentUser.id || remoteParticipantIds.has(u.id));
+    setOnlineUsers(filtered);
+  }, [onlineUsersRaw, remoteParticipantIds, currentUser.id, setOnlineUsers]);
 
   // ── Local UI state ─────────────────────────────────────────────────────
   const [showViben, setShowViben] = useState(false);
@@ -96,7 +114,7 @@ export const WorkspaceLayout: React.FC = () => {
       userId: session?.user?.id,
       currentUser,
       sessionAccessToken: session?.access_token,
-      onOnlineUsersChange: setOnlineUsers,
+      onOnlineUsersChange: setOnlineUsersRaw,
     });
 
   usePresenceLifecycle({
