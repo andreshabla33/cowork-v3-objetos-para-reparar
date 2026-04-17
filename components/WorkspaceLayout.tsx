@@ -113,42 +113,16 @@ export const WorkspaceLayout: React.FC = () => {
   const { logout, isLoggingOut } = useLogoutUser();
   useIdleDetection();
 
-  // ── Page exit: untrack presence BEFORE React unmounts ────────────────
-  // Registered at WorkspaceLayout level (never unmounts during session)
-  // so pagehide/beforeunload fires and executes untrackAll().
-  // If registered in usePresenceLifecycle, React unmount races with
-  // browser close, and the handler gets removed before it fires.
+  // ── Register untrackAll globally so top-level page exit handler can call it ──
+  // This avoids React unmount races: untrackAll is set ONCE on mount,
+  // and persists even as React tears down. The page exit listener in index.tsx
+  // will call it unconditionally.
   useEffect(() => {
-    if (!session?.user?.id) {
-      console.log('🔧 Skipping page exit handlers - no session yet');
-      return;
+    if ((window as any).__setUntrackFn) {
+      (window as any).__setUntrackFn(untrackAll);
+      console.log('✅ untrackAll() registered globally for page exit');
     }
-
-    const handlePageExit = (event: Event) => {
-      // IMMEDIATE TEST
-      alert(`🚪 PAGE EXIT FIRED: ${event.type}`);
-      console.warn('🚪 PAGE EXIT EVENT FIRED:', event.type, 'userId:', session?.user?.id);
-      try {
-        untrackAll();
-        alert('📡 untrackAll() executed');
-        console.log('📡 untrackAll() executed successfully');
-      } catch (e) {
-        console.error('❌ Error in untrackAll():', e);
-      }
-    };
-
-    console.error('🔧 REGISTERING page exit handlers - userId:', session?.user?.id);
-    (window as any).__PAGE_EXIT_REGISTERED = true;
-    window.addEventListener('pagehide', handlePageExit);
-    window.addEventListener('beforeunload', handlePageExit);
-
-    return () => {
-      console.error('🔧 REMOVING page exit handlers');
-      (window as any).__PAGE_EXIT_REGISTERED = false;
-      window.removeEventListener('pagehide', handlePageExit);
-      window.removeEventListener('beforeunload', handlePageExit);
-    };
-  }, [untrackAll, session?.user?.id]);
+  }, [untrackAll]);
 
   // ── Side effects (non-presence) ────────────────────────────────────────
   useEffect(() => {

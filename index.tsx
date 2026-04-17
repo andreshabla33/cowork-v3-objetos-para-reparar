@@ -36,6 +36,33 @@ registerSentryForwarder((err, ctx) => {
   void captureError(err, ctx);
 });
 
+// ─── PAGE EXIT: Untrack presence immediately on page close ────────────────
+// Registered at the TOP LEVEL (not in React) so it ALWAYS fires,
+// even if React unmount races with browser close.
+if (typeof window !== 'undefined') {
+  let untrackFn: (() => void) | null = null;
+
+  // Will be set by WorkspaceLayout when it mounts
+  (window as any).__setUntrackFn = (fn: () => void) => {
+    untrackFn = fn;
+  };
+
+  const handlePageExit = () => {
+    if (untrackFn) {
+      try {
+        untrackFn();
+        console.warn('✅ PAGE EXIT: untrackAll() called');
+      } catch (e) {
+        console.error('❌ PAGE EXIT: error in untrackAll()', e);
+      }
+    }
+  };
+
+  window.addEventListener('pagehide', handlePageExit);
+  window.addEventListener('beforeunload', handlePageExit);
+  console.log('🔒 PAGE EXIT handlers registered at top level');
+}
+
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   throw new Error("Could not find root element to mount to");
