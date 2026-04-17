@@ -26,6 +26,9 @@
 
 import { useEffect, useRef } from 'react';
 import type { User } from '@/types';
+import { logger } from '@/lib/logger';
+
+const log = logger.child('presence-lifecycle');
 
 /**
  * Interval (ms) for the periodic channel health check.
@@ -146,9 +149,11 @@ export function usePresenceLifecycle({
   //      for "tab is going away," not `beforeunload`.
   useEffect(() => {
     if (!activeWorkspaceId || !userId) return;
-    const handlePageExit = () => {
+    const handlePageExit = (event: Event) => {
+      log.info('Page exit event triggered', { eventType: event.type });
       untrackAll();
     };
+    log.info('Registering page exit handlers', { activeWorkspaceId, userId });
     window.addEventListener('pagehide', handlePageExit);
     window.addEventListener('beforeunload', handlePageExit);
     return () => {

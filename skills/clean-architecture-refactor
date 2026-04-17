@@ -1,0 +1,1 @@
+Analiza el archivo o módulo seleccionado. Si detectas lógica de infraestructura mezclada con lógica de negocio, propón un refactor. Divide en: Domain (Entities/Interfaces), Application (Use Cases) e Infrastructure (Adapters). Asegúrate de que no queden referencias rotas y elimina cualquier código marcado como obsoleto o redundante durante el proceso.

@@ -350,6 +350,19 @@ export function usePresenceChannels({
 
     const nextIds = new Set(usuariosMap.keys());
     const now = Date.now();
+
+    // Detect disconnections
+    const disconnectedUsers: string[] = [];
+    prevOnlineUsersRef.current.forEach((userIdPrev) => {
+      if (!nextIds.has(userIdPrev)) {
+        disconnectedUsers.push(userIdPrev);
+        log.info('User disconnected (removed from presence)', { userId: userIdPrev });
+      }
+    });
+    if (disconnectedUsers.length > 0) {
+      log.warn('recalcularUsuariosInner: Users disconnected', { count: disconnectedUsers.length, userIds: disconnectedUsers });
+    }
+
     nextIds.forEach((userIdOnline: string) => {
       if (!prevOnlineUsersRef.current.has(userIdOnline)) {
         const lastTime = lastNotificationRef.current.get(userIdOnline) ?? 0;
@@ -517,12 +530,15 @@ export function usePresenceChannels({
 
       channel
         .on('presence', { event: 'sync' }, () => {
+          log.debug('Global channel presence:sync event', { channelName: globalChannelName });
           recalcularUsuarios();
         })
-        .on('presence', { event: 'join' }, () => {
+        .on('presence', { event: 'join' }, (payload) => {
+          log.debug('Global channel presence:join event', { channelName: globalChannelName, keys: Object.keys(payload.newPresences || {}) });
           recalcularUsuarios();
         })
-        .on('presence', { event: 'leave' }, () => {
+        .on('presence', { event: 'leave' }, (payload) => {
+          log.info('Global channel presence:leave event', { channelName: globalChannelName, keys: Object.keys(payload.leftPresences || {}) });
           recalcularUsuarios();
         })
         .subscribe(async (status: string) => {
@@ -593,12 +609,15 @@ export function usePresenceChannels({
 
         channel
           .on('presence', { event: 'sync' }, () => {
+            log.debug('Chunk channel presence:sync event', { channelName: canalNombre });
             recalcularUsuarios();
           })
-          .on('presence', { event: 'join' }, () => {
+          .on('presence', { event: 'join' }, (payload) => {
+            log.debug('Chunk channel presence:join event', { channelName: canalNombre, keys: Object.keys(payload.newPresences || {}) });
             recalcularUsuarios();
           })
-          .on('presence', { event: 'leave' }, () => {
+          .on('presence', { event: 'leave' }, (payload) => {
+            log.info('Chunk channel presence:leave event', { channelName: canalNombre, keys: Object.keys(payload.leftPresences || {}) });
             recalcularUsuarios();
           })
           .subscribe(async (status: string) => {
@@ -819,18 +838,22 @@ export function usePresenceChannels({
    * discover each other through it, so we must untrack there too.
    */
   const untrackAll = useCallback((): void => {
+    const channelCount = presenceChannelsRef.current.size;
+    log.info('untrackAll() called on page exit', { channelCount, hasGlobalChannel: !!globalChannelRef.current });
     presenceChannelsRef.current.forEach((channel) => {
       try {
+        log.debug('Untracking from channel', { channelState: (channel as any).state });
         void channel.untrack();
-      } catch {
-        // Fire-and-forget — channel may already be closed, nothing to do.
+      } catch (e) {
+        log.warn('Error untracking from channel', { error: e instanceof Error ? e.message : String(e) });
       }
     });
     if (globalChannelRef.current) {
       try {
+        log.debug('Untracking from global channel', { channelState: (globalChannelRef.current as any).state });
         void globalChannelRef.current.untrack();
-      } catch {
-        // Same — WebSocket may be gone already.
+      } catch (e) {
+        log.warn('Error untracking from global channel', { error: e instanceof Error ? e.message : String(e) });
       }
     }
   }, []);
