@@ -530,15 +530,20 @@ export function usePresenceChannels({
 
       channel
         .on('presence', { event: 'sync' }, () => {
+          console.log('🔄 GLOBAL SYNC event');
           log.debug('Global channel presence:sync event', { channelName: globalChannelName });
           recalcularUsuarios();
         })
         .on('presence', { event: 'join' }, (payload) => {
-          log.debug('Global channel presence:join event', { channelName: globalChannelName, keys: Object.keys(payload.newPresences || {}) });
+          const keys = Object.keys(payload.newPresences || {});
+          console.log('👤 GLOBAL JOIN event:', keys);
+          log.debug('Global channel presence:join event', { channelName: globalChannelName, keys });
           recalcularUsuarios();
         })
         .on('presence', { event: 'leave' }, (payload) => {
-          log.info('Global channel presence:leave event', { channelName: globalChannelName, keys: Object.keys(payload.leftPresences || {}) });
+          const keys = Object.keys(payload.leftPresences || {});
+          console.warn('❌ GLOBAL LEAVE event:', keys);
+          log.info('Global channel presence:leave event', { channelName: globalChannelName, keys });
           recalcularUsuarios();
         })
         .subscribe(async (status: string) => {
@@ -609,15 +614,20 @@ export function usePresenceChannels({
 
         channel
           .on('presence', { event: 'sync' }, () => {
+            console.log(`🔄 CHUNK SYNC [${canalNombre.split(':').slice(-2).join(':')}]`);
             log.debug('Chunk channel presence:sync event', { channelName: canalNombre });
             recalcularUsuarios();
           })
           .on('presence', { event: 'join' }, (payload) => {
-            log.debug('Chunk channel presence:join event', { channelName: canalNombre, keys: Object.keys(payload.newPresences || {}) });
+            const keys = Object.keys(payload.newPresences || {});
+            console.log(`👤 CHUNK JOIN [${canalNombre.split(':').slice(-2).join(':')}]:`, keys);
+            log.debug('Chunk channel presence:join event', { channelName: canalNombre, keys });
             recalcularUsuarios();
           })
           .on('presence', { event: 'leave' }, (payload) => {
-            log.info('Chunk channel presence:leave event', { channelName: canalNombre, keys: Object.keys(payload.leftPresences || {}) });
+            const keys = Object.keys(payload.leftPresences || {});
+            console.warn(`❌ CHUNK LEAVE [${canalNombre.split(':').slice(-2).join(':')}]:`, keys);
+            log.info('Chunk channel presence:leave event', { channelName: canalNombre, keys });
             recalcularUsuarios();
           })
           .subscribe(async (status: string) => {
@@ -839,23 +849,36 @@ export function usePresenceChannels({
    */
   const untrackAll = useCallback((): void => {
     const channelCount = presenceChannelsRef.current.size;
+    console.warn(`📡 UNTRACK ALL: ${channelCount} channels + global=${!!globalChannelRef.current}`);
     log.info('untrackAll() called on page exit', { channelCount, hasGlobalChannel: !!globalChannelRef.current });
+
+    let untracked = 0;
     presenceChannelsRef.current.forEach((channel) => {
       try {
-        log.debug('Untracking from channel', { channelState: (channel as any).state });
+        const state = (channel as any).state;
+        console.log(`  → Untracking from ${state} channel`);
+        log.debug('Untracking from channel', { channelState: state });
         void channel.untrack();
+        untracked++;
       } catch (e) {
+        console.error('  ✗ Error:', e instanceof Error ? e.message : String(e));
         log.warn('Error untracking from channel', { error: e instanceof Error ? e.message : String(e) });
       }
     });
+
     if (globalChannelRef.current) {
       try {
-        log.debug('Untracking from global channel', { channelState: (globalChannelRef.current as any).state });
+        const state = (globalChannelRef.current as any).state;
+        console.log(`  → Untracking from global ${state} channel`);
+        log.debug('Untracking from global channel', { channelState: state });
         void globalChannelRef.current.untrack();
+        untracked++;
       } catch (e) {
+        console.error('  ✗ Global error:', e instanceof Error ? e.message : String(e));
         log.warn('Error untracking from global channel', { error: e instanceof Error ? e.message : String(e) });
       }
     }
+    console.warn(`📡 UNTRACKED ${untracked} channels total`);
   }, []);
 
   /**

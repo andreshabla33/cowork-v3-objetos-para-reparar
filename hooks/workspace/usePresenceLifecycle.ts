@@ -150,10 +150,11 @@ export function usePresenceLifecycle({
   useEffect(() => {
     if (!activeWorkspaceId || !userId) return;
     const handlePageExit = (event: Event) => {
+      console.warn('🚪 PAGE EXIT HANDLER FIRED:', event.type, { userId, workspaceId: activeWorkspaceId });
       log.info('Page exit event triggered', { eventType: event.type });
       untrackAll();
     };
-    log.info('Registering page exit handlers', { activeWorkspaceId, userId });
+    console.log('🔧 Registering page exit handlers for userId:', userId, 'workspaceId:', activeWorkspaceId);
     window.addEventListener('pagehide', handlePageExit);
     window.addEventListener('beforeunload', handlePageExit);
     return () => {
