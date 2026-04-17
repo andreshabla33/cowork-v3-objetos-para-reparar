@@ -231,8 +231,16 @@ class AvatarStore implements IAvatarResourceDisposer {
           profilePhoto: user.profilePhoto || null,
         });
       } else {
-        // Usuario existente: actualizar metadata (no posición, eso viene de broadcast)
+        // Usuario existente: actualizar posición + metadata.
+        // Supabase presence es la fuente de verdad en este sync; siempre sincronizar
+        // posición incluso para usuarios existentes. Si el broadcast de posiciones aún
+        // no ha llegado, la posición de presencia es lo más reciente disponible.
+        // Ref: syncWithOnlineUsers es called on presence:sync después de cada cambio,
+        //      así que posición debe estar actualizada.
         this.upsert(user.id, {
+          targetX: user.x / scaleFactor,
+          targetZ: user.y / scaleFactor,
+          direction: user.direction || 'south',
           name: user.name,
           status: user.status,
           empresaId: user.empresa_id || null,
