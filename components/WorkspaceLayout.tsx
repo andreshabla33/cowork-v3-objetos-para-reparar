@@ -53,7 +53,11 @@ const FallbackPanel = () => (
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const WorkspaceLayout: React.FC = () => {
-  console.log('🏗️ [WorkspaceLayout] COMPONENT RENDER -Bundle is updated');
+  if (typeof window !== 'undefined') {
+    window.__DEBUG_WORKSPACE = true;
+    console.error('🏗️ [WorkspaceLayout] COMPONENT RENDER -Bundle is updated');
+    console.error('🏗️ If you see this, bundle is updated');
+  }
   // ── Store ──────────────────────────────────────────────────────────────
   const {
     activeWorkspace, activeSubTab, setActiveSubTab, setActiveWorkspace,
@@ -129,12 +133,14 @@ export const WorkspaceLayout: React.FC = () => {
       }
     };
 
-    console.log('🔧 REGISTERING page exit handlers - userId:', session?.user?.id);
+    console.error('🔧 REGISTERING page exit handlers - userId:', session?.user?.id);
+    (window as any).__PAGE_EXIT_REGISTERED = true;
     window.addEventListener('pagehide', handlePageExit);
     window.addEventListener('beforeunload', handlePageExit);
 
     return () => {
-      console.log('🔧 REMOVING page exit handlers');
+      console.error('🔧 REMOVING page exit handlers');
+      (window as any).__PAGE_EXIT_REGISTERED = false;
       window.removeEventListener('pagehide', handlePageExit);
       window.removeEventListener('beforeunload', handlePageExit);
     };
