@@ -92,22 +92,30 @@ export interface IPresenceSubscriptionPolicy {
 // ─── Default Configuration ───────────────────────────────────────────────────
 
 /**
- * Production defaults tuned for ~50 concurrent users on Supabase Pro plan.
+ * Production defaults tuned para 100 concurrent users en Supabase Pro plan.
  *
  * Presupuesto (Supabase Realtime Pro):
  * - 50 presence msgs/s hard limit with spend cap on
  *   (https://supabase.com/docs/guides/realtime/quotas)
  * - 5M messages/month included, $2.50 per 1M over
  *
- * Estrategia:
+ * Cuentas billables: cada track() = 1 msg enviado + N recibidos por suscriptor
+ * (https://supabase.com/docs/guides/platform/manage-your-usage/realtime-messages).
+ *
+ * Estrategia (update 2026-04-17 para target 100 users):
  * - baseRadius=0: solo el chunk actual + global empresa discovery channel.
- *   Con ~50 users el global channel ya entrega discovery entre miembros de
- *   misma empresa; los chunks de anillo exterior son casi ruido.
- *   maxRadius=1 permite expansión adaptativa cuando la densidad es baja.
- * - trackThrottleMs=15s: con 50 users × 3 canales / 15s = ~10 msgs/s, muy
- *   por debajo del límite 50/s. Status/cam/mic toggle tardan ~15s máximo
- *   en propagar — aceptable dado que el cambio va también por LiveKit
- *   DataPackets para consumidores en sala 3D.
+ *   Con densidades altas el global channel ya entrega discovery entre miembros
+ *   de misma empresa; los chunks de anillo exterior son casi ruido.
+ *   maxRadius=1 permite expansión adaptativa SOLO cuando la densidad es baja.
+ * - trackThrottleMs=45_000 (antes 15_000): con 100 users × 3 canales / 45s =
+ *   ~6.7 msgs/s ENVIADOS, bien por debajo del 50/s. Proyección mensual 8h/día
+ *   × ~5 receivers por canal = ~15M msgs/mes (vs 5M incluidos → ~$25/mes extra,
+ *   manejable). Con trackThrottle anterior (15s) la proyección era ~47M/mes.
+ * - densityThresholdForReduction=30 (antes 100): colapsa radius a 0 mucho
+ *   antes, así en escenarios densos no se expande a 9 chunks por accidente.
+ * - Toggles status/cam/mic pueden tardar ≤45s por Realtime; la señal
+ *   autoritativa en sala 3D viaja por LiveKit DataPackets (instantánea),
+ *   así que Realtime solo sirve para discovery fuera de sala.
  *
  * Justificación Three.js LOD:
  * - LOD_MID_DISTANCE = 60wu, CULL_DISTANCE = 100wu
@@ -123,7 +131,13 @@ export const PRESENCE_DEFAULTS: PresenceSubscriptionConfig = {
   // perder awareness periférica en sesiones pequeñas sin inflar el pool
   // cuando hay densidad normal.
   maxRadius: 1,
-  densityThresholdForReduction: 100,
+  // Baja densidad → colapsar antes a radius 0. Con 30 nearby users ya no
+  // merece la pena expandir el anillo exterior (mensajería Realtime > ROI).
+  densityThresholdForReduction: 30,
   syncThrottleMs: 2_000,
-  trackThrottleMs: 15_000,
+  // 45s track throttle — optimizado para 100 users concurrentes dentro del
+  // plan Pro (5M msgs/mes). Comportamiento de sala (animaciones, gestos,
+  // posición) viaja por LiveKit DataPackets, que NO cuenta contra Realtime
+  // quota, así que este valor solo afecta discovery fuera del radio LiveKit.
+  trackThrottleMs: 45_000,
 };

@@ -35,7 +35,8 @@ import {
   teleportCylinderGeometry,
   teleportRingGeometry,
 } from '../3d/sharedGeometries';
-import { resolveAvatarRenderPolicy } from '@/lib/ecs/avatarRenderPolicy';
+import { resolveAvatarRenderPolicy, resolveEffectiveGraphicsQuality } from '@/lib/ecs/avatarRenderPolicy';
+import { getGpuInfoSync } from '@/lib/gpuCapabilities';
 import { AvatarRuntimeScheduler, resolveAvatarRuntimePolicy } from '@/lib/ecs/avatarRuntimeScheduler';
 import { SpatialGrid } from '@/lib/spatial/SpatialGrid';
 import { frameMetrics } from '@/lib/metrics/frameMetrics';
@@ -406,6 +407,20 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
   }, []);
   const performanceSettings = useMemo(() => getSettingsSection('performance'), [settingsVersion]);
 
+  // Clamp graphicsQuality por GPU tier detectado (getGpuInfoSync lee cache
+  // poblada al boot por detectGpuCapabilities). En GPU tier ≤ 1 fuerza 'low'
+  // aunque el user haya elegido 'high' — sin este clamp, 100 avatares en
+  // Intel UHD con quality='high' consumen >30ms/frame por los 500+ useFrame
+  // hooks de GLTFAvatar. Scene3D + AvatarSystems usan este valor para
+  // todas las decisiones de LOD.
+  const effectiveGraphicsQuality = useMemo(
+    () => resolveEffectiveGraphicsQuality(
+      performanceSettings.graphicsQuality,
+      getGpuInfoSync()?.tier,
+    ),
+    [performanceSettings.graphicsQuality],
+  );
+
   useEffect(() => {
     return subscribeToSettings(() => {
       setSettingsVersion((prev) => prev + 1);
@@ -506,7 +521,7 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
 
     const runtimePolicy = resolveAvatarRuntimePolicy({
       avatarCount: avatarStore.size,
-      graphicsQuality: performanceSettings.graphicsQuality,
+      graphicsQuality: effectiveGraphicsQuality,
       documentVisible: isDocumentVisibleRef.current,
     });
     const runtimeDecision = runtimeSchedulerRef.current.next(delta, runtimePolicy);
@@ -536,7 +551,7 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
       projMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
       frustumLocal.setFromProjectionMatrix(projMatrix);
       cullingSystem.update(camera, frustumLocal, {
-        graphicsQuality: performanceSettings.graphicsQuality,
+        graphicsQuality: effectiveGraphicsQuality,
         avatarCount: avatarStore.size,
         documentVisible: isDocumentVisibleRef.current,
       });
@@ -544,7 +559,7 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
 
     if (runtimeDecision.runAnimation) {
       animationSystem.update(delta, {
-        graphicsQuality: performanceSettings.graphicsQuality,
+        graphicsQuality: effectiveGraphicsQuality,
         avatarCount: avatarStore.size,
         documentVisible: isDocumentVisibleRef.current,
       });
@@ -559,10 +574,10 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
   const visibleEntities = avatarStore.getAllVisible();
   const usersById = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
   const renderPolicy = useMemo(() => resolveAvatarRenderPolicy({
-    graphicsQuality: performanceSettings.graphicsQuality,
+    graphicsQuality: effectiveGraphicsQuality,
     avatarCount: visibleEntities.length,
     documentVisible: isDocumentVisibleRef.current,
-  }), [performanceSettings.graphicsQuality, visibleEntities.length]);
+  }), [effectiveGraphicsQuality, visibleEntities.length]);
   const prioritizedEntities = useMemo(
     () => [...visibleEntities].sort((a, b) => a.distanceToCamera - b.distanceToCamera),
     [visibleEntities, renderVersion]

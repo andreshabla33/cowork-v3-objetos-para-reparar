@@ -4,6 +4,38 @@ export interface AvatarRenderPolicyInput {
   documentVisible?: boolean;
 }
 
+/**
+ * Resuelve la calidad gráfica efectiva para el LOD policy clampando el ajuste
+ * del usuario por las capabilities del GPU detectado.
+ *
+ * Regla:
+ *   - gpuTier 0 (sin aceleración) → force 'low' siempre.
+ *   - gpuTier 1 (WebGL1 o GPU integrada débil) → máximo 'low'.
+ *   - gpuTier 2 (WebGL2 + GPU integrada potente) → máximo 'medium'.
+ *   - gpuTier 3 (WebGPU + dedicated) → respeta userQuality tal cual.
+ *
+ * Motivación: antes del fix, un user en Intel UHD con graphicsQuality='high'
+ * por defecto entraba al policy 'high' (lodNear=12, lodMid=30, shadow=12m),
+ * con 100 avatares = 30-40 renderizados high tier → 500+ useFrame hooks y
+ * freezes en frames >33ms. Este clamp garantiza que el hardware bajo corre
+ * como máximo 'low' sin importar el setting del usuario (que puede estar
+ * persistido de un dispositivo anterior).
+ *
+ * El usuario puede seguir subiendo el setting en su UI, pero el policy
+ * respetado por el runtime es el efectivo resultante del clamp.
+ */
+export function resolveEffectiveGraphicsQuality(
+  userQuality: string | undefined,
+  gpuTier: number | undefined,
+): 'low' | 'medium' | 'high' {
+  const normalized = (userQuality as 'low' | 'medium' | 'high' | undefined) ?? 'medium';
+
+  if (gpuTier === undefined || gpuTier === null) return normalized;
+  if (gpuTier <= 1) return 'low';
+  if (gpuTier === 2 && normalized === 'high') return 'medium';
+  return normalized;
+}
+
 export interface AvatarRenderPolicy {
   lodNear: number;
   lodMid: number;
