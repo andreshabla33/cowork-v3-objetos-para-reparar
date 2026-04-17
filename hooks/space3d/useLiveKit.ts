@@ -12,6 +12,7 @@ import {
 import type { Session } from '@supabase/supabase-js';
 import type { User, Workspace } from '@/types';
 import { logger } from '@/lib/logger';
+import { avatarStore } from '@/lib/ecs/AvatarECS';
 import { crearSalaLivekitPorEspacio, obtenerTokenLivekitEspacio } from '@/lib/livekitService';
 import { supabase } from '@/lib/supabase';
 import { getTurnIceServers } from '@/lib/network/turnCredentialsService';
@@ -601,6 +602,10 @@ export function useLiveKit(params: {
           setRemoteStreams(prev => { const n = new Map(prev); n.delete(participant.identity); return n; });
           setRemoteScreenStreams(prev => { const n = new Map(prev); n.delete(participant.identity); return n; });
           setRemoteAudioTracks(prev => { const n = new Map(prev); n.delete(participant.identity); return n; });
+          // Fallback for abrupt disconnects where Supabase Presence 'leave'
+          // is late or missed. LiveKit notices the peer drop within ~15s;
+          // removing from the ECS fires notifyRemoval → renderers dispose GPU.
+          avatarStore.remove(participant.identity);
         },
         onSpeakerChange: (speakerIds) => {
           const active = new Set(speakerIds);

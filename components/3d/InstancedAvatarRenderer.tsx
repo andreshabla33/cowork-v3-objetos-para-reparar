@@ -139,6 +139,31 @@ export const InstancedAvatarRenderer: React.FC<InstancedAvatarRendererProps> = (
     }
   }, [bakedSet, modelUrl, onModelReady]);
 
+  // ── Zero out the instance slot of a removed avatar in the same frame ──
+  // Without this, the last written matrix lingers until mesh.count shrinks
+  // past that slot, which can produce a one-frame flicker of a stale pose
+  // at the previous position before useFrame recomputes the layout.
+  React.useEffect(() => {
+    const unsub = avatarStore.onRemove((userId: string) => {
+      const mesh = instancedMeshRef.current;
+      if (!mesh) return;
+      const entityMap = entityMapRef.current;
+      for (const [idx, id] of entityMap) {
+        if (id === userId) {
+          dummyObject.position.set(0, -10_000, 0);
+          dummyObject.scale.set(0, 0, 0);
+          dummyObject.updateMatrix();
+          mesh.setMatrixAt(idx, dummyObject.matrix);
+          mesh.instanceMatrix.needsUpdate = true;
+          entityMap.delete(idx);
+          log.info('Avatar instance slot cleared', { userId, slot: idx });
+          break;
+        }
+      }
+    });
+    return unsub;
+  }, [dummyObject]);
+
   // ── Crear atributos de instancia para animación ──
   const animAttributes = useMemo(() => {
     return createInstanceAnimationAttributes(MAX_INSTANCES);
@@ -196,6 +221,25 @@ export const InstancedAvatarRenderer: React.FC<InstancedAvatarRendererProps> = (
     }
     return geo;
   }, [bakedSet, animAttributes]);
+
+  // ── Dispose GPU resources when the renderer unmounts ──────────────────
+  // InstancedMesh, geometry, material and textures hold GPU buffers that
+  // JavaScript GC cannot free. Without explicit dispose(), remounting the
+  // 3D scene (modal open/close, navigation) leaks ~15–20 MB per avatar model.
+  // Ref: https://threejs.org/docs/#api/en/objects/InstancedMesh
+  React.useEffect(() => {
+    return () => {
+      const mesh = instancedMeshRef.current;
+      if (mesh) mesh.dispose();
+      if (geometry) geometry.dispose();
+      if (material) {
+        for (const value of Object.values(material)) {
+          if ((value as THREE.Texture | null)?.isTexture) (value as THREE.Texture).dispose();
+        }
+        material.dispose();
+      }
+    };
+  }, [geometry, material]);
 
   // ── Click handler con raycasting por instanceId ──
   const handleClick = useMemo(() => {
