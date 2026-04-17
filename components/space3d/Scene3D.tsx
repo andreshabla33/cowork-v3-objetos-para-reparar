@@ -397,6 +397,28 @@ export const Scene: React.FC<SceneProps> = ({
 
   // Cargar el modelo del terreno exportado desde Blender
   const { scene: terrainScene } = useGLTF('/models/terrain.glb');
+
+  // Bounding box del terrain (computado UNA VEZ) — lo usamos para sincronizar
+  // tamaño del Grid con los límites visuales del modelo, así la cuadrícula no
+  // se extiende como un grid infinito sobre el espacio oscuro.
+  // Posición del terreno en el espacio de mundo: [-25, -0.02, 75] (ver render).
+  const TERRAIN_OFFSET_X = -25;
+  const TERRAIN_OFFSET_Y = -0.02;
+  const TERRAIN_OFFSET_Z = 75;
+  const terrainBounds = useMemo(() => {
+    const box = new THREE.Box3().setFromObject(terrainScene);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    // El primitive está dentro de un <group position={[-25,-0.02,75]}>, el bbox
+    // local se traslada al mundo sumando el offset del group.
+    return {
+      sizeX: size.x,
+      sizeZ: size.z,
+      topY: TERRAIN_OFFSET_Y + box.max.y,
+      centerX: center.x + TERRAIN_OFFSET_X,
+      centerZ: center.z + TERRAIN_OFFSET_Z,
+    };
+  }, [terrainScene]);
   const zonasActivas = useMemo(
     () => zonasEmpresa.filter((zona) => zona.estado === 'activa'),
     [zonasEmpresa]
@@ -819,6 +841,47 @@ export const Scene: React.FC<SceneProps> = ({
 
   return (
     <>
+      {/* Niebla atmosférica ligada al tema — difumina avatares/objetos lejanos
+          suavemente antes de salir del culling. LINEAR fog: near empareja con
+          LOD_MID_DISTANCE para que la transición coincida con el cambio de LOD;
+          far queda por debajo de WORLD_SIZE*2 para que se desvanezca antes del
+          horizonte del skydome. Sin useFrame — R3F invalida solo cuando el
+          prop `color` cambia, así no rompe frameloop="demand". */}
+      <fog attach="fog" args={[themeColors[theme] || '#000000', 60, 220]} />
+
+      {/* Skydome gradiente low-poly (16×8 segs). Esfera interior con BackSide
+          y shader simplísimo de 2 colores verticales. Se renderiza una sola
+          vez — sin useFrame ni animación. Reemplaza el "muro" de color sólido
+          por una transición hacia el horizonte coherente con la niebla. */}
+      <mesh renderOrder={-10} frustumCulled={false}>
+        <sphereGeometry args={[500, 16, 8]} />
+        <shaderMaterial
+          side={THREE.BackSide}
+          depthWrite={false}
+          uniforms={{
+            bottomColor: { value: new THREE.Color(themeColors[theme] || '#000000') },
+            topColor: { value: new THREE.Color(themeColors[theme] || '#000000').offsetHSL(0, 0.08, 0.14) },
+          }}
+          vertexShader={/* glsl */`
+            varying vec3 vWorldPos;
+            void main() {
+              vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `}
+          fragmentShader={/* glsl */`
+            uniform vec3 bottomColor;
+            uniform vec3 topColor;
+            varying vec3 vWorldPos;
+            void main() {
+              float h = normalize(vWorldPos).y;
+              float t = pow(max(h, 0.0), 0.6);
+              gl_FragColor = vec4(mix(bottomColor, topColor, t), 1.0);
+            }
+          `}
+        />
+      </mesh>
+
       {/* Iluminación: DayNightCycle dinámico o luces estáticas */}
       {enableDayNightCycle ? (
         <DayNightCycle enabled={true} />
@@ -849,15 +912,24 @@ export const Scene: React.FC<SceneProps> = ({
 
       {showFloorGrid && (
         <Grid
-          args={[WORLD_SIZE * 2, WORLD_SIZE * 2]}
-          position={[WORLD_SIZE / 2, 0, WORLD_SIZE / 2]}
+          // Tamaño ligado al bbox real del terrain.glb — evita que el grid
+          // se extienda como una malla infinita sobre el skydome. Un pequeño
+          // margen interior (0.98) lo mantiene dentro del borde visible del
+          // modelo para que no se vea cortado contra la silueta del terreno.
+          args={[terrainBounds.sizeX * 0.98, terrainBounds.sizeZ * 0.98]}
+          // Centrado sobre el centroide del terrain en coords de mundo, con
+          // un +0.01 en Y sobre la cara superior del terreno para evitar
+          // z-fighting (el depthWrite del Grid no distingue polys co-planares).
+          position={[terrainBounds.centerX, terrainBounds.topY + 0.01, terrainBounds.centerZ]}
           cellSize={1}
           cellThickness={0.5}
           cellColor={gridColor}
           sectionSize={5}
           sectionThickness={1}
           sectionColor={gridColor}
-          fadeDistance={100}
+          // fadeDistance = mitad de la dimensión mayor del terreno — la grid
+          // se difumina suave en los bordes para integrarse con el fog.
+          fadeDistance={Math.max(terrainBounds.sizeX, terrainBounds.sizeZ) / 2}
           fadeStrength={1}
           followCamera={false}
         />
