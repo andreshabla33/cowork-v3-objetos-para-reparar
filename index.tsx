@@ -1,3 +1,11 @@
+// ─── BUNDLE TEST ───────────────────────────────────────────────────────────
+if (typeof window !== 'undefined') {
+  (window as any).__BUNDLE_TIMESTAMP = new Date().toISOString();
+  (window as any).__BUNDLE_ENTRY_LOADED = true;
+  console.error('🔥 INDEX.TSX LOADED - Bundle is fresh:', (window as any).__BUNDLE_TIMESTAMP);
+  alert('✅ FRESH BUNDLE LOADED at ' + (window as any).__BUNDLE_TIMESTAMP);
+}
+
 // ─── SENTRY: MUST BE THE FIRST IMPORT ──────────────────────────────────────
 // Docs oficiales: "Import your Sentry configuration as the first import
 // in your application entry point, then render your app."
