@@ -1023,9 +1023,16 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
       const animChanged = !last || last.animState !== currentAnim;
       const isReliable = animChanged;
       const isSpecialAnim = !['idle', 'walk', 'run'].includes(currentAnim);
-      const shouldHeartbeat = isSpecialAnim && (bNow - lastBroadcastTime.current > 200);
+      const shouldHeartbeatSpecial = isSpecialAnim && (bNow - lastBroadcastTime.current > 200);
+      // Idle heartbeat: re-broadcast current position every 2s even when still.
+      // Without this, a stationary user's peers see them at their last-tracked
+      // Presence coords (which may be (0,0) if location-privacy is off, or a
+      // stale value). Once a DataPacket arrives, remotes update. Presence is a
+      // CRDT with no ordering guarantees — not suitable for position seed.
+      // Ref: https://docs.livekit.io/home/client/data/packets/ (lossy OK for this)
+      const shouldHeartbeatIdle = (bNow - lastBroadcastTime.current > 2000);
 
-      if (changed || shouldHeartbeat) {
+      if (changed || shouldHeartbeatSpecial || shouldHeartbeatIdle) {
         broadcastMovement(payload.x, payload.y, payload.direction, payload.isMoving, payload.animState, isReliable);
         lastBroadcastRef.current = payload;
         lastBroadcastTime.current = bNow;
