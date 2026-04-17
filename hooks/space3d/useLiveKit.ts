@@ -21,7 +21,7 @@ import type { PublishableDataPacketContract } from '@/modules/realtime-room';
 import type { SpaceMediaCoordinatorState } from '@/modules/realtime-room';
 import type { SpaceRealtimeCoordinatorState } from '@/modules/realtime-room';
 import { RealtimeEventBus, RealtimeSessionTelemetry, RemoteMediaLifecycleDiagnostics, RemoteRenderLifecyclePolicy, RemoteTrackAttachmentPolicy, SpaceRealtimeCoordinator, SubscriptionPolicyService, TrackPublicationCoordinator } from '@/modules/realtime-room';
-import { type UseLiveKitReturn } from './types';
+import { type UseLiveKitReturn, type RealtimePositionEntry } from './types';
 
 const log = logger.child('use-livekit');
 
@@ -43,6 +43,8 @@ export function useLiveKit(params: {
   usersInCall: User[];
   usersInAudioRange: User[];
   conversacionesBloqueadasRemoto: Map<string, string[]>;
+  /** Shared positions map from useBroadcast — cleared on peer disconnect. */
+  realtimePositionsRef?: React.MutableRefObject<Map<string, RealtimePositionEntry>>;
 }): UseLiveKitReturn {
   const {
     activeWorkspace, session, currentUser, empresasAutorizadas, onlineUsers,
@@ -52,6 +54,7 @@ export function useLiveKit(params: {
     stream, screenStream, cameraSettings,
     performanceSettings,
     hasActiveCall, usersInCall, usersInAudioRange, conversacionesBloqueadasRemoto,
+    realtimePositionsRef,
   } = params;
 
   const isMicrophoneEnabled = mediaCoordinatorState?.desiredMicrophoneEnabled ?? mediaCoordinatorState?.isMicrophoneEnabled ?? desiredMediaState.isMicrophoneEnabled;
@@ -107,6 +110,9 @@ export function useLiveKit(params: {
   useEffect(() => {
     setRemoteParticipantIdsInStore(remoteParticipantIds);
   }, [remoteParticipantIds, setRemoteParticipantIdsInStore]);
+  // Consumers (Player3D) watch this to fire a welcome broadcast so newcomers
+  // don't wait up to 2s for the idle heartbeat to expose our current position.
+  const bumpParticipantJoinVersion = useStore((s) => s.bumpParticipantJoinVersion);
   const speakingUsersRef = useRef<Set<string>>(new Set());
   speakingUsersRef.current = speakingUsers;
 
@@ -621,6 +627,10 @@ export function useLiveKit(params: {
           // is late or missed. LiveKit notices the peer drop within ~15s;
           // removing from the ECS fires notifyRemoval → renderers dispose GPU.
           avatarStore.remove(participant.identity);
+          // Drop any stale DataPacket position for this peer so a later rejoin
+          // doesn't render the avatar at the pre-disconnect coords before the
+          // new heartbeat arrives.
+          realtimePositionsRef?.current.delete(participant.identity);
         },
         onParticipantConnected: (participant) => {
           setRemoteParticipantIds(prev => {
@@ -629,6 +639,10 @@ export function useLiveKit(params: {
             n.add(participant.identity);
             return n;
           });
+          // Trigger a welcome broadcast from Player3D so the newcomer learns
+          // our current position immediately instead of waiting for the next
+          // idle heartbeat tick (~2s).
+          bumpParticipantJoinVersion();
         },
         onSpeakerChange: (speakerIds) => {
           const active = new Set(speakerIds);
@@ -689,11 +703,16 @@ export function useLiveKit(params: {
       const roomName = crearSalaLivekitPorEspacio(activeWorkspace.id);
       conectarLivekit(roomName).catch((e: unknown) => log.error('Auto-connect failed', { error: e instanceof Error ? e.message : String(e) }));
     } else {
+      // Idle grace period before disconnecting LiveKit when alone in space.
+      // Was 5s — too aggressive: a peer closing+reopening their tab within
+      // that window would lose a full reconnect cycle on this side, dropping
+      // DataPackets of position. 60s leaves headroom for tab reloads and
+      // quick re-joins without sacrificing the cost-saving idle disconnect.
       const timer = setTimeout(() => {
         if (!hayOtrosUsuariosRef.current && livekitRoomRef.current) {
           limpiarLivekit().catch(() => {});
         }
-      }, 5000);
+      }, 60_000);
       return () => clearTimeout(timer);
     }
   }, [activeWorkspace?.id, hayOtrosUsuariosOnline, conectarLivekit, limpiarLivekit]);

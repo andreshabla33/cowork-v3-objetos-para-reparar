@@ -317,6 +317,7 @@ export function useSpace3D(props: {
     usersInCall: usersInCallRef.current,
     usersInAudioRange: usersInAudioRangeRef.current,
     conversacionesBloqueadasRemoto: conversacionesBloqueadasRemotoRef.current,
+    realtimePositionsRef,
   });
 
   // TODO(round-2): El livekitRoomRef pasado a useUserSettings es un dummy —

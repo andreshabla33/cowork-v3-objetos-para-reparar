@@ -563,6 +563,14 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
   const estabaMoviendoseRef = useRef(false);
   const lastBroadcastRef = useRef<{ x: number; y: number; direction: string; isMoving: boolean; animState?: string } | null>(null);
 
+  // Welcome broadcast: when a new peer joins the LiveKit room, reset the
+  // broadcast timer so the next frame's idle heartbeat fires immediately,
+  // exposing our current position without waiting the full 2s tick.
+  const participantJoinVersion = useStore((s) => s.participantJoinVersion);
+  useEffect(() => {
+    lastBroadcastTime.current = 0;
+  }, [participantJoinVersion]);
+
   // Teletransportación
   const [teleportPhase, setTeleportPhase] = useState<'none' | 'out' | 'in'>('none');
   const [teleportOrigin, setTeleportOrigin] = useState<[number, number, number] | null>(null);
