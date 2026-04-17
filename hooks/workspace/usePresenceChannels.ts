@@ -90,6 +90,19 @@ interface UsePresenceChannelsReturn {
    * and recreated. See: https://github.com/supabase/realtime-js
    */
   checkChannelHealth: () => void;
+  /**
+   * Fires `channel.untrack()` on every active presence channel (fire-and-forget).
+   *
+   * Used from page-exit handlers (`pagehide` / `beforeunload`) to broadcast an
+   * immediate LEAVE to other subscribers before the WebSocket is torn down.
+   * Without this, the avatar of a user who closed their tab stays rendered for
+   * everyone else until Supabase's presence heartbeat times out (~30s).
+   *
+   * Ref: Supabase Realtime Presence — "untrack(): Remove the user's presence
+   *      from the channel." Calling untrack before unload is the documented
+   *      pattern for deterministic leaves.
+   */
+  untrackAll: () => void;
 }
 
 /**
@@ -506,6 +519,12 @@ export function usePresenceChannels({
         .on('presence', { event: 'sync' }, () => {
           recalcularUsuarios();
         })
+        .on('presence', { event: 'join' }, () => {
+          recalcularUsuarios();
+        })
+        .on('presence', { event: 'leave' }, () => {
+          recalcularUsuarios();
+        })
         .subscribe(async (status: string) => {
           if (status === 'SUBSCRIBED') {
             retryCountRef.current = 0; // Reset backoff on success
@@ -574,6 +593,12 @@ export function usePresenceChannels({
 
         channel
           .on('presence', { event: 'sync' }, () => {
+            recalcularUsuarios();
+          })
+          .on('presence', { event: 'join' }, () => {
+            recalcularUsuarios();
+          })
+          .on('presence', { event: 'leave' }, () => {
             recalcularUsuarios();
           })
           .subscribe(async (status: string) => {
@@ -779,6 +804,38 @@ export function usePresenceChannels({
   }, [scheduleChannelRetry, safeRemoveChannel]);
 
   /**
+   * Fire `channel.untrack()` on every active presence channel without awaiting.
+   *
+   * Rationale: on `pagehide` / `beforeunload` we have no time for async work —
+   * the browser will close the WebSocket as soon as the handler returns. But
+   * `untrack()` enqueues its "untrack" message on the WebSocket's outbound
+   * buffer synchronously (realtime-js calls `socket.push` immediately), so the
+   * message ships before the socket closes even though its returned promise
+   * never resolves. That broadcast triggers `presence_diff` on other clients,
+   * which removes our avatar instantly instead of waiting for the server-side
+   * presence heartbeat timeout (~30s).
+   *
+   * Includes the global empresa discovery channel — same-company users
+   * discover each other through it, so we must untrack there too.
+   */
+  const untrackAll = useCallback((): void => {
+    presenceChannelsRef.current.forEach((channel) => {
+      try {
+        void channel.untrack();
+      } catch {
+        // Fire-and-forget — channel may already be closed, nothing to do.
+      }
+    });
+    if (globalChannelRef.current) {
+      try {
+        void globalChannelRef.current.untrack();
+      } catch {
+        // Same — WebSocket may be gone already.
+      }
+    }
+  }, []);
+
+  /**
    * Cleanup all presence channels on unmount
    */
   const cleanup = useCallback((): void => {
@@ -811,5 +868,6 @@ export function usePresenceChannels({
     forceRetrackAll,
     cleanup,
     checkChannelHealth,
+    untrackAll,
   };
 }

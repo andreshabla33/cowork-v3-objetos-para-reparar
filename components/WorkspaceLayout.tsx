@@ -84,7 +84,7 @@ export const WorkspaceLayout: React.FC = () => {
     onAutorizacionesLoaded: setEmpresasAutorizadas,
   });
 
-  const { syncPresenceByChunk, updatePresenceInChannels, forceRetrackAll, cleanup, checkChannelHealth } =
+  const { syncPresenceByChunk, updatePresenceInChannels, forceRetrackAll, cleanup, checkChannelHealth, untrackAll } =
     usePresenceChannels({
       activeWorkspaceId: activeWorkspace?.id,
       userId: session?.user?.id,
@@ -102,6 +102,7 @@ export const WorkspaceLayout: React.FC = () => {
     forceRetrackAll,
     cleanup,
     checkChannelHealth,
+    untrackAll,
   });
 
   const { logout, isLoggingOut } = useLogoutUser();

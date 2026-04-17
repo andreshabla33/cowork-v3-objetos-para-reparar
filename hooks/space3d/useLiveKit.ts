@@ -671,6 +671,27 @@ export function useLiveKit(params: {
     return () => { limpiarLivekit().catch(() => {}); };
   }, [limpiarLivekit]);
 
+  // Page-exit: send an explicit LiveKit leave so the other participants see us
+  // disconnect now instead of waiting for the server's peer-connection timeout.
+  // React unmount does not fire when the tab is simply closed, so we wire the
+  // Page Lifecycle events — `pagehide` is reliable on mobile + bfcache,
+  // `beforeunload` covers desktop close/navigation.
+  //
+  // Ref: LiveKit client SDK — `room.disconnect()` flushes a SIGNAL_LEAVE
+  //      message; otherwise the server must detect the dead peer via ICE
+  //      timeout, delaying `ParticipantDisconnected` on remote clients.
+  useEffect(() => {
+    const handlePageExit = () => {
+      limpiarLivekit().catch(() => {});
+    };
+    window.addEventListener('pagehide', handlePageExit);
+    window.addEventListener('beforeunload', handlePageExit);
+    return () => {
+      window.removeEventListener('pagehide', handlePageExit);
+      window.removeEventListener('beforeunload', handlePageExit);
+    };
+  }, [limpiarLivekit]);
+
   // ========== Sincronizar tracks por cambio de mic/cam/screen ==========
   const hasAnyoneNearbyForSync = hasActiveCall || usersInAudioRange.length > 0;
   useEffect(() => {

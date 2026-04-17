@@ -54,6 +54,13 @@ interface UsePresenceLifecycleParams {
    * Provided by usePresenceChannels.
    */
   checkChannelHealth: () => void;
+  /**
+   * Fires `channel.untrack()` on every active presence channel without awaiting.
+   * Wired to `pagehide` / `beforeunload` so other clients see us leave
+   * immediately when the tab closes, instead of waiting ~30s for the server
+   * heartbeat timeout.
+   */
+  untrackAll: () => void;
 }
 
 /**
@@ -72,6 +79,7 @@ export function usePresenceLifecycle({
   forceRetrackAll,
   cleanup,
   checkChannelHealth,
+  untrackAll,
 }: UsePresenceLifecycleParams): void {
   const empresaIdLoadedRef = useRef(false);
 
@@ -122,7 +130,34 @@ export function usePresenceLifecycle({
     updatePresenceInChannels,
   ]);
 
-  // ── 5. Periodic channel health check ─────────────────────────────────
+  // ── 5. Page-exit: explicit untrack so other clients see us leave now ──
+  // Without this, closing the tab leaves our avatar rendered on every other
+  // client until Supabase's presence heartbeat times out (~30s). Calling
+  // untrackAll() broadcasts `presence_diff` immediately, so remote avatars
+  // disappear the moment the user closes the browser.
+  //
+  // `pagehide` is preferred over `beforeunload`: it fires reliably on mobile
+  // and on bfcache transitions, where `beforeunload` is skipped. We wire both
+  // because desktop browsers occasionally fire only one of them on tab close.
+  //
+  // Ref: Supabase Realtime Presence — `untrack()` sends the LEAVE event to
+  //      all subscribers; without it the server waits out the heartbeat.
+  // Ref: web.dev "Page Lifecycle API" — `pagehide` is the reliable signal
+  //      for "tab is going away," not `beforeunload`.
+  useEffect(() => {
+    if (!activeWorkspaceId || !userId) return;
+    const handlePageExit = () => {
+      untrackAll();
+    };
+    window.addEventListener('pagehide', handlePageExit);
+    window.addEventListener('beforeunload', handlePageExit);
+    return () => {
+      window.removeEventListener('pagehide', handlePageExit);
+      window.removeEventListener('beforeunload', handlePageExit);
+    };
+  }, [activeWorkspaceId, userId, untrackAll]);
+
+  // ── 6. Periodic channel health check ─────────────────────────────────
   // Detects channels stuck in dead states (errored, closed) that the
   // subscribe callback might have missed (race, silent disconnect, etc.)
   // and triggers recovery. Without this, a WS drop (ERR_CONNECTION_CLOSED)
