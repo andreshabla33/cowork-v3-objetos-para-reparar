@@ -153,25 +153,48 @@ export const AdaptivePerformanceMonitor: React.FC<AdaptivePerformanceMonitorProp
   }, [logThrottled, maxDpr, setDpr]);
 
   const handleFallback = useCallback((api: PerformanceMonitorApi) => {
+    const lastAvgFps = Math.round(api.averages[api.averages.length - 1] ?? 0);
+    // drei dispara onFallback cuando acumula `flipflops` cruces sin poder
+    // estabilizar. Pero eso NO siempre significa HW sufriendo:
+    //   - Si FPS >= bounds[0], el HW está saludable y los "flips" son
+    //     solo onIncline fallidos porque el DPR ya está en maxDpr.
+    //     Tratarlo como fallback → bajar DPR a minDpr sería regresión.
+    // Solo degradamos si el FPS está realmente por debajo del objetivo.
+    // Ref: https://drei.docs.pmnd.rs/performances/performance-monitor
+    if (lastAvgFps >= bounds[0]) {
+      log.info('Adaptive DPR fallback ignorado — FPS saludable', {
+        lastAvgFps,
+        targetMin: bounds[0],
+      });
+      return;
+    }
     if (fallbackFiredRef.current) return;
     fallbackFiredRef.current = true;
-    // Inestabilidad crónica: hardware no puede mantenerse en ventana aceptable.
-    // Fijamos DPR al mínimo para cortar la oscilación. Si el hardware
-    // recupera capacidad más tarde (termal throttling liberado, otra
-    // pestaña cerrada), onIncline re-habilitará el ciclo.
     setDpr(() => minDpr);
     log.warn('Adaptive DPR fallback → DPR mínimo (hardware inestable)', {
       minDpr,
-      lastAvgFps: Math.round(api.averages[api.averages.length - 1] ?? 0),
+      lastAvgFps,
     });
-  }, [minDpr, setDpr]);
+  }, [bounds, minDpr, setDpr]);
 
-  // Bounds fn (wrapped en useCallback para ref estable):
-  // drei llama a esta fn con refreshRate del monitor para ajustar targets,
-  // pero aquí usamos umbrales absolutos: 40/55 FPS son los objetivos reales
-  // para una app colaborativa 3D (por debajo de 40 el movimiento se siente
-  // pesado; por encima de 55 hay presupuesto para subir calidad).
-  const boundsFn = useCallback(() => bounds, [bounds]);
+  // Bounds dinámicos usando refresh rate real del monitor (drei lo pasa).
+  // Antes: [40, 55] fijo → en monitores 60/120/144 Hz, FPS normales (>60)
+  // disparaban onIncline continuamente, y al estar el DPR ya en maxDpr
+  // (clampado por tier), drei contaba esos intentos fallidos como
+  // "flipflops" y terminaba en onFallback. Ahora el bound superior se
+  // ajusta al refresh rate real → 60 FPS en 60 Hz = estable, no flip.
+  const boundsFn = useCallback((refreshrate: number) => {
+    const min = bounds[0];
+    const rate = Number.isFinite(refreshrate) && refreshrate > 0 ? refreshrate : 60;
+    const max = Math.max(bounds[1], Math.floor(rate));
+    return [min, max] as [number, number];
+  }, [bounds]);
+
+  // Si maxDpr === minDpr, no hay rango para ajustar — montar el monitor
+  // solo generaría fallbacks espurios. Observado en Windows 100% scale
+  // con GPU integrada: window.devicePixelRatio=1 + cap tier=1.25 →
+  // maxDpr=1=minDpr. Sin margen de ajuste, early return.
+  if (maxDpr <= minDpr) return null;
 
   if (!warmUpDone) return null;
 
