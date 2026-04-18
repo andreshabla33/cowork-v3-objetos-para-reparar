@@ -54,6 +54,13 @@ if (dsn) {
       'ResizeObserver loop limit exceeded',
       'ResizeObserver loop completed with undelivered notifications',
       'Non-Error exception captured',
+      // AbortError: race condition clásico de WebRTC cuando user apaga cámara
+      // mientras <video>.play() promise está pending. Emitido por livekit-client
+      // (ver warning "Video is paused, trying to play" en logs del SDK),
+      // no por código propio. Observado en logs 2026-04-18 00:15:34.
+      // Ref: https://docs.livekit.io/client-sdk-js/ — behavior esperado.
+      'AbortError: The operation was aborted',
+      'AbortError: The play() request was interrupted',
     ],
 
     // Filtrar breadcrumbs de debug para no saturar
