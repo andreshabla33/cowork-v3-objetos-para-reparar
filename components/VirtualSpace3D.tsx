@@ -19,6 +19,8 @@ import { useLiveKitVideoBackground, useLocalCameraTrack } from '@/modules/realti
 import type { LocalVideoTrack } from 'livekit-client';
 import { useRendererMetrics } from '@/hooks/space3d/useRendererMetrics';
 import { SpatialAudio } from './3d/SpatialAudio';
+import { AdaptivePerformanceMonitor } from './3d/AdaptivePerformanceMonitor';
+import { isAdaptivePerformanceEnabled } from '@/lib/ecs/avatarRenderPolicy';
 import { type GpuInfo } from '@/lib/gpuCapabilities';
 import { logger } from '@/lib/logger';
 import { MobileJoystick, type JoystickInput } from './3d/MobileJoystick';
@@ -172,6 +174,11 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   const { gpuRenderConfig, gpuInfo, userMoveSpeed, userRunSpeed, userProximityRadius, maxDpr, minDpr, adaptiveDpr, setAdaptiveDpr, enableDayNightCycle, cameraSettings, audioSettings } = s.settings;
   const space3dSettings = s.settings.space3dSettings;
   const performanceSettings = s.settings.performanceSettings;
+
+  // Adaptive DPR runtime — solo activo cuando el user eligió "Automático".
+  // Observa FPS y baja DPR si caen por debajo de 40, sin tocar LOD ni shadows
+  // (eso queda en responsabilidad del static tier policy).
+  const adaptivePerfEnabled = isAdaptivePerformanceEnabled(performanceSettings?.graphicsQuality);
 
   // Chunks
   const { currentUserEcs, onlineUsersEcs, usuariosEnChunks, usuariosParaConexion, usuariosParaMinimapa, chunkActual, ecsStateRef, interpolacionWorkerRef, posicionesInterpoladasRef, setPositionEcs, chunkVecinosRef, usuariosVisiblesRef } = s.chunks;
@@ -919,6 +926,14 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       >
         <AdaptiveFrameloop />
         <RendererMetricsProbe adaptiveDpr={adaptiveDpr} gpuInfo={gpuInfo} />
+        {adaptivePerfEnabled && (
+          <AdaptivePerformanceMonitor
+            currentDpr={adaptiveDpr}
+            minDpr={minDpr}
+            maxDpr={maxDpr}
+            setDpr={setAdaptiveDpr}
+          />
+        )}
         <AvatarScreenProjector
           selectedUserId={selectedRemoteUser?.id || null}
           ecsStateRef={ecsStateRef}

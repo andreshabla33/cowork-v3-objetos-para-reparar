@@ -5,14 +5,18 @@ export interface AvatarRenderPolicyInput {
 }
 
 /**
- * Resuelve la calidad gráfica efectiva para el LOD policy clampando el ajuste
- * del usuario por las capabilities del GPU detectado.
+ * Resuelve la calidad gráfica efectiva para el LOD policy desde la elección
+ * del usuario + capabilities del GPU detectado.
  *
- * Regla:
- *   - gpuTier 0 (sin aceleración) → force 'low' siempre.
- *   - gpuTier 1 (WebGL1 o GPU integrada débil) → máximo 'low'.
- *   - gpuTier 2 (WebGL2 + GPU integrada potente) → máximo 'medium'.
- *   - gpuTier 3 (WebGPU + dedicated) → respeta userQuality tal cual.
+ * Reglas:
+ *   - userQuality === 'auto' → deriva directamente del tier:
+ *       tier 3 → 'high', tier 2 → 'medium', tier 0/1 → 'low'.
+ *       (Así la opción "Automático - Adaptativo" de la UI tiene efecto real.)
+ *   - userQuality !== 'auto' → respeta elección del usuario PERO clampa hacia
+ *     abajo si el tier no la soporta:
+ *       tier 0/1 → force 'low'
+ *       tier 2 + 'high' → 'medium'
+ *       tier 3 → tal cual
  *
  * Motivación: antes del fix, un user en Intel UHD con graphicsQuality='high'
  * por defecto entraba al policy 'high' (lodNear=12, lodMid=30, shadow=12m),
@@ -21,19 +25,38 @@ export interface AvatarRenderPolicyInput {
  * como máximo 'low' sin importar el setting del usuario (que puede estar
  * persistido de un dispositivo anterior).
  *
- * El usuario puede seguir subiendo el setting en su UI, pero el policy
- * respetado por el runtime es el efectivo resultante del clamp.
+ * Además, userQuality='auto' es el modo recomendado para usuarios que no
+ * saben qué elegir — combina esta función (static derivation) con el
+ * componente <AdaptivePerformanceMonitor> (dynamic DPR adjustment) que
+ * baja la resolución automáticamente si los FPS caen por debajo de 40.
  */
 export function resolveEffectiveGraphicsQuality(
   userQuality: string | undefined,
   gpuTier: number | undefined,
 ): 'low' | 'medium' | 'high' {
+  // Modo auto: derivación directa desde el tier.
+  if (userQuality === 'auto') {
+    if (gpuTier === 3) return 'high';
+    if (gpuTier === 2) return 'medium';
+    return 'low';
+  }
+
   const normalized = (userQuality as 'low' | 'medium' | 'high' | undefined) ?? 'medium';
 
   if (gpuTier === undefined || gpuTier === null) return normalized;
   if (gpuTier <= 1) return 'low';
   if (gpuTier === 2 && normalized === 'high') return 'medium';
   return normalized;
+}
+
+/**
+ * ¿El usuario activó el modo adaptativo dinámico? Usado por
+ * VirtualSpace3D para decidir si montar <AdaptivePerformanceMonitor>.
+ * Separado de resolveEffectiveGraphicsQuality porque el monitor funciona
+ * independiente del LOD static (observa FPS, no tier).
+ */
+export function isAdaptivePerformanceEnabled(userQuality: string | undefined): boolean {
+  return userQuality === 'auto';
 }
 
 export interface AvatarRenderPolicy {
