@@ -200,7 +200,13 @@ export const defaultUserSettings: UserSettings = {
     activityRetentionDays: 30
   },
   performance: {
-    graphicsQuality: 'medium',
+    // Default 'auto' desde 2026-04-17: deriva quality del gpuTier detectado
+    // al boot (tier3→high, tier2→medium, tier0/1→low) Y activa el observador
+    // <AdaptivePerformanceMonitor> que baja DPR dinámicamente si los FPS
+    // caen por debajo de 40 sostenidos. Usuarios con preferencia persistida
+    // en localStorage mantienen su elección; solo nuevos usuarios (o tras
+    // un clear de settings) entran con 'auto'.
+    graphicsQuality: 'auto',
     showVideos: true,
     showAvatarAnimations: true,
     reducedMotion: false,
