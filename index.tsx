@@ -12,6 +12,18 @@ import { installSuppressRapierDeprecationWarning } from './lib/rendering/suppres
 
 installSuppressRapierDeprecationWarning();
 
+// ─── Retry fetch para Supabase Storage ─────────────────────────────────────
+// Evita que un 429/500 transitorio en un GLB tumbe toda la escena (observado
+// en prod 2026-04-18: 15 GLBs paralelos → rate limit → drei throws →
+// React error boundary unmount → scene optimization disposed → context lost).
+// El wrapper aplica retry exponencial + jitter transparentemente SOLO a URLs
+// que matchean /supabase\.co\/storage\/v1\/object\// — otras URLs pasan
+// sin modificar (livekit, auth, realtime siguen igual).
+import { installRetryFetch } from './lib/network/retryFetch';
+import { SUPABASE_STORAGE_POLICY } from './src/core/domain/ports/IAssetLoadPolicy';
+
+installRetryFetch(SUPABASE_STORAGE_POLICY);
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './styles/tailwind.css';
