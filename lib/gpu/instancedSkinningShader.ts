@@ -142,16 +142,25 @@ void main() {
   // Apply skinning
   vec4 skinnedPosition = skinMatrix * vec4(position, 1.0);
   vec4 skinnedNormal4 = skinMatrix * vec4(normal, 0.0);
-  
+
   // Apply instance transform
   vec4 worldPosition = instanceMatrix * skinnedPosition;
-  
+
   // Standard MVP
   vec4 mvPosition = modelViewMatrix * worldPosition;
   gl_Position = projectionMatrix * mvPosition;
-  
+
   vNormal = normalize(normalMatrix * mat3(instanceMatrix) * skinnedNormal4.xyz);
   vViewPosition = -mvPosition.xyz;
+
+  // Three.js r182 chunks (shadowmap_vertex) exigen estos símbolos por nombre:
+  //  - vec3 transformedNormal:   normal en object-space post-skinning.
+  //  - vec4 worldPosition:       vértice en world-space (ya declarado arriba).
+  // Sin transformedNormal, el chunk falla a compilar con
+  //   "Vertex shader is not compiled" (inverseTransformDirection lo
+  //   referencia — ver three/src/.../shadowmap_vertex.glsl.js).
+  // Ref: https://github.com/mrdoob/three.js/blob/r182/src/renderers/shaders/ShaderChunk/shadowmap_vertex.glsl.js
+  vec3 transformedNormal = skinnedNormal4.xyz;
 
   #include <shadowmap_vertex>
   #include <fog_vertex>
