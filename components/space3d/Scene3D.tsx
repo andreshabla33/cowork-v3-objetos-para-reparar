@@ -158,6 +158,17 @@ export interface SceneProps {
    * que preserva el comportamiento histórico (60/220, 500/16/8, +0.08/+0.14 HSL).
    */
   scenePolicy?: ScenePolicy;
+  /**
+   * Movement regression (Sketchfab pattern, recomendado por R3F docs).
+   * Cuando estos 3 están definidos, OrbitControls baja temporalmente el DPR
+   * a `minDpr` al iniciar orbit y lo restaura con debounce al soltar.
+   * Beneficio: pan de cámara más fluido en hardware bajo. Solo se activa
+   * cuando el usuario eligió graphicsQuality='auto' (ver VirtualSpace3D).
+   * Ref: https://r3f.docs.pmnd.rs/advanced/scaling-performance
+   */
+  adaptiveDpr?: number;
+  minDpr?: number;
+  setAdaptiveDpr?: React.Dispatch<React.SetStateAction<number>>;
 }
 
 const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) * paso;
@@ -378,6 +389,9 @@ export const Scene: React.FC<SceneProps> = ({
   onDrawZoneEnd,
   onSceneReady,
   scenePolicy = DEFAULT_SCENE_POLICY,
+  adaptiveDpr,
+  minDpr,
+  setAdaptiveDpr,
 }) => {
   const gridColor = theme === 'arcade' ? '#00ff41' : '#6366f1';
 
@@ -860,6 +874,59 @@ export const Scene: React.FC<SceneProps> = ({
     // Si necesitas lógica para mallas instanciadas basadas en asientos dinámicos, agragarla aquí.
   }, []);
 
+  // ── Movement regression (Sketchfab pattern, R3F docs preferred) ──
+  //
+  // Cuando el usuario hace orbit con la cámara, bajamos DPR a minDpr
+  // temporalmente — el render procesa ~40% menos pixeles durante el pan,
+  // liberando GPU para que el movimiento se sienta fluido. Al soltar,
+  // restauramos el DPR original con debounce de 200 ms para evitar
+  // flicker en drags rápidos.
+  //
+  // Solo activo cuando graphicsQuality='auto' (las 3 props llegan undefined
+  // en otros modos → handlers son no-op). Stateless: el DPR baseline se
+  // guarda en un ref local para sobrevivir al drag sin re-renders.
+  //
+  // Ref: https://r3f.docs.pmnd.rs/advanced/scaling-performance
+  //      "Movement regression (like Sketchfab) appears preferred: detect
+  //       user interaction via controls and call regress(), automatically
+  //       scaling quality during movement."
+  const orbitDprBaseRef = useRef<number | null>(null);
+  const orbitRestoreTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleOrbitStart = useCallback(() => {
+    if (!setAdaptiveDpr || adaptiveDpr === undefined || minDpr === undefined) return;
+    if (orbitRestoreTimeoutRef.current) {
+      clearTimeout(orbitRestoreTimeoutRef.current);
+      orbitRestoreTimeoutRef.current = null;
+    }
+    // Guarda el baseline solo la primera vez de un drag (no pisar con
+    // minDpr si ya estaba en regression de un drag anterior muy reciente).
+    if (orbitDprBaseRef.current === null) {
+      orbitDprBaseRef.current = adaptiveDpr;
+    }
+    setAdaptiveDpr(minDpr);
+  }, [adaptiveDpr, minDpr, setAdaptiveDpr]);
+
+  const handleOrbitEnd = useCallback(() => {
+    if (!setAdaptiveDpr) return;
+    if (orbitRestoreTimeoutRef.current) clearTimeout(orbitRestoreTimeoutRef.current);
+    orbitRestoreTimeoutRef.current = setTimeout(() => {
+      const base = orbitDprBaseRef.current;
+      if (base !== null) {
+        setAdaptiveDpr(base);
+        orbitDprBaseRef.current = null;
+      }
+      orbitRestoreTimeoutRef.current = null;
+    }, 200);
+  }, [setAdaptiveDpr]);
+
+  // Cleanup timeout on unmount para evitar callback zombie después del unmount.
+  useEffect(() => {
+    return () => {
+      if (orbitRestoreTimeoutRef.current) clearTimeout(orbitRestoreTimeoutRef.current);
+    };
+  }, []);
+
   return (
     <>
       {/* Niebla atmosférica ligada al tema. ScenePolicy.fog.near/far evita que
@@ -908,6 +975,8 @@ export const Scene: React.FC<SceneProps> = ({
         zoomSpeed={0.8}
         enableDamping={true}
         dampingFactor={0.05}
+        onStart={handleOrbitStart}
+        onEnd={handleOrbitEnd}
       />
 
       {showFloorGrid && (

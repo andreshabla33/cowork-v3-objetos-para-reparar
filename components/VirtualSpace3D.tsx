@@ -943,6 +943,9 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
         <Suspense fallback={<SceneFallback theme={theme} />}>
           <Scene
             onSceneReady={handleSceneReady}
+            adaptiveDpr={adaptivePerfEnabled ? adaptiveDpr : undefined}
+            minDpr={adaptivePerfEnabled ? minDpr : undefined}
+            setAdaptiveDpr={adaptivePerfEnabled ? setAdaptiveDpr : undefined}
             currentUser={currentUserEcs}
             onlineUsers={usuariosEnChunks}
             setPosition={setPositionEcs}
