@@ -15,6 +15,8 @@ interface Space3DSettings {
   spatialAudio: boolean;
   proximityRadius: number;
   radioInteresChunks: number;
+  /** OTS offset cámara — 'center' | 'left' | 'right'. Tier 2 feature. */
+  cameraShoulderMode?: 'center' | 'left' | 'right';
 }
 
 interface SettingsSpace3DProps {
@@ -49,6 +51,12 @@ export const SettingsSpace3D: React.FC<SettingsSpace3DProps> = ({
     { value: 'free', label: currentLang === 'en' ? 'Free' : currentLang === 'pt' ? 'Livre' : 'Libre' },
     { value: 'fixed', label: currentLang === 'en' ? 'Fixed' : currentLang === 'pt' ? 'Fixa' : 'Fija' },
     { value: 'follow', label: currentLang === 'en' ? 'Follow avatar' : currentLang === 'pt' ? 'Seguir avatar' : 'Seguir avatar' }
+  ];
+
+  const shoulderOptions = [
+    { value: 'center', label: currentLang === 'en' ? 'Centered' : currentLang === 'pt' ? 'Centralizado' : 'Centrado' },
+    { value: 'left', label: currentLang === 'en' ? 'Left shoulder' : currentLang === 'pt' ? 'Ombro esquerdo' : 'Hombro izquierdo' },
+    { value: 'right', label: currentLang === 'en' ? 'Right shoulder' : currentLang === 'pt' ? 'Ombro direito' : 'Hombro derecho' }
   ];
 
   const updateSetting = <K extends keyof Space3DSettings>(key: K, value: Space3DSettings[K]) => {
@@ -87,6 +95,13 @@ export const SettingsSpace3D: React.FC<SettingsSpace3DProps> = ({
           description={currentLang === 'en' ? 'Invert vertical camera movement' : currentLang === 'pt' ? 'Inverter o movimento vertical da câmera' : 'Invierte el movimiento vertical de la cámara'}
           checked={settings.invertYAxis}
           onChange={(v) => updateSetting('invertYAxis', v)}
+        />
+        <SettingDropdown
+          label={currentLang === 'en' ? 'Shoulder view (cinematic)' : currentLang === 'pt' ? 'Vista sobre o ombro (cinematográfica)' : 'Vista sobre el hombro (cinematográfica)'}
+          description={currentLang === 'en' ? 'Offset camera to one side for a cinematic over-the-shoulder look' : currentLang === 'pt' ? 'Descentraliza a câmera para um visual cinematográfico sobre o ombro' : 'Descentra la cámara a un lado para un look cinematográfico'}
+          value={settings.cameraShoulderMode ?? 'center'}
+          options={shoulderOptions}
+          onChange={(v) => updateSetting('cameraShoulderMode', v as 'center' | 'left' | 'right')}
         />
       </SettingSection>
 

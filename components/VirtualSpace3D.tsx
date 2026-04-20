@@ -995,6 +995,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
             cameraSensitivity={space3dSettings.cameraSensitivity}
             invertYAxis={space3dSettings.invertYAxis}
             cameraMode={space3dSettings.cameraMode}
+            cameraShoulderMode={space3dSettings.cameraShoulderMode ?? 'center'}
             realtimePositionsRef={realtimePositionsRef}
             interpolacionWorkerRef={interpolacionWorkerRef}
             posicionesInterpoladasRef={posicionesInterpoladasRef}

@@ -97,6 +97,8 @@ export interface SceneProps {
   cameraSensitivity?: number;
   invertYAxis?: boolean;
   cameraMode?: string;
+  /** OTS shoulder offset (tier 2 opcional). Default 'center' = sin offset. */
+  cameraShoulderMode?: 'center' | 'left' | 'right';
   realtimePositionsRef?: React.MutableRefObject<Map<string, any>>;
   interpolacionWorkerRef?: React.MutableRefObject<Worker | null>;
   posicionesInterpoladasRef?: React.MutableRefObject<Map<string, { x: number; z: number; direction?: DireccionAvatar; isMoving?: boolean }>>;
@@ -354,6 +356,7 @@ export const Scene: React.FC<SceneProps> = ({
   cameraSensitivity = 5,
   invertYAxis = false,
   cameraMode = 'free',
+  cameraShoulderMode = 'center',
   realtimePositionsRef,
   interpolacionWorkerRef,
   posicionesInterpoladasRef,
@@ -1301,6 +1304,8 @@ export const Scene: React.FC<SceneProps> = ({
         usersInAudioRangeIds={usersInAudioRangeIds}
         followTargetId={followTargetId}
         getFollowTargetPosition={getFollowTargetPosition}
+        gpuRenderConfig={gpuRenderConfig}
+        cameraShoulderMode={cameraShoulderMode}
       />
 
       {/* Usuarios remotos */}

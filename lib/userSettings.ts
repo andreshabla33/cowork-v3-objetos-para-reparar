@@ -82,6 +82,15 @@ export interface UserSettings {
     proximityRadius: number;
     radioInteresChunks: number;
     enableDayNightCycle?: boolean;
+    /**
+     * Offset over-the-shoulder de la cámara third-person:
+     *  - 'center' (default, como hoy)
+     *  - 'left'   (hombro izquierdo, cámara 0.3u a la derecha del avatar)
+     *  - 'right'  (hombro derecho, cámara 0.3u a la izquierda del avatar)
+     * Patrón cinematográfico común en GTA V, Fortnite, Witcher 3.
+     * Gated por gpuRenderConfig.useDynamicFov (tier ≥ 2).
+     */
+    cameraShoulderMode?: 'center' | 'left' | 'right';
   };
   calendar: {
     googleConnected: boolean;
@@ -224,7 +233,8 @@ export const defaultUserSettings: UserSettings = {
     spatialAudio: true,
     proximityRadius: 130,
     radioInteresChunks: 1,
-    enableDayNightCycle: false
+    enableDayNightCycle: false,
+    cameraShoulderMode: 'center'
   },
   calendar: {
     googleConnected: false,

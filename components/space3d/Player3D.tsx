@@ -1010,6 +1010,10 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     // Exponer dirección al CameraFollow para chase-cam rotation
     (camera as any).userData.playerDirection = newDirection;
     (camera as any).userData.playerMoving = movedThisFrame;
+    // Exponer animState para FOV dinámico (tier 2). 'run' abre ángulo,
+    // 'walk' intermedio, resto cierra al FOV base. Sin acoplar hooks
+    // externos — el CameraFollow lo lee vía userData (pattern pub/sub).
+    (camera as any).userData.playerAnimState = effectiveAnimState;
     if (onPositionUpdate) onPositionUpdate(positionRef.current.x, positionRef.current.z);
 
     const syncNow = state.clock.getElapsedTime();

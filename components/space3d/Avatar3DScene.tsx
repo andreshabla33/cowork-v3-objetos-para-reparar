@@ -803,8 +803,16 @@ export const CameraFollow: React.FC<{
    */
   followTargetId?: string | null;
   getFollowTargetPosition?: (userId: string) => { x: number; z: number } | null;
-}> = ({ controlsRef, zonasEmpresa = [], empresaId = null, espacioObjetos = [], usersInCallIds, usersInAudioRangeIds, followTargetId = null, getFollowTargetPosition }) => {
+  /**
+   * Config adaptativa por GPU tier. Gatea FOV dinámico (tier ≥ 2).
+   * Cuando es undefined o `useDynamicFov=false`, FOV se mantiene fijo.
+   */
+  gpuRenderConfig?: import('@/lib/gpuCapabilities').AdaptiveRenderConfig;
+  /** OTS offset — 'left' | 'right' desplaza cámara lateralmente; 'center' = default. */
+  cameraShoulderMode?: 'center' | 'left' | 'right';
+}> = ({ controlsRef, zonasEmpresa = [], empresaId = null, espacioObjetos = [], usersInCallIds, usersInAudioRangeIds, followTargetId = null, getFollowTargetPosition, gpuRenderConfig, cameraShoulderMode = 'center' }) => {
   const { camera, scene } = useThree();
+  const baseFovRef = useRef<number | null>(null);
 
   // ─── Camera collision (Tier 2) ────────────────────────────────────────
   // Raycaster reutilizable para detectar obstáculos entre el avatar (target)
@@ -1089,6 +1097,45 @@ export const CameraFollow: React.FC<{
         camera.position.y = THREE.MathUtils.lerp(camera.position.y, ty, 0.25);
         camera.position.z = THREE.MathUtils.lerp(camera.position.z, tz, 0.25);
       }
+    }
+
+    // ─── FOV dinámico (Tier 2) — feel de velocidad al correr ─────────────
+    // Lectura del animState vía userData (pub/sub con Player3D, zero coupling).
+    // Valores: run=55°, walk=52°, idle/sit=50° (base). Lerp suave 0.05 para
+    // que la transición sea orgánica (no snap al presionar shift).
+    // Ref: GTA V / Forza / Zelda BOTW pattern.
+    if (gpuRenderConfig?.useDynamicFov && !usarVistaInterior && !isFollowing) {
+      const persp = camera as THREE.PerspectiveCamera;
+      if (persp.isPerspectiveCamera) {
+        if (baseFovRef.current === null) baseFovRef.current = persp.fov;
+        const baseFov = baseFovRef.current;
+        const animState = (camera as any).userData?.playerAnimState as string | undefined;
+        const targetFov = animState === 'run' ? baseFov + 5 : animState === 'walk' ? baseFov + 2 : baseFov;
+        const newFov = THREE.MathUtils.lerp(persp.fov, targetFov, 0.05);
+        if (Math.abs(newFov - persp.fov) > 0.01) {
+          persp.fov = newFov;
+          persp.updateProjectionMatrix();
+        }
+      }
+    }
+
+    // ─── OTS offset (Tier 2, opt-in via setting) ─────────────────────────
+    // Desplaza el target lateralmente según la orientación cámara→avatar, de
+    // modo que el avatar quede ligeramente descentrado a un hombro. Más
+    // cinemático que vista centrada pura. Solo cuando el usuario lo activa
+    // explícitamente en settings (default: 'center' = comportamiento actual).
+    // Ref: GTA V shoulder swap, Fortnite L/R toggle, Witcher 3 OTS.
+    if (cameraShoulderMode !== 'center' && !usarVistaInterior && !isFollowing) {
+      const shoulderSign = cameraShoulderMode === 'right' ? 1 : -1;
+      const shoulderOffset = 0.3;
+      // Vector perpendicular a la dirección cámara→avatar en el plano XZ.
+      const dx = camera.position.x - controls.target.x;
+      const dz = camera.position.z - controls.target.z;
+      const len = Math.hypot(dx, dz) || 1;
+      const perpX = -dz / len;
+      const perpZ = dx / len;
+      controls.target.x = THREE.MathUtils.lerp(controls.target.x, playerPos.x + perpX * shoulderOffset * shoulderSign, 0.12);
+      controls.target.z = THREE.MathUtils.lerp(controls.target.z, playerPos.z + perpZ * shoulderOffset * shoulderSign, 0.12);
     }
 
     controls.update();
