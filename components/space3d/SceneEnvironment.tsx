@@ -95,13 +95,17 @@ export const SceneEnvironment: React.FC<SceneEnvironmentProps> = ({
   }, [useSky, sunPosition]);
 
   // ── Environment (IBL) — reflexiones PBR ambientales en tier ≥ 2 ──
-  // Preset 'city' da un look de oficina moderna. resolution + intensity
-  // se ajustan por tier via gpuRenderConfig.
+  // `files` apunta a /public/hdri/city.hdr (equirectangular 1k RGBE), servido
+  // desde nuestro propio origen. Antes usábamos `preset="city"` que intentaba
+  // cargar desde raw.githack.com — bloqueado por el CSP del app (connect-src
+  // no incluye githack). Solución definitiva: hostear el HDR en Vercel.
+  // Ref: drei `<Environment files>` acepta una URL equirectangular HDR.
+  // https://github.com/pmndrs/drei#environment
   const envElement = useMemo(() => {
     if (!useEnvironmentMap || !gpuRenderConfig) return null;
     return (
       <Environment
-        preset="city"
+        files="/hdri/city.hdr"
         resolution={gpuRenderConfig.environmentResolution}
         environmentIntensity={gpuRenderConfig.environmentIntensity}
         // background={false} para NO usar el HDR como fondo — el Sky shader
