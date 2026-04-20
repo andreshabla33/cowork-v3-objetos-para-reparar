@@ -27,6 +27,7 @@ import { ObjetosInteractivos } from '../3d/ObjetosInteractivos';
 import { ParticulasClima } from '../3d/ParticulasClima';
 import { SkyDome } from '../3d/SkyDome';
 import { DEFAULT_SCENE_POLICY, resolveSkyColors, type ScenePolicy } from '@/src/core/domain/entities/espacio3d/ScenePolicy';
+import { generarParedesPerimetrales } from '@/src/core/application/usecases/GenerarParedesPerimetralesUseCase';
 import { EmoteSync, useSyncEffects } from '../3d/EmoteSync';
 import { hapticFeedback, isMobileDevice } from '@/lib/mobileDetect';
 import { useStore } from '@/store/useStore';
@@ -494,11 +495,34 @@ export const Scene: React.FC<SceneProps> = ({
         .map((asiento) => [asiento.objetoId as string, asiento])
     );
   }, [asientosPersistentes]);
+  // Paredes perimetrales virtuales — generadas por el use case del Application
+  // layer a partir del terrainBounds y la policy. No persisten en Supabase;
+  // se concatenan al array de builtin walls reales y pasan por el mismo
+  // BuiltinWallBatcher (cero duplicación de pipeline de rendering).
+  // Clean Arch: Presentation consume Application para obtener los datos.
+  const paredesPerimetrales = useMemo(() => {
+    if (!scenePolicy.perimeter?.enabled) return [];
+    if (terrainBounds.sizeX <= 0 || terrainBounds.sizeZ <= 0) return [];
+    return generarParedesPerimetrales(
+      {
+        sizeX: terrainBounds.sizeX,
+        sizeZ: terrainBounds.sizeZ,
+        centerX: terrainBounds.centerX,
+        centerZ: terrainBounds.centerZ,
+        topY: terrainBounds.topY,
+      },
+      scenePolicy.perimeter,
+      (currentUser as { espacio_id?: string }).espacio_id ?? 'unknown',
+    );
+  }, [scenePolicy.perimeter, terrainBounds, currentUser]);
+
   // Fase 5A: Array estable de objetos builtin para BuiltinWallBatcher (evita .filter() inline en JSX)
-  const objetosBuiltin = useMemo(
-    () => espacioObjetos.filter(obj => obj.catalogo_id && (!obj.modelo_url || obj.modelo_url.startsWith('builtin:'))),
-    [espacioObjetos],
-  );
+  // Concatena paredes perimetrales virtuales — BuiltinWallBatcher las trata igual
+  // que las reales (mismo tipo `ObjetoEspacio3D`), merge en el mismo draw call.
+  const objetosBuiltin = useMemo(() => {
+    const builtinReales = espacioObjetos.filter(obj => obj.catalogo_id && (!obj.modelo_url || obj.modelo_url.startsWith('builtin:')));
+    return paredesPerimetrales.length > 0 ? [...builtinReales, ...paredesPerimetrales] : builtinReales;
+  }, [espacioObjetos, paredesPerimetrales]);
   // Fase 5B: Grupos por modelo_url para StaticObjectBatcher (evita crear Map inline en JSX cada render)
   // Ref: https://react.dev/reference/react/useMemo — recalcula solo cuando espacioObjetos cambia.
   const gruposPorModelo = useMemo(() => {
