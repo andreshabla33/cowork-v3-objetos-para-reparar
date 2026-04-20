@@ -168,18 +168,26 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
   }, [scene, avatarConfig?.nombre]);
 
   // Dispose cloned materials on unmount to prevent GPU memory leak.
-  // Geometries are shared by reference (SkeletonUtils.clone) — do NOT dispose them.
-  // Only materials were cloned (line ~128), so we dispose those.
-  // Ref: Three.js — "dispose geometry and material via dispose()"
+  //
+  // Geometrías: compartidas por referencia (SkeletonUtils.clone reusa geometries),
+  // NO disponer — otros consumidores del mismo GLTF las necesitan.
+  //
+  // Texturas (map, normalMap, etc.): también compartidas — provienen del cache
+  // module-level de `useGLTF` (drei) que indexa por URL. Disponerlas aquí rompía
+  // otros instances del mismo avatar: tras cambiar avatares varias veces en el
+  // customizer, la textura GPU quedaba liberada mientras el espacio 3D seguía
+  // referenciándola → piel violeta / color plano sin textura.
+  // Ref incidente 2026-04-20: piel violeta en espacio 3D tras switches en modal.
+  // Ref Three.js cleanup guide — "don't dispose shared assets loaded by loaders".
+  // https://threejs.org/manual/en/cleanup.html
+  //
+  // Solo disponemos el material clonado (línea ~128): ese sí es propio del instance.
   useEffect(() => {
     return () => {
       clone.traverse((child: any) => {
         if ((child.isMesh || child.isSkinnedMesh) && child.material) {
           const materials = Array.isArray(child.material) ? child.material : [child.material];
           materials.forEach((mat: THREE.Material) => {
-            // Dispose textures attached to the material
-            if ('map' in mat && (mat as any).map) (mat as any).map.dispose();
-            if ('normalMap' in mat && (mat as any).normalMap) (mat as any).normalMap.dispose();
             mat.dispose();
           });
         }
