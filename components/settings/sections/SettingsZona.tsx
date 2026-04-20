@@ -29,6 +29,8 @@ import {
 } from '@/lib/autorizacionesEmpresa';
 import { generarLayoutZonas, detectarOverlaps, type EmpresaParaLayout, type ZonaGenerada, type LayoutConfig } from '@/lib/zonaLayoutEngine';
 import { FloorType, FLOOR_TYPE_LABELS, normalizarTipoSuelo } from '@/src/core/domain/entities';
+import { useConfiguracionPerimetro } from '@/hooks/space3d/useConfiguracionPerimetro';
+import type { PerimeterWallStyle, PerimeterPolicy } from '@/src/core/domain/entities/espacio3d/ScenePolicy';
 
 interface EmpresaBasica {
   id: string;
@@ -72,6 +74,50 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
   const [aplicandoPlantillaCompleta, setAplicandoPlantillaCompleta] = useState(false);
 
   const { userId: authUserId } = useAuthSession();
+
+  // ── Cerramiento perimetral (config persistida en espacios_trabajo.configuracion.perimeter) ──
+  // Hook consume use cases del Application layer + realtime. Cambios del admin
+  // se propagan a todos los usuarios del espacio sin refresh (postgres_changes).
+  const {
+    policy: perimeterPolicy,
+    loading: perimeterLoading,
+    actualizar: actualizarPerimeter,
+  } = useConfiguracionPerimetro(workspaceId);
+  const [perimeterDraft, setPerimeterDraft] = useState<PerimeterPolicy | null>(null);
+  const [perimeterSaving, setPerimeterSaving] = useState(false);
+  // Sync draft con policy persistida al montar / cuando llegan updates.
+  useEffect(() => {
+    if (!perimeterLoading) setPerimeterDraft(perimeterPolicy);
+  }, [perimeterLoading, perimeterPolicy]);
+
+  const perimeterStyleOptions: Array<{ value: PerimeterWallStyle; label: string }> = [
+    { value: 'glass', label: 'Vidrio (transparente)' },
+    { value: 'brick', label: 'Ladrillo' },
+    { value: 'panel', label: 'Paneles' },
+    { value: 'half-wall', label: 'Media pared (1.2m)' },
+    { value: 'basic', label: 'Básica (sólida)' },
+  ];
+
+  const handleGuardarPerimeter = async () => {
+    if (!perimeterDraft) return;
+    setPerimeterSaving(true);
+    try {
+      await actualizarPerimeter(perimeterDraft);
+      mostrarMensaje('exito', 'Cerramiento perimetral guardado');
+    } catch (err) {
+      mostrarMensaje('error', err instanceof Error ? err.message : 'No se pudo guardar');
+    } finally {
+      setPerimeterSaving(false);
+    }
+  };
+
+  const perimeterDirty = perimeterDraft !== null && (
+    perimeterDraft.enabled !== perimeterPolicy.enabled ||
+    perimeterDraft.style !== perimeterPolicy.style ||
+    perimeterDraft.height !== perimeterPolicy.height ||
+    perimeterDraft.segmentWidth !== perimeterPolicy.segmentWidth ||
+    perimeterDraft.margin !== perimeterPolicy.margin
+  );
 
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [editandoId, setEditandoId] = useState<string | null>(null);
@@ -548,6 +594,111 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
 
   return (
     <div className="space-y-10">
+      {/* ═══════════════════════════════════════════════════════════════════
+          CERRAMIENTO PERIMETRAL — cierra el horizonte del espacio 3D
+          Persistido en espacios_trabajo.configuracion.perimeter (JSONB).
+          Admin edita, todos los usuarios reciben via Supabase Realtime.
+          ═══════════════════════════════════════════════════════════════════ */}
+      <div className="p-5 bg-gradient-to-br from-zinc-800/80 to-zinc-900/80 border border-emerald-500/20 rounded-2xl shadow-xl">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+            <LayoutGrid className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-white">Cerramiento Perimetral</h4>
+            <p className="text-xs text-zinc-400">Paredes automáticas alrededor del espacio — evita ver el vacío del horizonte. Configuración compartida con todos los usuarios.</p>
+          </div>
+        </div>
+
+        {perimeterLoading || !perimeterDraft ? (
+          <div className="flex items-center justify-center py-6 text-zinc-500 text-sm gap-2">
+            <RefreshCw className="w-4 h-4 animate-spin" /> Cargando configuración...
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex items-center gap-3 bg-zinc-900/60 border border-zinc-700/60 rounded-xl px-3 py-2.5">
+                <input
+                  id="perimeter-enabled"
+                  type="checkbox"
+                  checked={perimeterDraft.enabled}
+                  onChange={(e) => setPerimeterDraft({ ...perimeterDraft, enabled: e.target.checked })}
+                  className="h-4 w-4 rounded border-zinc-600 text-emerald-500"
+                />
+                <label htmlFor="perimeter-enabled" className="text-xs font-medium text-zinc-300">
+                  Cerrar perímetro automáticamente
+                </label>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1">Estilo de pared</label>
+                <select
+                  value={perimeterDraft.style}
+                  onChange={(e) => setPerimeterDraft({ ...perimeterDraft, style: e.target.value as PerimeterWallStyle })}
+                  disabled={!perimeterDraft.enabled}
+                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-emerald-500 outline-none disabled:opacity-50"
+                >
+                  {perimeterStyleOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1">Altura ({perimeterDraft.height.toFixed(1)} m)</label>
+                <input
+                  type="range"
+                  min={0.5}
+                  max={10}
+                  step={0.1}
+                  value={perimeterDraft.height}
+                  onChange={(e) => setPerimeterDraft({ ...perimeterDraft, height: Number(e.target.value) })}
+                  disabled={!perimeterDraft.enabled}
+                  className="w-full accent-emerald-500 disabled:opacity-50"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-1">Margen del borde ({perimeterDraft.margin.toFixed(1)} m)</label>
+                <input
+                  type="range"
+                  min={0}
+                  max={5}
+                  step={0.1}
+                  value={perimeterDraft.margin}
+                  onChange={(e) => setPerimeterDraft({ ...perimeterDraft, margin: Number(e.target.value) })}
+                  disabled={!perimeterDraft.enabled}
+                  className="w-full accent-emerald-500 disabled:opacity-50"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
+              <p className="text-[11px] text-zinc-500">
+                Los cambios se aplican a todos los usuarios del espacio al instante (Realtime).
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPerimeterDraft(perimeterPolicy)}
+                  disabled={!perimeterDirty || perimeterSaving}
+                  className="px-4 py-2 rounded-lg text-sm text-zinc-400 hover:text-white transition disabled:opacity-40"
+                >
+                  Descartar
+                </button>
+                <button
+                  onClick={handleGuardarPerimeter}
+                  disabled={!perimeterDirty || perimeterSaving}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white rounded-lg text-sm font-medium transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+                >
+                  {perimeterSaving ? (
+                    <><RefreshCw className="w-4 h-4 animate-spin" /> Guardando...</>
+                  ) : (
+                    <><Check className="w-4 h-4" /> Guardar cambios</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <h3 className="text-xl font-bold text-white">Zonas de Empresa</h3>
