@@ -4,9 +4,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { SkeletonUtils, GLTFLoader } from 'three-stdlib';
+import { SkeletonUtils } from 'three-stdlib';
 import { supabase } from '@/lib/supabase';
 import { collectBoneData, remapAnimationTracks } from './rigUtils';
+import { getCachedRawClips } from '@/lib/avatar3d/universalAnimationsPreloader';
 import {
   DEFAULT_MODEL_URL,
   EMBEDDED_NAME_MAP,
@@ -35,17 +36,17 @@ export interface GLTFAvatarProps {
 
 useGLTF.setDecoderPath('/draco/');
 
-const animationAssetCache = new Map<string, Promise<THREE.AnimationClip[]>>();
 const textureAssetCache = new Map<string, Promise<THREE.Texture>>();
 const ENABLE_SIT_DEBUG = false;
 
-function loadAnimationAsset(url: string, loader: GLTFLoader): Promise<THREE.AnimationClip[]> {
-  const cached = animationAssetCache.get(url);
-  if (cached) return cached;
-
-  const pending = loader.loadAsync(url).then((gltf) => gltf.animations);
-  animationAssetCache.set(url, pending);
-  return pending;
+// Animation clip fetching now delegates to the shared module-level cache in
+// `lib/avatar3d/universalAnimationsPreloader`. That same cache is warmed at
+// boot by `preloadUniversalAnimations()` so the 12 universal GLBs resolve
+// instantly here instead of re-fetching per avatar mount.
+// Ref: R3F "Loading Models" — preload shared assets at boot.
+// Ref: Three.js AnimationMixer — AnimationClip can be shared across mixers.
+function loadAnimationAsset(url: string): Promise<THREE.AnimationClip[]> {
+  return getCachedRawClips(url);
 }
 
 function loadTextureAsset(url: string, loader: THREE.TextureLoader): Promise<THREE.Texture> {
@@ -400,16 +401,22 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
         }));
       }
 
-      const configKey = animaciones.map((anim) => anim.url).join('|');
+      // Dedupe key MUST include the avatar identity (cacheKey), not only the
+      // URL list. Otherwise, avatars that share the universal animation pool
+      // (all Chxx_nonPBR + Maria + Aj + Eve + Erika Archer — 13 avatars)
+      // collide: the first to load wins, the rest early-return here with
+      // clips remapped against the WRONG skeleton → AnimationMixer actions
+      // bind to nonexistent bones → bind pose (T-pose). Reproduced with
+      // Ch21 / Ch08 vs _default_ on 2026-04-20.
+      const configKey = `${cacheKey}:${animaciones.map((anim) => anim.url).join('|')}`;
       if (configKey === animConfigRef.current) return;
       animConfigRef.current = configKey;
       currentAvatarIdRef.current = cacheKey;
 
-      const loader = new GLTFLoader();
       const results = await Promise.all(
         animaciones.map(async (anim) => {
           try {
-            const clipsForUrl = await loadAnimationAsset(anim.url, loader);
+            const clipsForUrl = await loadAnimationAsset(anim.url);
             return {
               nombre: anim.nombre,
               clips: clipsForUrl,

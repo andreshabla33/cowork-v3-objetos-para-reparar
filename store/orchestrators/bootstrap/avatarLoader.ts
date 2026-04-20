@@ -14,6 +14,7 @@ import type { Avatar3DConfig } from '../../../components/avatar3d/shared';
 import type { UserAvatarData } from './userDataLoader';
 import { supabase } from '../../../lib/supabase';
 import { logger } from '../../../lib/logger';
+import { preloadUniversalAnimations } from '../../../lib/avatar3d/universalAnimationsPreloader';
 
 const log = logger.child('avatar-loader');
 
@@ -132,6 +133,18 @@ export async function cargarAvatar(
   } catch (error: unknown) {
     log.warn('Could not load avatar 3D config', { error: error instanceof Error ? error.message : String(error) });
   }
+
+  // Fire-and-forget preload of the 12 shared universal animation GLBs.
+  // Warms the module-level cache used by GLTFAvatar so subsequent avatar
+  // selections load clips in ~1-5ms (cache hit) instead of 460-851ms,
+  // closing the race window that produced T-pose on avatars without native
+  // animations (doc: fix-tpose-universal-anims-preload-2026-04-20).
+  // Non-blocking: bootstrap continues immediately.
+  preloadUniversalAnimations().catch((err) => {
+    log.warn('Universal animations preload failed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  });
 
   return { avatarConfig, avatar3DConfig };
 }
