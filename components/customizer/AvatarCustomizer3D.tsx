@@ -12,7 +12,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useStore } from '@/store/useStore';
 import type { CatalogoObjeto3D } from '@/types/objetos3d';
@@ -124,13 +124,56 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({
 
   const requestAvatarCapture = useCallback(() => {
     if (catalog.isCapturing) return;
+    // Ambos estados deben setearse: el local (dispara captureToken de PreviewCanvas)
+    // y el del hook (le dice a captureThumbnail qué avatar actualizar). Antes solo
+    // se seteaba el local → captureThumbnail retornaba early porque su captureRequest
+    // nunca se inicializaba → los PNGs NO se subían ni actualizaban thumbnail_url.
+    const id = catalog.selectedAvatarId;
+    if (!id) return;
+    catalog.requestThumbnailCapture('avatar', id);
     setCaptureRequest({ kind: 'avatar', token: Date.now() });
-  }, [catalog.isCapturing]);
+  }, [catalog.isCapturing, catalog.selectedAvatarId, catalog.requestThumbnailCapture]);
 
   const requestObjectCapture = useCallback(() => {
     if (catalog.isCapturing) return;
+    const id = catalog.selectedObjectId;
+    if (!id) return;
+    catalog.requestThumbnailCapture('objeto', id);
     setCaptureRequest({ kind: 'object', token: Date.now() });
-  }, [catalog.isCapturing]);
+  }, [catalog.isCapturing, catalog.selectedObjectId, catalog.requestThumbnailCapture]);
+
+  // ─── Auto-captura de miniaturas faltantes ──────────────────────────────
+  // Cuando el usuario selecciona un avatar cuyo thumbnail_url es null, tras
+  // 2.5s (tiempo suficiente para que el GLB cargue + primera animación se
+  // estabilice en el preview) disparamos el mismo flujo del botón 📸. Es
+  // transparente para el usuario y cierra el loop para cualquier avatar
+  // nuevo sin miniatura (backfill, pipeline manual, etc.).
+  //
+  // Ref doc: fix_avatar_thumbnails_captura_2026_03_12 (mecanismo de captura).
+  // Ref R3F Canvas.gl.domElement.toBlob — depende de preserveDrawingBuffer.
+  const autoCaptureAttemptedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const previewId = catalog.previewConfig?.id;
+    if (!previewId) return;
+    if (catalog.isCapturing || captureRequest) return;
+    const avatar = catalog.availableAvatars.find((a) => a.id === previewId);
+    if (!avatar || avatar.thumbnail_url) return;
+    if (autoCaptureAttemptedRef.current.has(previewId)) return;
+
+    const timer = setTimeout(() => {
+      if (autoCaptureAttemptedRef.current.has(previewId)) return;
+      autoCaptureAttemptedRef.current.add(previewId);
+      catalog.requestThumbnailCapture('avatar', previewId);
+      setCaptureRequest({ kind: 'avatar', token: Date.now() });
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [
+    catalog.previewConfig?.id,
+    catalog.availableAvatars,
+    catalog.isCapturing,
+    captureRequest,
+    catalog.requestThumbnailCapture,
+  ]);
 
   // ─── 3D Preview renderer ───────────────────────────────────────────────
   const renderPreviewPanel = () => {
