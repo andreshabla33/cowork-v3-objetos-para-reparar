@@ -26,7 +26,14 @@ export type AvatarAssetQuality = 'high' | 'medium' | 'low';
 export type AnimationState = 'idle' | 'walk' | 'run' | 'cheer' | 'dance' | 'sit' | 'sit_down' | 'stand_up' | 'wave' | 'jump' | 'victory';
 
 export const STORAGE_BASE = 'https://lcryrsdyrzotjqdxcwtp.supabase.co/storage/v1/object/public/avatars';
-export const DEFAULT_MODEL_URL = `${STORAGE_BASE}/Monica_Idle.glb`;
+// Default avatar cuando `avatarConfig` es null (fallback de último recurso antes
+// de que useAvatar3D / bootstrap resuelvan el avatar real del usuario). Aj es:
+//   - Primer avatar activo por `orden` en avatares_3d (lo seleccionan los usuarios
+//     sin avatar asignado via avatarLoader.ts linea 60-66).
+//   - GLB limpio: 0 animaciones embebidas (no dispara el bug de artefactos Mixamo).
+//   - 83 bones compatibles con las animaciones universales tras normalización.
+// Monica_Idle.glb fue eliminado del Storage el 2026-04-20, este cambio cierra el 404.
+export const DEFAULT_MODEL_URL = `${STORAGE_BASE}/animaciones_universales/avatares/aj.glb`;
 
 export function resolveAvatarModelUrl(avatarConfig: Avatar3DConfig | null | undefined, quality: AvatarAssetQuality = 'high'): string {
   if (!avatarConfig) return DEFAULT_MODEL_URL;
