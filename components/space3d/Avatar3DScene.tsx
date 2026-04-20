@@ -804,7 +804,17 @@ export const CameraFollow: React.FC<{
   followTargetId?: string | null;
   getFollowTargetPosition?: (userId: string) => { x: number; z: number } | null;
 }> = ({ controlsRef, zonasEmpresa = [], empresaId = null, espacioObjetos = [], usersInCallIds, usersInAudioRangeIds, followTargetId = null, getFollowTargetPosition }) => {
-  const { camera } = useThree();
+  const { camera, scene } = useThree();
+
+  // ─── Camera collision (Tier 2) ────────────────────────────────────────
+  // Raycaster reutilizable para detectar obstáculos entre el avatar (target)
+  // y la cámara. Cuando hay hit, la cámara se acerca al target para evitar
+  // que "atraviese" paredes. Patrón Unreal Spring Arm / Unity Cinemachine.
+  // Ref: https://threejs.org/docs/#api/en/core/Raycaster
+  // Ref: https://discussions.unity.com/t/complete-camera-collision-detection-third-person-games/593233
+  const collisionRaycaster = useRef(new THREE.Raycaster());
+  const collisionDirection = useRef(new THREE.Vector3());
+  const collisionOrigin = useRef(new THREE.Vector3());
   const lastPlayerPos = useRef<{ x: number; z: number } | null>(null);
   const initialized = useRef(false);
   const introStartedAtRef = useRef<number | null>(null);
@@ -1024,6 +1034,60 @@ export const CameraFollow: React.FC<{
       const alturaRelativaObjetivo = Math.max(cameraHeight - cameraTargetHeight, 1.05);
       if (offsetYActual > alturaRelativaObjetivo + 0.35 && distanciaHorizontalActual > cameraDistance + 0.04) {
         camera.position.y = THREE.MathUtils.lerp(camera.position.y, controls.target.y + alturaRelativaObjetivo, smoothing * 0.9);
+      }
+    }
+
+    // ─── Camera collision — pull-in cuando hay obstáculo entre target y cámara ──
+    // Un raycast desde el target hacia la cámara detecta geometría bloqueante.
+    // Si hay hit más cerca que la distancia deseada, aproximamos la cámara al
+    // punto de impacto (menos padding 0.2) con lerp suave para evitar snap.
+    //
+    // Filtrado: ignora SkinnedMesh (avatars), Sprite (labels), InstancedMesh
+    // con userData.cameraIgnore=true, meshes con material.transparent (burbujas),
+    // y cualquier mesh cuyo nombre contenga 'ui', 'label', 'bubble', 'sky'.
+    // Esto evita que partículas, etiquetas flotantes y el skydome activen la
+    // colisión. Ref: Three.js Raycaster docs + Unity best practice "layer mask".
+    collisionOrigin.current.set(controls.target.x, controls.target.y, controls.target.z);
+    collisionDirection.current.set(
+      camera.position.x - controls.target.x,
+      camera.position.y - controls.target.y,
+      camera.position.z - controls.target.z,
+    );
+    const desiredDistance = collisionDirection.current.length();
+    if (desiredDistance > 0.1) {
+      collisionDirection.current.normalize();
+      collisionRaycaster.current.set(collisionOrigin.current, collisionDirection.current);
+      collisionRaycaster.current.far = desiredDistance;
+      collisionRaycaster.current.near = 0.2;
+      const hits = collisionRaycaster.current.intersectObjects(scene.children, true);
+      // Filtro: el primer hit que sea "camera blocker" (geometría sólida).
+      let firstBlocker: THREE.Intersection | null = null;
+      for (const hit of hits) {
+        const obj = hit.object as THREE.Mesh;
+        // Skip: SkinnedMesh, Sprite, meshes UI/transparentes, skydome, flag explícito.
+        if ((obj as any).isSkinnedMesh) continue;
+        if ((obj as any).isSprite) continue;
+        if (obj.userData?.cameraIgnore === true) continue;
+        const name = (obj.name || '').toLowerCase();
+        if (name.includes('sky') || name.includes('label') || name.includes('bubble') || name.includes('ui')) continue;
+        // material transparent => burbuja de video, emoji reaction, etc.
+        const mat = obj.material as THREE.Material | THREE.Material[] | undefined;
+        const matArr = Array.isArray(mat) ? mat : (mat ? [mat] : []);
+        if (matArr.some((m) => m && (m as any).transparent === true)) continue;
+        firstBlocker = hit;
+        break;
+      }
+      if (firstBlocker) {
+        // Mover cámara al hit - padding. Lerp 0.25 → transición rápida (cámara
+        // dentro de pared es molesta) pero no snap (evita jitter si el hit
+        // oscila entre frames por physics).
+        const pulledDistance = Math.max(firstBlocker.distance - 0.2, 0.3);
+        const tx = controls.target.x + collisionDirection.current.x * pulledDistance;
+        const ty = controls.target.y + collisionDirection.current.y * pulledDistance;
+        const tz = controls.target.z + collisionDirection.current.z * pulledDistance;
+        camera.position.x = THREE.MathUtils.lerp(camera.position.x, tx, 0.25);
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, ty, 0.25);
+        camera.position.z = THREE.MathUtils.lerp(camera.position.z, tz, 0.25);
       }
     }
 
