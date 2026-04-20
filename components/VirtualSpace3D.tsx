@@ -254,6 +254,16 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     onConfigureRenderer: (gl) => {
       if (gpuRenderConfig) {
         gl.toneMappingExposure = gpuRenderConfig.toneMappingExposure;
+        // Tier 2+: ACESFilmic tone mapping para look cinematográfico "Hollywood".
+        // Ref Three.js Journey — Realistic Render: toneMapping + exposure +
+        // outputColorSpace son los 3 pilares del PBR realista.
+        // https://threejs-journey.com/lessons/realistic-render
+        if (gpuRenderConfig.toneMapping === 'aces') {
+          gl.toneMapping = THREE.ACESFilmicToneMapping;
+          gl.outputColorSpace = THREE.SRGBColorSpace;
+        } else {
+          gl.toneMapping = THREE.NoToneMapping;
+        }
       }
     },
   });
@@ -946,6 +956,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
             adaptiveDpr={adaptivePerfEnabled ? adaptiveDpr : undefined}
             minDpr={adaptivePerfEnabled ? minDpr : undefined}
             setAdaptiveDpr={adaptivePerfEnabled ? setAdaptiveDpr : undefined}
+            gpuRenderConfig={gpuRenderConfig ?? undefined}
             currentUser={currentUserEcs}
             onlineUsers={usuariosEnChunks}
             setPosition={setPositionEcs}

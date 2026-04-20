@@ -30,6 +30,19 @@ export interface AdaptiveRenderConfig {
   powerPreference: 'high-performance' | 'default' | 'low-power';
   toneMappingExposure: number;
   maxVideoStreams: number;
+  // ─── Tier 2 visual features (gated por tier ≥ 2) ───────────────────────
+  /** Usar drei `<Sky>` (Preetham atmospheric scattering) en vez del skydome custom. */
+  useSky: boolean;
+  /** Usar drei `<Environment>` (IBL via HDR) para reflexiones PBR ambientales. */
+  useEnvironmentMap: boolean;
+  /** Resolución PMREM del Environment map. Impacto VRAM + calidad reflexión. */
+  environmentResolution: 256 | 512 | 1024;
+  /** Intensidad de reflexión ambiente (0..1). Más bajo = materiales menos metálicos. */
+  environmentIntensity: number;
+  /** Modo tone mapping: 'aces' = ACESFilmic (cinematográfico), 'none' = Linear default. */
+  toneMapping: 'aces' | 'none';
+  /** FOV dinámico (abre ángulo al correr, cierra al estar quieto). */
+  useDynamicFov: boolean;
 }
 
 let cachedInfo: GpuInfo | null = null;
@@ -142,6 +155,18 @@ export function adaptiveConfigFromTier(
     ? gpuInfo.estimatedVRAM === 'medium' || gpuInfo.estimatedVRAM === 'low'
     : false;
 
+  // ─── Tier 2 visual defaults (aplica a tier ≥ 2; ver plan-tier-2-cowork) ──
+  // Tier 0 y 1 conservan comportamiento pre-Tier 2 (skydome simple, sin IBL,
+  // sin ACES, sin FOV dinámico) para máxima compatibilidad con hardware bajo.
+  const tier2VisualsOff = {
+    useSky: false,
+    useEnvironmentMap: false,
+    environmentResolution: 256 as const,
+    environmentIntensity: 0,
+    toneMapping: 'none' as const,
+    useDynamicFov: false,
+  };
+
   if (qualityOverride === 'low' || tier === 0) {
     return {
       shadows: false,
@@ -152,6 +177,7 @@ export function adaptiveConfigFromTier(
       powerPreference: 'low-power',
       toneMappingExposure: 1,
       maxVideoStreams: 4,
+      ...tier2VisualsOff,
     };
   }
 
@@ -165,6 +191,7 @@ export function adaptiveConfigFromTier(
       powerPreference: batterySaver ? 'low-power' : 'default',
       toneMappingExposure: 1,
       maxVideoStreams: 6,
+      ...tier2VisualsOff,
     };
   }
 
@@ -179,8 +206,15 @@ export function adaptiveConfigFromTier(
       maxDpr: maxDprTier2,
       minDpr: 1,
       powerPreference: batterySaver ? 'low-power' : 'default',
-      toneMappingExposure: 1.1,
+      toneMappingExposure: 1.0, // Balanceado para ACESFilmic (antes 1.1 sin ACES).
       maxVideoStreams: 8,
+      // Tier 2 visual features activados — resolución IBL media.
+      useSky: true,
+      useEnvironmentMap: true,
+      environmentResolution: 512,
+      environmentIntensity: 0.6,
+      toneMapping: 'aces',
+      useDynamicFov: true,
     };
   }
 
@@ -206,7 +240,14 @@ export function adaptiveConfigFromTier(
     maxDpr: maxDprTier3,
     minDpr: 1,
     powerPreference: batterySaver ? 'default' : 'high-performance',
-    toneMappingExposure: 1.05,
+    toneMappingExposure: 1.0, // ACESFilmic rebalanceado (antes 1.05 sin ACES).
     maxVideoStreams: 12,
+    // Tier 3 visual features — máxima calidad IBL.
+    useSky: true,
+    useEnvironmentMap: true,
+    environmentResolution: 1024,
+    environmentIntensity: 0.7,
+    toneMapping: 'aces',
+    useDynamicFov: true,
   };
 }

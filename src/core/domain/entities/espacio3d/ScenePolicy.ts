@@ -186,6 +186,34 @@ function rgb01ToHsl(r: number, g: number, b: number): { h: number; s: number; l:
   return { h, s, l };
 }
 
+// ─── Sol / DayNight (función pura de dominio) ─────────────────────────────────
+
+/**
+ * Computa la posición del sol en coordenadas cartesianas a partir de una hora
+ * decimal (0..24). Arco que sale por el Este a las 6am, cenit al mediodía y
+ * se pone por el Oeste a las 6pm. Fuera del rango [6..18] devuelve la última
+ * posición del sol antes del atardecer (sol "debajo del horizonte") — drei
+ * `<Sky>` lo interpreta como noche automáticamente.
+ *
+ * Distancia = 100 (valor típico para `<Sky>`; no afecta escala, solo dirección
+ * del vector que es lo que el shader de Preetham usa internamente).
+ *
+ * Ref: drei `<Sky>` sunPosition — https://github.com/pmndrs/drei#sky
+ * Ref: Preetham et al. "A Practical Analytic Model for Daylight" (1999).
+ */
+export function computeSunPosition(hourDecimal: number): [number, number, number] {
+  // Clamp al rango del día [6..18] para un arco continuo. Antes de 6am o
+  // después de 6pm, el sol está debajo del horizonte (y negativo).
+  const dayProgress = (hourDecimal - 6) / 12; // 0 = sunrise, 1 = sunset
+  const clamped = Math.max(-0.5, Math.min(1.5, dayProgress));
+  const angle = clamped * Math.PI; // 0 = este, π = oeste
+  const radius = 100;
+  const x = -Math.cos(angle) * radius;       // negativo al amanecer, positivo al atardecer
+  const y = Math.sin(angle) * radius;         // y > 0 durante el día, y < 0 de noche
+  const z = -20;                              // pequeña inclinación hacia el fondo
+  return [x, y, z];
+}
+
 function hslToRgb01(h: number, s: number, l: number): { r: number; g: number; b: number } {
   if (s === 0) return { r: l, g: l, b: l };
   const q = l < 0.5 ? l * (1 + s) : l + s - l * s;

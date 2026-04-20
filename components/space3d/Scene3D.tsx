@@ -169,6 +169,12 @@ export interface SceneProps {
   adaptiveDpr?: number;
   minDpr?: number;
   setAdaptiveDpr?: React.Dispatch<React.SetStateAction<number>>;
+  /**
+   * Config adaptativa por GPU tier. Gatea features visuales Tier 2:
+   * drei `<Sky>`, `<Environment>` IBL, tone mapping ACES, FOV dinámico.
+   * Ref doc: plan-tier-2-visual-upgrade-2026-04-20.
+   */
+  gpuRenderConfig?: import('@/lib/gpuCapabilities').AdaptiveRenderConfig;
 }
 
 const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) * paso;
@@ -392,6 +398,7 @@ export const Scene: React.FC<SceneProps> = ({
   adaptiveDpr,
   minDpr,
   setAdaptiveDpr,
+  gpuRenderConfig,
 }) => {
   const gridColor = theme === 'arcade' ? '#00ff41' : '#6366f1';
 
@@ -941,23 +948,32 @@ export const Scene: React.FC<SceneProps> = ({
           Los colores provienen del dominio (resolveSkyColors) y respetan
           themeSkyColors si hay override; si no, derivan proceduralmente
           aplicando ScenePolicy.sky.derivation. */}
-      <SkyDome
-        bottomColor={skyColors.bottom}
-        topColor={skyColors.top}
-        radius={scenePolicy.sky.radius}
-        widthSegments={scenePolicy.sky.widthSegments}
-        heightSegments={scenePolicy.sky.heightSegments}
-      />
-
-      {/* Iluminación: DayNightCycle dinámico o luces estáticas */}
-      {enableDayNightCycle ? (
-        <DayNightCycle enabled={true} />
-      ) : (
-        <>
-          <ambientLight intensity={0.7} />
-          <directionalLight position={[10, 20, 10]} intensity={1.2} castShadow />
-        </>
+      {/*
+        Skydome custom: solo visible en tier 0/1. En tier ≥ 2 el drei `<Sky>`
+        de SceneEnvironment toma el rol del fondo. Este SkyDome se monta igual
+        pero con `visible=false` para evitar overdraw cuando hay Sky shader.
+        Ref: plan-tier-2-visual-upgrade-2026-04-20.
+      */}
+      {!gpuRenderConfig?.useSky && (
+        <SkyDome
+          bottomColor={skyColors.bottom}
+          topColor={skyColors.top}
+          radius={scenePolicy.sky.radius}
+          widthSegments={scenePolicy.sky.widthSegments}
+          heightSegments={scenePolicy.sky.heightSegments}
+        />
       )}
+
+      {/*
+        SceneEnvironment encapsula la iluminación + Sky + Environment IBL.
+        Cuando gpuRenderConfig.useSky / useEnvironmentMap están activos (tier ≥ 2)
+        agrega drei `<Sky>` + `<Environment>` + hemisphereLight automáticamente.
+      */}
+      <SceneEnvironment
+        enableDayNightCycle={enableDayNightCycle}
+        theme={theme}
+        gpuRenderConfig={gpuRenderConfig}
+      />
 
       {/* OrbitControls (drei) — Restaurado de la v2.2!
           - OrbitControls NO retrasa la cámara, muta la posición síncronamente en el render pass.
