@@ -7,7 +7,7 @@
  * Ref: React 19 — single responsibility, no derived state duplication.
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { AvatarCard } from '../../AvatarCard';
 import type { UseAvatarCatalogReturn } from '@/hooks/customizer/useAvatarCatalog';
 
@@ -24,7 +24,26 @@ export interface AvatarPanelProps {
   >;
 }
 
-export const AvatarPanel: React.FC<AvatarPanelProps> = ({ catalog }) => (
+export const AvatarPanel: React.FC<AvatarPanelProps> = ({ catalog }) => {
+  // Reordenar: el avatar equipado aparece primero en la grilla para que el
+  // usuario siempre lo encuentre sin scrollear. UX estandar en selectores de
+  // equipo/skin (LoL, Fortnite, Gather.town). El orden base (DB.orden) se
+  // preserva para los demas. Memo evita re-ordenar en cada render.
+  const sortedAvatars = useMemo(() => {
+    if (!catalog.equippedAvatarId) return catalog.availableAvatars;
+    const equippedIdx = catalog.availableAvatars.findIndex(
+      (a) => a.id === catalog.equippedAvatarId,
+    );
+    if (equippedIdx <= 0) return catalog.availableAvatars;
+    const equipped = catalog.availableAvatars[equippedIdx];
+    const rest = [
+      ...catalog.availableAvatars.slice(0, equippedIdx),
+      ...catalog.availableAvatars.slice(equippedIdx + 1),
+    ];
+    return [equipped, ...rest];
+  }, [catalog.availableAvatars, catalog.equippedAvatarId]);
+
+  return (
   <div className="space-y-2 animate-in fade-in duration-200">
     {/* Info del avatar seleccionado */}
     {catalog.selectedAvatarId && (() => {
@@ -53,7 +72,7 @@ export const AvatarPanel: React.FC<AvatarPanelProps> = ({ catalog }) => (
       </div>
     ) : (
       <div className="grid grid-cols-[repeat(auto-fit,minmax(80px,1fr))] gap-2.5 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar pb-4">
-        {catalog.availableAvatars.map((avatar) => (
+        {sortedAvatars.map((avatar) => (
           <AvatarCard
             key={avatar.id}
             onClick={() => void catalog.changeEquippedAvatar(avatar.id)}
@@ -74,4 +93,5 @@ export const AvatarPanel: React.FC<AvatarPanelProps> = ({ catalog }) => (
       </div>
     )}
   </div>
-);
+  );
+};
