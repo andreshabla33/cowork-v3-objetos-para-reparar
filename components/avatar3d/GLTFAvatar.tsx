@@ -347,7 +347,17 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
     const cacheKey = avatarId || '_default_';
     if (cacheKey === currentAvatarIdRef.current) return;
 
-    if (baseAnimations.length > 1) {
+    // Preferimos animaciones configuradas en DB (propias o fallback universal) sobre
+    // las embebidas del GLB. Varios Chxx_nonPBR_Final.glb + Eve_By_JGonzales traían
+    // 2-8 "Armature|mixamo.com|Layer0" layers como artefactos del export Mixamo:
+    // son clips sin keyframes reales que al bindearse en el mixer dejan al avatar
+    // en bind pose = T-pose. Doc: fix-tpose-embedded-anim-artifacts-2026-04-20.
+    //
+    // Los GLBs de producción ya fueron limpiados (script strip-embedded-anims.mjs),
+    // pero este guard queda como defensa contra regresión si alguien sube un asset
+    // sucio sin pasar por el pipeline limpio.
+    const hasConfiguredAnims = (avatarConfig?.animaciones?.length ?? 0) > 0;
+    if (baseAnimations.length > 1 && !hasConfiguredAnims) {
       currentAvatarIdRef.current = cacheKey;
       setLoadedAnimClips({});
       return;
