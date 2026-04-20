@@ -673,6 +673,16 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
     clone.traverse((child: any) => {
       if ((child.isMesh || child.isSkinnedMesh) && child.material) {
         const material = child.material as THREE.MeshStandardMaterial;
+        // Skip tinting si el material tiene baseColorTexture (UV-atlas).
+        // Three.js multiplica `material.color * texture.rgb` por texel — tintar
+        // con un color uniforme rompe los avatares con un atlas donde piel,
+        // ropa y accesorios comparten una misma textura (ej. Aj con
+        // Boy01_Body_Geo que incluía todo: el clothingColor convertía la cara
+        // y manos en violeta). El skin/clothingColor solo aplica a materiales
+        // sin textura (avatares 2D-style legacy).
+        // Ref: https://threejs.org/docs/#api/en/materials/MeshStandardMaterial.color
+        // Ref: glTF 2.0 pbrMetallicRoughness.baseColorFactor × baseColorTexture.
+        if (material.map) return;
         const meshName = child.name.toLowerCase();
         if (skinColor && (meshName.includes('skin') || meshName.includes('head') || meshName.includes('face'))) {
           material.color = new THREE.Color(skinColor);
