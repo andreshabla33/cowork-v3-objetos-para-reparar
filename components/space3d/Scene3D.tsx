@@ -29,6 +29,7 @@ import { SkyDome } from '../3d/SkyDome';
 import { DistantSkyline } from '../3d/DistantSkyline';
 import { DEFAULT_SCENE_POLICY, resolveSkyColors, type ScenePolicy } from '@/src/core/domain/entities/espacio3d/ScenePolicy';
 import { generarParedesPerimetrales } from '@/src/core/application/usecases/GenerarParedesPerimetralesUseCase';
+import { useConfiguracionPerimetro } from '@/hooks/space3d/useConfiguracionPerimetro';
 import { EmoteSync, useSyncEffects } from '../3d/EmoteSync';
 import { hapticFeedback, isMobileDevice } from '@/lib/mobileDetect';
 import { useStore } from '@/store/useStore';
@@ -496,13 +497,19 @@ export const Scene: React.FC<SceneProps> = ({
         .map((asiento) => [asiento.objetoId as string, asiento])
     );
   }, [asientosPersistentes]);
+  // Config de perímetro viene de Supabase via hook (realtime). El admin la
+  // modifica desde SettingsZona; otros usuarios la reciben por postgres_changes.
+  // Si no hay config persistida, el hook cae a DEFAULT_SCENE_POLICY.perimeter.
+  // Clean Arch: la Presentation consume SOLO el hook (no el adapter directo).
+  const espacioIdPerimeter = (currentUser as { espacio_id?: string }).espacio_id ?? null;
+  const { policy: perimeterPolicyPersisted } = useConfiguracionPerimetro(espacioIdPerimeter);
+
   // Paredes perimetrales virtuales — generadas por el use case del Application
-  // layer a partir del terrainBounds y la policy. No persisten en Supabase;
-  // se concatenan al array de builtin walls reales y pasan por el mismo
-  // BuiltinWallBatcher (cero duplicación de pipeline de rendering).
-  // Clean Arch: Presentation consume Application para obtener los datos.
+  // layer a partir del terrainBounds y la policy persistida. No persisten en
+  // `espacio_objetos`; se concatenan al array de builtin walls reales y pasan
+  // por el mismo BuiltinWallBatcher (cero duplicación de pipeline de rendering).
   const paredesPerimetrales = useMemo(() => {
-    if (!scenePolicy.perimeter?.enabled) return [];
+    if (!perimeterPolicyPersisted.enabled) return [];
     if (terrainBounds.sizeX <= 0 || terrainBounds.sizeZ <= 0) return [];
     return generarParedesPerimetrales(
       {
@@ -512,10 +519,10 @@ export const Scene: React.FC<SceneProps> = ({
         centerZ: terrainBounds.centerZ,
         topY: terrainBounds.topY,
       },
-      scenePolicy.perimeter,
-      (currentUser as { espacio_id?: string }).espacio_id ?? 'unknown',
+      perimeterPolicyPersisted,
+      espacioIdPerimeter ?? 'unknown',
     );
-  }, [scenePolicy.perimeter, terrainBounds, currentUser]);
+  }, [perimeterPolicyPersisted, terrainBounds, espacioIdPerimeter]);
 
   // Fase 5A: Array estable de objetos builtin para BuiltinWallBatcher (evita .filter() inline en JSX)
   // Concatena paredes perimetrales virtuales — BuiltinWallBatcher las trata igual
