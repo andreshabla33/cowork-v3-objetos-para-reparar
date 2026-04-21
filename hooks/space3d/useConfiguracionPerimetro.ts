@@ -5,16 +5,19 @@
  * NO conoce Supabase ni tablas; solo habla con Application via use cases.
  *
  * DI: el repositorio se resuelve desde el DIContainer (React Context),
- * no desde un singleton module-level. Esto permite:
- *   - Inyectar mocks en tests sin tocar el módulo (containerOverride en DIProvider).
- *   - Swap del adapter por uno alternativo (ej. Storybook con datos in-memory).
- *   - Trazabilidad explícita de la dependency direction en el árbol React.
+ * no desde un singleton module-level. Permite inyectar mocks en tests.
  *
- * Ref: Robert C. Martin, *Clean Architecture* cap. 11 — "DI is the only way
- * to honor the Dependency Rule when frameworks are involved."
+ * State: usa `useSyncExternalStore` (React 18+) sobre `PerimetroPolicyStore`.
+ * Esto garantiza que componentes concurrentes vean el mismo snapshot dentro
+ * de la misma transición (sin tearing) y que múltiples hooks compartan UNA
+ * suscripción Realtime por espacioId.
+ *
+ * Refs:
+ *   - https://react.dev/reference/react/useSyncExternalStore
+ *   - Robert C. Martin, *Clean Architecture* cap. 11 (Dependency Rule + DI).
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
 import {
   DEFAULT_PERIMETER_POLICY,
   type PerimeterPolicy,
@@ -28,10 +31,21 @@ import {
 } from '@/src/core/application/usecases/ConfiguracionPerimetroUseCases';
 import { useDI } from '@/src/core/infrastructure/di/DIProvider';
 import { logger } from '@/lib/logger';
+import { PerimetroPolicyStore } from './PerimetroPolicyStore';
 
 const log = logger.child('useConfiguracionPerimetro');
 
-const FALLBACK_POLICY: PerimeterPolicy = DEFAULT_PERIMETER_POLICY;
+// ─── Snapshot estable cuando no hay espacioId ────────────────────────────────
+// useSyncExternalStore exige getSnapshot estable: si retornáramos un objeto
+// nuevo cada render, dispararía un loop infinito.
+
+const NULL_SNAPSHOT = Object.freeze({
+  policy: DEFAULT_PERIMETER_POLICY,
+  loading: false,
+  error: null,
+});
+const noopSubscribe = () => () => {};
+const getNullSnapshot = () => NULL_SNAPSHOT;
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
@@ -58,93 +72,46 @@ export function useConfiguracionPerimetro(
 ): UseConfiguracionPerimetroReturn {
   const container = useDI();
 
-  // Use cases instanciados una sola vez por container — son stateless,
-  // pero los memorizamos para mantener identidad de referencia estable.
-  const { obtenerUC, actualizarUC, suscribirUC } = useMemo(() => {
+  // El store se construye una vez por (espacioId, container) y mantiene
+  // identidad estable mientras esos no cambien.
+  const store = useMemo(() => {
+    if (!espacioId) return null;
     const repo = container.configuracionPerimetro;
-    return {
-      obtenerUC: new ObtenerConfiguracionPerimetroUseCase(repo),
-      actualizarUC: new ActualizarConfiguracionPerimetroUseCase(repo),
-      suscribirUC: new SuscribirConfiguracionPerimetroUseCase(repo),
-    };
-  }, [container]);
+    return new PerimetroPolicyStore(
+      espacioId,
+      new ObtenerConfiguracionPerimetroUseCase(repo),
+      new ActualizarConfiguracionPerimetroUseCase(repo),
+      new SuscribirConfiguracionPerimetroUseCase(repo),
+    );
+  }, [espacioId, container]);
 
-  const [policy, setPolicy] = useState<PerimeterPolicy>(FALLBACK_POLICY);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const mountedRef = useRef(true);
+  const snapshot = useSyncExternalStore(
+    store ? store.subscribe : noopSubscribe,
+    store ? store.getSnapshot : getNullSnapshot,
+    store ? store.getServerSnapshot : getNullSnapshot,
+  );
 
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  // Carga inicial + realtime subscription atados al ciclo de vida del espacioId.
-  useEffect(() => {
-    if (!espacioId) {
-      setPolicy(FALLBACK_POLICY);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-
-    let unsubscribe: (() => void) | null = null;
-
-    obtenerUC
-      .ejecutar(espacioId)
-      .then((resolved) => {
-        if (!mountedRef.current) return;
-        setPolicy(resolved);
-      })
-      .catch((err) => {
-        if (!mountedRef.current) return;
-        const msg = err instanceof Error ? err.message : String(err);
-        log.warn('Initial load failed', { espacioId, error: msg });
-        setError(msg);
-      })
-      .finally(() => {
-        if (mountedRef.current) setLoading(false);
-      });
-
-    // Realtime: cualquier UPDATE de otro cliente se propaga instantáneamente.
-    unsubscribe = suscribirUC.ejecutar(espacioId, (nueva) => {
-      if (!mountedRef.current) return;
-      setPolicy(nueva);
-    });
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, [espacioId, obtenerUC, suscribirUC]);
+  // Mantenemos una referencia al store actual para que el callback estable
+  // de `actualizar` lo lea siempre fresco sin re-crearse en cada cambio.
+  const storeRef = useRef(store);
+  storeRef.current = store;
 
   const actualizar = useCallback(
     async (nueva: PerimeterPolicy): Promise<Result<PerimeterPolicy, PerimeterPolicyError>> => {
-      if (!espacioId) {
+      const s = storeRef.current;
+      if (!s) {
         log.warn('actualizar llamado sin espacioId');
         return { ok: false, error: { code: 'INVALID_STYLE', received: null } };
       }
-      try {
-        const result = await actualizarUC.ejecutar(espacioId, nueva);
-        if (result.ok && mountedRef.current) {
-          // Optimistic update — reflejamos localmente antes del eco realtime.
-          setPolicy(result.value);
-        } else if (!result.ok && mountedRef.current) {
-          setError(`Validación falló: ${result.error.code}`);
-        }
-        return result;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        log.warn('Update failed', { espacioId, error: msg });
-        if (mountedRef.current) setError(msg);
-        // Wrap unexpected I/O error in Result shape para coherencia.
-        return { ok: false, error: { code: 'INVALID_STYLE', received: msg } };
-      }
+      return s.actualizar(nueva);
     },
-    [espacioId, actualizarUC],
+    [],
   );
 
-  return { policy, loading, error, actualizar };
+  return {
+    policy: snapshot.policy,
+    loading: snapshot.loading,
+    error: snapshot.error,
+    actualizar,
+  };
 }
