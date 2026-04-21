@@ -26,7 +26,6 @@ import { DayNightCycle } from '../3d/DayNightCycle';
 import { ObjetosInteractivos } from '../3d/ObjetosInteractivos';
 import { ParticulasClima } from '../3d/ParticulasClima';
 import { SkyDome } from '../3d/SkyDome';
-import { DistantSkyline } from '../3d/DistantSkyline';
 import { DEFAULT_SCENE_POLICY, resolveSkyColors, type ScenePolicy } from '@/src/core/domain/entities/espacio3d/ScenePolicy';
 import { generarParedesPerimetrales } from '@/src/core/application/usecases/GenerarParedesPerimetralesUseCase';
 import { useConfiguracionPerimetro } from '@/hooks/space3d/useConfiguracionPerimetro';
@@ -1008,21 +1007,6 @@ export const Scene: React.FC<SceneProps> = ({
         enableDayNightCycle={enableDayNightCycle}
         theme={theme}
         gpuRenderConfig={gpuRenderConfig}
-      />
-
-      {/*
-        Skyline lejana low-poly — elimina el "flotar en el vacío" que se ve
-        desde la vista aérea. Gated por gpuRenderConfig.useSky (tier ≥ 2);
-        en hardware bajo se oculta (solo 80 cajas instanciadas = barato,
-        pero mantenemos coherencia con las demás features visuales Tier 2).
-        Radio derivado del terrainBounds para escalar con el tamaño del espacio.
-      */}
-      <DistantSkyline
-        enabled={!!gpuRenderConfig?.useSky}
-        radius={Math.max(terrainBounds.sizeX, terrainBounds.sizeZ) * 1.1}
-        centerX={terrainBounds.centerX}
-        centerZ={terrainBounds.centerZ}
-        baseY={terrainBounds.topY}
       />
 
       {/* OrbitControls (drei) — Restaurado de la v2.2!
