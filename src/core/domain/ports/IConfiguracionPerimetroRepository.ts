@@ -8,17 +8,16 @@
  * implementa este puerto; la Presentation lo consume vía use cases del
  * Application layer.
  *
- * La configuración se persiste en `espacios_trabajo.configuracion` (JSONB
- * existente) bajo la key `perimeter`. Ver adapter para detalles.
+ * La configuración se persiste en la tabla dedicada
+ * `espacio_configuracion_perimetro` (CHECK constraints + RLS). Ver adapter.
  */
 
 import type { PerimeterPolicy } from '@/src/core/domain/entities/espacio3d/ScenePolicy';
 
 export interface IConfiguracionPerimetroRepository {
   /**
-   * Lee la configuración de perímetro del espacio. Si la key `perimeter` no
-   * existe en el JSONB de `configuracion`, retorna `null` — el consumidor
-   * debe aplicar `DEFAULT_SCENE_POLICY.perimeter` como fallback.
+   * Lee la configuración de perímetro del espacio. Si no existe row, retorna
+   * `null` — el consumidor debe aplicar `DEFAULT_PERIMETER_POLICY` como fallback.
    */
   obtener(espacioId: string): Promise<PerimeterPolicy | null>;
 

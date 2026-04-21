@@ -26,6 +26,7 @@ import type { IBatchMaterialPropertiesService } from '../../domain/ports/IBatchM
 import type { IInvitacionRepository } from '../../domain/ports/IInvitacionRepository';
 import type { IEnviarInvitacionRepository } from '../../domain/ports/IEnviarInvitacionRepository';
 import type { IOnboardingRepository } from '../../domain/ports/IOnboardingRepository';
+import type { IConfiguracionPerimetroRepository } from '../../domain/ports/IConfiguracionPerimetroRepository';
 
 // ─── Tipo del contenedor ──────────────────────────────────────────────────────
 
@@ -58,6 +59,8 @@ export interface DIContainer {
   enviarInvitacion: IEnviarInvitacionRepository;
   /** Repositorio de onboarding de miembros */
   onboarding: IOnboardingRepository;
+  /** Configuración del cerramiento perimetral por espacio (tabla dedicada + Realtime) */
+  configuracionPerimetro: IConfiguracionPerimetroRepository;
 }
 
 // ─── Singleton ────────────────────────────────────────────────────────────────
@@ -89,6 +92,7 @@ export async function getDIContainer(): Promise<DIContainer> {
     { InvitacionSupabaseRepository },
     { EnviarInvitacionSupabaseRepository },
     { OnboardingSupabaseRepository },
+    { ConfiguracionPerimetroSupabaseRepository },
   ] = await Promise.all([
     import('../adapters/ThreeTextureFactoryAdapter'),
     import('../adapters/RenderingOptimizationAdapter'),
@@ -104,6 +108,7 @@ export async function getDIContainer(): Promise<DIContainer> {
     import('../adapters/InvitacionSupabaseRepository'),
     import('../adapters/EnviarInvitacionSupabaseRepository'),
     import('../adapters/OnboardingSupabaseRepository'),
+    import('../adapters/ConfiguracionPerimetroSupabaseRepository'),
   ]);
 
   _container = {
@@ -121,6 +126,7 @@ export async function getDIContainer(): Promise<DIContainer> {
     invitacion: new InvitacionSupabaseRepository(),
     enviarInvitacion: new EnviarInvitacionSupabaseRepository(),
     onboarding: new OnboardingSupabaseRepository(),
+    configuracionPerimetro: new ConfiguracionPerimetroSupabaseRepository(),
   };
 
   return _container;

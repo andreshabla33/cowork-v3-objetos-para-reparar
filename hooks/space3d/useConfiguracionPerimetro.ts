@@ -4,13 +4,17 @@
  * Clean Architecture — Presentation hook que consume los use cases.
  * NO conoce Supabase ni tablas; solo habla con Application via use cases.
  *
- * Responsabilidades:
- *  1. Cargar policy inicial al montar (useEffect + use case).
- *  2. Subscribir a cambios realtime para reflejar updates del admin en vivo.
- *  3. Exponer mutador `actualizar()` para el panel admin.
+ * DI: el repositorio se resuelve desde el DIContainer (React Context),
+ * no desde un singleton module-level. Esto permite:
+ *   - Inyectar mocks en tests sin tocar el módulo (containerOverride en DIProvider).
+ *   - Swap del adapter por uno alternativo (ej. Storybook con datos in-memory).
+ *   - Trazabilidad explícita de la dependency direction en el árbol React.
+ *
+ * Ref: Robert C. Martin, *Clean Architecture* cap. 11 — "DI is the only way
+ * to honor the Dependency Rule when frameworks are involved."
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DEFAULT_PERIMETER_POLICY,
   type PerimeterPolicy,
@@ -22,19 +26,10 @@ import {
   ActualizarConfiguracionPerimetroUseCase,
   SuscribirConfiguracionPerimetroUseCase,
 } from '@/src/core/application/usecases/ConfiguracionPerimetroUseCases';
-import { ConfiguracionPerimetroSupabaseRepository } from '@/src/core/infrastructure/adapters/ConfiguracionPerimetroSupabaseRepository';
+import { useDI } from '@/src/core/infrastructure/di/DIProvider';
 import { logger } from '@/lib/logger';
 
 const log = logger.child('useConfiguracionPerimetro');
-
-// ─── DI singleton ────────────────────────────────────────────────────────────
-// El repositorio es stateless — singleton module-level evita re-instanciar
-// el channel de realtime en cada mount de componente que use el hook.
-
-const repo = new ConfiguracionPerimetroSupabaseRepository();
-const obtenerUC = new ObtenerConfiguracionPerimetroUseCase(repo);
-const actualizarUC = new ActualizarConfiguracionPerimetroUseCase(repo);
-const suscribirUC = new SuscribirConfiguracionPerimetroUseCase(repo);
 
 const FALLBACK_POLICY: PerimeterPolicy = DEFAULT_PERIMETER_POLICY;
 
@@ -61,6 +56,19 @@ export interface UseConfiguracionPerimetroReturn {
 export function useConfiguracionPerimetro(
   espacioId: string | null | undefined,
 ): UseConfiguracionPerimetroReturn {
+  const container = useDI();
+
+  // Use cases instanciados una sola vez por container — son stateless,
+  // pero los memorizamos para mantener identidad de referencia estable.
+  const { obtenerUC, actualizarUC, suscribirUC } = useMemo(() => {
+    const repo = container.configuracionPerimetro;
+    return {
+      obtenerUC: new ObtenerConfiguracionPerimetroUseCase(repo),
+      actualizarUC: new ActualizarConfiguracionPerimetroUseCase(repo),
+      suscribirUC: new SuscribirConfiguracionPerimetroUseCase(repo),
+    };
+  }, [container]);
+
   const [policy, setPolicy] = useState<PerimeterPolicy>(FALLBACK_POLICY);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -110,7 +118,7 @@ export function useConfiguracionPerimetro(
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [espacioId]);
+  }, [espacioId, obtenerUC, suscribirUC]);
 
   const actualizar = useCallback(
     async (nueva: PerimeterPolicy): Promise<Result<PerimeterPolicy, PerimeterPolicyError>> => {
@@ -135,7 +143,7 @@ export function useConfiguracionPerimetro(
         return { ok: false, error: { code: 'INVALID_STYLE', received: msg } };
       }
     },
-    [espacioId],
+    [espacioId, actualizarUC],
   );
 
   return { policy, loading, error, actualizar };
