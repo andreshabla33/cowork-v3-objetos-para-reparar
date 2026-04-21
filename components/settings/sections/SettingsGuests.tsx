@@ -90,11 +90,23 @@ export const SettingsGuests: React.FC<SettingsGuestsProps> = ({
   };
 
   const revokeGuest = async (guestId: string) => {
-    await supabase
+    // Mismo patrón RLS silencioso que en SettingsMembers.cancelarInvitacion.
+    // Sin `{ count: 'exact' }`, un user sin permisos veía la fila desaparecer
+    // del estado local pero al recargar `loadGuests()` reaparecía.
+    const { error, count } = await supabase
       .from('invitaciones_pendientes')
-      .delete()
+      .delete({ count: 'exact' })
       .eq('id', guestId);
-    
+    if (error) {
+      console.warn('Error revocando invitación', { guestId, error: error.message });
+      alert('Error revocando acceso. Intenta de nuevo.');
+      return;
+    }
+    if (!count || count === 0) {
+      console.warn('Acceso no revocado: 0 filas afectadas (RLS o id inexistente)', { guestId });
+      alert('No tienes permisos para revocar este acceso, o ya no existe.');
+      return;
+    }
     loadGuests();
   };
 

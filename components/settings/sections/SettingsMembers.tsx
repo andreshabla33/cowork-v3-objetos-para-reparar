@@ -129,7 +129,26 @@ export const SettingsMembers: React.FC<SettingsMembersProps> = ({
   }, [workspaceId]);
 
   const cancelarInvitacion = async (id: string) => {
-    await supabase.from('invitaciones_pendientes').delete().eq('id', id);
+    // Supabase .delete() NO lanza error HTTP cuando una política RLS USING
+    // filtra la fila — retorna `{ error: null, count: 0 }` y la fila queda
+    // intacta en DB. La UI previa asumía éxito y hacía optimistic update,
+    // así que al recargar la invitación reaparecía.
+    // Policy real: solo super_admin/admin de la misma (espacio, empresa) puede.
+    // Ref: https://supabase.com/docs/reference/javascript/delete (count option).
+    const { error, count } = await supabase
+      .from('invitaciones_pendientes')
+      .delete({ count: 'exact' })
+      .eq('id', id);
+    if (error) {
+      console.warn('Error cancelando invitación', { id, error: error.message });
+      alert('Error cancelando invitación. Intenta de nuevo.');
+      return;
+    }
+    if (!count || count === 0) {
+      console.warn('Invitación no cancelada: 0 filas afectadas (RLS o id inexistente)', { id });
+      alert('No tienes permisos para cancelar esta invitación, o ya no existe.');
+      return;
+    }
     setInvitaciones(prev => prev.filter(i => i.id !== id));
   };
 
