@@ -65,7 +65,10 @@ export interface SkyPolicy {
 // invariantes + factory `PerimeterPolicy.create()`. Mantenemos los re-exports
 // aquí por backwards-compat con consumidores que ya importaban de ScenePolicy.
 // Refactor 2026-04-20: validación movida de Application a Domain (Robert Martin).
-import type { PerimeterPolicy as PerimeterPolicyType } from './PerimeterPolicy';
+import {
+  DEFAULT_PERIMETER_POLICY,
+  type PerimeterPolicy as PerimeterPolicyType,
+} from './PerimeterPolicy';
 export type { PerimeterWallStyle, PerimeterPolicy } from './PerimeterPolicy';
 export { PerimeterPolicy as PerimeterPolicyDomain, DEFAULT_PERIMETER_POLICY } from './PerimeterPolicy';
 
@@ -99,15 +102,11 @@ export const DEFAULT_SCENE_POLICY: ScenePolicy = {
       lightness: 0.14,
     },
   },
-  // Default canónico vive en PerimeterPolicy.ts (DEFAULT_PERIMETER_POLICY).
-  // Aquí lo referenciamos para mantener una sola fuente de verdad.
-  perimeter: {
-    enabled: true,
-    style: 'glass',
-    height: 3,
-    segmentWidth: 4,
-    margin: 0.5,
-  },
+  // Default canónico vive en PerimeterPolicy.ts (DEFAULT_PERIMETER_POLICY)
+  // con `enabled=false` (fail-closed). Referenciado directamente para
+  // mantener una sola fuente de verdad — evita el drift que ocurrió antes
+  // cuando este archivo duplicaba los valores literales.
+  perimeter: DEFAULT_PERIMETER_POLICY,
 };
 
 // ─── Funciones puras de dominio ───────────────────────────────────────────────

@@ -82,11 +82,22 @@ const MARGIN_MAX = 5;
 // ─── Default canónico ────────────────────────────────────────────────────────
 
 /**
- * Policy default cuando un espacio no tiene config persistida. Hardcoded
- * a valores que sabemos válidos (no pasan por `create` para evitar throw).
+ * Policy default cuando un espacio no tiene config persistida.
+ *
+ * **Política fail-closed**: `enabled=false` por diseño.
+ *
+ * Why: tras migrar a tabla dedicada + UI admin, las paredes son una
+ * decisión explícita del administrador del espacio. Un default `enabled=true`
+ * hacía que CUALQUIER espacio nuevo apareciera rodeado de paredes de vidrio
+ * sin que nadie lo pidiera — el admin lo percibía como "paredes hardcodeadas"
+ * porque no había ningún setting activo que las explicara.
+ *
+ * Si el admin quiere paredes, las activa desde SettingsZona → toggle ON.
+ * El INSERT/UPSERT crea el row con `enabled=true` y los demás campos como
+ * valores razonables (style/height/segmentWidth/margin quedan igual que antes).
  */
 export const DEFAULT_PERIMETER_POLICY: PerimeterPolicy = Object.freeze({
-  enabled: true,
+  enabled: false,
   style: 'glass',
   height: 3,
   segmentWidth: 4,
