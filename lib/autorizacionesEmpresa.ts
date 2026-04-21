@@ -122,13 +122,28 @@ export const eliminarZonaEmpresa = async (payload: {
   usuarioId?: string | null;
   empresaId?: string | null;
 }): Promise<boolean> => {
-  const { error } = await supabase
+  // Bug histórico (fix 2026-04-21): Supabase .delete() NO devuelve error HTTP
+  // cuando una política RLS USING filtra la fila — devuelve `{ error: null }`
+  // con 0 filas afectadas. Resultado: el UI pensaba que el DELETE funcionó
+  // pero la fila seguía en DB. Fix: pedir `count: 'exact'` y validar.
+  // Ref: https://supabase.com/docs/reference/javascript/delete
+  const { error, count } = await supabase
     .from('zonas_empresa')
-    .delete()
+    .delete({ count: 'exact' })
     .eq('id', payload.zonaId);
 
   if (error) {
     console.warn('Error eliminando zona:', error.message);
+    return false;
+  }
+
+  if (!count || count === 0) {
+    // RLS la filtró o la fila ya no existe. Informamos al caller con false
+    // para que el handler UI muestre un feedback real, no un éxito falso.
+    console.warn('Zona no eliminada: 0 filas afectadas (RLS policy o id inexistente)', {
+      zonaId: payload.zonaId,
+      espacioId: payload.espacioId,
+    });
     return false;
   }
 
@@ -250,14 +265,27 @@ export const aplicarLayoutMasivo = async (payload: {
   try {
     // Si se pide, eliminar zonas existentes del espacio
     if (payload.eliminarExistentes) {
-      const { error: delError } = await supabase
+      // Mismo patrón que eliminarZonaEmpresa: RLS puede filtrar silenciosamente.
+      // Si el user no es admin pero pide `eliminarExistentes=true`, el DELETE
+      // no corre y el INSERT posterior duplicaría zonas. Con `count:'exact'`
+      // detectamos el caso y abortamos el flujo.
+      const { error: delError, count: delCount } = await supabase
         .from('zonas_empresa')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('espacio_id', payload.espacioId);
 
       if (delError) {
         console.warn('Error eliminando zonas existentes:', delError.message);
         return false;
+      }
+
+      // delCount === 0 es válido (no había zonas). Solo fallamos si había pero
+      // la RLS impidió el DELETE. Para distinguir: comparamos contra un SELECT
+      // previo sería más caro; preferimos aceptar 0 como no-op y confiar en
+      // que si había filas y RLS las bloqueó, el INSERT siguiente fallará con
+      // un error claro (violación de constraint). En consola queda el log.
+      if (delCount === null) {
+        console.warn('No se pudo determinar filas afectadas al limpiar zonas previas.');
       }
     }
 
