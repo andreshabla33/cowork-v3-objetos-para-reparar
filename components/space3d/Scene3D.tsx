@@ -611,8 +611,14 @@ export const Scene: React.FC<SceneProps> = ({
     () => [
       ...crearObstaculosObjetosPersistentes(espacioObjetos),
       ...crearObstaculosObjetosPersistentes(cerramientosZona),
+      // Fix 2026-04-21: las paredes perimetrales son `ObjetoEspacio3D`
+      // virtuales (tipo='pared', dimensiones reales). El pipeline de
+      // colisiones del avatar las trata igual que a las paredes persistidas
+      // → el avatar ya no las atraviesa. Sin este spread, el BuiltinWallBatcher
+      // las RENDERIZABA pero no había collider ⇒ eran paredes "fantasma".
+      ...crearObstaculosObjetosPersistentes(paredesPerimetrales),
     ],
-    [cerramientosZona, espacioObjetos]
+    [cerramientosZona, espacioObjetos, paredesPerimetrales]
   );
   // --- Hito 8: Edit Mode dragging ---
   const isDragging = useStore((s) => s.isDragging);
