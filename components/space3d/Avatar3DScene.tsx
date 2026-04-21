@@ -880,9 +880,9 @@ export const CameraFollow: React.FC<{
   }, [espacioObjetos]);
 
   const CAMERA_INTRO_DURATION_MS = 1200;
-  const CAMERA_INTRO_HEIGHT = 11;
-  const CAMERA_INTRO_DISTANCE = 12;
-  const CAMERA_INTRO_TARGET_HEIGHT = 0.8;
+  const CAMERA_INTRO_HEIGHT = 4.45;
+  const CAMERA_INTRO_DISTANCE = 5.35;
+  const CAMERA_INTRO_TARGET_HEIGHT = 1.18;
   const hayVideoProximidad = (usersInCallIds?.size || 0) > 0 || (usersInAudioRangeIds?.size || 0) > 0;
   const CAMERA_DEFAULT_HEIGHT = hayVideoProximidad ? 5.2 : 4.45;
   const CAMERA_DEFAULT_DISTANCE = hayVideoProximidad ? 6.8 : 5.35;
@@ -1067,6 +1067,14 @@ export const CameraFollow: React.FC<{
       collisionRaycaster.current.set(collisionOrigin.current, collisionDirection.current);
       collisionRaycaster.current.far = desiredDistance;
       collisionRaycaster.current.near = 0.2;
+      // Fix crítico (2026-04-21): Three.js requiere `raycaster.camera` seteado
+      // cuando el grafo contiene `THREE.Sprite` (labels de avatares, burbujas).
+      // Sin esto, al testear un Sprite el raycast lee `matrixWorld` de un
+      // objeto no preparado y lanza `Cannot read properties of null`. El
+      // error se dispara en cada frame del useFrame → spam → congelación.
+      // Ref: https://threejs.org/docs/#api/en/core/Raycaster (section Sprites)
+      //      https://threejs.org/docs/#api/en/objects/Sprite
+      collisionRaycaster.current.camera = camera;
       const hits = collisionRaycaster.current.intersectObjects(scene.children, true);
       // Filtro: el primer hit que sea "camera blocker" (geometría sólida).
       let firstBlocker: THREE.Intersection | null = null;
