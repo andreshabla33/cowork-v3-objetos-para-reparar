@@ -64,6 +64,12 @@ export interface CatalogoObjeto3D {
   es_reclamable?: boolean;
   premium: boolean;
   escala_normalizacion?: number | null;
+  /**
+   * Whitelist para placement stacking: si es true, el objeto acepta que
+   * otros objetos se apilen encima (snap a su topY). Default en DB = false.
+   * Ref migration: `catalogo_objetos_3d_add_es_superficie` (2026-04-21).
+   */
+  es_superficie?: boolean;
 }
 
 export interface ObjetoPreview3D extends CatalogoObjeto3D {

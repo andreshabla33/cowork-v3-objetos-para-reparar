@@ -80,6 +80,7 @@ type CatalogoObjeto3DRuntime = Pick<
   | 'es_reclamable'
   | 'premium'
   | 'escala_normalizacion'
+  | 'es_superficie'
 > & {
   slug?: string | null;
 };
@@ -217,6 +218,7 @@ const enriquecerObjetoEspacio = (
       alto: Number(metadata.alto) || 1,
       profundidad: Number(metadata.profundidad) || 1,
       escala_normalizacion: metadata.escala_normalizacion ?? 1,
+      es_superficie: Boolean(metadata.es_superficie),
     },
   };
 };
@@ -250,7 +252,7 @@ export function useEspacioObjetos(
         .eq('espacio_id', espacioId),
       supabase
         .from('catalogo_objetos_3d')
-        .select('id, slug, tipo, modelo_url, built_in_geometry, built_in_color, ancho, alto, profundidad, es_sentable, sit_offset_x, sit_offset_y, sit_offset_z, sit_rotation_y, es_interactuable, interaccion_tipo, interaccion_radio, interaccion_emoji, interaccion_label, interaccion_config, configuracion_geometria, es_reclamable, premium, escala_normalizacion'),
+        .select('id, slug, tipo, modelo_url, built_in_geometry, built_in_color, ancho, alto, profundidad, es_sentable, sit_offset_x, sit_offset_y, sit_offset_z, sit_rotation_y, es_interactuable, interaccion_tipo, interaccion_radio, interaccion_emoji, interaccion_label, interaccion_config, configuracion_geometria, es_reclamable, premium, escala_normalizacion, es_superficie'),
     ]);
 
     if (!catalogoError && catalogoData) {

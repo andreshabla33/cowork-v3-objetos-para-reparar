@@ -29,6 +29,8 @@ import { SkyDome } from '../3d/SkyDome';
 import { DistantSkyline } from '../3d/DistantSkyline';
 import { DEFAULT_SCENE_POLICY, resolveSkyColors, type ScenePolicy } from '@/src/core/domain/entities/espacio3d/ScenePolicy';
 import { generarParedesPerimetrales } from '@/src/core/application/usecases/GenerarParedesPerimetralesUseCase';
+import { ColocarObjetoUseCase } from '@/src/core/application/usecases/ColocarObjetoUseCase';
+import type { ObjetoColocable, Rayo } from '@/src/core/domain/entities/espacio3d/PlacementPolicy';
 import { useConfiguracionPerimetro } from '@/hooks/space3d/useConfiguracionPerimetro';
 import { EmoteSync, useSyncEffects } from '../3d/EmoteSync';
 import { hapticFeedback, isMobileDevice } from '@/lib/mobileDetect';
@@ -184,6 +186,28 @@ export interface SceneProps {
 
 const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) * paso;
 const pisoMundoPlano = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+// Use case stateless — singleton module-level evita recrearlo por render.
+// El Presentation se limita a construir el input y consumir el output.
+const colocarObjetoUC = new ColocarObjetoUseCase();
+
+/**
+ * Convierte el `THREE.Ray` del evento R3F al tipo de dominio `Rayo`
+ * (sin importar THREE en el dominio). Devuelve null si el evento no
+ * trae rayo (p.ej. eventos sintéticos de drag-from-panel).
+ */
+const rayoEventoADominio = (evento: any): Rayo | null => {
+  const r = evento?.ray;
+  if (!r || !r.origin || !r.direction) return null;
+  return {
+    origenX: r.origin.x,
+    origenY: r.origin.y,
+    origenZ: r.origin.z,
+    direccionX: r.direction.x,
+    direccionY: r.direction.y,
+    direccionZ: r.direction.z,
+  };
+};
 
 const obtenerPuntoSueloMundo = (evento: any) => {
   const interseccion = new THREE.Vector3();
@@ -544,6 +568,38 @@ export const Scene: React.FC<SceneProps> = ({
     }
     return grupos;
   }, [espacioObjetos]);
+  // ── Candidatos para placement stacking ───────────────────────────────────
+  // Mapea `EspacioObjeto[]` → `ObjetoColocable[]` (dominio puro) una vez por
+  // cambio de lista. El use case de placement lo consume en handlePointerMove
+  // para decidir si el objeto que arrastras cae al suelo o se apila encima.
+  // Excluimos objetos sin catálogo resuelto (dimensiones desconocidas → no
+  // pueden actuar como AABB fiable).
+  const objetosColocables = useMemo<ObjetoColocable[]>(() => {
+    const out: ObjetoColocable[] = [];
+    for (const obj of espacioObjetos) {
+      const anchoCat = obj.catalogo?.ancho ?? obj.ancho;
+      const altoCat = obj.catalogo?.alto ?? obj.alto;
+      const profCat = obj.catalogo?.profundidad ?? obj.profundidad;
+      const ancho = Number(anchoCat);
+      const alto = Number(altoCat);
+      const profundidad = Number(profCat);
+      if (!Number.isFinite(ancho) || ancho <= 0) continue;
+      if (!Number.isFinite(alto) || alto <= 0) continue;
+      if (!Number.isFinite(profundidad) || profundidad <= 0) continue;
+      out.push({
+        id: obj.id,
+        posicionX: obj.posicion_x,
+        posicionY: obj.posicion_y,
+        posicionZ: obj.posicion_z,
+        ancho,
+        alto,
+        profundidad,
+        esSuperficie: Boolean(obj.catalogo?.es_superficie),
+      });
+    }
+    return out;
+  }, [espacioObjetos]);
+
   const cerramientosZona = useMemo(() => crearParedesCerramientosZonas(zonasEmpresa), [zonasEmpresa]);
   const obstaculosMundo = useMemo(
     () => [
@@ -737,7 +793,26 @@ export const Scene: React.FC<SceneProps> = ({
     }
 
     if (objetoEnColocacion && onActualizarObjetoEnColocacion) {
-      onActualizarObjetoEnColocacion(x, objetoEnColocacion.posicion_y, z);
+      // Placement stacking (whitelist): si el rayo impacta un objeto marcado
+      // `es_superficie=true` se apila sobre su topY; si no, cae al suelo.
+      // Ref: PlacementPolicy (Domain) + ColocarObjetoUseCase (Application).
+      const rayo = rayoEventoADominio(e);
+      if (rayo) {
+        const altoAColocar = Number(objetoEnColocacion.alto) || 1;
+        const pos = colocarObjetoUC.ejecutar({
+          rayo,
+          objetos: objetosColocables,
+          hitPisoX: x,
+          hitPisoZ: z,
+          altoAColocar,
+          // Preview nuevo desde catálogo no tiene row persistido aún.
+          idEnColocacion: null,
+        });
+        onActualizarObjetoEnColocacion(pos.x, pos.y, pos.z);
+      } else {
+        // Fallback defensivo: evento sintético sin ray → comportamiento anterior.
+        onActualizarObjetoEnColocacion(x, objetoEnColocacion.posicion_y, z);
+      }
       return;
     }
 
@@ -751,7 +826,23 @@ export const Scene: React.FC<SceneProps> = ({
     }
 
     if (modoEdicionObjeto === 'mover' && onMoverObjeto) {
-      onMoverObjeto(selectedObjectId, x, objetoSeleccionado.posicion_y ?? 0.4, z);
+      // Mismo stacking que en colocación nueva, pero excluyendo `selectedObjectId`
+      // del candidate set para que el objeto no se apile sobre sí mismo.
+      const rayo = rayoEventoADominio(e);
+      const altoObj = Number(objetoSeleccionado.catalogo?.alto ?? objetoSeleccionado.alto) || 1;
+      if (rayo) {
+        const pos = colocarObjetoUC.ejecutar({
+          rayo,
+          objetos: objetosColocables,
+          hitPisoX: x,
+          hitPisoZ: z,
+          altoAColocar: altoObj,
+          idEnColocacion: selectedObjectId,
+        });
+        onMoverObjeto(selectedObjectId, pos.x, pos.y, pos.z);
+      } else {
+        onMoverObjeto(selectedObjectId, x, objetoSeleccionado.posicion_y ?? altoObj / 2, z);
+      }
       return;
     }
 
@@ -778,7 +869,7 @@ export const Scene: React.FC<SceneProps> = ({
         escala_z: siguienteEscala,
       });
     }
-  }, [actualizarPlantillaZonaRestringida, isDragging, isDraggingPlantillaZona, isDrawingZone, previewZonaStart, selectedObjectId, onMoverObjeto, objetoSeleccionado, objetoEnColocacion, onActualizarObjetoEnColocacion, modoEdicionObjeto, onTransformarObjeto, plantillaZonaEnColocacion]);
+  }, [actualizarPlantillaZonaRestringida, isDragging, isDraggingPlantillaZona, isDrawingZone, previewZonaStart, selectedObjectId, onMoverObjeto, objetoSeleccionado, objetoEnColocacion, onActualizarObjetoEnColocacion, modoEdicionObjeto, onTransformarObjeto, plantillaZonaEnColocacion, objetosColocables]);
 
   const handleFloorClick = useCallback((e: any) => {
     e.stopPropagation();

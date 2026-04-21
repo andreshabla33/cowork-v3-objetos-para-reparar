@@ -81,6 +81,11 @@ export interface ObjetoEspacio3D {
     interaccion_emoji?: string | null;
     interaccion_label?: string | null;
     escala_normalizacion?: number | null;
+    /**
+     * Whitelist para placement stacking. Si es true, otros objetos pueden
+     * apilarse sobre su topY. Espejo de `catalogo_objetos_3d.es_superficie`.
+     */
+    es_superficie?: boolean;
   } | null;
 }
 
