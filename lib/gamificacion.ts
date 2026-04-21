@@ -109,25 +109,44 @@ export interface ItemCosmetico {
 
 /** Obtener o crear perfil de gamificación del usuario */
 export async function obtenerPerfilGamificacion(usuarioId: string, espacioId: string): Promise<PerfilGamificacion | null> {
+  // Fix 2026-04-21: antes usábamos `.single()` + fallback INSERT, lo que
+  // disparaba race condition en user recién registrado:
+  //   1. React montaba el hook 2× (StrictMode o dos consumidores)
+  //   2. Ambos recibían 406 (no existe)
+  //   3. Ambos hacían INSERT → uno ganaba, el otro 409 (UNIQUE constraint
+  //      violado en (usuario_id, espacio_id))
+  //   4. La llamada perdedora retornaba null → gamificación desincronizada
+  // Ahora: usamos `.maybeSingle()` (null en vez de 406) y si no hay fila,
+  // `.upsert()` con ignoreDuplicates — idempotente bajo concurrencia.
+  // Ref: https://supabase.com/docs/reference/javascript/upsert
   const { data, error } = await supabase
     .from('gamificacion_usuarios')
     .select('*')
     .eq('usuario_id', usuarioId)
     .eq('espacio_id', espacioId)
-    .single();
+    .maybeSingle();
 
-  if (error && error.code === 'PGRST116') {
-    // No existe → crear
-    const { data: nuevo, error: errCreate } = await supabase
-      .from('gamificacion_usuarios')
-      .insert({ usuario_id: usuarioId, espacio_id: espacioId })
-      .select()
-      .single();
-    if (errCreate) { console.error('Error creando perfil gamificación:', errCreate); return null; }
-    return nuevo;
-  }
   if (error) { console.error('Error obteniendo perfil gamificación:', error); return null; }
-  return data;
+  if (data) return data;
+
+  // No existe: upsert idempotente. Si otro proceso lo creó entre el SELECT
+  // y el INSERT, `ignoreDuplicates:true` no lanza; luego releemos la fila.
+  const { error: errCreate } = await supabase
+    .from('gamificacion_usuarios')
+    .upsert(
+      { usuario_id: usuarioId, espacio_id: espacioId },
+      { onConflict: 'usuario_id,espacio_id', ignoreDuplicates: true },
+    );
+  if (errCreate) { console.error('Error creando perfil gamificación:', errCreate); return null; }
+
+  const { data: refetched, error: errRefetch } = await supabase
+    .from('gamificacion_usuarios')
+    .select('*')
+    .eq('usuario_id', usuarioId)
+    .eq('espacio_id', espacioId)
+    .maybeSingle();
+  if (errRefetch) { console.error('Error re-leyendo perfil gamificación tras upsert:', errRefetch); return null; }
+  return refetched;
 }
 
 /** Otorgar XP al usuario por una acción */
