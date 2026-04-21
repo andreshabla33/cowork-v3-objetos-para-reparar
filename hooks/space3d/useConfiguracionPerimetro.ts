@@ -12,9 +12,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  DEFAULT_SCENE_POLICY,
+  DEFAULT_PERIMETER_POLICY,
   type PerimeterPolicy,
-} from '@/src/core/domain/entities/espacio3d/ScenePolicy';
+  type PerimeterPolicyError,
+  type Result,
+} from '@/src/core/domain/entities/espacio3d/PerimeterPolicy';
 import {
   ObtenerConfiguracionPerimetroUseCase,
   ActualizarConfiguracionPerimetroUseCase,
@@ -34,7 +36,7 @@ const obtenerUC = new ObtenerConfiguracionPerimetroUseCase(repo);
 const actualizarUC = new ActualizarConfiguracionPerimetroUseCase(repo);
 const suscribirUC = new SuscribirConfiguracionPerimetroUseCase(repo);
 
-const FALLBACK_POLICY: PerimeterPolicy = DEFAULT_SCENE_POLICY.perimeter!;
+const FALLBACK_POLICY: PerimeterPolicy = DEFAULT_PERIMETER_POLICY;
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
@@ -42,7 +44,12 @@ export interface UseConfiguracionPerimetroReturn {
   policy: PerimeterPolicy;
   loading: boolean;
   error: string | null;
-  actualizar: (policy: PerimeterPolicy) => Promise<void>;
+  /**
+   * Persiste la policy. Retorna Result tipado del Domain — el caller decide
+   * cómo presentar el error (toast, banner, ignore). NO throw para evitar
+   * que un input inválido del usuario tire el componente.
+   */
+  actualizar: (policy: PerimeterPolicy) => Promise<Result<PerimeterPolicy, PerimeterPolicyError>>;
 }
 
 /**
@@ -106,20 +113,26 @@ export function useConfiguracionPerimetro(
   }, [espacioId]);
 
   const actualizar = useCallback(
-    async (nueva: PerimeterPolicy) => {
+    async (nueva: PerimeterPolicy): Promise<Result<PerimeterPolicy, PerimeterPolicyError>> => {
       if (!espacioId) {
         log.warn('actualizar llamado sin espacioId');
-        return;
+        return { ok: false, error: { code: 'INVALID_STYLE', received: null } };
       }
       try {
-        await actualizarUC.ejecutar(espacioId, nueva);
-        // Optimistic update: reflejamos localmente antes del eco realtime.
-        if (mountedRef.current) setPolicy(nueva);
+        const result = await actualizarUC.ejecutar(espacioId, nueva);
+        if (result.ok && mountedRef.current) {
+          // Optimistic update — reflejamos localmente antes del eco realtime.
+          setPolicy(result.value);
+        } else if (!result.ok && mountedRef.current) {
+          setError(`Validación falló: ${result.error.code}`);
+        }
+        return result;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         log.warn('Update failed', { espacioId, error: msg });
         if (mountedRef.current) setError(msg);
-        throw err;
+        // Wrap unexpected I/O error in Result shape para coherencia.
+        return { ok: false, error: { code: 'INVALID_STYLE', received: msg } };
       }
     },
     [espacioId],

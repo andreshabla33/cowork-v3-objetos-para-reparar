@@ -61,33 +61,20 @@ export interface SkyPolicy {
   derivation: SkyColorDerivation;
 }
 
-/**
- * Estilo visual de las paredes perimetrales. Se mapea a `built_in_geometry`
- * del catálogo existente (pared_vidrio, pared_basica, etc.) — NO introduce
- * geometrías nuevas, reutiliza el pipeline BuiltinWallBatcher.
- */
-export type PerimeterWallStyle = 'glass' | 'brick' | 'panel' | 'half-wall' | 'basic';
-
-/** Política de paredes perimetrales (Tier 2+). */
-export interface PerimeterPolicy {
-  /** Si false, no se generan paredes (comportamiento legacy). */
-  enabled: boolean;
-  /** Estilo del built-in geometry a usar por cada segmento. */
-  style: PerimeterWallStyle;
-  /** Altura de cada segmento (m). Default 3 = consistente con catálogo. */
-  height: number;
-  /** Ancho de cada segmento (m). Default 4 = ancho estándar del catálogo. */
-  segmentWidth: number;
-  /** Separación desde el borde del terrain (m). 0 = pegado al borde. */
-  margin: number;
-}
+// Re-export desde la entidad rica (PerimeterPolicy.ts) que encapsula
+// invariantes + factory `PerimeterPolicy.create()`. Mantenemos los re-exports
+// aquí por backwards-compat con consumidores que ya importaban de ScenePolicy.
+// Refactor 2026-04-20: validación movida de Application a Domain (Robert Martin).
+import type { PerimeterPolicy as PerimeterPolicyType } from './PerimeterPolicy';
+export type { PerimeterWallStyle, PerimeterPolicy } from './PerimeterPolicy';
+export { PerimeterPolicy as PerimeterPolicyDomain, DEFAULT_PERIMETER_POLICY } from './PerimeterPolicy';
 
 /** Política completa de escena. */
 export interface ScenePolicy {
   fog: FogPolicy;
   sky: SkyPolicy;
   /** Perimetral walls. Opcional para backwards-compat con policies legacy. */
-  perimeter?: PerimeterPolicy;
+  perimeter?: PerimeterPolicyType;
 }
 
 // ─── Política por defecto (preserva comportamiento previo al refactor) ────────
@@ -112,6 +99,8 @@ export const DEFAULT_SCENE_POLICY: ScenePolicy = {
       lightness: 0.14,
     },
   },
+  // Default canónico vive en PerimeterPolicy.ts (DEFAULT_PERIMETER_POLICY).
+  // Aquí lo referenciamos para mantener una sola fuente de verdad.
   perimeter: {
     enabled: true,
     style: 'glass',

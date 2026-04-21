@@ -102,8 +102,19 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
     if (!perimeterDraft) return;
     setPerimeterSaving(true);
     try {
-      await actualizarPerimeter(perimeterDraft);
-      mostrarMensaje('exito', 'Cerramiento perimetral guardado');
+      const result = await actualizarPerimeter(perimeterDraft);
+      if (result.ok) {
+        mostrarMensaje('exito', 'Cerramiento perimetral guardado');
+      } else {
+        // Error tipado del Domain (validación falló).
+        const labels: Record<string, string> = {
+          INVALID_STYLE: 'Estilo de pared inválido',
+          HEIGHT_OUT_OF_RANGE: 'Altura fuera de rango (0.5–10 m)',
+          SEGMENT_WIDTH_OUT_OF_RANGE: 'Ancho de segmento fuera de rango (1–20 m)',
+          MARGIN_OUT_OF_RANGE: 'Margen fuera de rango (0–5 m)',
+        };
+        mostrarMensaje('error', labels[result.error.code] || `Validación falló: ${result.error.code}`);
+      }
     } catch (err) {
       mostrarMensaje('error', err instanceof Error ? err.message : 'No se pudo guardar');
     } finally {
