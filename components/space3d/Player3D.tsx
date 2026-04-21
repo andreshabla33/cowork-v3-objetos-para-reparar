@@ -85,9 +85,17 @@ export interface PlayerProps {
   onLiberarAsiento?: (asiento: AsientoRuntime3D | null) => Promise<boolean>;
   onRefrescarAsiento?: (asiento: AsientoRuntime3D) => Promise<boolean>;
   obstaculos?: ObstaculoColision3D[];
+  /**
+   * Bounds caminables en world coordinates. Antes el movimiento se
+   * clampeaba siempre a `[0, WORLD_SIZE]`, lo que causaba bloqueos
+   * invisibles cuando el terreno tenía offset (TERRAIN_OFFSET_X/Z).
+   * La Presentation (Scene3D) deriva esto del `terrainBounds` y lo
+   * pasa para que el dominio trabaje con coords reales.
+   */
+  movementBounds?: { minX: number; maxX: number; minZ: number; maxZ: number };
 }
 
-export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream, localVideoTrack, backgroundEffect = 'none', showVideoBubble = true, videoIsProcessed = false, message, reactions = [], onClickAvatar, moveTarget, onReachTarget, teleportTarget, onTeleportDone, broadcastMovement, moveSpeed, runSpeed, ecsStateRef, onPositionUpdate, zonasEmpresa = [], spawnPersonal = { spawn_x: null, spawn_z: null }, onGuardarPosicionPersistente, empresasAutorizadas = [], usersInCallIds, mobileInputRef, onXPEvent, espacioObjetos = [], asientos = [], ocupacionesAsientosPorObjetoId = new Map(), onOcuparAsiento, onLiberarAsiento, onRefrescarAsiento, obstaculos = [] }) => {
+export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream, localVideoTrack, backgroundEffect = 'none', showVideoBubble = true, videoIsProcessed = false, message, reactions = [], onClickAvatar, moveTarget, onReachTarget, teleportTarget, onTeleportDone, broadcastMovement, moveSpeed, runSpeed, ecsStateRef, onPositionUpdate, zonasEmpresa = [], spawnPersonal = { spawn_x: null, spawn_z: null }, onGuardarPosicionPersistente, empresasAutorizadas = [], usersInCallIds, mobileInputRef, onXPEvent, espacioObjetos = [], asientos = [], ocupacionesAsientosPorObjetoId = new Map(), onOcuparAsiento, onLiberarAsiento, onRefrescarAsiento, obstaculos = [], movementBounds }) => {
   const groupRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
   // Refs para acceso seguro dentro de useFrame
@@ -896,7 +904,7 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
             dx: (distX / dist) * step,
             dz: (distZ / dist) * step,
           },
-          worldSize: WORLD_SIZE,
+          bounds: movementBounds ?? { minX: 0, maxX: WORLD_SIZE, minZ: 0, maxZ: WORLD_SIZE },
           esPosicionValida: isPositionValid,
         });
         positionRef.current.x = movimientoAuto.posicion.x;
@@ -913,7 +921,7 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
       const movimientoResuelto = resolverMovimientoConDeslizamiento({
         posicionActual: positionRef.current,
         movimiento: { dx, dz: -dy },
-        worldSize: WORLD_SIZE,
+        bounds: movementBounds ?? { minX: 0, maxX: WORLD_SIZE, minZ: 0, maxZ: WORLD_SIZE },
         esPosicionValida: isPositionValid,
       });
       positionRef.current.x = movimientoResuelto.posicion.x;

@@ -491,6 +491,18 @@ export const Scene: React.FC<SceneProps> = ({
       centerZ: center.z + TERRAIN_OFFSET_Z,
     };
   }, [terrainScene]);
+
+  // Bounds caminables derivados del terreno real — los pasa al <Player>
+  // para que el dominio de movimiento clampee contra el piso visible, no
+  // contra un cuadrado [0, WORLD_SIZE] desalineado.
+  // Ref: src/core/domain/entities/espacio3d/MovimientoEntity.ts — MovementBounds.
+  const movementBounds = useMemo(() => ({
+    minX: terrainBounds.centerX - terrainBounds.sizeX / 2,
+    maxX: terrainBounds.centerX + terrainBounds.sizeX / 2,
+    minZ: terrainBounds.centerZ - terrainBounds.sizeZ / 2,
+    maxZ: terrainBounds.centerZ + terrainBounds.sizeZ / 2,
+  }), [terrainBounds]);
+
   const zonasActivas = useMemo(
     () => zonasEmpresa.filter((zona) => zona.estado === 'activa'),
     [zonasEmpresa]
@@ -1451,6 +1463,7 @@ export const Scene: React.FC<SceneProps> = ({
         onLiberarAsiento={onLiberarAsiento}
         onRefrescarAsiento={onRefrescarAsiento}
         obstaculos={obstaculosMundo}
+        movementBounds={movementBounds}
       />
       <CameraFollow
         controlsRef={orbitControlsRef}

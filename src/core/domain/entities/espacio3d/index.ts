@@ -42,7 +42,7 @@ export {
 } from './ColisionEntity';
 
 // ─── Movimiento ───────────────────────────────────────────────────────────────
-export type { MovimientoIntento3D, MovimientoResuelto3D } from './MovimientoEntity';
+export type { MovimientoIntento3D, MovimientoResuelto3D, MovementBounds } from './MovimientoEntity';
 export { resolverMovimientoConDeslizamiento } from './MovimientoEntity';
 
 // ─── ObjetoRuntime ────────────────────────────────────────────────────────────

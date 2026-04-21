@@ -23,6 +23,23 @@ export interface MovimientoResuelto3D {
   colisionZ: boolean;
 }
 
+/**
+ * Bounds del mundo caminable en coordenadas de mundo.
+ *
+ * Refactor 2026-04-21: antes el clamp era `[0, worldSize]` fijo. El terreno
+ * visual tiene un offset (`TERRAIN_OFFSET_X/Z` en Scene3D), por lo que el
+ * dominio lógico quedaba desalineado con la superficie visible: el avatar
+ * podía atorarse contra un borde invisible aunque el grid siguiera. Ahora
+ * la Presentation deriva los bounds reales del `terrainBounds` y los pasa
+ * al dominio.
+ */
+export interface MovementBounds {
+  readonly minX: number;
+  readonly maxX: number;
+  readonly minZ: number;
+  readonly maxZ: number;
+}
+
 // ─── Función de dominio pura ──────────────────────────────────────────────────
 
 const clamp = (valor: number, minimo: number, maximo: number): number =>
@@ -34,23 +51,23 @@ const clamp = (valor: number, minimo: number, maximo: number): number =>
  *
  * @param posicionActual  - Posición 2D actual del avatar
  * @param movimiento      - Intento de movimiento (delta X y Z)
- * @param worldSize       - Tamaño del mundo (límite de bordes)
+ * @param bounds          - Límites caminables en world coordinates
  * @param esPosicionValida - Predicado que devuelve true si (x,z) es transitable
  */
 export const resolverMovimientoConDeslizamiento = ({
   posicionActual,
   movimiento,
-  worldSize,
+  bounds,
   esPosicionValida,
 }: {
   posicionActual: Posicion2D;
   movimiento: MovimientoIntento3D;
-  worldSize: number;
+  bounds: MovementBounds;
   esPosicionValida: (x: number, z: number) => boolean;
 }): MovimientoResuelto3D => {
   const destinoCompleto: Posicion2D = {
-    x: clamp(posicionActual.x + movimiento.dx, 0, worldSize),
-    z: clamp(posicionActual.z + movimiento.dz, 0, worldSize),
+    x: clamp(posicionActual.x + movimiento.dx, bounds.minX, bounds.maxX),
+    z: clamp(posicionActual.z + movimiento.dz, bounds.minZ, bounds.maxZ),
   };
 
   if (esPosicionValida(destinoCompleto.x, destinoCompleto.z)) {
@@ -63,7 +80,7 @@ export const resolverMovimientoConDeslizamiento = ({
   }
 
   const destinoSoloX: Posicion2D = {
-    x: clamp(posicionActual.x + movimiento.dx, 0, worldSize),
+    x: clamp(posicionActual.x + movimiento.dx, bounds.minX, bounds.maxX),
     z: posicionActual.z,
   };
 
@@ -78,7 +95,7 @@ export const resolverMovimientoConDeslizamiento = ({
 
   const destinoSoloZ: Posicion2D = {
     x: posicionActual.x,
-    z: clamp(posicionActual.z + movimiento.dz, 0, worldSize),
+    z: clamp(posicionActual.z + movimiento.dz, bounds.minZ, bounds.maxZ),
   };
 
   if (movimiento.dz !== 0 && esPosicionValida(destinoSoloZ.x, destinoSoloZ.z)) {
