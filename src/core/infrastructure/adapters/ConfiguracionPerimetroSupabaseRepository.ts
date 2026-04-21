@@ -99,8 +99,20 @@ export class ConfiguracionPerimetroSupabaseRepository
     // Realtime: escuchamos INSERT+UPDATE de la fila específica. Filtro
     // server-side por `espacio_id=eq.<id>` evita tráfico innecesario.
     // Ref: https://supabase.com/docs/guides/realtime/postgres-changes
+    //
+    // Channel name ÚNICO por subscribe (fix 2026-04-21). Antes usábamos
+    // `perimetro-config:${espacioId}` estable, pero en doble mount
+    // (React StrictMode, remount al abrir Settings) la segunda llamada
+    // a `supabase.channel(nombre)` devuelve el canal previo ya subscrito
+    // y `.on()` falla con:
+    //   "cannot add postgres_changes callbacks after subscribe()"
+    // Un sufijo aleatorio garantiza una identidad de channel por instancia.
+    const instanceId =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2, 10);
     const channel = supabase
-      .channel(`perimetro-config:${espacioId}`)
+      .channel(`perimetro-config:${espacioId}:${instanceId}`)
       .on(
         'postgres_changes',
         {
