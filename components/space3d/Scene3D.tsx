@@ -606,7 +606,14 @@ export const Scene: React.FC<SceneProps> = ({
     return out;
   }, [espacioObjetos]);
 
-  const cerramientosZona = useMemo(() => crearParedesCerramientosZonas(zonasEmpresa), [zonasEmpresa]);
+  // Fix 2026-04-21: antes pasábamos `zonasEmpresa` completo a la generación
+  // de cerramientos. Incluía zonas con `estado='inactiva'`, y la función
+  // `resolverConfiguracionCerramientoZona` aplica cerramientos default según
+  // `tipo_suelo` aunque la zona no esté activa — resultado: paredes invisibles
+  // en el mundo que bloqueaban al avatar. `zonasActivas` ya filtra por estado
+  // y es la misma fuente que el render visual (línea 1308), ahora ambos
+  // lados (visual + físico) están consistentes.
+  const cerramientosZona = useMemo(() => crearParedesCerramientosZonas(zonasActivas), [zonasActivas]);
   const obstaculosMundo = useMemo(
     () => [
       ...crearObstaculosObjetosPersistentes(espacioObjetos),
