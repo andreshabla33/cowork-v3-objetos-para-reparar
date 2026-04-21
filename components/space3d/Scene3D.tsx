@@ -523,9 +523,15 @@ export const Scene: React.FC<SceneProps> = ({
   }, [asientosPersistentes]);
   // Config de perímetro viene de Supabase via hook (realtime). El admin la
   // modifica desde SettingsZona; otros usuarios la reciben por postgres_changes.
-  // Si no hay config persistida, el hook cae a DEFAULT_SCENE_POLICY.perimeter.
-  // Clean Arch: la Presentation consume SOLO el hook (no el adapter directo).
-  const espacioIdPerimeter = (currentUser as { espacio_id?: string }).espacio_id ?? null;
+  // Si no hay config persistida, el hook cae a DEFAULT_PERIMETER_POLICY
+  // (enabled=false, fail-closed).
+  //
+  // Bug histórico (fix 2026-04-21): usábamos `(currentUser as { espacio_id })`
+  // pero la interface `User` nunca tuvo `espacio_id` — el cast silenciaba
+  // el error y `espacioIdPerimeter` era siempre null, por lo que el hook
+  // no leía la policy real y las paredes nunca aparecían aunque la DB
+  // tuviera un row. Fuente correcta: `activeWorkspace.id` del store.
+  const espacioIdPerimeter = useStore((s) => s.activeWorkspace?.id ?? null);
   const { policy: perimeterPolicyPersisted } = useConfiguracionPerimetro(espacioIdPerimeter);
 
   // Paredes perimetrales virtuales — generadas por el use case del Application
