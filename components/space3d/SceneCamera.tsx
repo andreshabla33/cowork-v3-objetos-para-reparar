@@ -10,6 +10,7 @@
 import React from 'react';
 import { OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsType } from 'three-stdlib';
+import { DRAWING_MAX_ORBIT_DISTANCE } from '@/src/core/domain/entities/espacio3d/CameraFramingPolicy';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
@@ -47,7 +48,9 @@ export const SceneCamera: React.FC<SceneCameraProps> = ({
       ref={orbitControlsRef}
       makeDefault
       minDistance={1.1}
-      maxDistance={50}
+      // En drawing mode, maxDistance se expande para permitir zoom-out hasta
+      // ver todo el grid de 50×50m (WORLD_SIZE_PX/16). Valor desde Domain.
+      maxDistance={isDrawingZone ? DRAWING_MAX_ORBIT_DISTANCE : 50}
       maxPolarAngle={Math.PI / 2 - 0.1}
       minPolarAngle={isDrawingZone ? 0.05 : Math.PI / 6}
       enablePan={cameraMode === 'free' && !isDraggingPlantillaZona}

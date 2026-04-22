@@ -37,6 +37,7 @@ import { hapticFeedback, isMobileDevice } from '@/lib/mobileDetect';
 import { useStore } from '@/store/useStore';
 import type { ModoEdicionObjeto, PlantillaZonaEnColocacion } from '@/store/slices';
 import { FloorType, calcularNivelAnidamientoRectangulo, detectarSolapamientoSubzona, zonaDbAMundo, type RectanguloZona, resolverTipoSubsueloZona } from '@/src/core/domain/entities';
+import { DRAWING_MAX_ORBIT_DISTANCE } from '@/src/core/domain/entities/espacio3d/CameraFramingPolicy';
 import { obtenerPlantillaZona } from '@/src/core/domain/entities/plantillasEspacio';
 import { crearPropsMaterialSueloPbr } from '@/lib/rendering/textureRegistry';
 import { SceneEnvironment } from './SceneEnvironment';
@@ -1154,7 +1155,10 @@ export const Scene: React.FC<SceneProps> = ({
         ref={orbitControlsRef}
         makeDefault
         minDistance={1.1}
-        maxDistance={50}
+        // En drawing mode expandimos maxDistance para que el admin pueda
+        // hacer zoom-out manual y ver todo el grid de la empresa (50×50m).
+        // Ref: Domain CameraFramingPolicy.ts — DRAWING_MAX_ORBIT_DISTANCE.
+        maxDistance={isDrawingZone || isDraggingPlantillaZona ? DRAWING_MAX_ORBIT_DISTANCE : 50}
         maxPolarAngle={Math.PI / 2 - 0.1}
         minPolarAngle={isDrawingZone ? 0.05 : Math.PI / 6}
         enablePan={cameraMode === 'free' && !isDraggingPlantillaZona}
@@ -1476,6 +1480,8 @@ export const Scene: React.FC<SceneProps> = ({
         getFollowTargetPosition={getFollowTargetPosition}
         gpuRenderConfig={gpuRenderConfig}
         cameraShoulderMode={cameraShoulderMode}
+        isInDrawingMode={isDrawingZone || isDraggingPlantillaZona || !!plantillaZonaEnColocacion}
+        terrainCenter={{ x: terrainBounds.centerX, z: terrainBounds.centerZ }}
       />
 
       {/* Usuarios remotos */}

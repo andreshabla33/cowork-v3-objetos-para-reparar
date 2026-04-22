@@ -53,6 +53,8 @@ import {
   IDLE_THRESHOLD_MS,
   TRANSITION_TO_IDLE_MS,
   TRANSITION_TO_MOVING_MS,
+  DRAWING_OVERVIEW_FRAMING,
+  TRANSITION_TO_DRAWING_MS,
 } from '@/src/core/domain/entities/espacio3d/CameraFramingPolicy';
 
 /**
@@ -834,7 +836,16 @@ export const CameraFollow: React.FC<{
   gpuRenderConfig?: import('@/lib/gpuCapabilities').AdaptiveRenderConfig;
   /** OTS offset — 'left' | 'right' desplaza cámara lateralmente; 'center' = default. */
   cameraShoulderMode?: 'center' | 'left' | 'right';
-}> = ({ controlsRef, zonasEmpresa = [], empresaId = null, espacioObjetos = [], usersInCallIds, usersInAudioRangeIds, followTargetId = null, getFollowTargetPosition, gpuRenderConfig, cameraShoulderMode = 'center' }) => {
+  /**
+   * Cuando `true`, la cámara hace auto-transición a overview framing
+   * (bird's-eye) para que el admin pueda colocar pisos / zonas / plantillas
+   * viendo todo el grid de la empresa. Fuente: `isDrawingZone` (store) OR
+   * `plantillaZonaEnColocacion !== null` (prop Scene3D).
+   */
+  isInDrawingMode?: boolean;
+  /** Centro del terreno en world coords — usado como target durante overview. */
+  terrainCenter?: { x: number; z: number };
+}> = ({ controlsRef, zonasEmpresa = [], empresaId = null, espacioObjetos = [], usersInCallIds, usersInAudioRangeIds, followTargetId = null, getFollowTargetPosition, gpuRenderConfig, cameraShoulderMode = 'center', isInDrawingMode = false, terrainCenter }) => {
   const { camera, scene } = useThree();
   const baseFovRef = useRef<number | null>(null);
 
@@ -867,6 +878,21 @@ export const CameraFollow: React.FC<{
   // Domain policy: src/core/domain/entities/espacio3d/CameraFramingPolicy.ts
   const idleTimeMsRef = useRef(IDLE_THRESHOLD_MS); // >=threshold para que el intro arranque en hero
   const idleBlendRef = useRef(1); // 0 = gameplay, 1 = hero. Inicia en hero.
+
+  // ─── Drawing mode overview transition ────────────────────────────────
+  // Cuando el admin entra en modo dibujo/colocación de zonas, la cámara
+  // hace lerp suave a bird's-eye para ver todo el grid de la empresa
+  // (50×50m). Al salir, vuelve a chase-cam. Durante drawing (no
+  // transicionando), OrbitControls queda libre para zoom/pan manual.
+  const wasInDrawingRef = useRef(false);
+  const drawingTransitionStartedAtRef = useRef<number | null>(null);
+  const drawingTransitionDirectionRef = useRef<'to-overview' | 'to-chase' | null>(null);
+  // Snapshot de la posición/target de la cámara al iniciar la transición
+  // (se interpolan desde este snapshot hacia el destino).
+  const drawingTransitionFromRef = useRef<{
+    camPos: THREE.Vector3;
+    target: THREE.Vector3;
+  } | null>(null);
 
   // Cached zone detection results — recomputed every ZONE_REEVAL_FRAMES to avoid per-frame work
   const ZONE_REEVAL_FRAMES = 30;
@@ -940,6 +966,76 @@ export const CameraFollow: React.FC<{
       : null;
     const playerPos = targetPos ?? selfPos;
     const isFollowing = targetPos !== null;
+
+    // ─── Drawing mode overview transition ─────────────────────────────
+    // Detecta transiciones de `isInDrawingMode` y hace lerp suave de la
+    // cámara entre chase-cam ↔ bird's-eye del centro del terreno.
+    // Durante drawing (no transicionando), OrbitControls queda libre
+    // para que el admin haga zoom/pan/rotate manualmente al colocar pisos.
+    if (isInDrawingMode !== wasInDrawingRef.current) {
+      // Transición detectada — snapshot de posición actual + dirección.
+      drawingTransitionFromRef.current = {
+        camPos: camera.position.clone(),
+        target: controls.target.clone(),
+      };
+      drawingTransitionStartedAtRef.current = performance.now();
+      drawingTransitionDirectionRef.current = isInDrawingMode ? 'to-overview' : 'to-chase';
+      wasInDrawingRef.current = isInDrawingMode;
+    }
+
+    if (drawingTransitionStartedAtRef.current !== null && drawingTransitionFromRef.current) {
+      const elapsed = performance.now() - drawingTransitionStartedAtRef.current;
+      const progress = Math.min(elapsed / TRANSITION_TO_DRAWING_MS, 1);
+      // Ease-in-out cúbico (mismo pattern que el intro).
+      const eased = progress < 0.5
+        ? 4 * progress * progress * progress
+        : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+      const dir = drawingTransitionDirectionRef.current;
+      const from = drawingTransitionFromRef.current;
+
+      if (dir === 'to-overview') {
+        // Destino: bird's-eye del centro del terreno. Si no hay terrainCenter
+        // (edge case), usamos la posición actual del jugador como fallback.
+        const cx = terrainCenter?.x ?? playerPos.x;
+        const cz = terrainCenter?.z ?? playerPos.z;
+        const toTarget = new THREE.Vector3(cx, DRAWING_OVERVIEW_FRAMING.targetHeight, cz);
+        // Cámara en ángulo isométrico desde el sur-oeste del centro.
+        const toCamPos = new THREE.Vector3(
+          cx - DRAWING_OVERVIEW_FRAMING.distance * 0.7,
+          DRAWING_OVERVIEW_FRAMING.height,
+          cz + DRAWING_OVERVIEW_FRAMING.distance * 0.7,
+        );
+        controls.target.lerpVectors(from.target, toTarget, eased);
+        camera.position.lerpVectors(from.camPos, toCamPos, eased);
+        controls.update();
+      } else if (dir === 'to-chase') {
+        // Destino: chase-cam sobre el avatar. Se reutiliza el framing
+        // gameplay default como target (el idle-hero se re-activará luego).
+        const toTarget = new THREE.Vector3(playerPos.x, CAMERA_DEFAULT_TARGET_HEIGHT, playerPos.z);
+        const toCamPos = new THREE.Vector3(
+          playerPos.x,
+          CAMERA_DEFAULT_HEIGHT,
+          playerPos.z + CAMERA_DEFAULT_DISTANCE,
+        );
+        controls.target.lerpVectors(from.target, toTarget, eased);
+        camera.position.lerpVectors(from.camPos, toCamPos, eased);
+        controls.update();
+      }
+
+      if (progress >= 1) {
+        drawingTransitionStartedAtRef.current = null;
+        drawingTransitionDirectionRef.current = null;
+        drawingTransitionFromRef.current = null;
+      }
+      return; // No ejecutar chase-cam durante la transición.
+    }
+
+    // Si está en drawing mode sin transicionar, dejar OrbitControls libre
+    // (user controla zoom/pan/rotate para colocar el piso).
+    if (isInDrawingMode) {
+      return;
+    }
 
     // Zone/interior detection: only recompute every ZONE_REEVAL_FRAMES
     zoneFrameCounter.current += 1;

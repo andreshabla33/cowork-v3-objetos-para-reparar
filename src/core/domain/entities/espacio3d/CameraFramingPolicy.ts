@@ -86,6 +86,32 @@ export const GAMEPLAY_VIDEO_PROXIMITY_FRAMING: CameraFraming = Object.freeze({
   targetHeight: 1.26,
 });
 
+/**
+ * Overview para modo dibujo/colocación de zonas y plantillas. Cámara alta
+ * y alejada en ángulo isométrico suave, target en el piso del centro del
+ * grid. Usado cuando `isDrawingZone` o `plantillaZonaEnColocacion` están
+ * activos — permite ver toda la zona de la empresa (50×50m world) para
+ * colocar pisos/muros sin perder el encuadre.
+ *
+ * Valores calibrados para:
+ *  - Grid de 50×50m (WORLD_SIZE_PX=800 / 16) — lote estándar de empresa.
+ *  - FOV 50° vertical (default PerspectiveCamera de drei).
+ *  - Visible vertical a distance 22 + height 32 ≈ 35m diagonal.
+ *
+ * Ref: RepositorioRegistroEmpresaSupabaseAdapter.ts:33 — WORLD_SIZE_PX=800.
+ */
+export const DRAWING_OVERVIEW_FRAMING: CameraFraming = Object.freeze({
+  distance: 22,      // horizontal desde el centro (ángulo isométrico)
+  height: 32,        // altura world-Y (bird's-eye)
+  targetHeight: 0,   // target al nivel del piso
+});
+
+/** Max distance permitido en OrbitControls durante drawing mode (zoom manual extra). */
+export const DRAWING_MAX_ORBIT_DISTANCE = 80;
+
+/** Transición hacia/desde el overview framing (ms). */
+export const TRANSITION_TO_DRAWING_MS = 500;
+
 // ─── Transiciones ────────────────────────────────────────────────────────────
 
 /**
