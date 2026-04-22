@@ -45,6 +45,14 @@ import { CrowdInstances, type CrowdEntity } from './CrowdInstances';
 import { MidLodInstances, type MidLodEntity } from './MidLodInstances';
 import { InstancedAvatarRenderer } from '../3d/InstancedAvatarRenderer';
 import { DEFAULT_MODEL_URL } from '../avatar3d/shared';
+import {
+  IDLE_HERO_FRAMING,
+  selectGameplayFraming,
+  dampLambdaForDurationMs,
+  IDLE_THRESHOLD_MS,
+  TRANSITION_TO_IDLE_MS,
+  TRANSITION_TO_MOVING_MS,
+} from '@/src/core/domain/entities/espacio3d/CameraFramingPolicy';
 
 /**
  * Fallback Avatar3DConfig for remote users whose avatar3DConfig is null/undefined.
@@ -835,6 +843,15 @@ export const CameraFollow: React.FC<{
   const userInteractingRef = useRef(false);
   const lastPointerDownRef = useRef(0);
 
+  // ─── Idle → Hero framing blend ────────────────────────────────────────
+  // Cuando el avatar está quieto >IDLE_THRESHOLD_MS, la cámara hace dolly-in
+  // al encuadre hero (cerca, alto, target al pecho). Al moverse, vuelve al
+  // framing gameplay. Blend asimétrico: 250ms al volver a gameplay (snappy),
+  // 600ms al entrar en idle (reveal cinematográfico).
+  // Domain policy: src/core/domain/entities/espacio3d/CameraFramingPolicy.ts
+  const idleTimeMsRef = useRef(IDLE_THRESHOLD_MS); // >=threshold para que el intro arranque en hero
+  const idleBlendRef = useRef(1); // 0 = gameplay, 1 = hero. Inicia en hero.
+
   // Cached zone detection results — recomputed every ZONE_REEVAL_FRAMES to avoid per-frame work
   const ZONE_REEVAL_FRAMES = 30;
   const zoneFrameCounter = useRef(0);
@@ -880,15 +897,19 @@ export const CameraFollow: React.FC<{
   }, [espacioObjetos]);
 
   const CAMERA_INTRO_DURATION_MS = 1200;
-  const CAMERA_INTRO_HEIGHT = 4.45;
-  const CAMERA_INTRO_DISTANCE = 5.35;
-  const CAMERA_INTRO_TARGET_HEIGHT = 1.18;
+  // El intro termina en hero framing (primer spawn = impacto avatar).
+  // Ref: CameraFramingPolicy.ts — IDLE_HERO_FRAMING.
+  const CAMERA_INTRO_HEIGHT = IDLE_HERO_FRAMING.height;
+  const CAMERA_INTRO_DISTANCE = IDLE_HERO_FRAMING.distance;
+  const CAMERA_INTRO_TARGET_HEIGHT = IDLE_HERO_FRAMING.targetHeight;
   const hayVideoProximidad = (usersInCallIds?.size || 0) > 0 || (usersInAudioRangeIds?.size || 0) > 0;
-  const CAMERA_DEFAULT_HEIGHT = hayVideoProximidad ? 5.2 : 4.45;
-  const CAMERA_DEFAULT_DISTANCE = hayVideoProximidad ? 6.8 : 5.35;
-  const CAMERA_DEFAULT_TARGET_HEIGHT = hayVideoProximidad ? 1.26 : 1.18;
+  // Framing gameplay (cuando el avatar se mueve o hay proximidad social).
+  const gameplayFraming = selectGameplayFraming({ hayVideoProximidad });
+  const CAMERA_DEFAULT_HEIGHT = gameplayFraming.height;
+  const CAMERA_DEFAULT_DISTANCE = gameplayFraming.distance;
+  const CAMERA_DEFAULT_TARGET_HEIGHT = gameplayFraming.targetHeight;
 
-  useFrame(() => {
+  useFrame((_, delta) => {
     const selfPos = (camera as any).userData?.playerPosition;
     const controls = controlsRef.current;
     if (!selfPos || !controls || !controls.target) return;
@@ -929,7 +950,37 @@ export const CameraFollow: React.FC<{
       };
     }
 
-    const { usarVistaInterior, cameraTargetHeight, cameraHeight, cameraDistance } = cachedZoneResult.current;
+    const { usarVistaInterior } = cachedZoneResult.current;
+    let { cameraTargetHeight, cameraHeight, cameraDistance } = cachedZoneResult.current;
+
+    // ─── Idle blend (hero framing cuando el avatar está quieto) ──────────
+    // El blend se calcula per-frame (no cacheado) porque el threshold/timings
+    // son sub-segundo. Usa MathUtils.damp para frame-rate independence
+    // (ref: https://threejs.org/docs/#api/en/math/MathUtils.damp).
+    // Signal: camera.userData.playerMoving escrito por Player3D cada frame.
+    // Blend se desactiva dentro de recintos compactos (vista interior ya
+    // maneja su propio framing) y al seguir a un remoto (isFollowing).
+    const playerMovingForIdle = (camera as any).userData?.playerMoving as boolean | undefined;
+    if (playerMovingForIdle) {
+      idleTimeMsRef.current = 0;
+    } else {
+      idleTimeMsRef.current += delta * 1000;
+    }
+    const wantIdleHero = !usarVistaInterior && !isFollowing && idleTimeMsRef.current >= IDLE_THRESHOLD_MS;
+    const idleTargetBlend = wantIdleHero ? 1 : 0;
+    // Asimetría: entrar en idle más lento (reveal cinematográfico),
+    // salir más rápido (input del usuario debe sentirse inmediato).
+    const transitionMs = wantIdleHero ? TRANSITION_TO_IDLE_MS : TRANSITION_TO_MOVING_MS;
+    const lambda = dampLambdaForDurationMs(transitionMs);
+    idleBlendRef.current = THREE.MathUtils.damp(idleBlendRef.current, idleTargetBlend, lambda, delta);
+
+    // Aplica blend solo fuera de vista interior y follow remoto.
+    if (!usarVistaInterior && !isFollowing && idleBlendRef.current > 0.001) {
+      const b = idleBlendRef.current;
+      cameraDistance = THREE.MathUtils.lerp(cameraDistance, IDLE_HERO_FRAMING.distance, b);
+      cameraHeight = THREE.MathUtils.lerp(cameraHeight, IDLE_HERO_FRAMING.height, b);
+      cameraTargetHeight = THREE.MathUtils.lerp(cameraTargetHeight, IDLE_HERO_FRAMING.targetHeight, b);
+    }
 
     controls.enabled = !isDragging;
     controls.minDistance = usarVistaInterior ? 1.05 : 1.1;
@@ -1032,13 +1083,20 @@ export const CameraFollow: React.FC<{
 
     controls.target.y = THREE.MathUtils.lerp(controls.target.y, cameraTargetHeight, smoothing);
 
-    if (usarVistaInterior && distanciaHorizontalActual > cameraDistance + 0.08) {
+    // Pull-in activo: dentro de recintos compactos (siempre) o durante el
+    // blend hero-idle (fuera de interior y sin follow). El blend lerpea
+    // `cameraDistance/Height/TargetHeight` hacia IDLE_HERO_FRAMING, pero
+    // OrbitControls no mueve camera.position.y ni la radial automáticamente
+    // — hay que tirarla activamente aquí (pattern Cinemachine dolly).
+    const pullInActive = usarVistaInterior || (!isFollowing && idleBlendRef.current > 0.01);
+
+    if (pullInActive && distanciaHorizontalActual > cameraDistance + 0.08) {
       const factorDistancia = cameraDistance / distanciaHorizontalActual;
       camera.position.x = THREE.MathUtils.lerp(camera.position.x, controls.target.x + (offsetX * factorDistancia), smoothing);
       camera.position.z = THREE.MathUtils.lerp(camera.position.z, controls.target.z + (offsetZ * factorDistancia), smoothing);
     }
 
-    if (usarVistaInterior) {
+    if (pullInActive) {
       const alturaRelativaObjetivo = Math.max(cameraHeight - cameraTargetHeight, 1.05);
       if (offsetYActual > alturaRelativaObjetivo + 0.35 && distanciaHorizontalActual > cameraDistance + 0.04) {
         camera.position.y = THREE.MathUtils.lerp(camera.position.y, controls.target.y + alturaRelativaObjetivo, smoothing * 0.9);
