@@ -124,7 +124,20 @@ export class SpaceRealtimeCoordinator {
       // LiveKit JS SDK: RoomConnectOptions.rtcConfig.iceServers se FUSIONA con
       // los ICE servers del SFU (no los reemplaza). Fuente oficial:
       // https://docs.livekit.io/reference/client-sdk-js/interfaces/connectoptions.html
-      const connectOpts: RoomConnectOptions = {};
+      //
+      // autoSubscribe: false (2026-04-22) — elimina el spike de BW al join
+      // con 20+ cámaras ya publicadas. El SDK por default se suscribe a TODAS
+      // las tracks remotas al conectar → antes de que SubscriptionPolicyService
+      // reaccione hay ~500ms-2s donde todas las cámaras descargan simultáneo.
+      // Con autoSubscribe:false, NINGUNA track se suscribe automáticamente —
+      // el SubscriptionPolicyService (con tiers direct/audio-range/out-of-range)
+      // aplica setSubscribed(true) solo a las relevantes.
+      // Refs:
+      //   - https://docs.livekit.io/home/client/tracks/subscribe/
+      //   - https://docs.livekit.io/reference/client-sdk-js/interfaces/connectoptions.html
+      const connectOpts: RoomConnectOptions = {
+        autoSubscribe: false,
+      };
       if (this.options.iceServerProvider) {
         const dynamicIceServers = await this.options.iceServerProvider();
         if (dynamicIceServers.length > 0) {

@@ -220,7 +220,13 @@ export const defaultUserSettings: UserSettings = {
     showAvatarAnimations: true,
     reducedMotion: false,
     hardwareAcceleration: true,
-    maxVideoStreams: 6,
+    // Raised 6→8 (2026-04-22) para pruebas con 20+ usuarios en proximidad.
+    // Consistente con LiveKit selective subscription + adaptiveStream +
+    // dynacast ya activos (VP9 SVC L3T3_KEY). El SubscriptionPolicyService
+    // sigue aplicando tier-based quality; esto solo sube el techo de burbujas
+    // visibles + suscritas simultáneamente.
+    // Ref: https://docs.livekit.io/home/client/tracks/subscribe/
+    maxVideoStreams: 8,
     batterySaver: false
   },
   space3d: {
