@@ -28,6 +28,9 @@ dist-ssr
 .vercel
 .env*.local
 
+# Carpeta temporal de pipeline (normalización GLB, dumps, etc.)
+tmp/
+
 # Playwright
 /test-results/
 /playwright-report/
