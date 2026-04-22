@@ -131,6 +131,13 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   const isScreenSharingActive = mediaState.screenShareSession.active;
 
   const [objetoEnColocacion, setObjetoEnColocacion] = React.useState<ObjetoPreview3D | null>(null);
+  // Ref sincrónico paralelo al state — evita stale closure en
+  // `handleConfirmarObjetoEnColocacion`. Sin este ref, el confirm (click)
+  // lee el state del render anterior porque setObjetoEnColocacion es async
+  // y el click + pointermove ocurren en el mismo tick de React → Y final
+  // del stacking no se persiste en DB (se guarda la Y del render previo).
+  // Ref R3F: https://docs.pmnd.rs/react-three-fiber/api/events (onClick point).
+  const objetoEnColocacionRef = React.useRef<ObjetoPreview3D | null>(null);
   const [placementToastName, setPlacementToastName] = React.useState<string | null>(null);
   const [ultimoObjetoColocadoId, setUltimoObjetoColocadoId] = React.useState<string | null>(null);
   const setSelectedObjectId = useStore((state) => state.setSelectedObjectId);
@@ -470,21 +477,31 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     const alto = Number(catalogo.alto) || 1;
 
     setIsEditMode(false);
-    setObjetoEnColocacion({
+    const nuevoPreview: ObjetoPreview3D = {
       ...catalogo,
       posicion_x: baseX + 1.5,
       posicion_y: Math.max(alto / 2, 0.02),
       posicion_z: baseZ + 1.5,
       rotacion_y: 0,
-    });
+    };
+    objetoEnColocacionRef.current = nuevoPreview; // sync ref antes del state
+    setObjetoEnColocacion(nuevoPreview);
   }, [currentUserEcs?.x, currentUserEcs?.y, isEditMode, reemplazarObjetoDesdeCatalogo, selectedObjectId, setIsEditMode]);
 
   const handleCancelarColocacion = useCallback(() => {
+    objetoEnColocacionRef.current = null;
     setObjetoEnColocacion(null);
   }, []);
 
   const handleActualizarObjetoEnColocacion = useCallback((x: number, y: number, z: number) => {
-    setObjetoEnColocacion((prev) => prev ? { ...prev, posicion_x: x, posicion_y: y, posicion_z: z } : prev);
+    // Sync ref PRIMERO (lectura inmediata en confirm) y luego schedule state
+    // update para el preview visual (ghost). El ref es la fuente de verdad
+    // para la persistencia; el state es para React re-render del ghost.
+    const prev = objetoEnColocacionRef.current;
+    if (prev) {
+      objetoEnColocacionRef.current = { ...prev, posicion_x: x, posicion_y: y, posicion_z: z };
+    }
+    setObjetoEnColocacion((p) => p ? { ...p, posicion_x: x, posicion_y: y, posicion_z: z } : p);
   }, []);
 
   const handleActualizarPlantillaZonaEnColocacion = useCallback((x: number, z: number) => {
@@ -492,24 +509,29 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   }, [actualizarPosicionPlantillaZonaEnColocacion]);
 
   const handleConfirmarObjetoEnColocacion = useCallback(async () => {
-    if (!objetoEnColocacion) return;
+    // Lee del REF, no del state — el state puede estar 1 render atrás cuando
+    // el click llega inmediatamente después del último pointermove. Fix del
+    // bug "no me deja soltar / posición desfasada entre edit mode y normal".
+    const actual = objetoEnColocacionRef.current ?? objetoEnColocacion;
+    if (!actual) return;
 
     const creado = await crearObjetoDesdeCatalogo(
-      objetoEnColocacion,
+      actual,
       {
-        x: objetoEnColocacion.posicion_x,
-        y: objetoEnColocacion.posicion_y,
-        z: objetoEnColocacion.posicion_z,
+        x: actual.posicion_x,
+        y: actual.posicion_y,
+        z: actual.posicion_z,
       },
-      objetoEnColocacion.rotacion_y || 0
+      actual.rotacion_y || 0
     );
 
     if (!creado) return;
 
     registrarCreacion(creado);
-    setPlacementToastName(objetoEnColocacion.nombre);
-    notificationBus.emit({ mensaje: `📦 ${objetoEnColocacion.nombre} — listo para editar`, variante: 'success' });
+    setPlacementToastName(actual.nombre);
+    notificationBus.emit({ mensaje: `📦 ${actual.nombre} — listo para editar`, variante: 'success' });
     setUltimoObjetoColocadoId(creado.id);
+    objetoEnColocacionRef.current = null;
     setObjetoEnColocacion(null);
     setIsEditMode(true);
     setSelectedObjectId(creado.id);
@@ -644,7 +666,10 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     objetoEnColocacion: !!objetoEnColocacion,
     plantillaZonaEnColocacion: !!plantillaZonaEnColocacion,
     editMode: isEditMode,
-    onCancelObjectPlacement: () => setObjetoEnColocacion(null),
+    onCancelObjectPlacement: () => {
+      objetoEnColocacionRef.current = null;
+      setObjetoEnColocacion(null);
+    },
     onCancelTemplatePlacement: () => {
       clearPlantillaZonaEnColocacion();
       addNotification('Colocación de plantilla cancelada.', 'info');
