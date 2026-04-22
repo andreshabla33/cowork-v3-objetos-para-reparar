@@ -71,6 +71,65 @@ export function useProximity(params: {
     }
   }, [currentUserEcs.x, currentUserEcs.y]);
 
+  // ========== Hydration gate (Opción A — patrón Phoenix presence_state) ========
+  // Evita "proximidad fantasma" al arrancar: durante los primeros ms tanto la
+  // posición local como las presencias remotas pueden estar en estado default
+  // (antes de que lleguen los primeros packets reales), lo que hace que
+  // useProximity calcule distancia=0 y dispare eventos de "entrada en
+  // proximidad" espurios. Esos eventos propagan a:
+  //   - Player3D: auto-wave animation (saludo) + XP
+  //   - Avatar3DScene: videoHUD, audio spatial, etc.
+  //   - wavedToUsersRef: marca al usuario como "ya saludado" → saludo real
+  //     posterior nunca se dispara (bug UX silencioso).
+  //
+  // El flag `isHydrated` bloquea usersInCall y usersInAudioRange hasta que
+  // alguna de estas condiciones se cumpla:
+  //   (a) las coordenadas locales cambien del valor inicial (usuario se movió
+  //       O su posición real llegó del DB/ECS después del mount), O
+  //   (b) pase un grace period de 1500ms (cubre el caso en que el usuario
+  //       no se mueva y no haya posición inicial distinta del default).
+  //
+  // Patrón alineado con:
+  //  - Phoenix Channels: `presence_state` (snapshot inicial) antes de
+  //    reaccionar a `presence_diff`.
+  //  - Supabase Realtime Presence docs: warning explícito de sync events
+  //    espurios durante reconciliación inicial.
+  //    https://supabase.com/docs/guides/realtime/presence
+  //  - Game networking (Gambetta, Unity NetCode, Mirror): "hydration guard"
+  //    antes de disparar callbacks OnPlayerEntered.
+  //    https://www.gabrielgambetta.com/client-side-prediction-server-reconciliation.html
+  //  - React best practice: useRef para flags de "mount completado" sin
+  //    forzar re-render extra.
+  const [isHydrated, setIsHydrated] = useState(false);
+  const initialCoordsRef = useRef<{ x: number; y: number } | null>(null);
+  if (initialCoordsRef.current === null) {
+    initialCoordsRef.current = { x: currentUserEcs.x, y: currentUserEcs.y };
+  }
+
+  useEffect(() => {
+    if (isHydrated) return;
+    const initial = initialCoordsRef.current;
+    if (!initial) return;
+    if (stableProximityCoords.x !== initial.x || stableProximityCoords.y !== initial.y) {
+      setIsHydrated(true);
+      log.info('Proximity hydrated via coord update', {
+        initialX: initial.x,
+        initialY: initial.y,
+        currentX: stableProximityCoords.x,
+        currentY: stableProximityCoords.y,
+      });
+    }
+  }, [stableProximityCoords.x, stableProximityCoords.y, isHydrated]);
+
+  useEffect(() => {
+    if (isHydrated) return;
+    const timer = setTimeout(() => {
+      setIsHydrated(true);
+      log.info('Proximity hydrated via grace period (1500ms)');
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [isHydrated]);
+
   // ========== Histéresis refs ==========
   const connectedUsersRef = useRef<Set<string>>(new Set());
 
@@ -117,6 +176,10 @@ export function useProximity(params: {
 
   // ========== usersInCall con histéresis ==========
   const usersInCall = useMemo(() => {
+    // Hydration gate: hasta que las posiciones estén confirmadas no hay
+    // proximidad ni efectos derivados (ver bloque de hydration arriba).
+    if (!isHydrated) return [];
+
     const nextConnectedUsers = new Set<string>();
 
     const idsBloqueadosProximidad = new Set<string>();
@@ -197,13 +260,15 @@ export function useProximity(params: {
 
     connectedUsersRef.current = nextConnectedUsers;
     return users;
-  }, [usuariosEnChunks, stableProximityCoords.x, stableProximityCoords.y, session?.user?.id, isScreenShareEnabled, userProximityRadius, conversacionesBloqueadasRemoto, effectiveZone]);
+  }, [isHydrated, usuariosEnChunks, stableProximityCoords.x, stableProximityCoords.y, session?.user?.id, isScreenShareEnabled, userProximityRadius, conversacionesBloqueadasRemoto, effectiveZone]);
 
   const hasActiveCall = usersInCall.length > 0;
   const usersInCallIds = useMemo(() => new Set(usersInCall.map(u => u.id)), [usersInCall]);
 
   // ========== Usuarios en rango de audio espacial ==========
   const usersInAudioRange = useMemo(() => {
+    // Mismo gate de hydration que usersInCall (arriba).
+    if (!isHydrated) return [];
     // In a meeting zone, audio range is irrelevant — meeting isolation handles everything
     if (effectiveZone) return [];
 
@@ -220,7 +285,7 @@ export function useProximity(params: {
       const dist = Math.sqrt(Math.pow(u.x - stableProximityCoords.x, 2) + Math.pow(u.y - stableProximityCoords.y, 2));
       return dist < audioRadius;
     });
-  }, [usuariosEnChunks, stableProximityCoords.x, stableProximityCoords.y, session?.user?.id, userProximityRadius, usersInCall, effectiveZone, meetingZones]);
+  }, [isHydrated, usuariosEnChunks, stableProximityCoords.x, stableProximityCoords.y, session?.user?.id, userProximityRadius, usersInCall, effectiveZone, meetingZones]);
 
   const usersInAudioRangeIds = useMemo(() => new Set(usersInAudioRange.map(u => u.id)), [usersInAudioRange]);
 

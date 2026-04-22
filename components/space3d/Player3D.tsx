@@ -232,6 +232,12 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
   const lastSitDebugKeyRef = useRef<string>('');
   const previousUsersInCallRef = useRef<Set<string>>(new Set());
   const wavedToUsersRef = useRef<Set<string>>(new Set());
+  // Fix B (2026-04-22): timers de debounce por usuario candidato a saludo.
+  // Solo se marca en `wavedToUsersRef` y se dispara la animación si el
+  // usuario permanece en proximidad ≥500ms. Evita quemar el saludo por
+  // proximidad fantasma durante la hidratación inicial de presencias.
+  // Complementa el hydration gate en useProximity (Fix A).
+  const pendingWaveTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const [seatRuntime, setSeatRuntime] = useState<AsientoRuntime3D | null>(asientoInicialPersistido);
   const avatarHeightRef = useRef<number>(ALTURA_AVATAR_ESTANDAR);
   const avatarHipHeightRef = useRef<number>(ALTURA_AVATAR_ESTANDAR * 0.53);
@@ -408,32 +414,69 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     }
   }, [asientoOcupadoPorOtroUsuario, currentUser.id, onOcuparAsiento]);
 
-  // Auto-wave: detectar nuevos usuarios que entran en proximidad
+  // Auto-wave: detectar nuevos usuarios que entran en proximidad.
   // NOTE: the reset timer lives in a separate effect below — coupling it
   // to [usersInCallIds] caused a stuck-wave bug: if usersInCallIds changed
   // mid-wave (e.g. a third user entered) without producing new entries,
   // React's cleanup cleared the pending reset timer but the new effect
   // body didn't replace it → contextualAnim stayed at 'wave' indefinitely.
+  //
+  // Fix B (2026-04-22): debounce de 500ms antes de marcar `waved` + disparar
+  // la animación. Evita que proximidad fantasma al arrancar queme el saludo
+  // del usuario (si entra+sale en <500ms nunca se marca → saludo real cuando
+  // se acerque de verdad sí funciona). Complementa el hydration gate en
+  // useProximity.ts.
+  const WAVE_DEBOUNCE_MS = 500;
   useEffect(() => {
     if (!usersInCallIds || usersInCallIds.size === 0) {
+      // Cancelar cualquier wave pendiente — el usuario salió antes del debounce
+      pendingWaveTimersRef.current.forEach(timer => clearTimeout(timer));
+      pendingWaveTimersRef.current.clear();
       previousUsersInCallRef.current = new Set();
       return;
     }
     const prev = previousUsersInCallRef.current;
-    const newEntries: string[] = [];
+
+    // Candidatos nuevos: schedule timer
     usersInCallIds.forEach(id => {
-      if (!prev.has(id) && !wavedToUsersRef.current.has(id)) {
-        newEntries.push(id);
+      if (prev.has(id)) return;
+      if (wavedToUsersRef.current.has(id)) return;
+      if (pendingWaveTimersRef.current.has(id)) return;
+      const timer = setTimeout(() => {
+        pendingWaveTimersRef.current.delete(id);
+        // Verificar que el usuario sigue en proximidad cuando fire el timer
+        // (cerramos sobre `connectedUsersRef` indirectamente a través del
+        // ref estable `previousUsersInCallRef.current`).
+        if (!previousUsersInCallRef.current.has(id)) return;
+        if (wavedToUsersRef.current.has(id)) return;
         wavedToUsersRef.current.add(id);
+        if (animationStateRef.current !== 'walk' && animationStateRef.current !== 'run') {
+          setContextualAnim('wave');
+          onXPEvent?.('saludo_wave', 30000);
+        }
+      }, WAVE_DEBOUNCE_MS);
+      pendingWaveTimersRef.current.set(id, timer);
+    });
+
+    // Candidatos que salieron antes del debounce: cancelar timer
+    pendingWaveTimersRef.current.forEach((timer, id) => {
+      if (!usersInCallIds.has(id)) {
+        clearTimeout(timer);
+        pendingWaveTimersRef.current.delete(id);
       }
     });
-    previousUsersInCallRef.current = new Set(usersInCallIds);
 
-    if (newEntries.length > 0 && animationStateRef.current !== 'walk' && animationStateRef.current !== 'run') {
-      setContextualAnim('wave');
-      onXPEvent?.('saludo_wave', 30000);
-    }
+    previousUsersInCallRef.current = new Set(usersInCallIds);
   }, [usersInCallIds, onXPEvent]);
+
+  // Cleanup timers pendientes al desmontar
+  useEffect(() => {
+    const timers = pendingWaveTimersRef.current;
+    return () => {
+      timers.forEach(timer => clearTimeout(timer));
+      timers.clear();
+    };
+  }, []);
 
   // Dedicated auto-reset for contextual 'wave'. Runs whenever contextualAnim
   // becomes 'wave' and clears it 3s later. Immune to re-renders of the
