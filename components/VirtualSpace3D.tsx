@@ -14,6 +14,7 @@ import { BottomControlBar } from './BottomControlBar';
 import { VirtualSpace3DModals } from './space3d/root/VirtualSpace3DModals';
 import { VirtualSpace3DAdminOverlay } from './space3d/root/VirtualSpace3DAdminOverlay';
 import { VirtualSpace3DStatusBanners } from './space3d/root/VirtualSpace3DStatusBanners';
+import { MovingToRoomBanner } from './space3d/root/MovingToRoomBanner';
 import { VirtualSpace3DStatusOverlays } from './space3d/root/VirtualSpace3DStatusOverlays';
 import { useLiveKitVideoBackground, useLocalCameraTrack } from '@/modules/realtime-room';
 import type { LocalVideoTrack } from 'livekit-client';
@@ -1122,6 +1123,10 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
           speakerDeviceId={audioSettings.selectedSpeakerId || undefined}
         />
       )}
+
+      {/* Banner multi-Room meeting transition (moveParticipant).
+          Ref: hooks/space3d/useMeetingRoomTransition.ts */}
+      <MovingToRoomBanner isMoving={s.meetingTransition.isMoving} />
 
       {/* Banners de estado y notificación social — F4.2 */}
       <VirtualSpace3DStatusBanners

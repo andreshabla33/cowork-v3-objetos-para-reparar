@@ -12,6 +12,7 @@ import { AUDIO_SPATIAL_RADIUS_FACTOR, PROXIMITY_ACTIVATION_FACTOR, PROXIMITY_COO
 import { useStore } from '@/store/useStore';
 import { ActiveSpeakerPolicy, GalleryPolicy } from '@/modules/realtime-room';
 import { normalizarConfiguracionZonaEmpresa } from '@/src/core/domain/entities/cerramientosZona';
+import { isMeetingZone } from '@/src/core/domain/entities/realtime/MeetingRoomAssignment';
 import { logger } from '@/lib/logger';
 
 const log = logger.child('useProximity');
@@ -414,6 +415,17 @@ export function useProximity(params: {
     return null;
   }, [conversacionesBloqueadasRemoto, usersInCall, session?.user?.id]);
 
+  // ========== Meeting zone actual (para multi-Room LiveKit) ==========
+  // Sólo reporta el ID si la zona es tipo meeting (sala_juntas o
+  // sala_meeting_grande). Otras zonas (cubiculo, focus, etc.) comparten
+  // la Room global del espacio y se manejan por proximidad/audio espacial.
+  // Ref: src/core/domain/entities/realtime/MeetingRoomAssignment.ts
+  const currentMeetingZoneId = useMemo(() => {
+    if (!effectiveZone) return null;
+    if (!isMeetingZone(effectiveZone.configuracion)) return null;
+    return effectiveZone.id;
+  }, [effectiveZone]);
+
   return {
     stableProximityCoords,
     usersInCall,
@@ -430,5 +442,6 @@ export function useProximity(params: {
     conversacionesBloqueadasRemoto,
     setConversacionesBloqueadasRemoto,
     conversacionProximaBloqueada,
+    currentMeetingZoneId,
   };
 }

@@ -193,6 +193,13 @@ export interface UseProximityReturn {
   conversacionesBloqueadasRemoto: Map<string, string[]>;
   setConversacionesBloqueadasRemoto: React.Dispatch<React.SetStateAction<Map<string, string[]>>>;
   conversacionProximaBloqueada: { lockerId: string; participants: string[]; nombre: string } | null;
+  /**
+   * ID de la meeting zone donde está el avatar local, o null si no está
+   * en una meeting. Lo consume `useMeetingRoomTransition` para disparar
+   * `moveParticipant` hacia Room dedicada (patrón multi-Room LiveKit).
+   * Ref: src/core/domain/entities/realtime/MeetingRoomAssignment.ts
+   */
+  currentMeetingZoneId: string | null;
 }
 
 export interface UseBroadcastReturn {

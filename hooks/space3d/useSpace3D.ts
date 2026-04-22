@@ -23,6 +23,7 @@ import { useChunkSystem } from './useChunkSystem';
 import { useMediaStream } from './useMediaStream';
 import { useLiveKit } from './useLiveKit';
 import { useProximity } from './useProximity';
+import { useMeetingRoomTransition } from './useMeetingRoomTransition';
 import { useBroadcast } from './useBroadcast';
 import { getApplicationServices } from '@/src/core/application/ApplicationServicesContainer';
 import { useGatherInteractions } from './useGatherInteractions';
@@ -350,6 +351,18 @@ export function useSpace3D(props: {
   usersInCallRef.current = proximity.usersInCall;
   usersInAudioRangeRef.current = proximity.usersInAudioRange;
   conversacionesBloqueadasRemotoRef.current = proximity.conversacionesBloqueadasRemoto;
+
+  // ========== Multi-Room meetings (LiveKit moveParticipant) ==========
+  // Cuando el avatar entra a una meeting zone (sala_juntas/sala_meeting_grande),
+  // este hook dispara `moveParticipant` para aislar la videollamada en una
+  // Room dedicada. Al salir, vuelve a la Room global. Debounce 2s anti-flap.
+  // Ref: docs/ref oficial LiveKit managing-rooms (moveParticipant API).
+  const meetingTransition = useMeetingRoomTransition({
+    espacioId: activeWorkspace?.id ?? null,
+    identity: session?.user?.id ?? null,
+    currentMeetingZoneId: proximity.currentMeetingZoneId,
+    enabled: true,
+  });
 
   // ========== 8. Broadcast ==========
   const broadcast = useBroadcast({
@@ -696,5 +709,6 @@ export function useSpace3D(props: {
     proximity,
     broadcast,
     interactions,
+    meetingTransition,
   };
 }
