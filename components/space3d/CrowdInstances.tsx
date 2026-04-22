@@ -18,8 +18,16 @@ export interface CrowdEntity {
 }
 
 const MAX_CROWD = 512;
-const SPHERE_RADIUS = 0.28;
-const SPHERE_SEGMENTS = 10;
+// Far-LOD silueta humana (estilo Genshin/Fortnite impostor barato).
+// Antes era SphereGeometry(0.28, 10, 10) — a >60u se percibía como
+// "cuadro verde" por aliasing. Capsule con silueta humanoide resuelve
+// el problema manteniendo 1 draw call y geometría low-poly.
+// Ref: `MidLodInstances.tsx` usa el mismo patrón con capsule más gruesa.
+const CAPSULE_RADIUS = 0.14;
+const CAPSULE_HEIGHT = 1.0; // cilindro central; altura total = H + 2R = 1.28m
+const CAP_SEGMENTS = 4;
+const RADIAL_SEGMENTS = 6;
+const CAPSULE_Y_OFFSET = (CAPSULE_HEIGHT + 2 * CAPSULE_RADIUS) / 2; // 0.64 — centra la capsule sobre el suelo
 
 const STATUS_COLOR_CACHE = new Map<string, THREE.Color>();
 function getStatusColor(status: PresenceStatus): THREE.Color {
@@ -42,7 +50,7 @@ export const CrowdInstances: React.FC<{
   const entityMapRef = useRef<CrowdEntity[]>([]);
 
   const geometry = useMemo(
-    () => new THREE.SphereGeometry(SPHERE_RADIUS, SPHERE_SEGMENTS, SPHERE_SEGMENTS),
+    () => new THREE.CapsuleGeometry(CAPSULE_RADIUS, CAPSULE_HEIGHT, CAP_SEGMENTS, RADIAL_SEGMENTS),
     [],
   );
   const material = useMemo(
@@ -61,7 +69,7 @@ export const CrowdInstances: React.FC<{
 
     for (let i = 0; i < count; i++) {
       const e = entities[i];
-      _dummy.position.set(e.x, SPHERE_RADIUS, e.z);
+      _dummy.position.set(e.x, CAPSULE_Y_OFFSET, e.z);
       _dummy.updateMatrix();
       mesh.setMatrixAt(i, _dummy.matrix);
       mesh.setColorAt(i, getStatusColor(e.status));

@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { User, PresenceStatus, ZonaEmpresa } from '@/types';
 import { GLTFAvatar } from '../avatar3d/GLTFAvatar';
 import type { AnimationState, AvatarAssetQuality, Avatar3DConfig } from '../avatar3d/shared';
+import { resolveAvatarModelUrl } from '../avatar3d/shared';
 import { GhostAvatar } from '../3d/GhostAvatar';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import { useStore } from '@/store/useStore';
@@ -245,13 +246,28 @@ export const Avatar: React.FC<AvatarProps> = ({
       </mesh>
 
       {renderGLTF && (
-        // Key estable por entidad (userId) + calidad de asset.
+        // Key estable por entidad (userId) + modelUrl efectivo.
+        // Fix 2026-04-22: antes el key incluía `assetQuality`, lo que hacía
+        // REMOUNT de GLTFAvatar cada vez que el LOD cambiaba (near/mid/low)
+        // aunque el modelUrl resuelto fuera el mismo (usuarios sin URLs
+        // separados por calidad). Consecuencias: 3 cargas de animaciones,
+        // texture leak monotónico (+12 por remount), WebGL context lost,
+        // T-pose flash repetido.
+        //
+        // El key ahora depende del modelUrl resuelto — solo remonta si
+        // realmente cambia el GLB (p.ej. usuario cambia de avatar o tiene
+        // URLs específicas por calidad). Para cambios de calidad sin cambio
+        // de URL, React reconcilia y GLTFAvatar reacciona a `assetQuality`
+        // via props (texturas por calidad via useEffect).
+        //
         // React docs: https://react.dev/learn/rendering-lists#rules-of-keys
-        // El key NO debe basarse en campos derivados (modelo_url) que pueden
-        // ser momentáneamente undefined durante la resolución del config —
-        // eso provocaba remounts repetidos en avatares remotos (bug 2026-04-15).
+        // Three.js docs: https://threejs.org/docs/#api/en/objects/LOD
+        // — mount-once + visible toggle, nunca remount en LOD transitions.
         <GLTFAvatar
-          key={`${userId ?? (isCurrentUser ? 'self' : 'remote')}:${assetQuality}`}
+          key={`${userId ?? (isCurrentUser ? 'self' : 'remote')}:${resolveAvatarModelUrl(
+            isCurrentUser ? avatar3DConfig : (remoteAvatar3DConfig || FALLBACK_AVATAR_3D_CONFIG),
+            assetQuality
+          )}`}
           avatarConfig={isCurrentUser ? avatar3DConfig : (remoteAvatar3DConfig || FALLBACK_AVATAR_3D_CONFIG)}
           animationState={effectiveAnimState}
           direction={direction}

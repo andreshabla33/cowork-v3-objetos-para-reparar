@@ -90,6 +90,11 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
   const [currentAnimation, setCurrentAnimation] = useState<AnimationState>('idle');
   const [externalTexture, setExternalTexture] = useState<THREE.Texture | null>(null);
   const [loadedAnimClips, setLoadedAnimClips] = useState<Record<string, THREE.AnimationClip>>({});
+  // Fix T-pose flash: el mesh permanece invisible hasta que el mixer tiene
+  // al menos una acción bindeada y `.play()` se llamó. Antes se veía 1s
+  // en bind pose (T-pose) mientras llegaban las animaciones vía async loader.
+  // Ref: https://discourse.threejs.org/t/skinned-mesh-t-pose-flash
+  const [actionsReady, setActionsReady] = useState(false);
   const animConfigRef = useRef('');
   const currentAvatarIdRef = useRef('');
   const heightComputedRef = useRef(false);
@@ -576,6 +581,13 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
       newActions.idle.reset().fadeIn(0.2).play();
     }
     setCurrentAnimation('idle');
+    // Activar visibilidad una vez que hay al menos una acción lista.
+    // Sin este gate, el mesh renderiza en bind pose (T-pose) entre el
+    // mount y la llegada async de los clips (~1s para modelos sin anims
+    // embebidas que caen al pool universal).
+    if (Object.keys(newActions).length > 0) {
+      setActionsReady(true);
+    }
   }, [allAnimations]);
 
   useFrame((_, delta) => {
@@ -800,7 +812,11 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
 
   return (
     <group ref={groupRef} position={[0, 0, 0]}>
-      <group scale={[avatarScale, avatarScale, avatarScale]} position={[0, modelYOffset * avatarScale, 0]}>
+      <group
+        scale={[avatarScale, avatarScale, avatarScale]}
+        position={[0, modelYOffset * avatarScale, 0]}
+        visible={actionsReady}
+      >
         <primitive object={clone} />
       </group>
       {/* Sombra proyectada */}
