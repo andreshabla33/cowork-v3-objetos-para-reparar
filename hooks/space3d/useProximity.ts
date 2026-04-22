@@ -71,62 +71,61 @@ export function useProximity(params: {
     }
   }, [currentUserEcs.x, currentUserEcs.y]);
 
-  // ========== Hydration gate (Opción A — patrón Phoenix presence_state) ========
-  // Evita "proximidad fantasma" al arrancar: durante los primeros ms tanto la
-  // posición local como las presencias remotas pueden estar en estado default
-  // (antes de que lleguen los primeros packets reales), lo que hace que
-  // useProximity calcule distancia=0 y dispare eventos de "entrada en
-  // proximidad" espurios. Esos eventos propagan a:
-  //   - Player3D: auto-wave animation (saludo) + XP
-  //   - Avatar3DScene: videoHUD, audio spatial, etc.
-  //   - wavedToUsersRef: marca al usuario como "ya saludado" → saludo real
-  //     posterior nunca se dispara (bug UX silencioso).
+  // ========== Hydration gate v2 — validity-based (no time-based) ==========
+  // Evita "proximidad fantasma" al arrancar. La v1 usaba solo tiempo (1500ms
+  // grace period) pero los logs mostraron que las coordenadas reales pueden
+  // tardar hasta 12 segundos en salir del default (0,0), porque:
+  //   - `useProximity` se monta ANTES que el Canvas 3D.
+  //   - El ECS (AvatarECS) se hidrata con posiciones reales después del
+  //     `SUBSCRIBED` del canal de presencia → segundo `presence_state` snapshot.
+  //   - Durante ese window, tanto currentUserEcs como los remotes caen al
+  //     fallback `currentUser.x/y` que puede ser (0,0) en User por defecto.
   //
-  // El flag `isHydrated` bloquea usersInCall y usersInAudioRange hasta que
-  // alguna de estas condiciones se cumpla:
-  //   (a) las coordenadas locales cambien del valor inicial (usuario se movió
-  //       O su posición real llegó del DB/ECS después del mount), O
-  //   (b) pase un grace period de 1500ms (cubre el caso en que el usuario
-  //       no se mueva y no haya posición inicial distinta del default).
+  // v2: trigger de hydration por VALIDEZ de datos, alineado con el patrón
+  // canónico de Phoenix/Supabase:
   //
-  // Patrón alineado con:
-  //  - Phoenix Channels: `presence_state` (snapshot inicial) antes de
-  //    reaccionar a `presence_diff`.
-  //  - Supabase Realtime Presence docs: warning explícito de sync events
-  //    espurios durante reconciliación inicial.
-  //    https://supabase.com/docs/guides/realtime/presence
-  //  - Game networking (Gambetta, Unity NetCode, Mirror): "hydration guard"
-  //    antes de disparar callbacks OnPlayerEntered.
-  //    https://www.gabrielgambetta.com/client-side-prediction-server-reconciliation.html
-  //  - React best practice: useRef para flags de "mount completado" sin
-  //    forzar re-render extra.
+  //   Phoenix docs explícitos:
+  //   "Without an initial `presence_state` message, a frontend presence
+  //    object will not fire off onJoin, onLeave, or onSync callbacks."
+  //   https://hexdocs.pm/phoenix/Phoenix.Presence.html
+  //
+  //   Supabase Realtime docs (comportamiento implícito):
+  //   "if (status !== 'SUBSCRIBED') { return }"
+  //   https://supabase.com/docs/guides/realtime/presence
+  //
+  // El flag `isHydrated` bloquea usersInCall y usersInAudioRange hasta que:
+  //   (a) `stableProximityCoords` sea distinto de (0,0) — señal de que el
+  //       primer snapshot real del ECS/presence llegó, O
+  //   (b) pase un grace period extendido de 5000ms (safety net para espacios
+  //       donde el spawn legítimamente sea (0,0) — evita deadlock del hook).
+  //
+  // Tradeoff: si el spawn del espacio es exactamente (0,0), el usuario
+  // esperaría 5s antes de que proximity se active. Aceptable porque:
+  //   - La mayoría de espacios spawn en el centro de una zona (no en origen).
+  //   - (0,0) se usa convencionalmente como sentinel de "sin posición" en
+  //     el codebase (ver guard de line 133 que ya filtra remotes en (0,0)).
   const [isHydrated, setIsHydrated] = useState(false);
-  const initialCoordsRef = useRef<{ x: number; y: number } | null>(null);
-  if (initialCoordsRef.current === null) {
-    initialCoordsRef.current = { x: currentUserEcs.x, y: currentUserEcs.y };
-  }
 
   useEffect(() => {
     if (isHydrated) return;
-    const initial = initialCoordsRef.current;
-    if (!initial) return;
-    if (stableProximityCoords.x !== initial.x || stableProximityCoords.y !== initial.y) {
+    // (a) Hidratación por validez: coords salieron del sentinel (0,0).
+    if (stableProximityCoords.x !== 0 || stableProximityCoords.y !== 0) {
       setIsHydrated(true);
-      log.info('Proximity hydrated via coord update', {
-        initialX: initial.x,
-        initialY: initial.y,
-        currentX: stableProximityCoords.x,
-        currentY: stableProximityCoords.y,
+      log.info('Proximity hydrated via valid coords', {
+        x: stableProximityCoords.x,
+        y: stableProximityCoords.y,
       });
     }
   }, [stableProximityCoords.x, stableProximityCoords.y, isHydrated]);
 
   useEffect(() => {
     if (isHydrated) return;
+    // (b) Safety-net grace period: 5s. Cubre el edge case donde el spawn
+    // legítimamente es (0,0) o donde la hidratación por coords nunca llega.
     const timer = setTimeout(() => {
       setIsHydrated(true);
-      log.info('Proximity hydrated via grace period (1500ms)');
-    }, 1500);
+      log.info('Proximity hydrated via grace period (5000ms safety net)');
+    }, 5000);
     return () => clearTimeout(timer);
   }, [isHydrated]);
 
@@ -195,6 +194,12 @@ export function useProximity(params: {
       if (idsBloqueadosProximidad.has(u.id)) return false;
       if ((u.x === 0 && u.y === 0) || typeof u.x !== 'number' || typeof u.y !== 'number' ||
           typeof stableProximityCoords.x !== 'number' || typeof stableProximityCoords.y !== 'number') {
+        return false;
+      }
+      // Defense in depth (Fix D 2026-04-22): filtrar también cuando el LOCAL
+      // user está en el sentinel (0,0) — evita distancia=0 con un remote que
+      // casualmente caiga en (0,0). La guardia superior solo cubría al remote.
+      if (stableProximityCoords.x === 0 && stableProximityCoords.y === 0) {
         return false;
       }
 
@@ -269,6 +274,8 @@ export function useProximity(params: {
   const usersInAudioRange = useMemo(() => {
     // Mismo gate de hydration que usersInCall (arriba).
     if (!isHydrated) return [];
+    // Defense in depth: local también debe estar hidratado (no en (0,0)).
+    if (stableProximityCoords.x === 0 && stableProximityCoords.y === 0) return [];
     // In a meeting zone, audio range is irrelevant — meeting isolation handles everything
     if (effectiveZone) return [];
 
