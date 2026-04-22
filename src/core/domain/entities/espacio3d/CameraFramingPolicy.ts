@@ -61,9 +61,9 @@ export interface CameraFraming {
  * Si se cambia el FOV default de la escena, recalibrar.
  */
 export const IDLE_HERO_FRAMING: CameraFraming = Object.freeze({
-  distance: 2.2,
-  height: 1.9,
-  targetHeight: 1.5,
+  distance: 1.7,
+  height: 1.5,
+  targetHeight: 1.55,
 });
 
 /**
