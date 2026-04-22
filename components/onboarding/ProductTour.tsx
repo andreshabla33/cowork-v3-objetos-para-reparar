@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { driver, type DriveStep, type Config } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import '../../styles/driver-tour.css';
@@ -140,6 +140,12 @@ export const ProductTour: React.FC<ProductTourProps> = ({
   const [tourState, setTourState] = useState<TourState | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [tourStarted, setTourStarted] = useState(false);
+  // Ref al último tourState para detectar transición real true→false
+  // en el realtime handler sin re-suscribir el canal en cada cambio de state.
+  const tourStateRef = useRef<TourState | null>(null);
+  useEffect(() => {
+    tourStateRef.current = tourState;
+  }, [tourState]);
 
   const isAdmin = rol === 'super_admin' || rol === 'admin';
 
@@ -191,7 +197,17 @@ export const ProductTour: React.FC<ProductTourProps> = ({
         filter: `usuario_id=eq.${userId}`,
       }, (payload) => {
         const nuevo = payload.new as any;
-        if (nuevo.espacio_id === espacioId && nuevo.tour_completado === false) {
+        const viejo = payload.old as any;
+        if (nuevo.espacio_id !== espacioId) return;
+        // Detecta reset real: tour_completado transita de true → false.
+        // Antes disparaba en CUALQUIER UPDATE donde new.tour_completado=false
+        // (ej. heartbeats, cambios de rol), causando spam + reloads innecesarios.
+        // payload.old solo trae el valor previo de columnas cambiadas si la
+        // tabla tiene REPLICA IDENTITY FULL; si no, caemos al ref local.
+        const previamenteCompletado = viejo?.tour_completado === true
+          ? true
+          : tourStateRef.current?.tour_completado === true;
+        if (previamenteCompletado && nuevo.tour_completado === false) {
           console.log('ProductTour: Tour reseteado desde settings, recargando...');
           cargarEstado();
         }

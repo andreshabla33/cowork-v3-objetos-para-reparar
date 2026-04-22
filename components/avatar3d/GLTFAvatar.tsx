@@ -126,6 +126,17 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
 
     clonedScene.traverse((child: any) => {
       if ((child.isMesh || child.isSkinnedMesh) && child.material) {
+        // SkinnedMesh frustum culling pitfall (r128): Three.js usa el boundingSphere
+        // del bind pose (T-pose) para el frustum test, sin considerar la pose
+        // deformada por animaciones. Con cámaras muy cercanas/bajas (hero shot
+        // idle framing), la sphere proyecta fuera del frustum y el avatar
+        // entero se descarta del render. SkinnedMesh.boundingBox se introduce
+        // recién en r166 — en r128 la práctica estándar es desactivar el culling.
+        // Costo GPU: despreciable (1-4 SkinnedMesh locales por frame).
+        // Ref: https://github.com/mrdoob/three.js/issues/14499
+        if (child.isSkinnedMesh) {
+          child.frustumCulled = false;
+        }
         child.material = Array.isArray(child.material)
           ? child.material.map((material: any) => material.clone())
           : child.material.clone();
