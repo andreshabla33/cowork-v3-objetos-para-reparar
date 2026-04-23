@@ -13,6 +13,7 @@ import { useStore } from '@/store/useStore';
 import { ActiveSpeakerPolicy, GalleryPolicy } from '@/modules/realtime-room';
 import { normalizarConfiguracionZonaEmpresa } from '@/src/core/domain/entities/cerramientosZona';
 import { isMeetingZone } from '@/src/core/domain/entities/realtime/MeetingRoomAssignment';
+import { classifyZonasEmpresa } from '@/src/core/domain/entities/realtime/ZonaEmpresaKind';
 import { SpatialHashGrid } from '@/src/core/domain/services/SpatialHashGrid';
 import { logger } from '@/lib/logger';
 
@@ -146,12 +147,11 @@ export function useProximity(params: {
   const zonasEmpresa = useStore((state) => state.zonasEmpresa);
 
   // ========== Pre-filtro: zonas de tipo meeting ==========
+  // Delegado a Domain classifier (2026-04-23 Fase 1 refactor). La whitelist
+  // de plantillas meeting vive en ZonaEmpresaKind.ts, fuente única.
   const meetingZones = useMemo(() => {
     if (!zonasEmpresa || zonasEmpresa.length === 0) return [];
-    return zonasEmpresa.filter(zona => {
-      const config = normalizarConfiguracionZonaEmpresa(zona.configuracion);
-      return config.plantilla_zona?.id === 'sala_juntas' || config.plantilla_zona?.id === 'sala_meeting_grande';
-    });
+    return classifyZonasEmpresa(zonasEmpresa).meetings.map((m) => m.zona);
   }, [zonasEmpresa]);
 
   // ========== Detección de Zonas de Aislamiento (Meeting) ==========

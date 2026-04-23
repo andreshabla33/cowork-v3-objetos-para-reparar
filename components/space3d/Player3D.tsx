@@ -26,6 +26,7 @@ import { type CameraSettings } from '@/modules/realtime-room';
 import { obtenerEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
 import { normalizarConfiguracionZonaEmpresa } from '@/src/core/domain/entities/cerramientosZona';
 import { isMeetingZone } from '@/src/core/domain/entities/realtime/MeetingRoomAssignment';
+import { classifyZonasPropiaActiva } from '@/src/core/domain/entities/realtime/ZonaEmpresaKind';
 import { type JoystickInput } from '../3d/MobileJoystick';
 import { getSettingsSection } from '@/lib/userSettings';
 import {
@@ -117,20 +118,11 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
   useEffect(() => { obstaculosRef.current = obstaculos; }, [obstaculos]);
 
   const obtenerZonaPropiaActiva = useCallback(() => {
-    if (!currentUser.empresa_id) return null;
-    // CRÍTICO (2026-04-23): excluir meeting zones. Una zona de "meeting"
-    // (sala_juntas, sala_meeting_grande) NO es el perimeter de la empresa
-    // — es una sala privada DENTRO del espacio. Si .find() retornaba una
-    // meeting zone, limitarPosicionAZonaPropia clampeaba al bbox de esa
-    // sala en vez del perimeter general → cada login aterrizaba adentro
-    // → moveParticipant automático.
-    return zonasEmpresa.find((zona) => {
-      if (zona.empresa_id !== currentUser.empresa_id) return false;
-      if (zona.estado !== 'activa') return false;
-      const config = normalizarConfiguracionZonaEmpresa(zona.configuracion);
-      if (isMeetingZone(config)) return false;
-      return true;
-    }) || null;
+    // Delegado a Domain classifier (2026-04-23 Fase 1 refactor de
+    // zonas_empresa). La "zona propia activa" es el PERIMETER de la
+    // empresa — nunca una meeting zone ni una subzona funcional.
+    // Ref: src/core/domain/entities/realtime/ZonaEmpresaKind.ts
+    return classifyZonasPropiaActiva(zonasEmpresa, currentUser.empresa_id).perimeter?.zona ?? null;
   }, [currentUser.empresa_id, zonasEmpresa]);
 
   const limitarPosicionAZonaPropia = useCallback((x: number, z: number) => {
