@@ -36,8 +36,16 @@ import { logger } from '@/lib/logger';
 
 const log = logger.child('useMeetingRoomTransition');
 
-/** Debounce para evitar flap al cruzar bordes de meeting zones. */
-const TRANSITION_DEBOUNCE_MS = 2000;
+/**
+ * Debounce para evitar flap al cruzar bordes de meeting zones.
+ *
+ * 500ms es el sweet spot (Teamflow "path independence" usa 100–300ms):
+ * suficiente para filtrar un cruce accidental de borde, pero imperceptible
+ * al entrar a propósito. El check `appliedZoneIdRef.current === targetZoneId`
+ * dentro del setTimeout sigue cancelando si el usuario sale dentro del window.
+ * Ref: https://www.teamflowhq.com/dev/how-teamflows-office-scale
+ */
+const TRANSITION_DEBOUNCE_MS = 500;
 
 export interface UseMeetingRoomTransitionParams {
   /** ID del espacio actual (required). Sin esto no se dispara nada. */

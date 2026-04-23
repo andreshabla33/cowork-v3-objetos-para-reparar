@@ -13,6 +13,7 @@ import { useStore } from '@/store/useStore';
 import { ActiveSpeakerPolicy, GalleryPolicy } from '@/modules/realtime-room';
 import { normalizarConfiguracionZonaEmpresa } from '@/src/core/domain/entities/cerramientosZona';
 import { isMeetingZone } from '@/src/core/domain/entities/realtime/MeetingRoomAssignment';
+import { SpatialHashGrid } from '@/src/core/domain/services/SpatialHashGrid';
 import { logger } from '@/lib/logger';
 
 const log = logger.child('useProximity');
@@ -216,7 +217,43 @@ export function useProximity(params: {
       idsBloqueadosProximidad.add(lockerId);
     });
 
-    const users = usuariosEnChunks.filter(u => {
+    // Pre-filtrado O(1) amortizado con spatial hash — reemplaza el loop
+    // lineal O(n) sobre todos los avatares del espacio.
+    //
+    // Solo aplica al branch de "mundo abierto" (distance check). En
+    // effectiveZone la decisión es membership-based (LiveKit Room), no
+    // distance, así que no hay ganancia del hash ahí.
+    //
+    // Ref game-dev: Ericson, "Real-Time Collision Detection" §7.1
+    // (broad-phase spatial partitioning).
+    const localCoordsValid =
+      typeof stableProximityCoords.x === 'number' &&
+      typeof stableProximityCoords.y === 'number' &&
+      !(stableProximityCoords.x === 0 && stableProximityCoords.y === 0);
+
+    let candidatos: typeof usuariosEnChunks;
+    if (effectiveZone || !localCoordsValid) {
+      // Meeting: todos los usuarios son candidatos (membership-based).
+      // Coords inválidas: saltamos fast-path; el filter interno devuelve false.
+      candidatos = usuariosEnChunks;
+    } else {
+      const radioMax = userProximityRadius * PROXIMITY_ACTIVATION_FACTOR;
+      const grid = new SpatialHashGrid<{ id: string; x: number; y: number }>(radioMax);
+      for (const u of usuariosEnChunks) {
+        if (typeof u.x === 'number' && typeof u.y === 'number' && !(u.x === 0 && u.y === 0)) {
+          grid.insert({ id: u.id, x: u.x, y: u.y });
+        }
+      }
+      const hitsIds = new Set(
+        grid.queryNear(stableProximityCoords.x, stableProximityCoords.y, radioMax).map(h => h.id)
+      );
+      // Incluir también los que estaban conectados previamente para que el
+      // filter emita los logs "User left proximity" + limpie connectedUsersRef.
+      connectedUsersRef.current.forEach(id => hitsIds.add(id));
+      candidatos = usuariosEnChunks.filter(u => hitsIds.has(u.id));
+    }
+
+    const users = candidatos.filter(u => {
       if (u.id === session?.user?.id) return false;
       if (u.esFantasma) return false;
       if (idsBloqueadosProximidad.has(u.id)) return false;
