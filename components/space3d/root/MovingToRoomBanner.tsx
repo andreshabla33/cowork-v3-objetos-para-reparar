@@ -24,14 +24,23 @@ const RECONNECT_HARD_TIMEOUT_MS = 5000;
 export interface MovingToRoomBannerProps {
   /** True mientras el cliente está en `Reconnecting` state. */
   isMoving: boolean;
-  /** Texto opcional — default: "Entrando a sala privada..." */
+  /**
+   * Dirección de la transición. 'enter' = "Entrando a sala privada...",
+   * 'leave' = "Saliendo de sala privada...". Bug 2026-04-23: antes
+   * mostraba "Entrando" en ambos casos porque el banner no sabía la dirección.
+   */
+  direction?: 'enter' | 'leave' | null;
+  /** Texto opcional — si se provee, overridea el derivado de `direction`. */
   label?: string;
 }
 
 export const MovingToRoomBanner: React.FC<MovingToRoomBannerProps> = ({
   isMoving,
-  label = 'Entrando a sala privada...',
+  direction,
+  label,
 }) => {
+  const effectiveLabel = label
+    ?? (direction === 'leave' ? 'Saliendo de sala privada...' : 'Entrando a sala privada...');
   const [showHardTimeout, setShowHardTimeout] = useState(false);
 
   useEffect(() => {
@@ -93,7 +102,7 @@ export const MovingToRoomBanner: React.FC<MovingToRoomBannerProps> = ({
           }}
         />
         <div>
-          <div>{showHardTimeout ? '⚠️ Reconexión tardando más de lo esperado' : `🔒 ${label}`}</div>
+          <div>{showHardTimeout ? '⚠️ Reconexión tardando más de lo esperado' : `🔒 ${effectiveLabel}`}</div>
           {showHardTimeout && (
             <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
               Si persiste, recarga la página.

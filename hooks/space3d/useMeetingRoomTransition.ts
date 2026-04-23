@@ -73,6 +73,13 @@ export interface UseMeetingRoomTransitionReturn {
   lastError: string | null;
   /** Room actual donde está el participante (global o meeting). Útil para logs. */
   currentZoneId: string | null;
+  /**
+   * Dirección de la transición activa. 'enter' cuando va HACIA una meeting
+   * (targetZoneId != null), 'leave' cuando vuelve a global (targetZoneId null).
+   * null cuando no hay transición en curso. Usado por el banner UI para
+   * mostrar copy correcto ("Entrando..." vs "Saliendo..."). Bug 2026-04-23.
+   */
+  transitionDirection: 'enter' | 'leave' | null;
 }
 
 export function useMeetingRoomTransition(
@@ -90,6 +97,7 @@ export function useMeetingRoomTransition(
   const [isMoving, setIsMoving] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [currentZoneId, setCurrentZoneId] = useState<string | null>(null);
+  const [transitionDirection, setTransitionDirection] = useState<'enter' | 'leave' | null>(null);
 
   // Use cases + adapter construidos una sola vez (singletons por hook instance).
   const useCasesRef = useRef<{
@@ -139,6 +147,9 @@ export function useMeetingRoomTransition(
 
       setIsMoving(true);
       setLastError(null);
+      // Dirección para el banner UI: target null = saliendo; target != null =
+      // entrando (o switching entre meetings, que incluye un leave previo).
+      setTransitionDirection(targetZoneId === null ? 'leave' : 'enter');
 
       try {
         // Caso 1: SALIR de meeting actual (si había una) antes de entrar a otra.
@@ -190,6 +201,7 @@ export function useMeetingRoomTransition(
         setLastError(errorMsg);
       } finally {
         setIsMoving(false);
+        setTransitionDirection(null);
       }
     }, TRANSITION_DEBOUNCE_MS);
 
@@ -201,7 +213,7 @@ export function useMeetingRoomTransition(
     };
   }, [currentMeetingZoneId, identity, espacioId, livekitConnected, enabled]);
 
-  return { isMoving, lastError, currentZoneId };
+  return { isMoving, lastError, currentZoneId, transitionDirection };
 }
 
 function formatError(err: unknown): string {

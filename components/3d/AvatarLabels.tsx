@@ -24,13 +24,15 @@
  */
 
 'use client';
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import { Text, Html, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import type { AvatarLabelEntity } from '@/src/core/domain/entities/espacio3d/AvatarLabelEntity';
 import { LABEL_CONFIG } from '@/src/core/domain/entities/espacio3d/AvatarLabelEntity';
 import { PrepararAvatarLabelsUseCase } from '@/src/core/application/usecases/PrepararAvatarLabelsUseCase';
 import { ecsAvatarLabelDataProvider } from '@/src/core/infrastructure/adapters/EcsAvatarLabelDataProvider';
+import { avatarStore } from '@/lib/ecs/AvatarECS';
 import { statusColors, STATUS_LABELS } from '../space3d/spaceTypes';
 import type { PresenceStatus } from '@/types';
 
@@ -115,6 +117,13 @@ interface AvatarLabelProps {
 const AvatarLabel: React.FC<AvatarLabelProps> = React.memo(({ label }) => {
   const [showStatusTooltip, setShowStatusTooltip] = useState(false);
   const statusColor = LABEL_STATUS_COLORS[label.status] || DEFAULT_STATUS_COLOR;
+  // Ref al <group> de posición — mutamos position.set() en useFrame leyendo
+  // del ECS directo. Patrón oficial r3f (docs Pitfalls):
+  //   https://r3f.docs.pmnd.rs/advanced/pitfalls
+  //   "mutate values in refs directly — this bypasses React's render cycle"
+  // Evita que el label se desincronice del avatar cuando las coords se lerpean
+  // frame a frame (bug 2026-04-23 con tolerancia 0.5u en memo comparator).
+  const groupRef = useRef<THREE.Group>(null);
 
   // Auto-hide status tooltip
   useEffect(() => {
@@ -149,8 +158,21 @@ const AvatarLabel: React.FC<AvatarLabelProps> = React.memo(({ label }) => {
   // Color: current user gets highlight blue, remote users get white
   const textColor = label.isCurrentUser ? '#60a5fa' : '#ffffff';
 
+  // Sincronización per-frame con el ECS — patrón oficial r3f.
+  // Lee `entity.currentX/Z` (ya lerpeados por el avatar renderer) y muta
+  // group.position. Esto sigue al avatar en tiempo real sin depender de
+  // re-renders de React, que son discretos y pierden fluidez.
+  // Troika Text.position.set() es O(1) — no regenera SDF (troika README).
+  useFrame(() => {
+    const g = groupRef.current;
+    if (!g) return;
+    const entity = avatarStore.get(label.userId);
+    if (!entity) return;
+    g.position.set(entity.currentX, nameY, entity.currentZ);
+  });
+
   return (
-    <group position={[label.x, nameY, label.z]}>
+    <group ref={groupRef} position={[label.x, nameY, label.z]}>
       <Billboard follow lockX={false} lockY={false} lockZ={false}>
         <group>
           {/* Name — WebGL text (troika) */}
@@ -192,9 +214,16 @@ const AvatarLabel: React.FC<AvatarLabelProps> = React.memo(({ label }) => {
     </group>
   );
 }, (prev, next) => {
-  // Custom comparator — only re-render on visually relevant changes.
-  // Position: tolerance of 0.5 units to reduce spurious updates.
-  // Distance: quantize to same fontSize bucket to avoid troika re-geometry.
+  // Custom comparator — solo compara props que afectan RE-RENDER de React.
+  //
+  // x/z NO se incluyen: la posición se actualiza vía useFrame + ref.position.set()
+  // (patrón oficial r3f). Incluir x/z aquí con tolerancia >0 es ANTIPATTERN —
+  // React.memo docs: "arePropsEqual should only return true if the props are
+  // equal". Tolerancia 0.5u (previa) congelaba el componente aunque los props
+  // cambiaran, causando desfase visible label-vs-avatar. Fix 2026-04-23.
+  // Ref: https://react.dev/reference/react/memo#specifying-a-custom-comparison-function
+  //
+  // Distance: quantize a mismo fontSize bucket (evita re-geometry de troika).
   const pL = prev.label;
   const nL = next.label;
   const prevFar = pL.distanceToCamera > 20;
@@ -205,9 +234,7 @@ const AvatarLabel: React.FC<AvatarLabelProps> = React.memo(({ label }) => {
     pL.isCurrentUser === nL.isCurrentUser &&
     pL.isCameraOn === nL.isCameraOn &&
     pL.lodLevel === nL.lodLevel &&
-    Math.abs(pL.x - nL.x) < 0.5 &&
-    Math.abs(pL.z - nL.z) < 0.5 &&
-    Math.abs(pL.avatarHeight - nL.avatarHeight) < 0.1 &&
+    pL.avatarHeight === nL.avatarHeight &&
     prevFar === nextFar
   );
 });

@@ -1125,7 +1125,10 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
 
       {/* Banner multi-Room meeting transition (moveParticipant).
           Ref: hooks/space3d/useMeetingRoomTransition.ts */}
-      <MovingToRoomBanner isMoving={s.meetingTransition.isMoving} />
+      <MovingToRoomBanner
+        isMoving={s.meetingTransition.isMoving}
+        direction={s.meetingTransition.transitionDirection}
+      />
 
       {/* Banners de estado y notificación social — F4.2 */}
       <VirtualSpace3DStatusBanners
