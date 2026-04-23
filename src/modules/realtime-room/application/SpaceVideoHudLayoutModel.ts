@@ -55,7 +55,15 @@ export class SpaceVideoHudLayoutModelBuilder {
       const screenStream = input.remoteScreenStreams.get(participantId) ?? null;
       const hasScreenShare = Boolean(screenStream?.getVideoTracks().length);
       const hasVideoStream = Boolean(videoStream?.getVideoTracks().length);
-      const shouldShowCamera = Boolean(input.getParticipantCameraEnabled?.(user)) || hasVideoStream;
+      // Fuente de verdad para render: transport (LiveKit), no Presence.
+      // Antes: `presenceCameraEnabled || hasVideoStream` → cuando el peer apaga
+      // cámara, LiveKit saca el stream al instante pero Supabase Presence
+      // tarda ~1–3s en propagar `isCameraOn=false` → la burbuja quedaba
+      // colgada en "Conectando..." durante ese lag (bug 2026-04-23).
+      // Ahora: confiamos en el stream real. Si hay stream → video; si no →
+      // avatar/foto. Trade-off: al bootstrap, <2s sin "Conectando..." para
+      // newcomers — aceptable vs el bug inverso que confunde más.
+      const shouldShowCamera = hasVideoStream;
       const isSpeaking = input.speakingParticipantIds?.has(participantId) ?? false;
       const isHandRaised = input.raisedHandParticipantIds?.has(participantId) ?? false;
       const distance = input.distancesByParticipantId?.get(participantId) ?? 100;

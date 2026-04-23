@@ -164,16 +164,60 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     });
   }, [zonasEmpresa]);
 
+  // Si un punto cae dentro de una meeting zone, lo desplaza fuera por el
+  // borde MÁS CERCANO con 32px de padding. Se usa para ajustar spawnEmpresa
+  // cuando la zona propia de la empresa está configurada con coords que
+  // casualmente caen dentro de una meeting XL pre-dibujada.
+  const moverFueraDeMeetingZone = useCallback((xWorld: number, zWorld: number): { x: number; z: number } => {
+    if (!zonasEmpresa || zonasEmpresa.length === 0) return { x: xWorld, z: zWorld };
+    const px = xWorld * 16;
+    const py = zWorld * 16;
+    for (const zona of zonasEmpresa) {
+      const config = normalizarConfiguracionZonaEmpresa(zona.configuracion);
+      if (!isMeetingZone(config)) continue;
+      const halfW = Number(zona.ancho) / 2;
+      const halfH = Number(zona.alto) / 2;
+      const cx = Number(zona.posicion_x);
+      const cy = Number(zona.posicion_y);
+      const inside = px >= (cx - halfW) && px <= (cx + halfW) && py >= (cy - halfH) && py <= (cy + halfH);
+      if (!inside) continue;
+      // Borde más cercano — salir con 32px de padding por ese lado.
+      const PADDING = 32;
+      const dN = py - (cy - halfH);
+      const dS = (cy + halfH) - py;
+      const dW = px - (cx - halfW);
+      const dE = (cx + halfW) - px;
+      const minD = Math.min(dN, dS, dW, dE);
+      let newPx = px;
+      let newPy = py;
+      if (minD === dN) newPy = cy - halfH - PADDING;
+      else if (minD === dS) newPy = cy + halfH + PADDING;
+      else if (minD === dW) newPx = cx - halfW - PADDING;
+      else newPx = cx + halfW + PADDING;
+      log.warn('spawn cae dentro de meeting zone — desplazando fuera', {
+        zoneId: zona.id,
+        from: { x: xWorld, z: zWorld },
+        to: { x: newPx / 16, z: newPy / 16 },
+      });
+      return { x: newPx / 16, z: newPy / 16 };
+    }
+    return { x: xWorld, z: zWorld };
+  }, [zonasEmpresa]);
+
   const obtenerPosicionSpawnEmpresa = useCallback(() => {
     const zonaPropia = obtenerZonaPropiaActiva();
     if (!zonaPropia) return null;
 
-    if (Number(zonaPropia.spawn_x) !== 0 || Number(zonaPropia.spawn_y) !== 0) {
-      return limitarPosicionAZonaPropia(Number(zonaPropia.spawn_x) / 16, Number(zonaPropia.spawn_y) / 16);
-    }
+    const basePos = (Number(zonaPropia.spawn_x) !== 0 || Number(zonaPropia.spawn_y) !== 0)
+      ? limitarPosicionAZonaPropia(Number(zonaPropia.spawn_x) / 16, Number(zonaPropia.spawn_y) / 16)
+      : limitarPosicionAZonaPropia(Number(zonaPropia.posicion_x) / 16, Number(zonaPropia.posicion_y) / 16);
 
-    return limitarPosicionAZonaPropia(Number(zonaPropia.posicion_x) / 16, Number(zonaPropia.posicion_y) / 16);
-  }, [limitarPosicionAZonaPropia, obtenerZonaPropiaActiva]);
+    // Guard 2026-04-23: si la zona propia de la empresa fue configurada con
+    // coords que caen dentro de una meeting zone pre-dibujada, offset fuera.
+    // Sin esto, cada login spawnea dentro de la meeting → moveParticipant auto.
+    const safe = moverFueraDeMeetingZone(basePos.x, basePos.z);
+    return limitarPosicionAZonaPropia(safe.x, safe.z);
+  }, [limitarPosicionAZonaPropia, moverFueraDeMeetingZone, obtenerZonaPropiaActiva]);
 
   const resolverAsientoPersistido = useCallback((x: number, z: number) => {
     let mejorAsiento: AsientoRuntime3D | null = null;

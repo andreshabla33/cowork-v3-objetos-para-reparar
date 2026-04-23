@@ -157,31 +157,18 @@ export function useProximity(params: {
   // ========== Detección de Zonas de Aislamiento (Meeting) ==========
   const myCurrentZone = useMemo(() => {
     if (meetingZones.length === 0) return null;
-    const hit = meetingZones.find(zona =>
+    return meetingZones.find(zona =>
       isPointInZone(stableProximityCoords.x, stableProximityCoords.y, zona)
     ) ?? null;
-    // DIAG temporal (2026-04-23) para el bug "burbujas sin estar dentro".
-    // Imprime coords del local + bounds de cada meeting zone para confirmar
-    // si el spawn cae dentro inesperadamente. Quitar cuando el bug esté
-    // reproducido y fijado.
-    if (hit) {
-      log.info('[DIAG] local coords hit meeting zone', {
-        localX: stableProximityCoords.x,
-        localY: stableProximityCoords.y,
-        zoneId: hit.id,
-        zoneName: hit.nombre_zona,
-        zonePosX: Number(hit.posicion_x),
-        zonePosY: Number(hit.posicion_y),
-        zoneAncho: Number(hit.ancho),
-        zoneAlto: Number(hit.alto),
-        xRange: [Number(hit.posicion_x) - Number(hit.ancho) / 2, Number(hit.posicion_x) + Number(hit.ancho) / 2],
-        yRange: [Number(hit.posicion_y) - Number(hit.alto) / 2, Number(hit.posicion_y) + Number(hit.alto) / 2],
-      });
-    }
-    return hit;
   }, [stableProximityCoords.x, stableProximityCoords.y, meetingZones]);
 
-  // Grace period: remember last zone for 1s after leaving to avoid flicker at edges
+  // Grace period para evitar flipping entre meeting/global al cruzar el borde.
+  // 1s (previo) era insuficiente: los logs 2026-04-23 mostraron usuarios
+  // saliendo brevemente del bbox al caminar cerca de la pared → moveParticipant
+  // disparaba leave + re-entry en loop → los dos clientes se desincronizaban
+  // 5–10s (uno en meeting, otro en global, mutuamente invisibles).
+  // 3s da margen para cruzar + volver sin salir del Room.
+  const GRACE_PERIOD_MS = 3000;
   const lastMeetingZoneRef = useRef<typeof myCurrentZone>(null);
   const lastMeetingZoneTimestampRef = useRef(0);
   const effectiveZone = useMemo(() => {
@@ -190,8 +177,7 @@ export function useProximity(params: {
       lastMeetingZoneTimestampRef.current = Date.now();
       return myCurrentZone;
     }
-    // Grace period: keep old zone for 1s after leaving
-    if (lastMeetingZoneRef.current && (Date.now() - lastMeetingZoneTimestampRef.current) < 1000) {
+    if (lastMeetingZoneRef.current && (Date.now() - lastMeetingZoneTimestampRef.current) < GRACE_PERIOD_MS) {
       return lastMeetingZoneRef.current;
     }
     lastMeetingZoneRef.current = null;
