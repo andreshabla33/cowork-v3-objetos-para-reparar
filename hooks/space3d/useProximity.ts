@@ -212,6 +212,22 @@ export function useProximity(params: {
         return false;
       }
 
+      // CROSS-ROOM ISOLATION (2026-04-23): si tenemos la membership set
+      // de LiveKit Room, filtramos SIEMPRE — aunque el remoto esté cerca,
+      // si está en OTRA Room sus streams NO se suscriben → burbuja
+      // vacía/confusa. Ejemplo: local está fuera de meeting zone, remoto
+      // adentro; por proximidad física se ve cerca pero sus tracks están
+      // en la Room dedicada de meeting.
+      //
+      // Fuente: Room.remoteParticipants (authoritative SFU state).
+      // Ref: https://docs.livekit.io/reference/client-sdk-js/classes/Room.html
+      //
+      // Fallback: si el set está vacío (pre-connect, pre-sync), no filtra
+      // para no ocultar a nadie durante el bootstrap.
+      if (remoteParticipantIds && remoteParticipantIds.size > 0 && !remoteParticipantIds.has(u.id)) {
+        return false;
+      }
+
       let inProximity = false;
       let dist = 0;
       let threshold = 0;
