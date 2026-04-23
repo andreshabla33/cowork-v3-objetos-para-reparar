@@ -123,6 +123,14 @@ export function useLiveKit(params: {
   const speakingUsersRef = useRef<Set<string>>(new Set());
   speakingUsersRef.current = speakingUsers;
 
+  // Ref sincronizado a onlineUsers (Supabase Presence) — necesario para que
+  // `onParticipantDisconnected` pueda distinguir "peer se cayó del espacio"
+  // vs "peer cambió a otra LiveKit Room". En multi-Room, un moveParticipant
+  // dispara Disconnected desde nuestra perspectiva aunque el peer sigue
+  // globalmente online — no debemos borrar su avatar en ese caso.
+  const onlineUsersRef = useRef<User[]>(onlineUsers);
+  onlineUsersRef.current = onlineUsers;
+
   const mapVideoQuality = useCallback((quality: 'high' | 'medium' | 'low') => {
     if (quality === 'low') return VideoQuality.LOW;
     if (quality === 'medium') return VideoQuality.MEDIUM;
@@ -630,14 +638,23 @@ export function useLiveKit(params: {
           setRemoteScreenStreams(prev => { const n = new Map(prev); n.delete(participant.identity); return n; });
           setRemoteAudioTracks(prev => { const n = new Map(prev); n.delete(participant.identity); return n; });
           setRemoteParticipantIds(prev => { const n = new Set(prev); n.delete(participant.identity); return n; });
-          // Fallback for abrupt disconnects where Supabase Presence 'leave'
-          // is late or missed. LiveKit notices the peer drop within ~15s;
-          // removing from the ECS fires notifyRemoval → renderers dispose GPU.
-          avatarStore.remove(participant.identity);
-          // Drop any stale DataPacket position for this peer so a later rejoin
-          // doesn't render the avatar at the pre-disconnect coords before the
-          // new heartbeat arrives.
-          realtimePositionsRef?.current.delete(participant.identity);
+          // CRÍTICO (2026-04-23): con multi-Room meetings, un peer que se
+          // mueve a otra Room dispara ParticipantDisconnected AQUÍ aunque
+          // siga globalmente online via Supabase Presence. Si borrásemos
+          // el avatar, el peer "desaparecería" del mapa 3D — exactamente
+          // el bug reportado: "no veo a la persona adentro/afuera".
+          //
+          // Regla: solo borrar el avatar si el peer TAMPOCO está en
+          // onlineUsers (caído del espacio completo, no cambio de Room).
+          // Si sigue en Presence, su avatar se mantiene en ECS; la media
+          // ya está aislada por Room vía remoteParticipantIds en proximity.
+          const stillInPresence = onlineUsersRef.current.some(u => u.id === participant.identity);
+          if (!stillInPresence) {
+            // Fallback para disconnect abrupto (tab cerrado) donde Presence
+            // 'leave' tarda o se pierde — el drop ECS libera GPU.
+            avatarStore.remove(participant.identity);
+            realtimePositionsRef?.current.delete(participant.identity);
+          }
         },
         onParticipantConnected: (participant) => {
           setRemoteParticipantIds(prev => {
