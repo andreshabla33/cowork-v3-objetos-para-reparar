@@ -24,6 +24,8 @@ import { hapticFeedback, isMobileDevice } from '@/lib/mobileDetect';
 import { useStore } from '@/store/useStore';
 import { type CameraSettings } from '@/modules/realtime-room';
 import { obtenerEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
+import { normalizarConfiguracionZonaEmpresa } from '@/src/core/domain/entities/cerramientosZona';
+import { isMeetingZone } from '@/src/core/domain/entities/realtime/MeetingRoomAssignment';
 import { type JoystickInput } from '../3d/MobileJoystick';
 import { getSettingsSection } from '@/lib/userSettings';
 import {
@@ -141,6 +143,27 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     };
   }, [obtenerZonaPropiaActiva]);
 
+  // Guard (2026-04-23): evitar que el spawn persistido aterrice al avatar
+  // dentro de una meeting zone. Si en una sesión anterior el usuario salió
+  // estando dentro de la meeting (o persistió dentro por cualquier razón),
+  // el próximo login dispararía moveParticipant automático → burbujas
+  // aparecen sin que el usuario camine. Bug reportado 2026-04-23.
+  // En world-coords (divididas por 16).
+  const puntoCaeEnMeetingZone = useCallback((xWorld: number, zWorld: number) => {
+    if (!zonasEmpresa || zonasEmpresa.length === 0) return false;
+    const px = xWorld * 16;
+    const py = zWorld * 16;
+    return zonasEmpresa.some((zona) => {
+      const config = normalizarConfiguracionZonaEmpresa(zona.configuracion);
+      if (!isMeetingZone(config)) return false;
+      const halfW = Number(zona.ancho) / 2;
+      const halfH = Number(zona.alto) / 2;
+      const cx = Number(zona.posicion_x);
+      const cy = Number(zona.posicion_y);
+      return px >= (cx - halfW) && px <= (cx + halfW) && py >= (cy - halfH) && py <= (cy + halfH);
+    });
+  }, [zonasEmpresa]);
+
   const obtenerPosicionSpawnEmpresa = useCallback(() => {
     const zonaPropia = obtenerZonaPropiaActiva();
     if (!zonaPropia) return null;
@@ -176,10 +199,15 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
   const initialPosition = useMemo(() => {
     const ecsData = ecsStateRef?.current ? obtenerEstadoUsuarioEcs(ecsStateRef.current, currentUser.id) : null;
     if (ecsData && Date.now() - (ecsData.timestamp ?? 0) <= 2000) {
-      return limitarPosicionAZonaPropia(ecsData.x, ecsData.z);
+      // ECS data es autoritativa pero también puede caer en meeting zone si
+      // otro cliente persistió dentro. Misma guard de abajo.
+      if (!puntoCaeEnMeetingZone(ecsData.x, ecsData.z)) {
+        return limitarPosicionAZonaPropia(ecsData.x, ecsData.z);
+      }
     }
 
-    if (spawnPersonal.spawn_x != null && spawnPersonal.spawn_z != null) {
+    if (spawnPersonal.spawn_x != null && spawnPersonal.spawn_z != null
+        && !puntoCaeEnMeetingZone(spawnPersonal.spawn_x, spawnPersonal.spawn_z)) {
       return limitarPosicionAZonaPropia(spawnPersonal.spawn_x, spawnPersonal.spawn_z);
     }
 
@@ -189,7 +217,7 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     }
 
     return limitarPosicionAZonaPropia((currentUser.x || 400) / 16, (currentUser.y || 400) / 16);
-  }, [currentUser.id, currentUser.x, currentUser.y, ecsStateRef, limitarPosicionAZonaPropia, obtenerPosicionSpawnEmpresa, spawnPersonal.spawn_x, spawnPersonal.spawn_z]);
+  }, [currentUser.id, currentUser.x, currentUser.y, ecsStateRef, limitarPosicionAZonaPropia, obtenerPosicionSpawnEmpresa, puntoCaeEnMeetingZone, spawnPersonal.spawn_x, spawnPersonal.spawn_z]);
   const initialDirection = useMemo(() => {
     const ecsData = ecsStateRef?.current ? obtenerEstadoUsuarioEcs(ecsStateRef.current, currentUser.id) : null;
     if (ecsData && Date.now() - (ecsData.timestamp ?? 0) <= 2000) {
@@ -249,6 +277,17 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     if (!onGuardarPosicionPersistente) return;
 
     const posicionLimitada = limitarPosicionAZonaPropia(x, z);
+
+    // Guard 2026-04-23: no persistir posiciones DENTRO de meeting zones.
+    // Si el usuario cierra el tab estando adentro, el siguiente login lo
+    // reubicaría en la zona → dispara moveParticipant automático →
+    // burbujas aparecen sin caminar. Trade-off aceptado estilo Gather:
+    // al volver de una sesión terminada dentro de meeting, el avatar
+    // aparece en el spawn de empresa (pasillo), no en la sala.
+    if (puntoCaeEnMeetingZone(posicionLimitada.x, posicionLimitada.z)) {
+      return;
+    }
+
     const ultima = ultimaPosicionPersistidaRef.current;
     const ahora = Date.now();
     const cambioSuficiente = !ultima
@@ -263,7 +302,7 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     ultimaPosicionPersistidaRef.current = posicionLimitada;
     ultimoGuardadoPosicionRef.current = ahora;
     void onGuardarPosicionPersistente(posicionLimitada.x, posicionLimitada.z);
-  }, [limitarPosicionAZonaPropia, onGuardarPosicionPersistente]);
+  }, [limitarPosicionAZonaPropia, onGuardarPosicionPersistente, puntoCaeEnMeetingZone]);
 
   const sincronizarPosicionInicial = useCallback((posicionBase: { x: number; z: number }, forzarPersistencia = false) => {
     const posicionInicialFallback = posicionInicialFallbackRef.current;
@@ -302,11 +341,24 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
   useEffect(() => {
     if (spawnPersonal.spawn_x == null || spawnPersonal.spawn_z == null) return;
 
+    // Guard contra regresión 2026-04-23: si el spawn persistido cae dentro
+    // de una meeting zone, ignorar y dejar que el useEffect de spawnEmpresa
+    // (abajo) tome el control. Sin esto, el avatar entra auto a meeting
+    // Room al reconectarse → burbujas activadas sin caminar.
+    if (puntoCaeEnMeetingZone(spawnPersonal.spawn_x, spawnPersonal.spawn_z)) {
+      log.warn('spawn persistido cae dentro de meeting zone — fallback a spawnEmpresa', {
+        userId: currentUser.id,
+        spawnX: spawnPersonal.spawn_x,
+        spawnZ: spawnPersonal.spawn_z,
+      });
+      return;
+    }
+
     const posicionPersistida = limitarPosicionAZonaPropia(spawnPersonal.spawn_x, spawnPersonal.spawn_z);
     const spawnFueraDeZona = Math.abs(posicionPersistida.x - spawnPersonal.spawn_x) > 0.01
       || Math.abs(posicionPersistida.z - spawnPersonal.spawn_z) > 0.01;
     sincronizarPosicionInicial(posicionPersistida, spawnFueraDeZona);
-  }, [limitarPosicionAZonaPropia, sincronizarPosicionInicial, spawnPersonal.spawn_x, spawnPersonal.spawn_z]);
+  }, [currentUser.id, limitarPosicionAZonaPropia, puntoCaeEnMeetingZone, sincronizarPosicionInicial, spawnPersonal.spawn_x, spawnPersonal.spawn_z]);
 
   useEffect(() => {
     if (spawnPersonal.spawn_x != null || spawnPersonal.spawn_z != null) return;
