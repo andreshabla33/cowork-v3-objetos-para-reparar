@@ -164,6 +164,12 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     });
   }, [zonasEmpresa]);
 
+  // Anti-duplicado del log 2026-04-23: `moverFueraDeMeetingZone` puede
+  // invocarse múltiples veces en rápida sucesión por re-renders del useMemo
+  // de initialPosition (deps incluyen varios callbacks que cambian). Loguear
+  // cada call generaba spam idéntico en consola.
+  const movedOutZoneIdLoggedRef = useRef<string | null>(null);
+
   // Si un punto cae dentro de una meeting zone, lo desplaza fuera por el
   // borde MÁS CERCANO con 32px de padding. Se usa para ajustar spawnEmpresa
   // cuando la zona propia de la empresa está configurada con coords que
@@ -194,11 +200,14 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
       else if (minD === dS) newPy = cy + halfH + PADDING;
       else if (minD === dW) newPx = cx - halfW - PADDING;
       else newPx = cx + halfW + PADDING;
-      log.warn('spawn cae dentro de meeting zone — desplazando fuera', {
-        zoneId: zona.id,
-        from: { x: xWorld, z: zWorld },
-        to: { x: newPx / 16, z: newPy / 16 },
-      });
+      if (movedOutZoneIdLoggedRef.current !== zona.id) {
+        log.warn('spawn cae dentro de meeting zone — desplazando fuera', {
+          zoneId: zona.id,
+          from: { x: xWorld, z: zWorld },
+          to: { x: newPx / 16, z: newPy / 16 },
+        });
+        movedOutZoneIdLoggedRef.current = zona.id;
+      }
       return { x: newPx / 16, z: newPy / 16 };
     }
     return { x: xWorld, z: zWorld };
@@ -214,9 +223,20 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
 
     // Guard 2026-04-23: si la zona propia de la empresa fue configurada con
     // coords que caen dentro de una meeting zone pre-dibujada, offset fuera.
-    // Sin esto, cada login spawnea dentro de la meeting → moveParticipant auto.
-    const safe = moverFueraDeMeetingZone(basePos.x, basePos.z);
-    return limitarPosicionAZonaPropia(safe.x, safe.z);
+    //
+    // CRÍTICO: NO re-clampear con `limitarPosicionAZonaPropia` al final.
+    // Causa del bug reproducido en logs 2026-04-23: la zona propia (Urpe
+    // cubículo) estaba centrada en (400,400) — mismo centro que Sala XL —
+    // y solapaba con el bbox XL. Mover el spawn a (400,288) y re-clampear
+    // a la zona propia retornaba (400, 320) = DENTRO del bbox XL por el
+    // borde inferior, anulando el desplazamiento. Resultado: cada login
+    // entraba a la meeting automáticamente.
+    //
+    // Trade-off: si el spawn seguro cae fuera del cubículo de la empresa,
+    // el avatar aparece en el pasillo — comportamiento correcto cuando
+    // zona propia y meeting están mal configuradas (solapan). Sigue
+    // respetando movementBounds del terreno (clamp externo en Player).
+    return moverFueraDeMeetingZone(basePos.x, basePos.z);
   }, [limitarPosicionAZonaPropia, moverFueraDeMeetingZone, obtenerZonaPropiaActiva]);
 
   const resolverAsientoPersistido = useCallback((x: number, z: number) => {
