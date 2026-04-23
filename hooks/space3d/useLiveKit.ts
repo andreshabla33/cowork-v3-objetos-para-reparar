@@ -103,6 +103,13 @@ export function useLiveKit(params: {
     screen_share: new Map<string, string>(),
   });
   const remoteVideoTrackListenerCleanupRef = useRef<Map<string, () => void>>(new Map());
+  // Subscription policy (3-tier) caches. Declared aquí arriba (antes de
+  // conectarLivekit) para que el callback `onReconnected` pueda limpiarlos
+  // al resyncear tras un `moveParticipant` del SFU.
+  const livekitSubscribedIdsRef = useRef<Set<string>>(new Set());
+  const livekitAudioOnlyIdsRef = useRef<Set<string>>(new Set());
+  const pendingUnsubscribeTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const livekitTransportSubscribedRef = useRef<Set<string>>(new Set());
 
   // Mirror participant set to Zustand store so WorkspaceLayout can gate
   // onlineUsers (Supabase Presence ghosts) by LiveKit's race-free identity set.
@@ -644,6 +651,87 @@ export function useLiveKit(params: {
           // idle heartbeat tick (~2s).
           bumpParticipantJoinVersion();
         },
+        // CRÍTICO para multi-Room meetings: cuando el SFU invoca
+        // `moveParticipant`, el cliente ve Reconnecting → Reconnected y
+        // `room.remoteParticipants` queda con los peers de la Room destino.
+        // LiveKit no garantiza emitir ParticipantDisconnected por cada peer
+        // removido durante el transport transition — el set en React queda
+        // desincronizado y las burbujas cross-Room siguen renderizadas.
+        // Fix: re-seedar el set desde la fuente autoritativa (room.remoteParticipants).
+        // Ref: https://docs.livekit.io/home/server/managing-rooms/
+        onReconnected: (room) => {
+          const nextIds = new Set(room.remoteParticipants.keys());
+          setRemoteParticipantIds(nextIds);
+          // Limpiar streams de peers que ya no están en la Room destino.
+          // Sin esto, los videos/audios del Room origen siguen en el Map
+          // aunque sus tracks quedaron huérfanos → burbuja fantasma.
+          setRemoteStreams(prev => {
+            let changed = false;
+            const next = new Map(prev);
+            for (const id of next.keys()) {
+              if (!nextIds.has(id)) { next.delete(id); changed = true; }
+            }
+            return changed ? next : prev;
+          });
+          setRemoteScreenStreams(prev => {
+            let changed = false;
+            const next = new Map(prev);
+            for (const id of next.keys()) {
+              if (!nextIds.has(id)) { next.delete(id); changed = true; }
+            }
+            return changed ? next : prev;
+          });
+          setRemoteAudioTracks(prev => {
+            let changed = false;
+            const next = new Map(prev);
+            for (const id of next.keys()) {
+              if (!nextIds.has(id)) { next.delete(id); changed = true; }
+            }
+            return changed ? next : prev;
+          });
+          // Policy caches: drop state for peers ya no presentes para que
+          // un rejoin futuro reaplique enable/quality correctamente.
+          (['camera', 'screen_share', 'audio'] as const).forEach((slot) => {
+            const map = remoteAttachedTrackIdsRef.current[slot];
+            for (const id of Array.from(map.keys())) {
+              if (!nextIds.has(id)) map.delete(id);
+            }
+          });
+          (['camera', 'screen_share'] as const).forEach((slot) => {
+            const map = remoteRenderedTrackIdsRef.current[slot];
+            for (const id of Array.from(map.keys())) {
+              if (!nextIds.has(id)) map.delete(id);
+            }
+          });
+          // Drop video-track listener closures for stale peers.
+          Array.from(remoteVideoTrackListenerCleanupRef.current.keys()).forEach((listenerKey) => {
+            const [participantId] = listenerKey.split(':');
+            if (!nextIds.has(participantId)) {
+              clearRemoteVideoTrackListener(listenerKey);
+            }
+          });
+          // Subscription policy caches: tras moveParticipant, el SFU
+          // descarta todas las subscripciones previas — el selective-sub
+          // effect debe re-evaluar desde cero para la Room destino.
+          livekitTransportSubscribedRef.current.clear();
+          livekitSubscribedIdsRef.current = new Set();
+          livekitAudioOnlyIdsRef.current = new Set();
+          pendingUnsubscribeTimersRef.current.forEach((t) => clearTimeout(t));
+          pendingUnsubscribeTimersRef.current.clear();
+          appliedRemotePublicationStateRef.current.clear();
+          lastPolicySummaryRef.current = '';
+          // Nota: NO tocamos avatarStore aquí. Los avatares 3D se alimentan
+          // de Supabase Presence (visibles cross-Room), no de LiveKit. El
+          // filtro de burbuja/media se aplica vía `remoteParticipantIds` en
+          // useProximity — eso ya gatea cámara/audio/voz por Room.
+          log.info('Room reconnected — participant set resynced', {
+            remoteParticipantCount: nextIds.size,
+            identities: Array.from(nextIds),
+          });
+          recordRealtimeTelemetry('livekit_reconnected_resynced', {
+            remoteParticipantCount: nextIds.size,
+          });
+        },
         onSpeakerChange: (speakerIds) => {
           const active = new Set(speakerIds);
           const room = coordinator.getRoom();
@@ -750,10 +838,8 @@ export function useLiveKit(params: {
   }, [livekitConnected, hasAnyoneNearbyForSync, hasActiveCall, isMicrophoneEnabled, isCameraEnabled, isScreenShareEnabled, stream, screenStream, sincronizarTracksLocales]);
 
   // ========== Suscripción selectiva (3-tier) ==========
-  const livekitSubscribedIdsRef = useRef<Set<string>>(new Set());
-  const livekitAudioOnlyIdsRef = useRef<Set<string>>(new Set());
-  const pendingUnsubscribeTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
-  const livekitTransportSubscribedRef = useRef<Set<string>>(new Set());
+  // Refs movidos arriba (junto a remoteVideoTrackListenerCleanupRef) para que
+  // `onReconnected` pueda limpiarlos tras moveParticipant.
 
   useEffect(() => {
     if (!livekitConnected) return;

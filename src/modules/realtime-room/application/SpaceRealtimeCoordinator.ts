@@ -47,6 +47,17 @@ export interface SpaceRealtimeCoordinatorOptions {
   iceServerProvider?: () => Promise<RTCIceServer[]>;
 
   onConnectionChange?: (connected: boolean) => void;
+  /**
+   * Invocado tras `RoomEvent.Reconnected`. CRÍTICO para `moveParticipant`:
+   * cuando el SFU mueve al participante a otra Room, el cliente experimenta
+   * Reconnecting → Reconnected, y `room.remoteParticipants` se rebuildea
+   * contra la Room destino. Los consumidores que mantienen un set propio de
+   * identities deben re-sincronizar aquí para no quedar con peers fantasma
+   * de la Room origen (causa de burbujas asimétricas cross-Room).
+   *
+   * Ref: https://docs.livekit.io/home/server/managing-rooms/ (moveParticipant)
+   */
+  onReconnected?: (room: Room) => void;
   onTrackPublished?: (track: LocalTrack, publication: LocalTrackPublication) => void;
   onTrackUnpublished?: (publication: LocalTrackPublication) => void;
   onRemoteTrackSubscribed?: (track: Track, publication: TrackPublication, participant: RemoteParticipant) => void;
@@ -477,10 +488,15 @@ export class SpaceRealtimeCoordinator {
     });
 
     this.room.on(RoomEvent.Reconnected, () => {
-      this.log.info('Room reconnected — heartbeat timer cleared');
+      this.log.info('Room reconnected — heartbeat timer cleared', {
+        remoteParticipantCount: this.room?.remoteParticipants.size ?? 0,
+      });
       this._clearReconnectingTimer();
       this.connected = true;
       this.options.onConnectionChange?.(true);
+      if (this.room) {
+        this.options.onReconnected?.(this.room);
+      }
       this.notifyStateChange();
     });
 
