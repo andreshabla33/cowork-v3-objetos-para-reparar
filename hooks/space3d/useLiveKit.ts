@@ -110,6 +110,14 @@ export function useLiveKit(params: {
   const livekitAudioOnlyIdsRef = useRef<Set<string>>(new Set());
   const pendingUnsubscribeTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const livekitTransportSubscribedRef = useRef<Set<string>>(new Set());
+  // Timers de detección de peer zombie vía ConnectionQuality === 'Lost'.
+  // Si un peer reporta calidad 'Lost' sostenida >3s → considerarlo zombie
+  // y forzar cleanup local (más rápido que esperar a los ~15s de WebRTC
+  // timeout server-side + ~30s de Supabase Presence CRDT).
+  // Fix 2026-04-23. Refs oficiales:
+  //   https://docs.livekit.io/reference/client-sdk-js/enums/ConnectionQuality.html
+  //   https://docs.livekit.io/home/client/events/ (ConnectionQualityChanged)
+  const zombiePeerTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // Mirror participant set to Zustand store so WorkspaceLayout can gate
   // onlineUsers (Supabase Presence ghosts) by LiveKit's race-free identity set.
@@ -422,6 +430,9 @@ export function useLiveKit(params: {
     setRemoteAudioTracks(new Map());
     setSpeakingUsers(new Set());
     setRemoteParticipantIds(new Set());
+    // Limpiar timers de detección zombie — el Room se tiró abajo.
+    zombiePeerTimersRef.current.forEach((t) => clearTimeout(t));
+    zombiePeerTimersRef.current.clear();
   }, []);
 
   // ========== Connect ==========
@@ -627,6 +638,13 @@ export function useLiveKit(params: {
             renderedCameraTrackId: getRenderedRemoteTrackId('camera', participant.identity),
             renderedScreenShareTrackId: getRenderedRemoteTrackId('screen_share', participant.identity),
           });
+          // Si teníamos timer zombie pendiente para este peer, cancelarlo —
+          // ya llegó el disconnect real del SFU, no necesitamos la heurística.
+          const zombieTimer = zombiePeerTimersRef.current.get(participant.identity);
+          if (zombieTimer) {
+            clearTimeout(zombieTimer);
+            zombiePeerTimersRef.current.delete(participant.identity);
+          }
           clearRemoteVideoTrackListenersForParticipant(participant.identity);
           remoteTrackAttachmentPolicyRef.current.buildParticipantDetachPlan(remoteAttachedTrackIdsRef.current, participant.identity).forEach((decision) => {
             setAttachedRemoteTrackId(decision.slot, decision.participantId, null);
@@ -754,6 +772,57 @@ export function useLiveKit(params: {
           const room = coordinator.getRoom();
           if (room?.localParticipant.isSpeaking) active.add(room.localParticipant.identity);
           setSpeakingUsers(active);
+        },
+        // Ghost cleanup vía ConnectionQuality.Lost sostenido (fix 2026-04-23).
+        //
+        // Cuando un peer cierra el tab abruptamente, LiveKit tarda ~15s en
+        // emitir ParticipantDisconnected vía WebRTC timeout, y Supabase
+        // Presence ~30s en propagar leave por CRDT. Durante esa ventana, su
+        // avatar queda fantasma en nuestro render.
+        //
+        // La doc de LiveKit expone `ConnectionQuality.Lost` ("indicates that
+        // a participant has temporarily (or permanently) lost connection to
+        // LiveKit"). Si un peer reporta Lost sostenido >3s, lo tratamos
+        // localmente como disconnect — sin esperar a WebRTC/Presence timeouts.
+        //
+        // Refs oficiales:
+        //   https://docs.livekit.io/reference/client-sdk-js/enums/ConnectionQuality.html
+        //   https://docs.livekit.io/home/client/events/ (ConnectionQualityChanged)
+        //
+        // Nota: LiveKit explícitamente dice Lost puede ser "temporarily". El
+        // cleanup local NO destruye estado persistido — solo esconde el
+        // avatar. Si el peer vuelve (quality != Lost), re-aparece naturalmente
+        // vía el siguiente ParticipantConnected/broadcast.
+        onConnectionQualityChanged: (participantId, quality) => {
+          const existing = zombiePeerTimersRef.current.get(participantId);
+          if (quality === 'lost') {
+            if (existing) return; // ya hay timer pendiente
+            const timer = setTimeout(() => {
+              zombiePeerTimersRef.current.delete(participantId);
+              log.warn('Peer marked zombie (ConnectionQuality.Lost sostenido 3s)', {
+                participantId,
+              });
+              recordRealtimeTelemetry('peer_marked_zombie', {
+                participantId,
+                reason: 'connection_quality_lost_sustained',
+                graceMs: 3000,
+              }, 'warn');
+              // Cleanup local equivalente a ParticipantDisconnected, sin
+              // tocar estado server-side. El peer reaparece si vuelve.
+              setRemoteParticipantIds(prev => {
+                if (!prev.has(participantId)) return prev;
+                const n = new Set(prev); n.delete(participantId); return n;
+              });
+              setRemoteStreams(prev => { const n = new Map(prev); n.delete(participantId); return n; });
+              setRemoteScreenStreams(prev => { const n = new Map(prev); n.delete(participantId); return n; });
+              setRemoteAudioTracks(prev => { const n = new Map(prev); n.delete(participantId); return n; });
+            }, 3000);
+            zombiePeerTimersRef.current.set(participantId, timer);
+          } else if (existing) {
+            // Calidad recuperada — cancelar el cleanup pendiente.
+            clearTimeout(existing);
+            zombiePeerTimersRef.current.delete(participantId);
+          }
         },
       });
       realtimeCoordinatorRef.current = coordinator;
