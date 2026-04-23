@@ -118,7 +118,19 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
 
   const obtenerZonaPropiaActiva = useCallback(() => {
     if (!currentUser.empresa_id) return null;
-    return zonasEmpresa.find((zona) => zona.empresa_id === currentUser.empresa_id && zona.estado === 'activa') || null;
+    // CRÍTICO (2026-04-23): excluir meeting zones. Una zona de "meeting"
+    // (sala_juntas, sala_meeting_grande) NO es el perimeter de la empresa
+    // — es una sala privada DENTRO del espacio. Si .find() retornaba una
+    // meeting zone, limitarPosicionAZonaPropia clampeaba al bbox de esa
+    // sala en vez del perimeter general → cada login aterrizaba adentro
+    // → moveParticipant automático.
+    return zonasEmpresa.find((zona) => {
+      if (zona.empresa_id !== currentUser.empresa_id) return false;
+      if (zona.estado !== 'activa') return false;
+      const config = normalizarConfiguracionZonaEmpresa(zona.configuracion);
+      if (isMeetingZone(config)) return false;
+      return true;
+    }) || null;
   }, [currentUser.empresa_id, zonasEmpresa]);
 
   const limitarPosicionAZonaPropia = useCallback((x: number, z: number) => {
