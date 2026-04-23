@@ -1004,7 +1004,6 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
               return { x: data.x, z: data.z };
             }}
             remoteStreams={remoteStreamsRouted}
-            remoteParticipantIds={s.livekit.remoteParticipantIds}
             showVideoBubbles={true}
             videoIsProcessed={isProcessorActive}
             localMessage={localMessage ?? undefined}

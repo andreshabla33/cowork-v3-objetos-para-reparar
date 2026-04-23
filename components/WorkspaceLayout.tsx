@@ -62,23 +62,23 @@ export const WorkspaceLayout: React.FC = () => {
     userRoleInActiveWorkspace, setMiniMode, isMiniMode,
     setEmpresaId, setDepartamentoId, setEmpresasAutorizadas,
   } = useStore();
-  // LiveKit-authoritative participant set — race-free gate to filter ghosts
-  // out of `onlineUsers`. Supabase Presence CRDT takes ~30s to propagate
-  // abrupt disconnects; LiveKit mutates remoteParticipants synchronously
-  // before emitting ParticipantDisconnected (livekit/client-sdk-js Room.ts).
-  const remoteParticipantIds = useStore((s) => s.remoteParticipantIds);
-
-  // Raw presence output — filtered below before being pushed to the store.
+  // Fuente única para avatares: Supabase Presence (global cross-Room).
+  //
+  // NOTA (2026-04-23): previamente había un gate que filtraba onlineUsers por
+  // `remoteParticipantIds` de LiveKit para evitar "ghosts" de Presence CRDT
+  // (peers que tardan ~30s en propagar disconnect abrupto). Con multi-Room
+  // meetings (moveParticipant), ese gate borraba del mapa a cualquier peer
+  // que estuviera en otra Room — exactamente el bug reportado: "no veo al
+  // usuario dentro/fuera de la sala". Patrón Gather-style: Presence alimenta
+  // avatares globales, LiveKit solo gobierna media (aislamiento ya hecho en
+  // useProximity via remoteParticipantIds para burbujas/voz).
+  // Ghosts ocasionales de 30s son costo aceptable vs. romper multi-Room.
+  // Ref: https://docs.livekit.io/home/server/managing-rooms/ (moveParticipant)
   const [onlineUsersRaw, setOnlineUsersRaw] = useState<User[]>([]);
 
   useEffect(() => {
-    // Warm-up: if LiveKit is not connected yet, don't gate — a bootstrap user
-    // still needs to see their roster populate from Presence alone.
-    const filtered = remoteParticipantIds.size === 0
-      ? onlineUsersRaw
-      : onlineUsersRaw.filter((u) => u.id === currentUser.id || remoteParticipantIds.has(u.id));
-    setOnlineUsers(filtered);
-  }, [onlineUsersRaw, remoteParticipantIds, currentUser.id, setOnlineUsers]);
+    setOnlineUsers(onlineUsersRaw);
+  }, [onlineUsersRaw, setOnlineUsers]);
 
   // ── Local UI state ─────────────────────────────────────────────────────
   const [showViben, setShowViben] = useState(false);
