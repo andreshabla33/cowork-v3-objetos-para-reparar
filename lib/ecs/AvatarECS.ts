@@ -69,6 +69,19 @@ export interface AvatarEntity {
   teleportPhase: 'none' | 'out' | 'in';
   teleportOrigin: [number, number, number] | null;
   teleportDest: [number, number, number] | null;
+
+  /**
+   * True tras recibir el primer broadcast REAL de posición para esta entidad.
+   * Permite saltar la entidad instantáneamente a su primera posición sin
+   * animar el lerp desde el spawn default (500, 500) — evita "teleport"
+   * visible del avatar al aparecer en escena.
+   *
+   * Patrón oficial net-code: "you need ≥2 snapshots to interpolate"
+   * (Valve — Source Multiplayer Networking; Glenn Fiedler — Snapshot
+   * Interpolation; Colyseus — Linear Interpolation tutorial).
+   * Bug 2026-04-23.
+   */
+  hasReceivedFirstRealTarget: boolean;
 }
 
 // ─── Store ──────────────────────────────────────────────────────────────────
@@ -289,6 +302,7 @@ class AvatarStore implements IAvatarResourceDisposer {
       teleportPhase: 'none',
       teleportOrigin: null,
       teleportDest: null,
+      hasReceivedFirstRealTarget: false,
     };
   }
 }

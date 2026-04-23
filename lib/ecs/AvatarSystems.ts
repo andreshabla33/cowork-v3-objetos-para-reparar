@@ -25,11 +25,23 @@ const TELEPORT_DISTANCE = 8;
  * Antes: 500 useFrame con LERP individual.
  * Ahora: 1 loop que procesa los 500 en ~0.1ms.
  */
+/**
+ * Lambdas equivalentes al lerp previo `1 - Math.pow(1 - f, delta*60)`.
+ * Relación: lambda = -ln(1 - f) * 60.
+ *  - f=0.4 moving  → lambda ≈ 30.6
+ *  - f=0.25 idle   → lambda ≈ 17.3
+ *
+ * Usados con `THREE.MathUtils.damp(x, y, lambda, dt)` — patrón oficial
+ * three.js documentado en https://threejs.org/docs/#api/en/math/MathUtils.damp
+ * para interpolación framerate-independent. Mismo comportamiento visual
+ * que el lerp manual anterior pero con la forma canónica publicada.
+ */
+const LAMBDA_MOVING = 30.6;
+const LAMBDA_IDLE = 17.3;
+
 export const movementSystem = {
   update(delta: number): void {
     const entities = avatarStore.getAll();
-    const lerpMoving = 1 - Math.pow(1 - 0.4, delta * 60);
-    const lerpIdle = 1 - Math.pow(1 - 0.25, delta * 60);
 
     for (let i = 0; i < entities.length; i++) {
       const e = entities[i];
@@ -55,11 +67,11 @@ export const movementSystem = {
         continue;
       }
 
-      // Interpolación suave
+      // Interpolación suave con damp oficial three.js (framerate-independent).
       if (dist > 0.005) {
-        const s = e.isMoving ? lerpMoving : lerpIdle;
-        e.currentX = THREE.MathUtils.lerp(e.currentX, e.targetX, s);
-        e.currentZ = THREE.MathUtils.lerp(e.currentZ, e.targetZ, s);
+        const lambda = e.isMoving ? LAMBDA_MOVING : LAMBDA_IDLE;
+        e.currentX = THREE.MathUtils.damp(e.currentX, e.targetX, lambda, delta);
+        e.currentZ = THREE.MathUtils.damp(e.currentZ, e.targetZ, lambda, delta);
       }
     }
   },
@@ -67,6 +79,12 @@ export const movementSystem = {
   /**
    * Recibe datos de broadcast/realtime para un avatar específico.
    * Reemplaza updateTargetPosition() de cada RemoteAvatarInterpolated.
+   *
+   * Fix 2026-04-23 (net-code pattern — Valve/Fiedler/Colyseus):
+   * en el PRIMER broadcast real, saltar la entidad directamente al target
+   * sin animar desde el spawn default (0,0) o (500,500). Evita el
+   * "teleport visible" del avatar al aparecer en escena. A partir del
+   * segundo broadcast, lerp normal hacia target.
    */
   setTarget(userId: string, x: number, z: number, direction?: string, isMoving?: boolean, animState?: string): void {
     const entity = avatarStore.get(userId);
@@ -78,6 +96,15 @@ export const movementSystem = {
     if (isMoving !== undefined) entity.isMoving = isMoving;
     if (animState !== undefined) entity.animState = animState as any;
     entity.lastServerUpdate = Date.now();
+
+    if (!entity.hasReceivedFirstRealTarget) {
+      // Primer broadcast real — snap sin animación. Ref net-code docs:
+      // https://developer.valvesoftware.com/wiki/Source_Multiplayer_Networking
+      // https://gafferongames.com/post/snapshot_interpolation/
+      entity.currentX = x;
+      entity.currentZ = z;
+      entity.hasReceivedFirstRealTarget = true;
+    }
   },
 };
 
