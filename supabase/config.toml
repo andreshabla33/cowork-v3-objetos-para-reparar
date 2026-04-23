@@ -1,0 +1,11 @@
+# Supabase project config — needed for `supabase functions deploy` to work
+# without prompts. The `project_id` points to the "mvp" project where all
+# the edge functions (livekit-token, livekit-moderate-participant, etc.) live.
+
+project_id = "lcryrsdyrzotjqdxcwtp"
+
+[functions.livekit-move-participant]
+verify_jwt = false  # we validate JWT manually inside the function
+
+[functions.livekit-moderate-participant]
+verify_jwt = false
