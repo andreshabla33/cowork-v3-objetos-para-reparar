@@ -343,6 +343,10 @@ export function useSpace3D(props: {
     selectedRemoteUser: selectedRemoteUserState,
     setSelectedRemoteUser: setSelectedRemoteUserState,
     handleToggleScreenShare: media.handleToggleScreenShare,
+    // Fix 2026-04-23: dentro de meeting zone, usersInCall se deriva de
+    // Room.remoteParticipants (membership) no de distancia 3D. Evita que
+    // gente fuera cerca de la entrada aparezca como "en la call".
+    remoteParticipantIds: livekit.remoteParticipantIds,
   });
 
   // Sync refs para LiveKit
@@ -361,6 +365,10 @@ export function useSpace3D(props: {
     espacioId: activeWorkspace?.id ?? null,
     identity: session?.user?.id ?? null,
     currentMeetingZoneId: proximity.currentMeetingZoneId,
+    // Timing gate: sin esto, `moveParticipant` dispara antes de `Connected`
+    // → 502 "participant not found". Log 2026-04-23 mostró 3s gap entre
+    // el hook trigger y el Connected event.
+    livekitConnected: livekit.livekitConnected,
     enabled: true,
   });
 

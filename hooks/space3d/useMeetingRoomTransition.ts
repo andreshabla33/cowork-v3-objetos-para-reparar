@@ -46,6 +46,14 @@ export interface UseMeetingRoomTransitionParams {
   identity: string | null | undefined;
   /** ID de la meeting zone actual, o null si el avatar NO está en una meeting. */
   currentMeetingZoneId: string | null;
+  /**
+   * True solo cuando el cliente LiveKit está conectado a la Room global.
+   * CRÍTICO: `moveParticipant` requiere que el participante YA exista en
+   * la Room fuente — si se dispara antes de `Connected`, el SFU responde
+   * con "participant not found" → 502.
+   * Ref: https://docs.livekit.io/home/server/managing-rooms/
+   */
+  livekitConnected: boolean;
   /** Gate de feature — permite desactivar el multi-room flow sin deploy. */
   enabled?: boolean;
 }
@@ -62,7 +70,7 @@ export interface UseMeetingRoomTransitionReturn {
 export function useMeetingRoomTransition(
   params: UseMeetingRoomTransitionParams,
 ): UseMeetingRoomTransitionReturn {
-  const { espacioId, identity, currentMeetingZoneId, enabled = true } = params;
+  const { espacioId, identity, currentMeetingZoneId, livekitConnected, enabled = true } = params;
 
   // Ref al último zoneId aplicado (ya confirmado tras un move exitoso).
   const appliedZoneIdRef = useRef<string | null>(null);
@@ -96,6 +104,10 @@ export function useMeetingRoomTransition(
   useEffect(() => {
     if (!enabled) return;
     if (!identity || !espacioId) return;
+    // Gate timing crítico: sin esto, el hook dispara moveParticipant antes
+    // de que `Connected` ocurra → LiveKit rechaza con 502 "participant not
+    // found". Ref log 2026-04-23: 502 a 24.052, Connected a 27.138 (3s gap).
+    if (!livekitConnected) return;
 
     // Si el zoneId objetivo es igual al aplicado, no hacer nada.
     if (currentMeetingZoneId === appliedZoneIdRef.current) return;
@@ -179,7 +191,7 @@ export function useMeetingRoomTransition(
         debounceTimerRef.current = null;
       }
     };
-  }, [currentMeetingZoneId, identity, espacioId, enabled]);
+  }, [currentMeetingZoneId, identity, espacioId, livekitConnected, enabled]);
 
   return { isMoving, lastError, currentZoneId };
 }

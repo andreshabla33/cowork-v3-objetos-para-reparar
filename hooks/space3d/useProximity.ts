@@ -48,12 +48,20 @@ export function useProximity(params: {
   selectedRemoteUser: User | null;
   setSelectedRemoteUser: React.Dispatch<React.SetStateAction<User | null>>;
   handleToggleScreenShare: () => Promise<void>;
+  /**
+   * IDs de participantes remotos en la Room LiveKit actual del usuario
+   * (global o meeting). Dentro de una meeting zone, este set se usa como
+   * fuente de verdad de "quién está en la misma conversación" — en lugar
+   * de distancia euclidiana. Ref: docs.livekit.io `Room.remoteParticipants`.
+   */
+  remoteParticipantIds?: Set<string>;
 }): UseProximityReturn {
   const {
     currentUserEcs, usuariosEnChunks, session, currentUser, isScreenShareEnabled,
     userProximityRadius, remoteStreams, remoteScreenStreams,
     speakingUsers, raisedHandParticipantIds, performanceSettings,
     selectedRemoteUser, setSelectedRemoteUser, handleToggleScreenShare,
+    remoteParticipantIds,
   } = params;
   const activeSpeakerPolicyRef = useRef(new ActiveSpeakerPolicy());
   const galleryPolicyRef = useRef(new GalleryPolicy());
@@ -210,11 +218,23 @@ export function useProximity(params: {
       const wasInCall = connectedUsersRef.current.has(u.id);
 
       if (effectiveZone) {
-        // Gather-style meeting room isolation:
-        // Only connect with people in the EXACT SAME zone
-        inProximity = isPointInZone(u.x, u.y, effectiveZone);
+        // Meeting-style isolation (2026-04-23): dentro de meeting zone,
+        // la fuente de verdad es la LiveKit Room. Todo participante en la
+        // MISMA Room contigo aparece en la call — sin importar distancia
+        // 3D. El multi-Room ya aisló el stream (otros en global no envían
+        // audio/video a este cliente), solo necesitamos reflejarlo en UI.
+        //
+        // Fallback: si el cliente aún no hizo `moveParticipant` o el set
+        // no está disponible, usamos isPointInZone como antes (zona física).
+        // Ref: https://docs.livekit.io/reference/client-sdk-js/classes/Room.html
+        //      — Room.remoteParticipants.
+        if (remoteParticipantIds && remoteParticipantIds.size > 0) {
+          inProximity = remoteParticipantIds.has(u.id);
+        } else {
+          inProximity = isPointInZone(u.x, u.y, effectiveZone);
+        }
       } else {
-        // Lógica normal por distancia
+        // Lógica normal por distancia (mundo abierto).
         dist = Math.sqrt(Math.pow(u.x - stableProximityCoords.x, 2) + Math.pow(u.y - stableProximityCoords.y, 2));
         threshold = wasInCall
           ? userProximityRadius * PROXIMITY_EXIT_FACTOR
@@ -266,7 +286,7 @@ export function useProximity(params: {
 
     connectedUsersRef.current = nextConnectedUsers;
     return users;
-  }, [isHydrated, usuariosEnChunks, stableProximityCoords.x, stableProximityCoords.y, session?.user?.id, isScreenShareEnabled, userProximityRadius, conversacionesBloqueadasRemoto, effectiveZone]);
+  }, [isHydrated, usuariosEnChunks, stableProximityCoords.x, stableProximityCoords.y, session?.user?.id, isScreenShareEnabled, userProximityRadius, conversacionesBloqueadasRemoto, effectiveZone, remoteParticipantIds]);
 
   const hasActiveCall = usersInCall.length > 0;
   const usersInCallIds = useMemo(() => new Set(usersInCall.map(u => u.id)), [usersInCall]);

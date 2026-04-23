@@ -19,7 +19,9 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { RoomServiceClient } from 'https://esm.sh/livekit-server-sdk@2.0.0';
+// livekit-server-sdk 2.13+ tiene `moveParticipant` estable.
+// Ref: https://github.com/livekit/server-sdk-js/releases
+import { RoomServiceClient } from 'https://esm.sh/livekit-server-sdk@2.13.1';
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 
@@ -137,11 +139,15 @@ serve(async (req) => {
     );
 
     try {
+      console.log(`[move-participant] calling LiveKit: from=${body.from_room}, identity=${body.identity}, to=${body.to_room}`);
       await roomService.moveParticipant(body.from_room, body.identity, body.to_room);
+      console.log(`[move-participant] success for ${body.identity}`);
     } catch (lkErr) {
       const detail = lkErr instanceof Error ? lkErr.message : String(lkErr);
+      const stack = lkErr instanceof Error ? lkErr.stack : undefined;
+      // Log verbose para debugging server-side (visible en edge function logs).
+      console.error(`[move-participant] LiveKit API error:`, detail, stack);
       // LiveKit lanza si la Room fuente no existe o el participante no está ahí.
-      // Clasificamos:
       if (detail.toLowerCase().includes('not found')) {
         return new Response(JSON.stringify({
           error: 'PARTICIPANT_NOT_FOUND',
