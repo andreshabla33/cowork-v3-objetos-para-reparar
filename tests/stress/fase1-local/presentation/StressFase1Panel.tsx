@@ -23,8 +23,8 @@
  */
 
 'use client';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useThree } from '@react-three/fiber';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
 import type * as THREE from 'three';
 
 import { BotSpawnerUseCase } from '../application/BotSpawnerUseCase';
@@ -90,12 +90,18 @@ const StressFase1PanelInner: React.FC = () => {
     }
   }, [gl]);
 
+  // Tick del movement directamente dentro del Canvas — no requiere wiring
+  // externo. Se ejecuta cada frame del renderer r3f.
+  useFrame((_, dt) => {
+    ensureRefs();
+    useCaseRef.current?.tick(dt);
+  });
+
   useEffect(() => {
     ensureRefs();
 
-    // Registrar bot ticker global — Canvas r3f lo invoca desde useFrame.
+    // Console handles globales — el ticker ya corre via useFrame arriba.
     const w = window as unknown as Record<string, unknown>;
-    w.__stressBotTicker = (dt: number) => useCaseRef.current?.tick(dt);
 
     // Console handles. No UI visual — se opera desde DevTools.
     w.__stressSpawn = () => {
@@ -160,7 +166,6 @@ const StressFase1PanelInner: React.FC = () => {
       '__stressDespawn()', '__stressDownload()');
 
     return () => {
-      delete w.__stressBotTicker;
       delete w.__stressSpawn;
       delete w.__stressDespawn;
       delete w.__stressStart;

@@ -11,6 +11,7 @@ import { FloorType } from '../src/core/domain/entities';
 // se importan aquí: viven dentro de <VirtualSpace3DModals> (root).
 import type { CargoLaboral } from './meetings/recording/types/analysis';
 import { BottomControlBar } from './BottomControlBar';
+import { StressFase1Panel } from '@/tests/stress/fase1-local/presentation/StressFase1Panel';
 import { VirtualSpace3DModals } from './space3d/root/VirtualSpace3DModals';
 import { VirtualSpace3DAdminOverlay } from './space3d/root/VirtualSpace3DAdminOverlay';
 import { VirtualSpace3DStatusBanners } from './space3d/root/VirtualSpace3DStatusBanners';
@@ -962,6 +963,10 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       >
         <AdaptiveFrameloop />
         <RendererMetricsProbe adaptiveDpr={adaptiveDpr} gpuInfo={gpuInfo} />
+        {/* Fase 1 del stress test — DEV-ONLY, auto-retorna null en prod.
+            Handles via window.__stress* en consola DevTools.
+            Ref: tests/stress/fase1-local/README.md */}
+        <StressFase1Panel />
         {adaptivePerfEnabled && (
           <AdaptivePerformanceMonitor
             currentDpr={adaptiveDpr}
