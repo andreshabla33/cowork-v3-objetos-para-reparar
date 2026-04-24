@@ -40,6 +40,50 @@ const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutos
 const PROBE_TIMEOUT_MS = 5000;
 const PROBE_SAMPLES = 2;
 
+/**
+ * Umbral de latencia aceptable para una región "healthy". Si la MEJOR
+ * región probada supera esto, el resultado es sospechoso — probablemente
+ * congestion de red local en el cliente dio mediciones falsas altas, y la
+ * región elegida puede estar muy lejos geográficamente. Fallback a lista
+ * basada en timezone del browser.
+ *
+ * 350ms es el umbral razonable (audio Opus soporta hasta ~250-300ms RTT
+ * con calidad decente; arriba de 400ms = jitter audible).
+ * Refs:
+ *   - https://docs.livekit.io/home/cloud/architecture/
+ *   - https://datatracker.ietf.org/doc/html/rfc6716 (Opus codec, latency)
+ */
+const UNHEALTHY_LATENCY_THRESHOLD_MS = 350;
+
+/**
+ * Mapeo timezone → candidatos de región geográficamente razonables.
+ * Si probe falla o devuelve latencias altas (ruteo ISP malo), usar el
+ * primer candidato como fallback confiable.
+ *
+ * Ref: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat/resolvedOptions
+ */
+function getRegionCandidatesByTimezone(): string[] {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (tz.startsWith('America/')) {
+      // LATAM, US, CA → us-east-1 es óptimo típicamente
+      return ['us-east-1', 'us-west-2', 'sa-east-1'];
+    }
+    if (tz.startsWith('Europe/') || tz.startsWith('Africa/')) {
+      return ['eu-west-1', 'eu-central-1'];
+    }
+    if (tz.startsWith('Asia/')) {
+      return ['ap-southeast-1', 'ap-northeast-1', 'ap-south-1'];
+    }
+    if (tz.startsWith('Australia/') || tz.startsWith('Pacific/')) {
+      return ['ap-southeast-1', 'us-west-2'];
+    }
+  } catch {
+    // Intl no disponible o restringido
+  }
+  return [];
+}
+
 async function probeLatency(url: string, timeoutMs: number): Promise<number> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -110,7 +154,26 @@ export async function detectBestRegion(): Promise<RegionDetectionResult> {
   const allResults = await Promise.all(LIVEKIT_REGIONS.map(probeRegion));
 
   const sorted = [...allResults].sort((a, b) => a.latencyMs - b.latencyMs);
-  const best = sorted[0];
+  let best = sorted[0];
+
+  // Sanity check (fix 2026-04-23 post-test-12users): si la mejor región
+  // probada supera UNHEALTHY_LATENCY_THRESHOLD_MS, el probe sufrió
+  // congestion de red local — las mediciones son relativamente inútiles
+  // (todas las regiones parecen malas). Forzar candidato geográfico según
+  // timezone del browser en ese caso. Observado en log test PC:
+  // ap-southeast-1=407ms aunque us-east-1 hubiera sido ~150ms.
+  if (best.latencyMs > UNHEALTHY_LATENCY_THRESHOLD_MS) {
+    const tzCandidates = getRegionCandidatesByTimezone();
+    if (tzCandidates.length > 0) {
+      // Re-rank: entre los candidatos geográficos, elegir el MENOR de ellos.
+      const candidateResults = sorted.filter((r) => tzCandidates.includes(r.region));
+      if (candidateResults.length > 0) {
+        const geoOverride = candidateResults[0];
+        console.warn(`🌐 [Region] Probe saludable=false (mejor ${best.region}=${best.latencyMs}ms > ${UNHEALTHY_LATENCY_THRESHOLD_MS}ms). Override a región geográfica: ${geoOverride.region} (${geoOverride.latencyMs}ms)`);
+        best = geoOverride;
+      }
+    }
+  }
 
   const result: RegionDetectionResult = {
     bestRegion: best.region,
