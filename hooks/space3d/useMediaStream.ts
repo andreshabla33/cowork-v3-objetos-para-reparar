@@ -124,10 +124,33 @@ export function useMediaStream(params: {
             if (wantAudio) mediaConstraints.audio = audioConstraints;
             if (!wantVideo && !wantAudio) mediaConstraints.audio = audioConstraints;
 
-            log.info('Requesting media access', { wantVideo, wantAudio });
+            // Instrumentación L.pre 2026-04-23: users reportaron "no pudieron
+            // prender cámara, problemas con seleccionar el dispositivo". Logs
+            // detallados del constraint + device IDs elegidos para diagnóstico.
+            log.info('Requesting media access', {
+              wantVideo,
+              wantAudio,
+              selectedCameraId: cameraSettings.selectedCameraId || 'default',
+              selectedMicrophoneId: audioSettings.selectedMicrophoneId || 'default',
+              audioNoiseRed: audioSettings.noiseReduction,
+              audioEchoCancel: audioSettings.echoCancellation,
+            });
             const newStream = await navigator.mediaDevices.getUserMedia(mediaConstraints).catch(async (err) => {
+              // err.name tipificado por MDN — NotFoundError, NotAllowedError,
+              // NotReadableError, OverconstrainedError, SecurityError, etc.
+              // Ref: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia#exceptions
+              const errName = err instanceof Error ? err.name : 'Unknown';
+              const errMsg = err instanceof Error ? err.message : String(err);
+              log.warn('getUserMedia failed', {
+                errName,
+                errMsg,
+                wantVideo,
+                wantAudio,
+                selectedCameraId: cameraSettings.selectedCameraId || 'default',
+                selectedMicrophoneId: audioSettings.selectedMicrophoneId || 'default',
+              });
               if (cameraSettings.selectedCameraId || audioSettings.selectedMicrophoneId) {
-                log.warn('Selected device not available, using default', { error: err instanceof Error ? err.message : String(err) });
+                log.warn('Selected device not available, using default', { errName, errMsg });
                 const fallbackConstraints: MediaStreamConstraints = {};
                 if (wantVideo) fallbackConstraints.video = getVideoConstraints();
                 if (wantAudio || !wantVideo) fallbackConstraints.audio = {
@@ -137,8 +160,8 @@ export function useMediaStream(params: {
                 };
                 return navigator.mediaDevices.getUserMedia(fallbackConstraints);
               }
-              if (wantVideo && err.name === 'NotReadableError') {
-                log.warn('Camera in use, falling back to audio-only', { error: err instanceof Error ? err.message : String(err) });
+              if (wantVideo && errName === 'NotReadableError') {
+                log.warn('Camera in use (NotReadableError), falling back to audio-only');
                 return navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
               }
               throw err;

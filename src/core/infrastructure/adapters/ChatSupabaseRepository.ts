@@ -669,6 +669,19 @@ export class ChatSupabaseRepository implements IChatRepository {
   }
 
   async enviarMensaje(datos: DatosCrearMensaje): Promise<MensajeChatData | null> {
+    // Instrumentación 2026-04-23 (K.pre): los users reportaron "pueden leer
+    // pero no responder". Sin logs info era imposible diagnosticar si fallaba
+    // en el INSERT (RLS policies), en la suscripción (broadcast), o en el UI.
+    // Ahora dejamos trazas en info-level sobre send success/failure por
+    // grupo + tamaño de payload.
+    log.info('enviarMensaje: sending', {
+      grupoId: datos.grupo_id,
+      usuarioId: datos.usuario_id,
+      tipo: datos.tipo,
+      contenidoLen: datos.contenido?.length ?? 0,
+      esRespuesta: !!datos.respuesta_a,
+      conMenciones: Array.isArray(datos.menciones) && datos.menciones.length > 0,
+    });
     try {
       const { data, error } = await supabase
         .from('mensajes_chat')
@@ -687,7 +700,24 @@ export class ChatSupabaseRepository implements IChatRepository {
         `)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // Exponer código/detail de RLS/constraint violations — la causa
+        // más probable del bug reportado es policy `mensajes_chat_insert`
+        // que requiere membership activa en el grupo.
+        log.warn('enviarMensaje: DB insert failed', {
+          grupoId: datos.grupo_id,
+          usuarioId: datos.usuario_id,
+          code: (error as { code?: string }).code,
+          message: error.message,
+          details: (error as { details?: string }).details,
+          hint: (error as { hint?: string }).hint,
+        });
+        throw error;
+      }
+      log.info('enviarMensaje: sent ok', {
+        grupoId: datos.grupo_id,
+        mensajeId: (data as { id?: string })?.id,
+      });
       return data as unknown as MensajeChatData;
     } catch (err) {
       log.error('enviarMensaje failed', { datos, error: String(err) });
