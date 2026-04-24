@@ -672,6 +672,24 @@ export function useLiveKit(params: {
             // 'leave' tarda o se pierde — el drop ECS libera GPU.
             avatarStore.remove(participant.identity);
             realtimePositionsRef?.current.delete(participant.identity);
+          } else {
+            // FIX C (2026-04-23) — Room transition smoothing.
+            // Si el peer sigue en Presence, este disconnect probablemente es
+            // transitorio (moveParticipant hacia otra Room + posible reconnect).
+            // Durante el gap (~1-2s) el ECS ya NO recibirá DataPackets de
+            // posición. Para evitar que el avatar "salte" al reconnect,
+            // congelamos el target en la última currentX/Z conocida. Al
+            // reconnect, el primer DataPacket real reactiva lerp normal.
+            //
+            // Ref: LiveKit RoomEvent enum documenta Participant lifecycle
+            //   https://docs.livekit.io/reference/client-sdk-js/enums/RoomEvent.html
+            // El `identity` es PK estable cross-reconnect (docs LiveKit).
+            const entity = avatarStore.get(participant.identity);
+            if (entity) {
+              entity.targetX = entity.currentX;
+              entity.targetZ = entity.currentZ;
+              entity.isMoving = false;
+            }
           }
         },
         onParticipantConnected: (participant) => {
