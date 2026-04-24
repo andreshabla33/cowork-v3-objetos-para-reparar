@@ -27,6 +27,25 @@ const selectionIcon = (
   </svg>
 );
 
+/**
+ * Tooltip con estilo uniforme al resto de botones del toolbar (ControlButton
+ * de BottomControlBar.tsx — ej. "Reacciones"). Sustituye al `title=` nativo
+ * del browser que aparecía desplazado fuera del toolbar.
+ *
+ * Se usa con un wrapper `<span className="relative inline-flex group/mmg">`
+ * alrededor del `<button>`. `group/mmg` = media-management-group — nombrado
+ * explícito para no colisionar con otros `group/btn` en el árbol.
+ *
+ * Ref del patrón: ControlButton en components/BottomControlBar.tsx:419.
+ */
+const MediaBtnTooltip = ({ text }: { text: string }) => (
+  <span className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 opacity-0 group-hover/mmg:opacity-100 transition-opacity pointer-events-none z-50">
+    <span className="block bg-black/90 backdrop-blur-md text-white text-[10px] font-medium px-2 py-1 rounded-lg border border-white/10 whitespace-nowrap shadow-xl">
+      {text}
+    </span>
+  </span>
+);
+
 interface SharedAudioSettingsPanelProps {
   settings: AudioSettings;
   currentStream?: MediaStream | null;
@@ -442,37 +461,43 @@ export const SharedAudioDeviceControl: React.FC<AudioDeviceControlProps> = ({
     <div className="relative" ref={menuRef} data-tour-step={dataTourStep}>
       {showMenuToggle ? (
         <div className="flex items-center">
+          <span className="relative inline-flex group/mmg">
+            <button
+              onClick={handleToggle}
+              className={`w-9 h-9 rounded-l-xl flex items-center justify-center transition-all duration-300 ${
+                optimisticEnabled ? 'bg-zinc-700 text-white' : 'bg-red-500/90 text-white animate-pulse-slow'
+              }`}
+            >
+              <IconMic on={optimisticEnabled} />
+            </button>
+            <MediaBtnTooltip text={optimisticEnabled ? 'Silenciar' : 'Activar micrófono'} />
+          </span>
+          <span className="relative inline-flex group/mmg">
+            <button
+              onClick={() => setIsOpen((current) => !current)}
+              className={`w-5 h-9 rounded-r-xl flex items-center justify-center transition-all duration-300 border-l border-white/10 ${
+                optimisticEnabled ? 'bg-zinc-700 text-white hover:bg-zinc-600' : 'bg-red-500/90 text-white hover:bg-red-600'
+              }`}
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+              </svg>
+            </button>
+            <MediaBtnTooltip text="Configuración de audio" />
+          </span>
+        </div>
+      ) : (
+        <span className="relative inline-flex group/mmg">
           <button
             onClick={handleToggle}
-            className={`w-9 h-9 rounded-l-xl flex items-center justify-center transition-all duration-300 ${
+            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 ${
               optimisticEnabled ? 'bg-zinc-700 text-white' : 'bg-red-500/90 text-white animate-pulse-slow'
             }`}
-            title={optimisticEnabled ? 'Silenciar' : 'Activar micrófono'}
           >
             <IconMic on={optimisticEnabled} />
           </button>
-          <button
-            onClick={() => setIsOpen((current) => !current)}
-            className={`w-5 h-9 rounded-r-xl flex items-center justify-center transition-all duration-300 border-l border-white/10 ${
-              optimisticEnabled ? 'bg-zinc-700 text-white hover:bg-zinc-600' : 'bg-red-500/90 text-white hover:bg-red-600'
-            }`}
-            title="Configuración de audio"
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-            </svg>
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={handleToggle}
-          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 ${
-            optimisticEnabled ? 'bg-zinc-700 text-white' : 'bg-red-500/90 text-white animate-pulse-slow'
-          }`}
-          title={optimisticEnabled ? 'Silenciar' : 'Activar micrófono'}
-        >
-          <IconMic on={optimisticEnabled} />
-        </button>
+          <MediaBtnTooltip text={optimisticEnabled ? 'Silenciar' : 'Activar micrófono'} />
+        </span>
       )}
 
       {showMenuToggle && isOpen && (
@@ -657,37 +682,43 @@ export const SharedCameraDeviceControl: React.FC<CameraDeviceControlProps> = ({
     <div className="relative" ref={menuRef} data-tour-step={dataTourStep}>
       {showMenuToggle ? (
         <div className="flex items-center">
+          <span className="relative inline-flex group/mmg">
+            <button
+              onClick={handleToggle}
+              className={`w-9 h-9 rounded-l-xl flex items-center justify-center transition-all duration-300 ${
+                optimisticEnabled ? 'bg-zinc-700 text-white' : 'bg-red-500/90 text-white animate-pulse-slow'
+              }`}
+            >
+              <IconCam on={optimisticEnabled} />
+            </button>
+            <MediaBtnTooltip text={optimisticEnabled ? 'Apagar cámara' : 'Activar cámara'} />
+          </span>
+          <span className="relative inline-flex group/mmg">
+            <button
+              onClick={() => setIsOpen((current) => !current)}
+              className={`w-5 h-9 rounded-r-xl flex items-center justify-center transition-all duration-300 border-l border-white/10 ${
+                optimisticEnabled ? 'bg-zinc-700 text-white hover:bg-zinc-600' : 'bg-red-500/90 text-white hover:bg-red-600'
+              }`}
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+              </svg>
+            </button>
+            <MediaBtnTooltip text="Configuración de cámara" />
+          </span>
+        </div>
+      ) : (
+        <span className="relative inline-flex group/mmg">
           <button
             onClick={handleToggle}
-            className={`w-9 h-9 rounded-l-xl flex items-center justify-center transition-all duration-300 ${
+            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 ${
               optimisticEnabled ? 'bg-zinc-700 text-white' : 'bg-red-500/90 text-white animate-pulse-slow'
             }`}
-            title={optimisticEnabled ? 'Apagar cámara' : 'Activar cámara'}
           >
             <IconCam on={optimisticEnabled} />
           </button>
-          <button
-            onClick={() => setIsOpen((current) => !current)}
-            className={`w-5 h-9 rounded-r-xl flex items-center justify-center transition-all duration-300 border-l border-white/10 ${
-              optimisticEnabled ? 'bg-zinc-700 text-white hover:bg-zinc-600' : 'bg-red-500/90 text-white hover:bg-red-600'
-            }`}
-            title="Configuración de cámara"
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-            </svg>
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={handleToggle}
-          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 ${
-            optimisticEnabled ? 'bg-zinc-700 text-white' : 'bg-red-500/90 text-white animate-pulse-slow'
-          }`}
-          title={optimisticEnabled ? 'Apagar cámara' : 'Activar cámara'}
-        >
-          <IconCam on={optimisticEnabled} />
-        </button>
+          <MediaBtnTooltip text={optimisticEnabled ? 'Apagar cámara' : 'Activar cámara'} />
+        </span>
       )}
 
       {showMenuToggle && isOpen && (
