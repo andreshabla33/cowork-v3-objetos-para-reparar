@@ -32,11 +32,39 @@
  */
 
 import { spawn } from 'node:child_process';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readFileSync, existsSync } from 'node:fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..', '..', '..');
+
+// Auto-carga de .env.stress.local desde la raíz del repo.
+// Formato compatible con dotenv: KEY=VALUE por línea, # para comentarios, quotes opcionales.
+// Evita dependencia del paquete 'dotenv' — parser mínimo suficiente para stress test.
+loadEnvFileIfPresent(join(ROOT, '.env.stress.local'));
+
+function loadEnvFileIfPresent(path: string) {
+  if (!existsSync(path)) return;
+  const raw = readFileSync(path, 'utf8');
+  let loaded = 0;
+  for (const line of raw.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const match = /^([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/i.exec(trimmed);
+    if (!match) continue;
+    const [, key, rawValue] = match;
+    let value = rawValue;
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    if (process.env[key] === undefined) {
+      process.env[key] = value;
+      loaded++;
+    }
+  }
+  console.log(`[run-all-phases] cargado ${loaded} var(s) desde ${path}`);
+}
 
 const RUN_PHASES = (process.env.RUN_PHASES ?? '1').split(',').map((s) => s.trim());
 const SKIP_GATE = (process.env.SKIP_GATE ?? 'false').toLowerCase() === 'true';

@@ -43,6 +43,12 @@ tmp/
 # Asset pre-merge artifacts (build tooling output, not runtime)
 scripts/assets/out/
 
+# Stress test run artifacts (JSONs generados localmente)
+tests/stress/fase1-local/runs/
+tests/stress/fase2-sfu/runs/
+tests/stress/fase3-playwright/runs/
+tests/stress/assets/
+
 # Memoria local de Claude Code y notas internas de trabajo
 .claude/
 AUDIT-*.md

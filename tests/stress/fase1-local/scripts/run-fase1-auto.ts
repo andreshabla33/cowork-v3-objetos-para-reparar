@@ -23,13 +23,35 @@
  * de Fase 3 para evitar duplicación de flags Chromium oficiales.
  */
 
-import { writeFileSync, mkdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
+import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { Page } from 'playwright';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = resolve(__dirname, '..', '..', '..', '..');
+
+// Auto-carga de .env.stress.local para UX cross-shell (Windows CMD sin syntax `VAR=x cmd`).
+loadEnvFileIfPresent(join(ROOT, '.env.stress.local'));
+
+function loadEnvFileIfPresent(path: string) {
+  if (!existsSync(path)) return;
+  const raw = readFileSync(path, 'utf8');
+  for (const line of raw.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const match = /^([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/i.exec(trimmed);
+    if (!match) continue;
+    const [, key, rawValue] = match;
+    let value = rawValue;
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    if (process.env[key] === undefined) process.env[key] = value;
+  }
+  console.log(`[fase1-auto] env cargadas desde ${path}`);
+}
 
 function envOr(name: string, fallback?: string): string {
   const v = process.env[name];

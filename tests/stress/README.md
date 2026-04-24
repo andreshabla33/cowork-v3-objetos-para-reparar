@@ -5,17 +5,20 @@ Valida el espacio 3D bajo carga (hasta 100 clientes) en 3 fases con gate SLO ent
 ## TL;DR — ejecutar ahora
 
 ```bash
-# 1. Prender dev server en otra terminal
+# 1. Setup (una sola vez) — copiar la plantilla y completar credenciales
+cp .env.stress.example .env.stress.local
+# editá .env.stress.local con tu email + password
+
+# 2. Prender dev server en otra terminal
 npm run dev
 
-# 2. Correr Fase 1 automática (5 min, solo renderer local con 50 bots)
-FASE1_BASE_URL=http://localhost:5173 \
-FASE1_LOGIN_EMAIL=am@urpeailab.com \
-FASE1_LOGIN_PASSWORD=*** \
+# 3. Correr Fase 1 automática (5 min, solo renderer local con 50 bots)
 npm run stress:fase1
 ```
 
 Exit code `0` = PASS. JSON completo en `tests/stress/fase1-local/runs/*.json`.
+
+Los runners auto-cargan `.env.stress.local` desde la raíz — **no necesitás exportar vars manualmente**, funciona igual en Windows CMD / PowerShell / bash. Podés sobreescribir cualquier var inline si el shell lo permite.
 
 ## Arquitectura (Clean + Test Pyramid)
 
