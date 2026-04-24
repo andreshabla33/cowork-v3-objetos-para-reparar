@@ -15,7 +15,7 @@
 import type { LeakDetectionSlos } from './LeakDetectionCriteria';
 import { SLOS_DESKTOP, SLOS_LAPTOP_MID } from './LeakDetectionCriteria';
 
-export type LoadProfileKind = 'smoke' | 'load' | 'soak' | 'stress' | 'spike';
+export type LoadProfileKind = 'smoke' | 'load' | 'soak' | 'soak-short' | 'stress' | 'spike';
 
 /** Carga estática (N bots fijos durante durationSec). */
 export interface StaticLoadShape {
@@ -114,6 +114,14 @@ export const PROFILES: Record<LoadProfileKind, LoadProfile> = {
     samplingIntervalMs: 5000,
     slos: SLOS_SOAK,
     baselineName: 'soak',
+  },
+  'soak-short': {
+    kind: 'soak-short',
+    description: 'Soak corto — 50 bots × 15min. Validación local antes de soak full.',
+    shape: { kind: 'static', botCount: 50, durationSec: 900 },
+    samplingIntervalMs: 1000,
+    slos: SLOS_SOAK,
+    baselineName: 'soak-short',
   },
   stress: {
     kind: 'stress',

@@ -49,6 +49,10 @@ tests/stress/fase2-sfu/runs/
 tests/stress/fase3-playwright/runs/
 tests/stress/assets/
 
+# Credentials sensibles (NUNCA commitear)
+livekit.txt
+tests/stress/fase1-local/scripts/test-signin.ts
+
 # Memoria local de Claude Code y notas internas de trabajo
 .claude/
 AUDIT-*.md

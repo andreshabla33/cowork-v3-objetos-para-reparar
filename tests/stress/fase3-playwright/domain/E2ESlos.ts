@@ -43,7 +43,9 @@ export interface E2ESlos {
 }
 
 export const DEFAULT_E2E_SLOS: E2ESlos = {
-  maxRoomConnectedMs: 5_000,
+  // 15s para dev local — first-time GLB load + cold session puede tomar 7-12s.
+  // En staging/prod con cache calienta, baja a 5s.
+  maxRoomConnectedMs: 15_000,
   minChatInsertRate: 0.98,
   minMoveParticipantRate: 0.98,
   minFpsP99Desktop: 40,

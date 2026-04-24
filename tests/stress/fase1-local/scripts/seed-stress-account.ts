@@ -53,60 +53,56 @@ async function main() {
     process.exit(1);
   }
 
-  const email = 'stress_bot@urpeailab.com';
+  // CLI: --email=<single> | --count=N (genera stress_bot_01..stress_bot_NN)
+  const args = process.argv.slice(2);
+  let count = 1;
+  let singleEmail: string | null = null;
+  for (const a of args) {
+    const [k, v] = a.replace(/^--/, '').split('=');
+    if (k === 'count' && v) count = parseInt(v, 10);
+    if (k === 'email' && v) singleEmail = v;
+  }
+
   const password = 'StressBot2026.x9Kmp7!';
+  const targets = singleEmail
+    ? [singleEmail]
+    : count === 1
+      ? ['stress_bot@urpeailab.com']
+      : Array.from({ length: count }, (_, i) => `stress_bot_${String(i + 1).padStart(2, '0')}@urpeailab.com`);
 
   const { createClient } = await import('@supabase/supabase-js');
   const supabase = createClient(url, anonKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  console.log(`[seed] llamando auth.signUp({ email: ${email} })`);
+  for (const email of targets) {
+    console.log(`[seed] auth.signUp({ email: ${email} })`);
+    await seedOne(supabase, email, password);
+  }
+  return;
+}
+
+async function seedOne(supabase: import('@supabase/supabase-js').SupabaseClient, email: string, password: string) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { full_name: 'Stress Bot' } },
+    options: { data: { full_name: email.split('@')[0] } },
   });
 
   if (error) {
-    if (error.message.includes('already registered')) {
-      console.log('[seed] usuario ya existe — intentando signIn para verificar password');
-      const si = await supabase.auth.signInWithPassword({ email, password });
-      if (si.error) {
-        console.error(`[seed] signIn también falló: ${si.error.message}`);
-        console.error(`[seed] → reset via dashboard o re-create con otro email`);
-        process.exit(2);
-      }
-      console.log('[seed] signIn OK — cuenta usable. user_id:', si.data.user?.id);
-      process.exit(0);
+    if (error.message.includes('already registered') || error.message.toLowerCase().includes('already')) {
+      console.log(`[seed]   ↻ ${email} ya existe — skip`);
+      return;
     }
-    console.error(`[seed] signUp error: ${error.message}`);
-    process.exit(2);
+    console.error(`[seed]   ✗ signUp ${email}: ${error.message}`);
+    return;
   }
-
   const userId = data.user?.id;
   if (!userId) {
-    console.error('[seed] signUp sin userId — posible que email confirmation esté activo');
-    console.error('[seed] verificá dashboard → Authentication → Providers → Email');
-    process.exit(2);
+    console.error(`[seed]   ✗ ${email} sin userId (email confirmation activado?)`);
+    return;
   }
-
-  console.log(`[seed] ✓ usuario creado. user_id: ${userId}`);
-  console.log(`[seed] email: ${email}`);
-  console.log(`[seed] password: ${password}`);
-  console.log('');
-  console.log('[seed] PRÓXIMO PASO: asociar al workspace. Ejecuta este SQL:');
-  console.log(`
-INSERT INTO miembros_espacio (
-  espacio_id, usuario_id, rol, aceptado, aceptado_en,
-  empresa_id, onboarding_completado, tour_completado
-) VALUES (
-  '91887e81-1f26-448c-9d6d-9839e7d83b5d',
-  '${userId}',
-  'miembro', true, now(),
-  '253cb3b6-64d5-480d-b9a5-a7db34eee876',
-  true, true
-);`);
+  console.log(`[seed]   ✓ ${email} → user_id ${userId}`);
 }
 
 main().catch((err) => {

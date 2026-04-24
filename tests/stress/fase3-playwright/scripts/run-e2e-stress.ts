@@ -20,7 +20,7 @@
  *   npx tsx tests/stress/fase3-playwright/scripts/run-e2e-stress.ts
  */
 
-import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -34,6 +34,26 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ASSETS_DIR = resolve(__dirname, '..', '..', 'assets');
 const VIDEO_PATH = join(ASSETS_DIR, 'fake-cam-640x480.y4m');
 const AUDIO_PATH = join(ASSETS_DIR, 'fake-mic.wav');
+const ROOT = resolve(__dirname, '..', '..', '..', '..');
+
+// Auto-carga `.env.stress.local`.
+loadEnvFileIfPresent(join(ROOT, '.env.stress.local'));
+
+function loadEnvFileIfPresent(path: string) {
+  if (!existsSync(path)) return;
+  for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const m = /^([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/i.exec(trimmed);
+    if (!m) continue;
+    let value = m[2];
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    if (process.env[m[1]] === undefined) process.env[m[1]] = value;
+  }
+  console.log(`[e2e-stress] env cargadas desde ${path}`);
+}
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -82,13 +102,19 @@ async function main() {
   const executor = new PlaywrightJourneyExecutor(launcher);
   const orchestrator = new JourneyOrchestrator(executor, DEFAULT_E2E_SLOS, isLaptopProfile);
 
-  // Construir N journeys con credenciales sintéticas bot_01..bot_N.
+  // Credenciales reales (creadas con seed-stress-account.ts --count=N).
+  // Se ciclan si totalJourneys > N para reusar accounts si hace falta.
+  const seedEmails = (process.env.E2E_LOGIN_EMAILS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  const password = process.env.E2E_LOGIN_PASSWORD ?? 'StressBot2026.x9Kmp7!';
+  const emails = seedEmails.length > 0 ? seedEmails : [
+    'stress_bot_01@urpeailab.com',
+    'stress_bot_02@urpeailab.com',
+    'stress_bot_03@urpeailab.com',
+  ];
+  console.log(`[e2e-stress] usando ${emails.length} accounts: ${emails.join(', ')}`);
+
   const scripts = Array.from({ length: totalJourneys }, (_, i) =>
-    buildDefaultJourney(
-      `bot_${String(i + 1).padStart(2, '0')}@stress.local`,
-      'StressTestPassword123!',
-      i + 1,
-    ),
+    buildDefaultJourney(emails[i % emails.length], password, i + 1),
   );
 
   const report = await orchestrator.runAll(scripts, concurrency);
