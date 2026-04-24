@@ -139,9 +139,21 @@ async function main() {
     process.exit(2);
   });
 
+  // Flags GPU — crítico para que headless use hardware rendering (no SwiftShader).
+  // Sin estos, FPS es artificialmente bajo (software rasterizer ~10 FPS).
+  // Ref: https://chromium.googlesource.com/chromium/src/+/main/docs/gpu/swiftshader.md
   const browser = await playwright.chromium.launch({
     headless,
-    args: ['--autoplay-policy=no-user-gesture-required'],
+    args: [
+      '--autoplay-policy=no-user-gesture-required',
+      '--enable-gpu',
+      '--ignore-gpu-blocklist',
+      '--enable-accelerated-2d-canvas',
+      '--enable-gpu-rasterization',
+      '--use-gl=angle',
+      // En Windows, ANGLE con D3D11 es el backend que da mejor performance.
+      ...(process.platform === 'win32' ? ['--use-angle=d3d11'] : []),
+    ],
   });
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await ctx.newPage();
@@ -169,24 +181,59 @@ async function main() {
   console.log('[fase1-auto] navegando a', baseUrl);
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
 
-  const emailInput = page.locator('input[type="email"]').first();
-  const hasLogin = await emailInput.isVisible({ timeout: 5000 }).catch(() => false);
-  if (hasLogin) {
+  // Esperamos a que aparezca (a) login form, (b) workspace card, o (c) canvas 3D —
+  // lo que ocurra primero. 15s tolerancia para bootstrap (Supabase session check).
+  console.log('[fase1-auto] esperando UI (login / dashboard / canvas)');
+  const emailInput = page.locator('input[type="email"][name="email"]').first();
+  const raceWinner = await Promise.race([
+    emailInput.waitFor({ state: 'visible', timeout: 15_000 }).then(() => 'login' as const).catch(() => null),
+    page.waitForSelector('[data-tour-step="space-canvas"] canvas', { timeout: 15_000 }).then(() => 'canvas' as const).catch(() => null),
+    page.getByText(/Entrar al espacio/i).first().waitFor({ state: 'visible', timeout: 15_000 }).then(() => 'dashboard' as const).catch(() => null),
+  ]);
+  console.log(`[fase1-auto] UI detectada: ${raceWinner ?? 'timeout'}`);
+
+  if (raceWinner === 'login') {
     console.log('[fase1-auto] login form detectado — ingresando credenciales');
     await emailInput.fill(email);
-    await page.fill('input[type="password"]', password);
+    await page.fill('input[type="password"][name="password"]', password);
     await page.click('button[type="submit"]');
-  } else {
-    console.log('[fase1-auto] sin login form (sesión ya activa)');
+  } else if (raceWinner === null) {
+    await captureAndSave(page, 'ui-unknown');
+    console.error('[fase1-auto] ninguna UI reconocible en 15s — revisá screenshot');
+    await browser.close();
+    process.exit(2);
   }
 
-  console.log('[fase1-auto] esperando workspace card');
-  const wsCard = page.getByText('Entrar al espacio').first();
-  await wsCard.waitFor({ timeout: 30_000 });
-  await wsCard.click();
+  // Entrar al espacio — soporta 3 escenarios:
+  //   (a) Canvas ya montado (sesión con espacio activo) → skip selección.
+  //   (b) Dashboard con workspace cards → click "Entrar al espacio".
+  //   (c) Nada de lo anterior → screenshot + bail.
+  // Race entre (a) canvas ya montado, (b) workspace card, (c) loading "Sincronizando".
+  // Timeout 60s total — el app sincroniza workspace + session data antes de montar canvas.
+  console.log('[fase1-auto] esperando canvas o dashboard (timeout 60s)');
+  const canvasSelector = '[data-tour-step="space-canvas"] canvas';
+  const uiWinner = await Promise.race([
+    page.waitForSelector(canvasSelector, { timeout: 60_000 })
+      .then(() => 'canvas' as const).catch(() => null),
+    page.getByText(/Entrar al espacio/i).first().waitFor({ state: 'visible', timeout: 60_000 })
+      .then(() => 'dashboard' as const).catch(() => null),
+  ]);
 
-  console.log('[fase1-auto] esperando canvas 3D');
-  await page.waitForSelector('[data-tour-step="space-canvas"] canvas', { timeout: 45_000 });
+  if (!uiWinner) {
+    await captureAndSave(page, 'no-workspace');
+    console.error('[fase1-auto] ni canvas ni dashboard en 60s — revisá screenshot');
+    await browser.close();
+    process.exit(2);
+  }
+
+  if (uiWinner === 'dashboard') {
+    console.log('[fase1-auto] dashboard detectado — click workspace card');
+    await page.getByText(/Entrar al espacio/i).first().click();
+    console.log('[fase1-auto] esperando canvas 3D tras click');
+    await page.waitForSelector(canvasSelector, { timeout: 45_000 });
+  } else {
+    console.log('[fase1-auto] canvas presente — skip workspace select');
+  }
 
   console.log('[fase1-auto] canvas listo — warmup inicial 8s');
   await page.waitForTimeout(8000);
