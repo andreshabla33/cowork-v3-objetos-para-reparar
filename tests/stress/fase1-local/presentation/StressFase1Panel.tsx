@@ -165,12 +165,62 @@ const StressFase1PanelInner: React.FC = () => {
       '__stressSpawn()', '__stressStart()', '__stressStop()',
       '__stressDespawn()', '__stressDownload()');
 
+    // Auto-run — dos activaciones:
+    //   (a) Query param `?stress=fase1&duration=300` auto-dispara si detectamos
+    //       el param al montar.
+    //   (b) Función programática `window.__stressStartAuto({duration, warmup})`
+    //       para runners Playwright que invocan después de login + space enter.
+    // Ambas publican en `window.__stressResult` y setean `window.__stressDone=true`
+    // para polling externo.
+    const runAuto = (opts: { duration: number; warmup: number }) => {
+      if ((w as Record<string, unknown>).__stressAutoRunning) {
+        console.warn('[stress-fase1] auto ya en ejecución — ignorando');
+        return;
+      }
+      const { duration, warmup } = opts;
+      console.log(`[stress-fase1] AUTO-RUN iniciado — warmup ${warmup}s, duration ${duration}s`);
+      (w as Record<string, unknown>).__stressAutoRunning = true;
+      (w as Record<string, unknown>).__stressDone = false;
+
+      setTimeout(() => {
+        (w.__stressSpawn as () => void)?.();
+        setTimeout(() => {
+          (w.__stressStart as () => void)?.();
+          setTimeout(() => {
+            (w.__stressStop as () => void)?.();
+            (w.__stressDespawn as () => void)?.();
+            const result = lastResultRef.current;
+            const verdict = lastVerdictRef.current;
+            (w as Record<string, unknown>).__stressResult = result
+              ? JSON.parse(JSON.stringify({ result, verdict }))
+              : null;
+            (w as Record<string, unknown>).__stressDone = true;
+            (w as Record<string, unknown>).__stressAutoRunning = false;
+            console.log('[stress-fase1] AUTO-RUN COMPLETE', { pass: verdict?.pass });
+          }, duration * 1000);
+        }, 1000);
+      }, warmup * 1000);
+    };
+
+    (w as Record<string, unknown>).__stressStartAuto = (opts?: Partial<{ duration: number; warmup: number }>) => {
+      runAuto({ duration: opts?.duration ?? 300, warmup: opts?.warmup ?? 5 });
+    };
+
+    // Activación automática por query param (fallback — solo si la URL la conserva).
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('stress') === 'fase1') {
+      const durationSec = parseInt(urlParams.get('duration') ?? '300', 10);
+      const warmupSec = parseInt(urlParams.get('warmup') ?? '10', 10);
+      runAuto({ duration: durationSec, warmup: warmupSec });
+    }
+
     return () => {
       delete w.__stressSpawn;
       delete w.__stressDespawn;
       delete w.__stressStart;
       delete w.__stressStop;
       delete w.__stressDownload;
+      delete w.__stressStartAuto;
     };
   }, [ensureRefs, gl]);
 
