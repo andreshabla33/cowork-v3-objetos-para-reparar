@@ -25,6 +25,14 @@
     "test:report": "npx playwright show-report",
     "test:seed": "node tests/scripts/seed-test-users.mjs",
     "stress:fase1": "npx tsx tests/stress/fase1-local/scripts/run-fase1-auto.ts",
+    "stress:fase1:smoke": "npx tsx tests/stress/fase1-local/scripts/run-fase1-auto.ts --profile=smoke",
+    "stress:fase1:load": "npx tsx tests/stress/fase1-local/scripts/run-fase1-auto.ts --profile=load",
+    "stress:fase1:soak": "npx tsx tests/stress/fase1-local/scripts/run-fase1-auto.ts --profile=soak",
+    "stress:fase1:stress": "npx tsx tests/stress/fase1-local/scripts/run-fase1-auto.ts --profile=stress",
+    "stress:fase1:spike": "npx tsx tests/stress/fase1-local/scripts/run-fase1-auto.ts --profile=spike",
+    "stress:fase1:compare": "npx tsx tests/stress/fase1-local/scripts/compare-baseline.ts",
+    "stress:fase1:baseline-update": "npx tsx tests/stress/fase1-local/scripts/update-baseline.ts",
+    "stress:fase1:report": "npx tsx tests/stress/fase1-local/scripts/generate-report.ts",
     "stress:fase2": "npx tsx tests/stress/fase2-sfu/scripts/run-sfu-stress.ts",
     "stress:fase3": "npx tsx tests/stress/fase3-playwright/scripts/run-e2e-stress.ts",
     "stress:all": "npx tsx tests/stress/scripts/run-all-phases.ts",
@@ -84,8 +92,10 @@
     "jsdom": "^29.0.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.19",
+    "tsx": "^4",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.2",
+    "wait-on": "^7"
   }
 }

@@ -54,12 +54,15 @@ export function generateBotSpecs(params: {
   bounds: WorldBounds;
   avatarModelUrls: readonly string[];
   withFakeVideoBubbleRatio: number; // 0..1 — porcentaje de bots con cámara simulada
+  /** Offset inicial del índice (para continuar numeración en ramp-ups). Default 0. */
+  indexOffset?: number;
 }): readonly BotSpec[] {
-  const { count, bounds, avatarModelUrls, withFakeVideoBubbleRatio } = params;
+  const { count, bounds, avatarModelUrls, withFakeVideoBubbleRatio, indexOffset = 0 } = params;
   const specs: BotSpec[] = [];
   const spanX = bounds.maxX - bounds.minX;
   const spanZ = bounds.maxZ - bounds.minZ;
-  for (let i = 0; i < count; i++) {
+  for (let localI = 0; localI < count; localI++) {
+    const i = localI + indexOffset;
     const modelUrl = avatarModelUrls.length > 0
       ? avatarModelUrls[i % avatarModelUrls.length]
       : null;
@@ -75,7 +78,7 @@ export function generateBotSpecs(params: {
         stepRangeWorld: 4, // ~64 pixels world / tick
       },
       avatarModelUrl: modelUrl,
-      withFakeVideoBubble: (i / count) < withFakeVideoBubbleRatio,
+      withFakeVideoBubble: ((localI) / Math.max(1, count)) < withFakeVideoBubbleRatio,
     });
   }
   return specs;

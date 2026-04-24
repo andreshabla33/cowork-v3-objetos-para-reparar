@@ -68,9 +68,20 @@ export interface LeakVerdict {
   readonly metrics: {
     readonly heapGrowthMb: number;
     readonly fpsP99: number;
+    readonly fpsP95: number;
+    readonly fpsMedian: number;
     readonly monotonicGrowthDetected: boolean;
+    /** True si muestras <100 y P99 cayó a P95 como fallback estadístico. */
+    readonly p99FallbackApplied: boolean;
   };
 }
+
+/**
+ * Mínimo de muestras para que P99 sea estadísticamente significativo.
+ * Con menos, usamos P95 como fallback (mínimo 20 muestras = 1 muestra sólida).
+ * Ref: https://en.wikipedia.org/wiki/Percentile#Nearest-rank_method
+ */
+const MIN_SAMPLES_FOR_P99 = 100;
 
 /**
  * Evalúa si una corrida cumple los SLOs. Pure function.
@@ -83,7 +94,10 @@ export function evaluateRun(run: StressRunResult, slos: LeakDetectionSlos): Leak
     return {
       pass: false,
       reasons: ['insufficient_samples'],
-      metrics: { heapGrowthMb: 0, fpsP99: 0, monotonicGrowthDetected: false },
+      metrics: {
+        heapGrowthMb: 0, fpsP99: 0, fpsP95: 0, fpsMedian: 0,
+        monotonicGrowthDetected: false, p99FallbackApplied: false,
+      },
     };
   }
 
@@ -98,13 +112,17 @@ export function evaluateRun(run: StressRunResult, slos: LeakDetectionSlos): Leak
     reasons.push(`heap_growth_${heapGrowthMb}mb_exceeds_${slos.maxHeapGrowthMb}mb`);
   }
 
-  // FPS P99 — percentil 99 requiere ≥100 muestras para ser estable; con menos
-  // caemos a percentil más tolerante (P95) con advertencia interna.
-  const fpsSorted = [...samples].map(s => s.fps).sort((a, b) => a - b);
-  const p99Index = Math.floor(fpsSorted.length * 0.01);
-  const fpsP99 = fpsSorted[p99Index] ?? 0;
-  if (fpsP99 < slos.minFpsP99) {
-    reasons.push(`fps_p99_${fpsP99}_below_${slos.minFpsP99}`);
+  // Percentiles FPS por nearest-rank. Con <100 muestras, P99 es ruidoso
+  // (un solo outlier lo define) — caemos a P95 como fallback.
+  const fpsSorted = [...samples].map((s) => s.fps).sort((a, b) => a - b);
+  const fpsP99 = percentileNearestRank(fpsSorted, 1);
+  const fpsP95 = percentileNearestRank(fpsSorted, 5);
+  const fpsMedian = percentileNearestRank(fpsSorted, 50);
+  const p99FallbackApplied = samples.length < MIN_SAMPLES_FOR_P99;
+  const fpsCheckValue = p99FallbackApplied ? fpsP95 : fpsP99;
+  const fpsCheckLabel = p99FallbackApplied ? 'p95' : 'p99';
+  if (fpsCheckValue < slos.minFpsP99) {
+    reasons.push(`fps_${fpsCheckLabel}_${fpsCheckValue.toFixed(1)}_below_${slos.minFpsP99}`);
   }
 
   // Crecimiento monotónico de geometries/textures — indica leak por
@@ -123,8 +141,25 @@ export function evaluateRun(run: StressRunResult, slos: LeakDetectionSlos): Leak
   return {
     pass: reasons.length === 0,
     reasons,
-    metrics: { heapGrowthMb, fpsP99, monotonicGrowthDetected },
+    metrics: {
+      heapGrowthMb,
+      fpsP99: +fpsP99.toFixed(1),
+      fpsP95: +fpsP95.toFixed(1),
+      fpsMedian: +fpsMedian.toFixed(1),
+      monotonicGrowthDetected,
+      p99FallbackApplied,
+    },
   };
+}
+
+/**
+ * Percentil k (0-100) por nearest-rank sobre lista ya ordenada ascendente.
+ * Para métricas donde "peor" = "más bajo" (FPS), k=1 devuelve el peor 1%.
+ */
+function percentileNearestRank(sortedAsc: readonly number[], k: number): number {
+  if (sortedAsc.length === 0) return 0;
+  const idx = Math.max(0, Math.ceil((k / 100) * sortedAsc.length) - 1);
+  return sortedAsc[idx] ?? 0;
 }
 
 function detectMonotonicGrowth(series: readonly number[], threshold: number): boolean {
