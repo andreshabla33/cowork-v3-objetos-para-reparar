@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
+import { getThemeStyles, type ThemeStyleSet } from '@/lib/theme';
 
 // ============== TIPOS ==============
 interface MetricaDiaria {
@@ -45,7 +46,7 @@ interface MetricasAgregadas {
 
 type Periodo = '7d' | '30d' | '90d';
 
-// ============== MINI SPARKLINE (CSS puro) ==============
+// ============== MINI SPARKLINE ==============
 const Sparkline: React.FC<{ datos: number[]; color: string; height?: number }> = ({ datos, color, height = 32 }) => {
   if (datos.length === 0) return null;
   const max = Math.max(...datos, 1);
@@ -75,54 +76,48 @@ const StatCard: React.FC<{
   color: string;
   sparkData?: number[];
   tendencia?: number;
-  theme: string;
-}> = ({ label, valor, icono, color, sparkData, tendencia, theme }) => {
-  const isArcade = theme === 'arcade';
-  return (
-    <div className={`p-3 lg:p-2.5 rounded-xl border transition-all ${
-      isArcade ? 'bg-black border-[#00ff41]/20 hover:border-[#00ff41]/50' : 'bg-white/5 border-white/10 hover:border-white/20'
-    }`}>
-      <div className="flex items-center justify-between mb-1.5">
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm">{icono}</span>
-          <span className="text-[10px] font-bold uppercase tracking-wider opacity-50">{label}</span>
-        </div>
-        {tendencia !== undefined && tendencia !== 0 && (
-          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-            tendencia > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
-          }`}>
-            {tendencia > 0 ? '+' : ''}{tendencia}%
-          </span>
-        )}
+  s: ThemeStyleSet;
+}> = ({ label, valor, icono, color, sparkData, tendencia, s }) => (
+  <div className={`p-3 lg:p-2.5 rounded-xl border transition-all hover:shadow-md ${s.surface} ${s.border}`}>
+    <div className="flex items-center justify-between mb-1.5">
+      <div className="flex items-center gap-1.5">
+        <span className="text-sm">{icono}</span>
+        <span className={`text-[10px] font-bold uppercase tracking-wider ${s.textSubtle}`}>{label}</span>
       </div>
-      <p className={`text-xl lg:text-lg font-black mb-1 ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>
-        {typeof valor === 'number' ? valor.toLocaleString('es') : valor}
-      </p>
-      {sparkData && sparkData.length > 1 && (
-        <Sparkline datos={sparkData} color={color} />
+      {tendencia !== undefined && tendencia !== 0 && (
+        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+          tendencia > 0 ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-red-50 text-red-600 border border-red-200'
+        }`}>
+          {tendencia > 0 ? '+' : ''}{tendencia}%
+        </span>
       )}
     </div>
-  );
-};
+    <p className={`text-xl lg:text-lg font-black mb-1 ${s.text}`}>
+      {typeof valor === 'number' ? valor.toLocaleString('es') : valor}
+    </p>
+    {sparkData && sparkData.length > 1 && (
+      <Sparkline datos={sparkData} color={color} />
+    )}
+  </div>
+);
 
 // ============== BARRA HORIZONTAL ==============
 const BarraHorizontal: React.FC<{
   items: { nombre: string; valor: number; color: string }[];
-  theme: string;
-}> = ({ items, theme }) => {
+  s: ThemeStyleSet;
+}> = ({ items, s }) => {
   const max = Math.max(...items.map(i => i.valor), 1);
-  const isArcade = theme === 'arcade';
   return (
     <div className="space-y-2">
       {items.map((item, i) => (
         <div key={i}>
           <div className="flex items-center justify-between mb-0.5">
-            <span className="text-xs font-medium truncate max-w-[60%]">{item.nombre}</span>
-            <span className={`text-xs font-bold ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>
+            <span className={`text-xs font-medium truncate max-w-[60%] ${s.text}`}>{item.nombre}</span>
+            <span className={`text-xs font-bold ${s.text}`}>
               {item.valor.toLocaleString('es')}
             </span>
           </div>
-          <div className={`h-2 rounded-full overflow-hidden ${isArcade ? 'bg-[#00ff41]/10' : 'bg-white/10'}`}>
+          <div className={`h-2 rounded-full overflow-hidden ${s.surfaceMuted}`}>
             <div
               className="h-full rounded-full transition-all duration-500"
               style={{ width: `${(item.valor / max) * 100}%`, backgroundColor: item.color }}
@@ -137,6 +132,8 @@ const BarraHorizontal: React.FC<{
 // ============== COMPONENTE PRINCIPAL ==============
 export const MetricasEmpresaPanel: React.FC = () => {
   const { activeWorkspace, theme } = useStore();
+  const s = getThemeStyles(theme);
+
   const [metricas, setMetricas] = useState<MetricaDiaria[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [loading, setLoading] = useState(true);
@@ -179,13 +176,11 @@ export const MetricasEmpresaPanel: React.FC = () => {
 
   useEffect(() => { cargarDatos(); }, [cargarDatos]);
 
-  // Filtrar por empresa seleccionada
   const metricasFiltradas = useMemo(() => {
     if (empresaSeleccionada === 'todas') return metricas;
     return metricas.filter(m => m.empresa_id === empresaSeleccionada);
   }, [metricas, empresaSeleccionada]);
 
-  // Agregar métricas totales
   const totales = useMemo<MetricasAgregadas>(() => {
     const sum = (fn: (m: MetricaDiaria) => number) => metricasFiltradas.reduce((acc, m) => acc + fn(m), 0);
     const avg = (fn: (m: MetricaDiaria) => number) => {
@@ -206,7 +201,6 @@ export const MetricasEmpresaPanel: React.FC = () => {
     };
   }, [metricasFiltradas]);
 
-  // Datos para sparklines (agrupados por fecha)
   const sparkPorFecha = useMemo(() => {
     const fechas = [...new Set(metricasFiltradas.map(m => m.fecha))].sort();
     const agrupar = (fn: (m: MetricaDiaria) => number) =>
@@ -221,13 +215,12 @@ export const MetricasEmpresaPanel: React.FC = () => {
     };
   }, [metricasFiltradas]);
 
-  // Ranking de empresas por XP
   const rankingEmpresas = useMemo(() => {
     const porEmpresa = new Map<string, number>();
     metricas.forEach(m => {
       porEmpresa.set(m.empresa_id, (porEmpresa.get(m.empresa_id) || 0) + m.xp_ganado);
     });
-    const colores = ['#818cf8', '#34d399', '#f59e0b', '#f472b6', '#06b6d4'];
+    const colores = ['#0ea5e9', '#34d399', '#f59e0b', '#f472b6', '#06b6d4'];
     return [...porEmpresa.entries()]
       .map(([id, xp], i) => ({
         nombre: empresas.find(e => e.id === id)?.nombre || 'Empresa',
@@ -237,14 +230,13 @@ export const MetricasEmpresaPanel: React.FC = () => {
       .sort((a, b) => b.valor - a.valor);
   }, [metricas, empresas]);
 
-  // Ranking engagement (chat + emotes + waves)
   const rankingEngagement = useMemo(() => {
     const porEmpresa = new Map<string, number>();
     metricas.forEach(m => {
       const engagement = m.mensajes_chat + m.emotes_enviados + m.saludos_wave;
       porEmpresa.set(m.empresa_id, (porEmpresa.get(m.empresa_id) || 0) + engagement);
     });
-    const colores = ['#a78bfa', '#2dd4bf', '#fbbf24', '#fb7185', '#22d3ee'];
+    const colores = ['#38bdf8', '#2dd4bf', '#fbbf24', '#fb7185', '#22d3ee'];
     return [...porEmpresa.entries()]
       .map(([id, val], i) => ({
         nombre: empresas.find(e => e.id === id)?.nombre || 'Empresa',
@@ -255,32 +247,30 @@ export const MetricasEmpresaPanel: React.FC = () => {
   }, [metricas, empresas]);
 
   const isArcade = theme === 'arcade';
-  const accentColor = isArcade ? '#00ff41' : '#818cf8';
+  const accentColor = isArcade ? '#00ff41' : '#0ea5e9';
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className={`w-10 h-10 border-3 ${isArcade ? 'border-[#00ff41]' : 'border-indigo-500'} border-t-transparent rounded-full animate-spin`} />
+      <div className={`flex items-center justify-center py-20 ${s.bg}`}>
+        <div className={`w-10 h-10 border-3 border-t-transparent rounded-full animate-spin ${isArcade ? 'border-[#00ff41]' : 'border-sky-500'}`} />
       </div>
     );
   }
 
   return (
-    <div className={`p-5 lg:p-4 ${isArcade ? 'bg-black' : 'bg-[#1a1a2e]'}`}>
+    <div className={`p-5 lg:p-4 h-full overflow-y-auto ${s.bg}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-5 lg:mb-4">
         <div>
-          <h1 className={`text-xl lg:text-lg font-black ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>
-            Métricas por Empresa
-          </h1>
-          <p className="text-[11px] opacity-50 mt-0.5">Telemetría segmentada de actividad y engagement</p>
+          <h1 className={`text-xl lg:text-lg font-black ${s.text}`}>Métricas por Empresa</h1>
+          <p className={`text-[11px] mt-0.5 ${s.textMuted}`}>Telemetría segmentada de actividad y engagement</p>
         </div>
         <button
           onClick={cargarDatos}
-          className={`p-2 rounded-lg transition-all ${isArcade ? 'hover:bg-[#00ff41]/20' : 'hover:bg-white/10'}`}
+          className={`p-2 rounded-lg transition-all ${s.btnGhost}`}
           title="Actualizar métricas"
         >
-          <svg className="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-4 h-4 ${s.textMuted}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
         </button>
@@ -288,16 +278,13 @@ export const MetricasEmpresaPanel: React.FC = () => {
 
       {/* Filtros */}
       <div className="flex items-center gap-2 mb-4 lg:mb-3 flex-wrap">
-        {/* Periodo */}
-        <div className={`flex rounded-lg overflow-hidden border ${isArcade ? 'border-[#00ff41]/30' : 'border-white/10'}`}>
+        <div className={`flex rounded-lg overflow-hidden border ${s.border}`}>
           {(['7d', '30d', '90d'] as Periodo[]).map(p => (
             <button
               key={p}
               onClick={() => setPeriodo(p)}
               className={`px-3 py-1.5 text-[10px] font-bold transition-all ${
-                periodo === p
-                  ? (isArcade ? 'bg-[#00ff41] text-black' : 'bg-indigo-600 text-white')
-                  : 'opacity-50 hover:opacity-100'
+                periodo === p ? s.accentBg : `${s.surface} ${s.textMuted} hover:${s.textMuted.replace('text-', 'text-')}`
               }`}
             >
               {p === '7d' ? '7 días' : p === '30d' ? '30 días' : '90 días'}
@@ -305,18 +292,14 @@ export const MetricasEmpresaPanel: React.FC = () => {
           ))}
         </div>
 
-        {/* Selector empresa */}
         <select
           value={empresaSeleccionada}
           onChange={e => setEmpresaSeleccionada(e.target.value)}
-          className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border focus:outline-none ${
-            isArcade ? 'bg-black border-[#00ff41]/30 text-[#00ff41]' : 'bg-white/5 border-white/10'
-          }`}
-          style={{ colorScheme: 'dark' }}
+          className={`px-3 py-1.5 rounded-lg text-[10px] font-bold ${s.input}`}
         >
-          <option value="todas" className="bg-zinc-800">Todas las empresas</option>
+          <option value="todas">Todas las empresas</option>
           {empresas.map(e => (
-            <option key={e.id} value={e.id} className="bg-zinc-800">{e.nombre}</option>
+            <option key={e.id} value={e.id}>{e.nombre}</option>
           ))}
         </select>
       </div>
@@ -324,96 +307,49 @@ export const MetricasEmpresaPanel: React.FC = () => {
       {/* Grid de Stats */}
       {metricas.length === 0 ? (
         <div className="text-center py-12">
-          <div className={`w-16 h-16 mx-auto mb-3 rounded-2xl ${isArcade ? 'bg-[#00ff41]/10' : 'bg-indigo-500/10'} flex items-center justify-center`}>
-            <span className="text-3xl opacity-40">📊</span>
+          <div className={`w-16 h-16 mx-auto mb-3 rounded-2xl flex items-center justify-center ${s.accentSurface}`}>
+            <span className="text-3xl opacity-60">📊</span>
           </div>
-          <p className="text-sm font-bold opacity-60 mb-1">Sin métricas aún</p>
-          <p className="text-[10px] opacity-40">Las métricas se generan automáticamente cada hora</p>
+          <p className={`text-sm font-bold mb-1 ${s.text}`}>Sin métricas aún</p>
+          <p className={`text-[10px] ${s.textSubtle}`}>Las métricas se generan automáticamente cada hora</p>
         </div>
       ) : (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 lg:gap-2 mb-5 lg:mb-4">
-            <StatCard
-              label="Conexiones"
-              valor={totales.conexiones}
-              icono="🔗"
-              color={accentColor}
-              sparkData={sparkPorFecha.conexiones}
-              theme={theme}
-            />
-            <StatCard
-              label="Usuarios activos"
-              valor={totales.usuarios_activos}
-              icono="👥"
-              color="#34d399"
-              sparkData={sparkPorFecha.usuarios}
-              theme={theme}
-            />
-            <StatCard
-              label="Reuniones"
-              valor={totales.reuniones_asistidas}
-              icono="🎥"
-              color="#f59e0b"
-              sparkData={sparkPorFecha.reuniones}
-              theme={theme}
-            />
-            <StatCard
-              label="Mensajes chat"
-              valor={totales.mensajes_chat}
-              icono="💬"
-              color="#06b6d4"
-              sparkData={sparkPorFecha.chat}
-              theme={theme}
-            />
-            <StatCard
-              label="Emotes + Saludos"
-              valor={totales.emotes_enviados + totales.saludos_wave}
-              icono="🎭"
-              color="#f472b6"
-              sparkData={sparkPorFecha.emotes}
-              theme={theme}
-            />
-            <StatCard
-              label="XP Total"
-              valor={totales.xp_ganado}
-              icono="⚡"
-              color="#a78bfa"
-              sparkData={sparkPorFecha.xp}
-              theme={theme}
-            />
+            <StatCard label="Conexiones" valor={totales.conexiones} icono="🔗" color={accentColor} sparkData={sparkPorFecha.conexiones} s={s} />
+            <StatCard label="Usuarios activos" valor={totales.usuarios_activos} icono="👥" color="#34d399" sparkData={sparkPorFecha.usuarios} s={s} />
+            <StatCard label="Reuniones" valor={totales.reuniones_asistidas} icono="🎥" color="#f59e0b" sparkData={sparkPorFecha.reuniones} s={s} />
+            <StatCard label="Mensajes chat" valor={totales.mensajes_chat} icono="💬" color="#06b6d4" sparkData={sparkPorFecha.chat} s={s} />
+            <StatCard label="Emotes + Saludos" valor={totales.emotes_enviados + totales.saludos_wave} icono="🎭" color="#f472b6" sparkData={sparkPorFecha.emotes} s={s} />
+            <StatCard label="XP Total" valor={totales.xp_ganado} icono="⚡" color="#38bdf8" sparkData={sparkPorFecha.xp} s={s} />
           </div>
 
           {/* Indicadores secundarios */}
           <div className="grid grid-cols-3 gap-2 mb-5 lg:mb-4">
-            <div className={`p-2.5 rounded-xl border text-center ${isArcade ? 'bg-black border-[#00ff41]/20' : 'bg-white/5 border-white/10'}`}>
-              <p className="text-[9px] font-bold uppercase opacity-40 mb-0.5">Nivel Prom.</p>
-              <p className={`text-lg font-black ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>{totales.nivel_promedio}</p>
-            </div>
-            <div className={`p-2.5 rounded-xl border text-center ${isArcade ? 'bg-black border-[#00ff41]/20' : 'bg-white/5 border-white/10'}`}>
-              <p className="text-[9px] font-bold uppercase opacity-40 mb-0.5">Racha Prom.</p>
-              <p className={`text-lg font-black ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>{totales.racha_promedio}d</p>
-            </div>
-            <div className={`p-2.5 rounded-xl border text-center ${isArcade ? 'bg-black border-[#00ff41]/20' : 'bg-white/5 border-white/10'}`}>
-              <p className="text-[9px] font-bold uppercase opacity-40 mb-0.5">Teleports</p>
-              <p className={`text-lg font-black ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>{totales.teleports}</p>
-            </div>
+            {[
+              { label: 'Nivel Prom.',  val: totales.nivel_promedio },
+              { label: 'Racha Prom.',  val: `${totales.racha_promedio}d` },
+              { label: 'Teleports',    val: totales.teleports },
+            ].map((it, i) => (
+              <div key={i} className={`p-2.5 rounded-xl border text-center ${s.surface} ${s.border}`}>
+                <p className={`text-[9px] font-bold uppercase mb-0.5 ${s.textSubtle}`}>{it.label}</p>
+                <p className={`text-lg font-black ${s.text}`}>{it.val}</p>
+              </div>
+            ))}
           </div>
 
-          {/* Rankings lado a lado */}
+          {/* Rankings */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-2">
-            {/* Ranking XP */}
             {rankingEmpresas.length > 0 && (
-              <div className={`p-3 lg:p-2.5 rounded-xl border ${isArcade ? 'bg-black border-[#00ff41]/20' : 'bg-white/5 border-white/10'}`}>
-                <h3 className="text-[10px] font-bold uppercase tracking-wider opacity-50 mb-2.5">⚡ Ranking XP por Empresa</h3>
-                <BarraHorizontal items={rankingEmpresas} theme={theme} />
+              <div className={`p-3 lg:p-2.5 rounded-xl border ${s.surface} ${s.border}`}>
+                <h3 className={`text-[10px] font-bold uppercase tracking-wider mb-2.5 ${s.textSubtle}`}>⚡ Ranking XP por Empresa</h3>
+                <BarraHorizontal items={rankingEmpresas} s={s} />
               </div>
             )}
-
-            {/* Ranking Engagement */}
             {rankingEngagement.length > 0 && (
-              <div className={`p-3 lg:p-2.5 rounded-xl border ${isArcade ? 'bg-black border-[#00ff41]/20' : 'bg-white/5 border-white/10'}`}>
-                <h3 className="text-[10px] font-bold uppercase tracking-wider opacity-50 mb-2.5">🎭 Ranking Engagement</h3>
-                <BarraHorizontal items={rankingEngagement} theme={theme} />
+              <div className={`p-3 lg:p-2.5 rounded-xl border ${s.surface} ${s.border}`}>
+                <h3 className={`text-[10px] font-bold uppercase tracking-wider mb-2.5 ${s.textSubtle}`}>🎭 Ranking Engagement</h3>
+                <BarraHorizontal items={rankingEngagement} s={s} />
               </div>
             )}
           </div>

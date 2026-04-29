@@ -115,46 +115,46 @@ export const InvitationProcessor: React.FC = () => {
 
   return (
     <div className="fixed inset-0 flex items-center justify-center p-6 bg-[#050508]">
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(139,92,246,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(139,92,246,0.03)_1px,transparent_1px)] bg-[size:64px_64px]" />
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-violet-600/10 via-fuchsia-600/5 to-transparent blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-gradient-to-tr from-cyan-600/10 via-violet-600/5 to-transparent blur-[100px] rounded-full pointer-events-none" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(37,99,235,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(37,99,235,0.03)_1px,transparent_1px)] bg-[size:64px_64px]" />
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-blue-600/10 via-cyan-500/5 to-transparent blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-gradient-to-tr from-cyan-600/10 via-blue-600/5 to-transparent blur-[100px] rounded-full pointer-events-none" />
 
       <div className="w-full max-w-md lg:max-w-sm relative z-10">
-        <div className="absolute -inset-1 bg-gradient-to-r from-violet-600/20 via-fuchsia-600/20 to-cyan-500/20 rounded-[40px] lg:rounded-[32px] blur-xl opacity-60" />
+        <div className="absolute -inset-1 bg-gradient-to-r from-blue-600/20 via-sky-500/20 to-cyan-500/20 rounded-[40px] lg:rounded-[32px] blur-xl opacity-60" />
         <div className="relative backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-[36px] lg:rounded-[28px] p-7 lg:p-5 text-center">
 
           {estado === 'cargando' && (
             <div className="space-y-4">
-              <div className="w-12 h-12 border-3 border-violet-500/30 border-t-violet-500 rounded-full animate-spin mx-auto"></div>
-              <h1 className="text-lg lg:text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white uppercase tracking-widest">Verificando...</h1>
+              <div className="w-12 h-12 border-3 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto"></div>
+              <h1 className="text-lg lg:text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-sky-200 to-white uppercase tracking-widest">Verificando...</h1>
             </div>
           )}
 
           {estado === 'error' && (
             <div className="space-y-4">
               <div className="text-4xl">❌</div>
-              <h1 className="text-lg lg:text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white">Invitación no válida</h1>
+              <h1 className="text-lg lg:text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-sky-200 to-white">Invitación no válida</h1>
               <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">El enlace es inválido o ha sido eliminado.</p>
-              <button onClick={() => setView('dashboard')} className="w-full py-3 lg:py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl font-black uppercase tracking-widest text-[10px] text-zinc-400 hover:border-violet-500/30 transition-all">Ir al Inicio</button>
+              <button onClick={() => setView('dashboard')} className="w-full py-3 lg:py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl font-black uppercase tracking-widest text-[10px] text-zinc-400 hover:border-blue-500/30 transition-all">Ir al Inicio</button>
             </div>
           )}
 
           {estado === 'expirado' && (
             <div className="space-y-4">
               <div className="text-4xl">⏰</div>
-              <h1 className="text-lg lg:text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white">Invitación expirada</h1>
+              <h1 className="text-lg lg:text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-sky-200 to-white">Invitación expirada</h1>
               <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Esta invitación ha caducado. Solicita una nueva.</p>
-              <button onClick={() => setView('dashboard')} className="w-full py-3 lg:py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl font-black uppercase tracking-widest text-[10px] text-zinc-400 hover:border-violet-500/30 transition-all">Cerrar</button>
+              <button onClick={() => setView('dashboard')} className="w-full py-3 lg:py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl font-black uppercase tracking-widest text-[10px] text-zinc-400 hover:border-blue-500/30 transition-all">Cerrar</button>
             </div>
           )}
 
           {estado === 'usado' && (
             <div className="space-y-4">
               <div className="text-4xl">✅</div>
-              <h1 className="text-lg lg:text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white">Invitación ya utilizada</h1>
+              <h1 className="text-lg lg:text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-sky-200 to-white">Invitación ya utilizada</h1>
               <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">Ya eres parte de este equipo o el token ya fue canjeado.</p>
-              <button onClick={() => setView('dashboard')} className="relative w-full group overflow-hidden bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500 text-white py-3 lg:py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-2xl shadow-violet-600/30 active:scale-[0.98]">
-                <span className="absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <button onClick={() => setView('dashboard')} className="relative w-full group overflow-hidden bg-gradient-to-r from-blue-600 via-sky-500 to-cyan-500 text-white py-3 lg:py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-2xl shadow-blue-600/30 active:scale-[0.98]">
+                <span className="absolute inset-0 bg-gradient-to-r from-blue-500 via-sky-400 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 <span className="relative">Ir a mi Workspace</span>
               </button>
             </div>
@@ -164,15 +164,15 @@ export const InvitationProcessor: React.FC = () => {
             <div className="space-y-5">
               <div className="text-4xl animate-bounce">🎉</div>
               <div className="space-y-1">
-                <h1 className="text-xl lg:text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white">¡Te han invitado!</h1>
+                <h1 className="text-xl lg:text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-sky-200 to-white">¡Te han invitado!</h1>
                 <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-widest">
-                  <span className="text-violet-400">{invitacion.invitador.nombre}</span> te invita a unirte a:
+                  <span className="text-sky-400">{invitacion.invitador.nombre}</span> te invita a unirte a:
                 </p>
               </div>
 
               <div className="p-5 lg:p-4 rounded-xl bg-black/40 border border-white/5">
                 <h2 className="text-lg lg:text-base font-black text-white">{invitacion.espacio.nombre}</h2>
-                <p className="text-[9px] font-black uppercase tracking-widest text-violet-400 mt-1">Rol: {invitacion.rol}</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-sky-400 mt-1">Rol: {invitacion.rol}</p>
               </div>
 
               {errorLocal && (
@@ -191,7 +191,7 @@ export const InvitationProcessor: React.FC = () => {
                           await supabase.auth.signOut();
                           window.location.href = currentUrl;
                         }}
-                        className="w-full py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl font-black uppercase tracking-widest text-[10px] text-zinc-400 hover:border-violet-500/30 hover:text-violet-400 transition-all"
+                        className="w-full py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl font-black uppercase tracking-widest text-[10px] text-zinc-400 hover:border-blue-500/30 hover:text-sky-400 transition-all"
                       >
                         Cerrar sesión y entrar con {invitacion.email}
                       </button>
@@ -204,9 +204,9 @@ export const InvitationProcessor: React.FC = () => {
                 <button
                   onClick={aceptarInvitacion}
                   disabled={procesando}
-                  className="relative w-full group overflow-hidden bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500 text-white py-3.5 lg:py-3 rounded-xl font-black text-xs lg:text-[10px] uppercase tracking-[0.15em] transition-all shadow-2xl shadow-violet-600/30 active:scale-[0.98] disabled:opacity-50"
+                  className="relative w-full group overflow-hidden bg-gradient-to-r from-blue-600 via-sky-500 to-cyan-500 text-white py-3.5 lg:py-3 rounded-xl font-black text-xs lg:text-[10px] uppercase tracking-[0.15em] transition-all shadow-2xl shadow-blue-600/30 active:scale-[0.98] disabled:opacity-50"
                 >
-                  <span className="absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <span className="absolute inset-0 bg-gradient-to-r from-blue-500 via-sky-400 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <span className="relative">
                     {procesando ? 'Procesando...' : 'Aceptar invitación'}
                   </span>
@@ -216,9 +216,9 @@ export const InvitationProcessor: React.FC = () => {
                 <button
                   onClick={() => { setErrorLocal(''); aceptarInvitacion(); }}
                   disabled={procesando}
-                  className="relative w-full group overflow-hidden bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500 text-white py-3.5 lg:py-3 rounded-xl font-black text-xs lg:text-[10px] uppercase tracking-[0.15em] transition-all shadow-2xl shadow-violet-600/30 active:scale-[0.98] disabled:opacity-50"
+                  className="relative w-full group overflow-hidden bg-gradient-to-r from-blue-600 via-sky-500 to-cyan-500 text-white py-3.5 lg:py-3 rounded-xl font-black text-xs lg:text-[10px] uppercase tracking-[0.15em] transition-all shadow-2xl shadow-blue-600/30 active:scale-[0.98] disabled:opacity-50"
                 >
-                  <span className="absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <span className="absolute inset-0 bg-gradient-to-r from-blue-500 via-sky-400 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <span className="relative">Reintentar</span>
                 </button>
               )}

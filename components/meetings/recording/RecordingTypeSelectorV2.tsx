@@ -196,12 +196,12 @@ export const RecordingTypeSelectorV2: React.FC<RecordingTypeSelectorV2Props> = (
                       onClick={() => setSelectedEvaluado(usuario.id)}
                       className={`p-4 rounded-xl text-left transition-all flex items-center gap-3 ${
                         selectedEvaluado === usuario.id
-                          ? 'bg-indigo-600/30 border-2 border-indigo-500 text-white'
+                          ? 'bg-blue-700/30 border-2 border-blue-600 text-white'
                           : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10'
                       }`}
                     >
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${
-                        selectedEvaluado === usuario.id ? 'bg-indigo-500' : 'bg-white/10'
+                        selectedEvaluado === usuario.id ? 'bg-blue-600' : 'bg-white/10'
                       }`}>
                         {usuario.nombre.charAt(0).toUpperCase()}
                       </div>
@@ -210,7 +210,7 @@ export const RecordingTypeSelectorV2: React.FC<RecordingTypeSelectorV2Props> = (
                         <p className="text-xs text-white/40">Recibirá solicitud de consentimiento</p>
                       </div>
                       {selectedEvaluado === usuario.id && (
-                        <svg className="w-5 h-5 ml-auto text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-5 h-5 ml-auto text-blue-500" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                       )}
@@ -332,7 +332,7 @@ export const RecordingTypeSelectorV2: React.FC<RecordingTypeSelectorV2Props> = (
         {puedeAnalizar && (
           <div className="p-6">
             <h4 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-4 flex items-center gap-2">
-              <span className="w-5 h-5 rounded bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-[10px]">🧠</span>
+              <span className="w-5 h-5 rounded bg-gradient-to-br from-blue-500 to-blue-500 flex items-center justify-center text-[10px]">🧠</span>
               Con Análisis Conductual
             </h4>
             

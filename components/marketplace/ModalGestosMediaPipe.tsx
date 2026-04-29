@@ -32,7 +32,7 @@ const GESTURE_LABELS: Record<GestureType, { emoji: string; text: string; color: 
   'tap': { emoji: '👆', text: 'Seleccionar', color: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' },
   'open': { emoji: '🖐️', text: 'Soltando', color: 'bg-green-500/20 text-green-300 border-green-500/40' },
   'fist': { emoji: '✊', text: 'Pausa', color: 'bg-zinc-500/20 text-zinc-300 border-zinc-500/40' },
-  'two_hands': { emoji: '🙌', text: 'Fullscreen', color: 'bg-purple-500/20 text-purple-300 border-purple-500/40' },
+  'two_hands': { emoji: '🙌', text: 'Fullscreen', color: 'bg-blue-500/20 text-sky-300 border-blue-500/40' },
   'none': { emoji: '👤', text: 'Esperando mano...', color: 'bg-zinc-800/80 text-zinc-400 border-zinc-700/50' },
 };
 
@@ -139,7 +139,7 @@ export const ModalGestosMediaPipe: React.FC<ModalGestosMediaPipeProps> = ({
             {/* Progress dots */}
             <div className="flex items-center gap-1.5 mb-5">
               {TOUR_STEPS.map((_, i) => (
-                <div key={i} className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${i <= pasoTour ? 'bg-indigo-500' : 'bg-zinc-700'}`} />
+                <div key={i} className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${i <= pasoTour ? 'bg-blue-600' : 'bg-zinc-700'}`} />
               ))}
               <span className="text-[10px] text-zinc-500 ml-2 font-mono">{pasoTour + 1}/{TOUR_STEPS.length}</span>
             </div>
@@ -158,7 +158,7 @@ export const ModalGestosMediaPipe: React.FC<ModalGestosMediaPipeProps> = ({
               </button>
               <button
                 onClick={handleNextTour}
-                className="px-5 py-2.5 bg-indigo-500 hover:bg-indigo-400 text-white text-sm font-bold rounded-xl transition"
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-xl transition"
               >
                 {pasoTour < TOUR_STEPS.length - 1 ? 'Siguiente →' : '¡Listo, empezar!'}
               </button>

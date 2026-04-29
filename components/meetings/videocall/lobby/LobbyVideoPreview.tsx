@@ -103,7 +103,7 @@ export const LobbyVideoPreview: React.FC<LobbyVideoPreviewProps> = ({
       {/* ── Avatar (cámara desactivada) ───────────────────────────── */}
       {showAvatar && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 via-fuchsia-600 to-cyan-500 shadow-2xl shadow-violet-600/30 sm:h-28 sm:w-28 lg:h-32 lg:w-32 2xl:h-36 2xl:w-36">
+          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 via-sky-500 to-cyan-500 shadow-2xl shadow-blue-600/30 sm:h-28 sm:w-28 lg:h-32 lg:w-32 2xl:h-36 2xl:w-36">
             <span className="text-3xl font-black text-white sm:text-4xl lg:text-5xl 2xl:text-6xl">
               {initial}
             </span>
@@ -115,7 +115,7 @@ export const LobbyVideoPreview: React.FC<LobbyVideoPreviewProps> = ({
       {joining && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-3">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-violet-500/30 border-t-violet-400" />
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-500/30 border-t-sky-400" />
             <span className="text-sm font-bold text-zinc-400">Conectando...</span>
           </div>
         </div>

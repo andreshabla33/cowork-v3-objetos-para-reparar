@@ -72,10 +72,10 @@ const CATALOGO_METRICAS: Record<TipoAnalisis, MetricaCatalogo[]> = {
 };
 
 const TIPO_ANALISIS_CONFIG: Record<TipoAnalisis, { label: string; icono: string; color: string; descripcion: string }> = {
-  rrhh_entrevista: { label: 'Entrevista Candidatos', icono: '🎯', color: 'from-blue-600 to-indigo-600', descripcion: 'Métricas para evaluar candidatos en entrevistas de selección' },
+  rrhh_entrevista: { label: 'Entrevista Candidatos', icono: '🎯', color: 'from-blue-600 to-blue-700', descripcion: 'Métricas para evaluar candidatos en entrevistas de selección' },
   rrhh_one_to_one: { label: 'One-to-One', icono: '💬', color: 'from-cyan-600 to-blue-600', descripcion: 'Métricas para reuniones individuales con colaboradores' },
   deals: { label: 'Reunión Comercial', icono: '🤝', color: 'from-green-600 to-emerald-600', descripcion: 'Métricas para negociaciones y cierre de deals' },
-  equipo: { label: 'Reunión de Equipo', icono: '👥', color: 'from-purple-600 to-violet-600', descripcion: 'Métricas para reuniones de trabajo y brainstorming' },
+  equipo: { label: 'Reunión de Equipo', icono: '👥', color: 'from-blue-600 to-blue-600', descripcion: 'Métricas para reuniones de trabajo y brainstorming' },
 };
 
 // ==================== COMPONENTE ====================
@@ -193,7 +193,7 @@ export const SettingsMeetings: React.FC<SettingsMeetingsProps> = ({
   return (
     <div>
       <div className="mb-8 lg:mb-6">
-        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-2 lg:mb-1">
+        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-sky-200 to-white mb-2 lg:mb-1">
           {currentLang === 'en' ? 'Meetings' : currentLang === 'pt' ? 'Reuniões' : 'Reuniones'}
         </h2>
         <p className="text-sm lg:text-xs text-zinc-400">
@@ -217,15 +217,15 @@ export const SettingsMeetings: React.FC<SettingsMeetingsProps> = ({
       </SettingSection>
 
       {/* Funciones automáticas */}
-      <div className="mt-6 p-4 rounded-xl bg-violet-500/5 border border-violet-500/10">
+      <div className="mt-6 p-4 rounded-xl bg-blue-500/5 border border-blue-500/10">
         <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0 mt-0.5">
-            <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0 mt-0.5">
+            <svg className="w-4 h-4 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
           <div>
-            <p className="text-xs font-semibold text-violet-300 mb-1">
+            <p className="text-xs font-semibold text-sky-300 mb-1">
               {currentLang === 'en' ? 'Automatic features' : currentLang === 'pt' ? 'Recursos automáticos' : 'Funciones automáticas'}
             </p>
             <p className="text-[11px] text-zinc-400 leading-relaxed">
@@ -289,7 +289,7 @@ export const SettingsMeetings: React.FC<SettingsMeetingsProps> = ({
                         <p className="text-sm font-semibold text-white">{config.label}</p>
                         <p className="text-[10px] text-zinc-500">
                           {activas.length} de {metricas.length} métricas activas
-                          {saving === tipo && <span className="ml-1 text-violet-400 animate-pulse">guardando...</span>}
+                          {saving === tipo && <span className="ml-1 text-sky-400 animate-pulse">guardando...</span>}
                         </p>
                       </div>
                     </div>
@@ -327,13 +327,13 @@ export const SettingsMeetings: React.FC<SettingsMeetingsProps> = ({
                             onClick={() => toggleMetrica(tipo, metrica.id)}
                             className={`w-full flex items-start gap-3 p-2.5 rounded-lg transition-all text-left ${
                               isActive 
-                                ? 'bg-violet-500/10 border border-violet-500/20' 
+                                ? 'bg-blue-500/10 border border-blue-500/20' 
                                 : 'bg-white/[0.02] border border-transparent hover:bg-white/[0.04]'
                             }`}
                           >
                             {/* Toggle visual */}
                             <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center shrink-0 transition-colors ${
-                              isActive ? 'bg-violet-600' : 'bg-white/10'
+                              isActive ? 'bg-blue-600' : 'bg-white/10'
                             }`}>
                               {isActive && (
                                 <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -349,7 +349,7 @@ export const SettingsMeetings: React.FC<SettingsMeetingsProps> = ({
                                 </span>
                               </div>
                               <p className="text-[10px] text-zinc-500 mt-0.5 leading-relaxed">{metrica.descripcion}</p>
-                              <p className="text-[9px] text-violet-400/60 mt-0.5 italic">{metrica.ejemplo}</p>
+                              <p className="text-[9px] text-sky-400/60 mt-0.5 italic">{metrica.ejemplo}</p>
                             </div>
                           </button>
                         );

@@ -86,7 +86,7 @@ export const SettingsGeneral: React.FC<SettingsGeneralProps> = ({
   return (
     <div>
       <div className="mb-8 lg:mb-6">
-        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-2 lg:mb-1">
+        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-sky-200 to-white mb-2 lg:mb-1">
           {t('settings.general.title')}
         </h2>
         <p className="text-sm lg:text-xs text-zinc-400">
@@ -118,7 +118,7 @@ export const SettingsGeneral: React.FC<SettingsGeneralProps> = ({
             className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
               tourResetDone
                 ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/30'
+                : 'bg-blue-600/20 text-blue-500 border border-blue-600/30 hover:bg-blue-600/30'
             }`}
           >
             {tourResetDone ? '✓ Listo, cierra settings' : '🔄 Ver tour de nuevo'}

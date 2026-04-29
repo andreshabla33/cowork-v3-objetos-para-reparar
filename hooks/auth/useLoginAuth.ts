@@ -122,7 +122,7 @@ export function useLoginAuth(): UseLoginAuthReturn {
     setError(null);
     setAuthFeedback(null);
     try {
-      const resultado = await autenticarConOAuth.ejecutar('google', window.location.href);
+      const resultado = await autenticarConOAuth.ejecutar('google', window.location.origin);
       if (resultado.error) throw new Error(resultado.error);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Error desconocido';

@@ -28,10 +28,10 @@ export const SelectorPlantillaEspacio: React.FC<SelectorPlantillaEspacioProps> =
             disabled={disabled}
             onClick={() => onChange(plantilla.id)}
             className={`w-full text-left rounded-2xl border transition-all overflow-hidden ${activa
-              ? 'border-violet-400/70 bg-violet-500/10 shadow-[0_0_0_1px_rgba(167,139,250,0.25)]'
+              ? 'border-sky-400/70 bg-blue-500/10 shadow-[0_0_0_1px_rgba(56,189,248,0.25)]'
               : recomendada
                 ? 'border-cyan-400/40 bg-cyan-500/[0.06] hover:border-cyan-300/60 hover:bg-cyan-500/[0.09]'
-                : 'border-white/[0.08] bg-white/[0.03] hover:border-violet-500/30 hover:bg-white/[0.05]'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+                : 'border-white/[0.08] bg-white/[0.03] hover:border-blue-500/30 hover:bg-white/[0.05]'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
           >
             <div className="grid grid-cols-[120px_1fr] gap-4 p-4 lg:grid-cols-[100px_1fr] lg:gap-3 lg:p-3.5">
               <div
@@ -74,7 +74,7 @@ export const SelectorPlantillaEspacio: React.FC<SelectorPlantillaEspacioProps> =
                     </div>
                     <p className="mt-1 text-xs lg:text-[11px] text-zinc-400 leading-relaxed">{plantilla.descripcion}</p>
                   </div>
-                  <div className={`flex h-7 w-7 items-center justify-center rounded-full border ${activa ? 'border-violet-400 bg-violet-500/20 text-violet-200' : 'border-white/10 bg-black/30 text-transparent'}`}>
+                  <div className={`flex h-7 w-7 items-center justify-center rounded-full border ${activa ? 'border-sky-400 bg-blue-500/20 text-sky-200' : 'border-white/10 bg-black/30 text-transparent'}`}>
                     <Check className="w-4 h-4" />
                   </div>
                 </div>

@@ -96,7 +96,7 @@ export const VirtualSpace3DStatusBanners: React.FC<VirtualSpace3DStatusBannersPr
     <>
       {/* Banner Showroom Mode */}
       {showroomMode && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600/90 to-indigo-600/90 backdrop-blur-xl border border-white/20 shadow-2xl">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600/90 to-blue-700/90 backdrop-blur-xl border border-white/20 shadow-2xl">
           <span className="text-lg">🏢</span>
           <div>
             <p className="text-white text-sm font-bold">
@@ -225,9 +225,9 @@ export const VirtualSpace3DStatusBanners: React.FC<VirtualSpace3DStatusBannersPr
         <div className="fixed top-48 right-4 z-[201] animate-slide-in">
           <div className="backdrop-blur-xl rounded-2xl border shadow-2xl overflow-hidden bg-slate-950/80 border-slate-600/40">
             <div className="flex items-center gap-2 px-3.5 py-2">
-              <div className="w-7 h-7 rounded-lg bg-indigo-500/15 flex items-center justify-center flex-shrink-0">
+              <div className="w-7 h-7 rounded-lg bg-blue-600/15 flex items-center justify-center flex-shrink-0">
                 <svg
-                  className="w-3.5 h-3.5 text-indigo-400"
+                  className="w-3.5 h-3.5 text-blue-500"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -247,7 +247,7 @@ export const VirtualSpace3DStatusBanners: React.FC<VirtualSpace3DStatusBannersPr
               <div className="flex items-center gap-1 flex-shrink-0">
                 <button
                   onClick={onAcceptInvite}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 border border-indigo-500/30"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all bg-blue-600/20 text-blue-500 hover:bg-blue-600/30 border border-blue-600/30"
                 >
                   Ir
                 </button>
@@ -278,7 +278,7 @@ export const VirtualSpace3DStatusBanners: React.FC<VirtualSpace3DStatusBannersPr
       {/* Banner de Follow Mode activo */}
       {followTargetId && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[201]">
-          <div className="bg-violet-600/80 backdrop-blur-xl text-white px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 border border-violet-400/30">
+          <div className="bg-blue-600/80 backdrop-blur-xl text-white px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 border border-sky-400/30">
             <svg
               className="w-4 h-4 animate-pulse"
               fill="none"

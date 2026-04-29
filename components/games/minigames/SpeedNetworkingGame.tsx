@@ -218,7 +218,7 @@ export const SpeedNetworkingGame: React.FC<SpeedNetworkingGameProps> = ({ onClos
       <div className="flex-1 flex overflow-hidden">
         <div className="w-72 border-r border-zinc-800 bg-zinc-950 p-6">
           <div className="text-center space-y-4">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center text-4xl mx-auto">{currentPartner.avatar}</div>
+            <div className="w-24 h-24 rounded-full bg-gradient-to-br from-pink-500 to-blue-600 flex items-center justify-center text-4xl mx-auto">{currentPartner.avatar}</div>
             <div><h3 className="text-xl font-bold text-white">{currentPartner.name}</h3><p className="text-pink-400">{currentPartner.role}</p><p className="text-sm text-zinc-500">{currentPartner.department}</p></div>
           </div>
           <div className="mt-8">

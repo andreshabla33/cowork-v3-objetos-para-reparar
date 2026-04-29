@@ -554,9 +554,9 @@ export const RecordingManagerV2: React.FC<RecordingManagerV2Props> = ({
           <div className="bg-zinc-900 rounded-2xl p-6 max-w-md w-full mx-4 border border-white/10 shadow-2xl">
             <div className="text-center">
               <div className="w-16 h-16 mx-auto mb-4 relative">
-                <div className="absolute inset-0 border-4 border-indigo-500/30 rounded-full"></div>
+                <div className="absolute inset-0 border-4 border-blue-600/30 rounded-full"></div>
                 <div 
-                  className="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"
+                  className="absolute inset-0 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"
                   style={{ animationDuration: '1s' }}
                 ></div>
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -569,7 +569,7 @@ export const RecordingManagerV2: React.FC<RecordingManagerV2Props> = ({
               
               <div className="w-full bg-white/10 rounded-full h-2 mb-2">
                 <div 
-                  className="bg-indigo-500 h-2 rounded-full transition-all duration-500"
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-500"
                   style={{ width: `${processingState.progress}%` }}
                 ></div>
               </div>
@@ -652,7 +652,7 @@ export const RecordingManagerV2: React.FC<RecordingManagerV2Props> = ({
 
             <div className="flex items-center justify-between">
               <span className="text-white/60 text-xs">Microexpr.</span>
-              <span className="text-indigo-400 text-xs font-mono">
+              <span className="text-blue-500 text-xs font-mono">
                 {resumenTiempoReal.microexpresionesCount}
               </span>
             </div>
@@ -675,7 +675,7 @@ export const RecordingManagerV2: React.FC<RecordingManagerV2Props> = ({
           {stream ? (
             <button
               onClick={() => setShowTypeSelector(true)}
-              className="group relative flex items-center gap-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-5 py-3 rounded-2xl shadow-2xl transition-all hover:scale-105"
+              className="group relative flex items-center gap-3 bg-gradient-to-r from-blue-700 to-blue-600 hover:from-blue-600 hover:to-blue-500 text-white px-5 py-3 rounded-2xl shadow-2xl transition-all hover:scale-105"
             >
               <span className="w-4 h-4 bg-red-500 rounded-full animate-pulse"></span>
               <span className="font-bold text-sm">Grabar con Análisis</span>

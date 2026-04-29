@@ -99,7 +99,7 @@ export const ProceduralChibiAvatar: React.FC<ProceduralAvatarProps> = ({
 
   const {
     skinColor = '#fcd34d',
-    clothingColor = '#6366f1',
+    clothingColor = '#2563eb',
     hairColor = '#4b2c20',
     hairStyle = 'default',
     accessory = 'none',
@@ -293,10 +293,10 @@ export const ProceduralChibiAvatar: React.FC<ProceduralAvatarProps> = ({
       {accessory === 'hat' && (
         <group position={[0, 1.45, 0]}>
           <mesh geometry={geo.hatBrim} castShadow>
-            <meshStandardMaterial color="#7c3aed" roughness={0.7} />
+            <meshStandardMaterial color="#1d4ed8" roughness={0.7} />
           </mesh>
           <mesh position={[0, 0.15, 0]} geometry={geo.hatTop} castShadow>
-            <meshStandardMaterial color="#7c3aed" roughness={0.7} />
+            <meshStandardMaterial color="#1d4ed8" roughness={0.7} />
           </mesh>
         </group>
       )}

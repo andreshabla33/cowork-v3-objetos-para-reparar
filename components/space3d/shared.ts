@@ -65,7 +65,7 @@ export const statusColors: Record<string, string> = {
   available: '#22c55e',
   busy: '#ef4444',
   away: '#eab308',
-  dnd: '#a855f7',
+  dnd: '#2563eb',
 };
 
 export const themeColors: Record<string, string> = {

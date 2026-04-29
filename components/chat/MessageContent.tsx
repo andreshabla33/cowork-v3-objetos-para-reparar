@@ -34,7 +34,7 @@ const MENTION_REGEX = /(@\w+)/g;
 /**
  * Renders message text, splitting @mentions into highlighted spans.
  * - Self-mentions: yellow highlight (bg-yellow-500/30).
- * - Other mentions: indigo highlight (bg-indigo-500/30).
+ * - Other mentions: indigo highlight (bg-blue-600/30).
  * - Plain text: rendered as-is.
  *
  * Memoised to avoid re-renders when parent list re-renders with same props.
@@ -55,7 +55,7 @@ export const MessageContent: React.FC<MessageContentProps> = memo(
               className={`px-1 rounded ${
                 isMentioningMe
                   ? 'bg-yellow-500/30 text-yellow-300 font-bold'
-                  : 'bg-indigo-500/30 text-indigo-300'
+                  : 'bg-blue-600/30 text-sky-600'
               }`}
             >
               {part}

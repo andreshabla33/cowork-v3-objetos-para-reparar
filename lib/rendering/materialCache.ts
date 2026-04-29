@@ -96,7 +96,7 @@ export const obtenerMaterialWireframePreview = (color = '#ffffff'): THREE.MeshBa
 export const obtenerMaterialPlantillaPreview = (): THREE.MeshBasicMaterial =>
   obtenerMaterial('plantilla:preview', () =>
     new THREE.MeshBasicMaterial({
-      color: '#8b5cf6',
+      color: '#2563eb',
       transparent: true,
       opacity: 0.18,
       side: THREE.DoubleSide,

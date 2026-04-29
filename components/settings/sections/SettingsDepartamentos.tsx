@@ -9,7 +9,7 @@ import {
 import { supabase } from '@/lib/supabase';
 
 const COLORES_PRESET = [
-  '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444',
+  '#2563eb', '#06b6d4', '#10b981', '#f59e0b', '#ef4444',
   '#6b7280', '#ec4899', '#3b82f6', '#14b8a6', '#f97316',
 ];
 
@@ -48,7 +48,7 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
   const [formData, setFormData] = useState({
     nombre: '',
     descripcion: '',
-    color: '#8b5cf6',
+    color: '#2563eb',
     icono: 'users',
   });
 
@@ -71,7 +71,7 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
   useEffect(() => { fetchDepartamentos(); }, [fetchDepartamentos]);
 
   const resetForm = () => {
-    setFormData({ nombre: '', descripcion: '', color: '#8b5cf6', icono: 'users' });
+    setFormData({ nombre: '', descripcion: '', color: '#2563eb', icono: 'users' });
     setEditingId(null);
     setShowNew(false);
   };
@@ -157,7 +157,7 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
         {!showNew && (
           <button
             onClick={() => { resetForm(); setShowNew(true); }}
-            className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-sm font-medium transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-medium transition-all"
           >
             <Plus className="w-4 h-4" /> Nuevo departamento
           </button>
@@ -185,7 +185,7 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
                 value={formData.nombre}
                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                 placeholder="Ej: Marketing"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               />
             </div>
             <div>
@@ -195,7 +195,7 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
                 value={formData.descripcion}
                 onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                 placeholder="Descripción breve"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               />
             </div>
           </div>
@@ -226,7 +226,7 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
                       onClick={() => setFormData({ ...formData, icono: iconName })}
                       className={`p-1.5 rounded-lg transition-all ${
                         formData.icono === iconName
-                          ? 'bg-violet-600 text-white'
+                          ? 'bg-blue-600 text-white'
                           : 'bg-zinc-800 text-zinc-400 hover:text-white'
                       }`}
                       title={iconName}
@@ -242,7 +242,7 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-all"
             >
               {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               {editingId ? 'Actualizar' : 'Crear'}
@@ -257,7 +257,7 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
       {/* Lista de departamentos */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <RefreshCw className="w-5 h-5 text-violet-400 animate-spin" />
+          <RefreshCw className="w-5 h-5 text-sky-400 animate-spin" />
         </div>
       ) : departamentos.length === 0 ? (
         <div className="text-center py-12 text-zinc-500">No hay departamentos configurados</div>

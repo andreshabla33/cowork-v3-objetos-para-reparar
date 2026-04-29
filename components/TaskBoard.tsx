@@ -2,9 +2,12 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
 import { TaskStatus, Task, Attachment } from '../types';
+import { getThemeStyles } from '@/lib/theme';
 
 export const TaskBoard: React.FC = () => {
-  const { tasks, updateTaskStatus, addTask } = useStore();
+  const { tasks, updateTaskStatus, addTask, theme } = useStore();
+  const s = getThemeStyles(theme);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [collapsedTaskIds, setCollapsedTaskIds] = useState<Set<string>>(new Set());
   const [newTask, setNewTask] = useState<{
@@ -13,26 +16,21 @@ export const TaskBoard: React.FC = () => {
     startDate: string;
     dueDate: string;
     attachments: Attachment[];
-  }>({
-    title: '',
-    description: '',
-    startDate: '',
-    dueDate: '',
-    attachments: [],
-  });
+  }>({ title: '', description: '', startDate: '', dueDate: '', attachments: [] });
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
 
+  // ── Column metadata ───────────────────────────────────────────────────
   const columns = [
-    { id: TaskStatus.TODO, label: 'Pendientes', color: 'bg-zinc-800' },
-    { id: TaskStatus.IN_PROGRESS, label: 'En Progreso', color: 'bg-blue-900/40' },
-    { id: TaskStatus.DONE, label: 'Completado', color: 'bg-green-900/40' },
+    { id: TaskStatus.TODO,        label: 'Pendientes',  dot: 'bg-slate-400'   },
+    { id: TaskStatus.IN_PROGRESS, label: 'En Progreso', dot: 'bg-sky-500'     },
+    { id: TaskStatus.DONE,        label: 'Completado',  dot: 'bg-emerald-500' },
   ];
 
+  // ── Handlers ──────────────────────────────────────────────────────────
   const toggleTaskCollapse = (taskId: string) => {
     setCollapsedTaskIds(prev => {
       const next = new Set(prev);
-      if (next.has(taskId)) next.delete(taskId);
-      else next.add(taskId);
+      if (next.has(taskId)) next.delete(taskId); else next.add(taskId);
       return next;
     });
   };
@@ -40,7 +38,6 @@ export const TaskBoard: React.FC = () => {
   const handleCreateTask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTask.title.trim()) return;
-
     const task: Task = {
       id: Math.random().toString(36).substr(2, 9),
       title: newTask.title,
@@ -50,7 +47,6 @@ export const TaskBoard: React.FC = () => {
       dueDate: newTask.dueDate,
       attachments: newTask.attachments,
     };
-
     addTask(task);
     setNewTask({ title: '', description: '', startDate: '', dueDate: '', attachments: [] });
     setIsModalOpen(false);
@@ -59,9 +55,7 @@ export const TaskBoard: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const filesArray = Array.from(e.target.files).map((file: File) => ({
-        name: file.name,
-        url: '#', 
-        type: file.type
+        name: file.name, url: '#', type: file.type,
       }));
       setNewTask(prev => ({ ...prev, attachments: [...prev.attachments, ...filesArray] }));
     }
@@ -81,59 +75,65 @@ export const TaskBoard: React.FC = () => {
   const onDrop = (e: React.DragEvent, status: TaskStatus) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
-    if (taskId) {
-      updateTaskStatus(taskId, status);
-    }
+    if (taskId) updateTaskStatus(taskId, status);
     setDraggedTaskId(null);
   };
 
   return (
-    <div className="p-8 h-full overflow-y-auto relative">
+    <div className={`p-8 h-full overflow-y-auto relative ${s.bg}`}>
+      {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Project Dashboard</h2>
-          <p className="text-zinc-400 mt-1 text-sm">Gestiona tareas. Haz clic en el icono para contraer/expandir tarjetas.</p>
+          <h2 className={`text-2xl font-bold tracking-tight ${s.text}`}>Project Dashboard</h2>
+          <p className={`mt-1 text-sm ${s.textMuted}`}>Gestiona tareas. Haz clic en el icono para contraer/expandir tarjetas.</p>
         </div>
-        <button 
+        <button
           onClick={() => setIsModalOpen(true)}
-          className="bg-indigo-600 hover:bg-indigo-500 px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
+          className={`px-5 py-2.5 rounded-xl text-sm transition-all active:scale-95 ${s.btn}`}
         >
           + Nueva Tarea
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-[calc(100vh-250px)]">
+      {/* Board */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 h-[calc(100vh-250px)]">
         {columns.map(col => (
-          <div 
-            key={col.id} 
+          <div
+            key={col.id}
             onDragOver={onDragOver}
             onDrop={(e) => onDrop(e, col.id)}
-            className="flex flex-col rounded-xl border border-zinc-800 bg-zinc-900/30 overflow-hidden"
+            className={`flex flex-col rounded-xl border overflow-hidden ${s.surface} ${s.border}`}
           >
-            <div className={`p-4 border-b border-zinc-800 ${col.color} flex items-center justify-between`}>
-              <h3 className="font-bold text-sm uppercase tracking-wider">{col.label}</h3>
-              <span className="bg-zinc-800/80 text-xs px-2 py-0.5 rounded-full border border-zinc-700">
-                {tasks.filter(t => t.status === col.id).length}
+            {/* Column header */}
+            <div className={`p-3.5 border-b ${s.borderSubtle} ${s.surfaceMuted} flex items-center justify-between`}>
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${col.dot}`} />
+                <h3 className={`font-bold text-[11px] uppercase tracking-wider ${s.text}`}>{col.label}</h3>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${s.surface} ${s.border} ${s.textMuted}`}>
+                {tasks.filter(task => task.status === col.id).length}
               </span>
             </div>
-            <div className="p-4 flex-1 space-y-4 overflow-y-auto">
-              {tasks.filter(t => t.status === col.id).map(task => {
+
+            {/* Cards */}
+            <div className="p-3 flex-1 space-y-3 overflow-y-auto">
+              {tasks.filter(task => task.status === col.id).map(task => {
                 const isCollapsed = collapsedTaskIds.has(task.id);
                 return (
-                  <div 
-                    key={task.id} 
+                  <div
+                    key={task.id}
                     draggable
                     onDragStart={(e) => onDragStart(e, task.id)}
-                    className={`bg-zinc-900 border border-zinc-800 p-4 rounded-lg shadow-md hover:border-indigo-500/50 transition-all cursor-grab active:cursor-grabbing group relative ${draggedTaskId === task.id ? 'opacity-40 grayscale' : ''}`}
+                    className={`border p-4 rounded-xl transition-all duration-150 cursor-grab active:cursor-grabbing shadow-sm hover:shadow-md ${s.surface} ${s.border} ${draggedTaskId === task.id ? 'opacity-40 grayscale' : ''}`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <h4 className={`font-semibold text-zinc-100 ${isCollapsed ? 'truncate flex-1' : ''}`}>{task.title}</h4>
-                      <button 
+                      <h4 className={`font-semibold text-sm ${s.text} ${isCollapsed ? 'truncate flex-1' : ''}`}>{task.title}</h4>
+                      <button
                         onClick={(e) => { e.stopPropagation(); toggleTaskCollapse(task.id); }}
-                        className="p-1 hover:bg-zinc-800 rounded transition-colors text-zinc-500 hover:text-zinc-200"
-                        title={isCollapsed ? "Expandir" : "Finalizar/Contraer"}
+                        className={`p-1 rounded-lg shrink-0 transition-colors ${s.btnGhost}`}
+                        title={isCollapsed ? 'Expandir' : 'Contraer'}
                       >
-                        <svg className={`w-4 h-4 transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className={`w-3.5 h-3.5 transition-transform duration-200 ${isCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                         </svg>
                       </button>
@@ -141,17 +141,17 @@ export const TaskBoard: React.FC = () => {
 
                     {!isCollapsed && (
                       <div className="mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                        <p className="text-xs text-zinc-500 line-clamp-2">{task.description}</p>
-                        
+                        <p className={`text-xs line-clamp-2 ${s.textMuted}`}>{task.description}</p>
+
                         {(task.startDate || task.dueDate) && (
-                          <div className="mt-3 flex flex-wrap gap-2">
+                          <div className="mt-3 flex flex-wrap gap-1.5">
                             {task.startDate && (
-                              <span className="text-[10px] bg-zinc-800 px-2 py-1 rounded border border-zinc-700 text-zinc-400">
+                              <span className={`text-[10px] px-2 py-1 rounded-lg border ${s.surfaceMuted} ${s.border} ${s.textMuted}`}>
                                 Inicio: {task.startDate}
                               </span>
                             )}
                             {task.dueDate && (
-                              <span className="text-[10px] bg-indigo-900/30 px-2 py-1 rounded border border-indigo-500/30 text-indigo-300">
+                              <span className={`text-[10px] px-2 py-1 rounded-lg border ${s.accentSurface} ${s.accentBorder} ${s.accent}`}>
                                 Entrega: {task.dueDate}
                               </span>
                             )}
@@ -159,17 +159,17 @@ export const TaskBoard: React.FC = () => {
                         )}
 
                         {task.attachments && task.attachments.length > 0 && (
-                          <div className="mt-3 flex items-center gap-1 text-[10px] text-zinc-500">
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
+                          <div className={`mt-2.5 flex items-center gap-1 text-[10px] ${s.textSubtle}`}>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                            </svg>
                             {task.attachments.length} {task.attachments.length === 1 ? 'adjunto' : 'adjuntos'}
                           </div>
                         )}
-                        
-                        <div className="mt-4 flex items-center justify-between">
-                          <div className="flex -space-x-1">
-                            <img src="https://picsum.photos/seed/user1/40" className="w-6 h-6 rounded-full border border-zinc-900" />
-                          </div>
-                          <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">
+
+                        <div className="mt-3 flex items-center justify-between">
+                          <div className={`w-6 h-6 rounded-full ${s.accentSurface} ${s.accent} flex items-center justify-center text-[8px] font-bold`}>U</div>
+                          <div className={`text-[9px] font-bold uppercase tracking-widest ${s.textSubtle}`}>
                             {task.status.replace('_', ' ')}
                           </div>
                         </div>
@@ -178,8 +178,9 @@ export const TaskBoard: React.FC = () => {
                   </div>
                 );
               })}
-              {tasks.filter(t => t.status === col.id).length === 0 && (
-                <div className="h-32 flex items-center justify-center border-2 border-dashed border-zinc-800 rounded-lg text-zinc-600 text-xs italic">
+
+              {tasks.filter(task => task.status === col.id).length === 0 && (
+                <div className={`h-28 flex items-center justify-center border-2 border-dashed rounded-xl text-xs italic ${s.border} ${s.textSubtle} ${s.surfaceMuted}`}>
                   Suelta tareas aquí
                 </div>
               )}
@@ -188,68 +189,72 @@ export const TaskBoard: React.FC = () => {
         ))}
       </div>
 
+      {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 lg:p-3 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl lg:rounded-xl p-6 lg:p-5 md:p-4 w-full max-w-md lg:max-w-sm shadow-2xl overflow-y-auto max-h-[85vh] lg:max-h-[80vh]">
-            <h3 className="text-xl lg:text-lg font-black tracking-tight mb-4 lg:mb-3 italic uppercase">Nueva Tarea</h3>
-            <form onSubmit={handleCreateTask} className="space-y-4 lg:space-y-3">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className={`border rounded-2xl p-6 w-full max-w-md shadow-2xl overflow-y-auto max-h-[85vh] ${s.surface} ${s.border}`}>
+            <h3 className={`text-lg font-bold tracking-tight mb-5 ${s.text}`}>Nueva Tarea</h3>
+            <form onSubmit={handleCreateTask} className="space-y-4">
+
               <div>
-                <label className="text-[9px] lg:text-[8px] uppercase font-black tracking-widest opacity-40 block mb-1.5">Título</label>
-                <input 
+                <label className={`text-[9px] uppercase font-bold tracking-widest block mb-1.5 ${s.textSubtle}`}>Título</label>
+                <input
                   autoFocus required type="text" value={newTask.title}
-                  onChange={e => setNewTask({...newTask, title: e.target.value})}
+                  onChange={e => setNewTask({ ...newTask, title: e.target.value })}
                   placeholder="Nombre de la tarea..."
-                  className="w-full bg-black/20 border border-zinc-800 rounded-xl lg:rounded-lg px-4 lg:px-3 py-2.5 lg:py-2 text-sm lg:text-xs focus:ring-1 focus:ring-indigo-500 outline-none text-white"
+                  className={`w-full rounded-xl px-4 py-2.5 text-sm transition-colors ${s.input}`}
                 />
               </div>
+
               <div>
-                <label className="text-[9px] lg:text-[8px] uppercase font-black tracking-widest opacity-40 block mb-1.5">Descripción</label>
-                <textarea 
+                <label className={`text-[9px] uppercase font-bold tracking-widest block mb-1.5 ${s.textSubtle}`}>Descripción</label>
+                <textarea
                   value={newTask.description}
-                  onChange={e => setNewTask({...newTask, description: e.target.value})}
+                  onChange={e => setNewTask({ ...newTask, description: e.target.value })}
                   placeholder="Detalles..." rows={2}
-                  className="w-full bg-black/20 border border-zinc-800 rounded-xl lg:rounded-lg px-4 lg:px-3 py-2.5 lg:py-2 text-sm lg:text-xs focus:ring-1 focus:ring-indigo-500 outline-none resize-none text-white"
+                  className={`w-full rounded-xl px-4 py-2.5 text-sm resize-none transition-colors ${s.input}`}
                 />
               </div>
-              
-              <div className="grid grid-cols-2 gap-3 lg:gap-2">
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[9px] lg:text-[8px] uppercase font-black tracking-widest opacity-40 block mb-1.5">Fecha Inicio</label>
-                  <input 
+                  <label className={`text-[9px] uppercase font-bold tracking-widest block mb-1.5 ${s.textSubtle}`}>Fecha Inicio</label>
+                  <input
                     type="date" value={newTask.startDate}
-                    onChange={e => setNewTask({...newTask, startDate: e.target.value})}
-                    className="w-full bg-black/20 border border-zinc-800 rounded-xl lg:rounded-lg px-3 lg:px-2 py-2.5 lg:py-2 text-sm lg:text-xs focus:ring-1 focus:ring-indigo-500 outline-none text-zinc-300"
+                    onChange={e => setNewTask({ ...newTask, startDate: e.target.value })}
+                    className={`w-full rounded-xl px-3 py-2.5 text-sm transition-colors ${s.input}`}
                   />
                 </div>
                 <div>
-                  <label className="text-[9px] lg:text-[8px] uppercase font-black tracking-widest opacity-40 block mb-1.5">Fecha Entrega</label>
-                  <input 
+                  <label className={`text-[9px] uppercase font-bold tracking-widest block mb-1.5 ${s.textSubtle}`}>Fecha Entrega</label>
+                  <input
                     type="date" value={newTask.dueDate}
-                    onChange={e => setNewTask({...newTask, dueDate: e.target.value})}
-                    className="w-full bg-black/20 border border-zinc-800 rounded-xl lg:rounded-lg px-3 lg:px-2 py-2.5 lg:py-2 text-sm lg:text-xs focus:ring-1 focus:ring-indigo-500 outline-none text-zinc-300"
+                    onChange={e => setNewTask({ ...newTask, dueDate: e.target.value })}
+                    className={`w-full rounded-xl px-3 py-2.5 text-sm transition-colors ${s.input}`}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[9px] lg:text-[8px] uppercase font-black tracking-widest opacity-40 block mb-1.5">Adjuntar Documentos</label>
+                <label className={`text-[9px] uppercase font-bold tracking-widest block mb-1.5 ${s.textSubtle}`}>Adjuntar Documentos</label>
                 <div className="relative group">
-                  <input 
-                    type="file" multiple onChange={handleFileChange}
-                    className="absolute inset-0 opacity-0 cursor-pointer"
-                  />
-                  <div className="w-full bg-black/40 border-2 border-dashed border-zinc-800 rounded-xl lg:rounded-lg py-5 lg:py-4 flex flex-col items-center justify-center group-hover:border-indigo-500/50 transition-all">
-                    <svg className="w-6 h-6 lg:w-5 lg:h-5 text-zinc-600 mb-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
-                    <span className="text-[10px] lg:text-[9px] text-zinc-500">Haz clic o arrastra archivos</span>
+                  <input type="file" multiple onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" />
+                  <div className={`w-full border-2 border-dashed rounded-xl py-5 flex flex-col items-center justify-center transition-all ${s.surfaceMuted} ${s.border} group-hover:border-sky-300`}>
+                    <svg className={`w-6 h-6 mb-1.5 ${s.textSubtle}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <span className={`text-[10px] ${s.textSubtle}`}>Haz clic o arrastra archivos</span>
                   </div>
                 </div>
                 {newTask.attachments.length > 0 && (
                   <div className="mt-2.5 flex flex-wrap gap-1.5">
                     {newTask.attachments.map((file, idx) => (
-                      <div key={idx} className="bg-zinc-800 px-2 py-0.5 rounded-full text-[9px] lg:text-[8px] border border-zinc-700 flex items-center gap-1.5">
+                      <div key={idx} className={`px-2.5 py-0.5 rounded-full text-[9px] border flex items-center gap-1.5 ${s.surfaceMuted} ${s.border} ${s.textMuted}`}>
                         {file.name}
-                        <button type="button" onClick={() => setNewTask(p => ({...p, attachments: p.attachments.filter((_, i) => i !== idx)}))}>
-                          <svg className="w-2.5 h-2.5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        <button type="button" onClick={() => setNewTask(p => ({ ...p, attachments: p.attachments.filter((_, i) => i !== idx) }))}>
+                          <svg className={`w-2.5 h-2.5 ${s.danger}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
                         </button>
                       </div>
                     ))}
@@ -257,16 +262,16 @@ export const TaskBoard: React.FC = () => {
                 )}
               </div>
 
-              <div className="flex gap-3 lg:gap-2 pt-2">
-                <button 
+              <div className="flex gap-3 pt-2">
+                <button
                   type="button" onClick={() => setIsModalOpen(false)}
-                  className="flex-1 px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-zinc-800 hover:bg-zinc-800 text-xs lg:text-[10px] font-bold transition-all text-white"
+                  className={`flex-1 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${s.btnSecondary}`}
                 >
                   Cancelar
                 </button>
-                <button 
+                <button
                   type="submit"
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg text-xs lg:text-[10px] font-bold transition-all shadow-lg shadow-indigo-500/20"
+                  className={`flex-1 px-3 py-2.5 rounded-xl text-xs transition-all active:scale-95 ${s.btn}`}
                 >
                   Guardar Tarea
                 </button>

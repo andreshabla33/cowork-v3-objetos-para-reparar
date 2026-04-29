@@ -67,7 +67,7 @@ export const TranscriptionTimeline: React.FC<TranscriptionTimelineProps> = ({
     <div className="flex flex-col h-full bg-zinc-900/50 rounded-xl border border-zinc-800">
       <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           <span className="text-sm font-medium text-white">Transcripción</span>
@@ -81,7 +81,7 @@ export const TranscriptionTimeline: React.FC<TranscriptionTimelineProps> = ({
 
       <div className="h-1 bg-zinc-800">
         <div 
-          className="h-full bg-indigo-500 transition-all duration-300"
+          className="h-full bg-blue-600 transition-all duration-300"
           style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
         />
       </div>
@@ -111,7 +111,7 @@ export const TranscriptionTimeline: React.FC<TranscriptionTimelineProps> = ({
                 className={`
                   group p-3 rounded-lg cursor-pointer transition-all
                   ${isRecent 
-                    ? 'bg-indigo-500/10 border border-indigo-500/20' 
+                    ? 'bg-blue-600/10 border border-blue-600/20' 
                     : 'bg-zinc-800/30 hover:bg-zinc-800/50 border border-transparent'
                   }
                 `}
@@ -141,7 +141,7 @@ export const TranscriptionTimeline: React.FC<TranscriptionTimelineProps> = ({
                         {formatTime(segment.inicio_segundos)}
                       </span>
                       {segment.speaker_nombre && (
-                        <span className="text-xs font-medium text-indigo-400">
+                        <span className="text-xs font-medium text-blue-500">
                           {segment.speaker_nombre}
                         </span>
                       )}

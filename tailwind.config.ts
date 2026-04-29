@@ -46,6 +46,10 @@ export default {
         'emoji-popup': 'emoji-popup 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
         'emoji-float': 'emoji-float-2026 2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards',
         'chat-bubble': 'chat-bubble-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+        'auth-in': 'authCardIn 0.75s cubic-bezier(0.16, 1, 0.3, 1) both',
+        'orb-float': 'orbFloat 7s ease-in-out infinite',
+        'orb-float-slow': 'orbFloatSlow 11s ease-in-out infinite',
+        'orb-float-alt': 'orbFloatAlt 9s ease-in-out infinite',
       },
       keyframes: {
         'float-up': {
@@ -100,6 +104,23 @@ export default {
         'chat-bubble-in': {
           '0%': { opacity: '0', transform: 'scale(0.8) translateY(8px)' },
           '100%': { opacity: '1', transform: 'scale(1) translateY(0)' },
+        },
+        authCardIn: {
+          '0%': { opacity: '0', transform: 'translateY(32px) scale(0.97)' },
+          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        orbFloat: {
+          '0%, 100%': { transform: 'translateY(0) scale(1)' },
+          '50%': { transform: 'translateY(-28px) scale(1.04)' },
+        },
+        orbFloatSlow: {
+          '0%, 100%': { transform: 'translateY(0) scale(1)' },
+          '50%': { transform: 'translateY(20px) scale(0.97)' },
+        },
+        orbFloatAlt: {
+          '0%, 100%': { transform: 'translateY(0) translateX(0) scale(1)' },
+          '33%': { transform: 'translateY(-16px) translateX(12px) scale(1.02)' },
+          '66%': { transform: 'translateY(10px) translateX(-8px) scale(0.98)' },
         },
       },
     },

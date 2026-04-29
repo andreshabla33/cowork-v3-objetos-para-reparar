@@ -192,7 +192,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-5 h-5 text-violet-400 animate-spin" />
+        <RefreshCw className="w-5 h-5 text-sky-400 animate-spin" />
       </div>
     );
   }
@@ -212,7 +212,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-all"
           >
             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Guardar
@@ -228,10 +228,10 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
       )}
 
       {!empresa && (
-        <div className="mb-6 p-4 bg-violet-500/10 border border-violet-500/30 rounded-xl">
+        <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
           <div className="flex items-center gap-3">
-            <Building2 className="w-5 h-5 text-violet-400" />
-            <p className="text-sm text-violet-300">
+            <Building2 className="w-5 h-5 text-sky-400" />
+            <p className="text-sm text-sky-300">
               Aún no tienes una empresa vinculada. Completa los datos y se creará automáticamente.
             </p>
           </div>
@@ -242,7 +242,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
         {/* Datos principales */}
         <div className="p-5 bg-zinc-800/50 border border-zinc-700/50 rounded-2xl">
           <h4 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-violet-400" /> Datos principales
+            <Building2 className="w-4 h-4 text-sky-400" /> Datos principales
           </h4>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -252,7 +252,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
                 value={formData.nombre}
                 onChange={(e) => updateField('nombre', e.target.value)}
                 placeholder="Mi Empresa S.A.S."
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               />
             </div>
             <div>
@@ -262,7 +262,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
                 value={formData.nit_rut}
                 onChange={(e) => updateField('nit_rut', e.target.value)}
                 placeholder="900.123.456-7"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               />
             </div>
             <div>
@@ -270,7 +270,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
               <select
                 value={formData.industria}
                 onChange={(e) => updateField('industria', e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               >
                 <option value="">Seleccionar...</option>
                 {INDUSTRIAS.map(i => (
@@ -283,7 +283,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
               <select
                 value={formData.tamano}
                 onChange={(e) => updateField('tamano', e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               >
                 {TAMANOS.map(t => (
                   <option key={t.value} value={t.value}>{t.label}</option>
@@ -298,7 +298,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
               onChange={(e) => updateField('descripcion', e.target.value)}
               placeholder="Breve descripción de la empresa..."
               rows={2}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none resize-none"
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none resize-none"
             />
           </div>
         </div>
@@ -306,7 +306,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
         {/* Contacto */}
         <div className="p-5 bg-zinc-800/50 border border-zinc-700/50 rounded-2xl">
           <h4 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-            <Mail className="w-4 h-4 text-violet-400" /> Contacto
+            <Mail className="w-4 h-4 text-sky-400" /> Contacto
           </h4>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -316,7 +316,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
                 value={formData.sitio_web}
                 onChange={(e) => updateField('sitio_web', e.target.value)}
                 placeholder="https://miempresa.com"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               />
             </div>
             <div>
@@ -326,7 +326,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
                 value={formData.email_contacto}
                 onChange={(e) => updateField('email_contacto', e.target.value)}
                 placeholder="info@miempresa.com"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               />
             </div>
             <div>
@@ -336,7 +336,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
                 value={formData.telefono}
                 onChange={(e) => updateField('telefono', e.target.value)}
                 placeholder="+57 300 123 4567"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               />
             </div>
           </div>
@@ -345,7 +345,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
         {/* Ubicación */}
         <div className="p-5 bg-zinc-800/50 border border-zinc-700/50 rounded-2xl">
           <h4 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-violet-400" /> Ubicación
+            <MapPin className="w-4 h-4 text-sky-400" /> Ubicación
           </h4>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -355,7 +355,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
                 value={formData.pais}
                 onChange={(e) => updateField('pais', e.target.value)}
                 placeholder="Colombia"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               />
             </div>
             <div>
@@ -365,7 +365,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
                 value={formData.ciudad}
                 onChange={(e) => updateField('ciudad', e.target.value)}
                 placeholder="Bogotá"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               />
             </div>
           </div>
@@ -376,7 +376,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
               value={formData.direccion}
               onChange={(e) => updateField('direccion', e.target.value)}
               placeholder="Calle 123 #45-67, Oficina 801"
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
             />
           </div>
         </div>
@@ -388,7 +388,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white rounded-xl font-medium disabled:opacity-50 transition-all shadow-lg shadow-violet-600/20"
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-sky-400 text-white rounded-xl font-medium disabled:opacity-50 transition-all shadow-lg shadow-blue-600/20"
           >
             {saving ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
             {empresa ? 'Guardar cambios' : 'Crear empresa'}

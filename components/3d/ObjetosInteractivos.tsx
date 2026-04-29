@@ -61,7 +61,7 @@ const ObjetoInteractivo: React.FC<ObjetoInteractivoProps> = ({ position, tipo, o
         <boxGeometry args={cfg.size} />
         <meshStandardMaterial
           color={cfg.color}
-          emissive={cercano ? '#6366f1' : '#000000'}
+          emissive={cercano ? '#2563eb' : '#000000'}
           emissiveIntensity={cercano ? 0.3 : 0}
         />
       </mesh>
@@ -69,7 +69,7 @@ const ObjetoInteractivo: React.FC<ObjetoInteractivoProps> = ({ position, tipo, o
 
       {/* Glow de proximidad */}
       {cercano && (
-        <pointLight color="#6366f1" intensity={2} distance={3} />
+        <pointLight color="#2563eb" intensity={2} distance={3} />
       )}
     </group>
   );

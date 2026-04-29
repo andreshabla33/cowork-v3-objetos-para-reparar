@@ -302,7 +302,7 @@ export const Avatar: React.FC<AvatarProps> = ({
 
       {allowVideo && showVideoBubble && !(isCurrentUser && hideSelfView) && (
         <Html position={[0, videoY, 0]} center distanceFactor={12} zIndexRange={[100, 0]}>
-          <div className="w-24 h-16 rounded-[12px] overflow-hidden border-[2px] border-[#6366f1] shadow-lg bg-black relative">
+          <div className="w-24 h-16 rounded-[12px] overflow-hidden border-[2px] border-[#2563eb] shadow-lg bg-black relative">
             {isCurrentUser && (localVideoTrack || (videoStream && videoStream.getVideoTracks().length > 0)) ? (
               // Path nativo para el usuario actual: VideoWithBackground usa
               // track.attach() → muestra el processedTrack del background
@@ -323,7 +323,7 @@ export const Avatar: React.FC<AvatarProps> = ({
               // con blur cuando corresponde.
               <StableVideo stream={videoStream} muted={false} className="w-full h-full object-cover" />
             ) : (
-              <div className="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-indigo-900/80 to-purple-900/80">
+              <div className="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-blue-950/80 to-blue-900/80">
                 <span className="text-[9px] text-white/80 font-medium">{name.split(' ')[0]}</span>
               </div>
             )}
@@ -351,10 +351,10 @@ export const Avatar: React.FC<AvatarProps> = ({
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-zinc-800/90 border border-white/10 flex items-center justify-center z-10">
                 <span className="text-[9px] font-bold text-white/60">{name.split(' ')[0]}</span>
               </div>
-              <button onClick={(e) => { e.stopPropagation(); avatarInteractions.onFollow?.(userId); setShowRadialWheel(false); }} className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-violet-600/80 hover:bg-violet-500 text-white" title="Seguir">
+              <button onClick={(e) => { e.stopPropagation(); avatarInteractions.onFollow?.(userId); setShowRadialWheel(false); }} className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-blue-600/80 hover:bg-blue-500 text-white" title="Seguir">
                 <span className="text-[7px] font-bold">{avatarInteractions.followTargetId === userId ? 'Dejar' : 'Seguir'}</span>
               </button>
-              <button onClick={(e) => { e.stopPropagation(); avatarInteractions.onInvite?.(userId); setShowRadialWheel(false); }} className="absolute top-1/2 right-0 -translate-y-1/2 w-12 h-12 rounded-full bg-indigo-600/80 text-white" title="Invitar">
+              <button onClick={(e) => { e.stopPropagation(); avatarInteractions.onInvite?.(userId); setShowRadialWheel(false); }} className="absolute top-1/2 right-0 -translate-y-1/2 w-12 h-12 rounded-full bg-blue-700/80 text-white" title="Invitar">
                 <span className="text-[7px] font-bold">Invitar</span>
               </button>
               <button onClick={(e) => { e.stopPropagation(); avatarInteractions.onWave?.(userId); setShowRadialWheel(false); }} className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-amber-500/80 text-white" title="Saludar">
@@ -1398,9 +1398,9 @@ export const TeleportEffect: React.FC<{ position: [number, number, number]; phas
   return (
     <group position={position}>
       <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.1, 0]} geometry={teleportRingGeometry}>
-        <meshBasicMaterial ref={materialRef} color="#818cf8" transparent opacity={0.8} side={THREE.DoubleSide} />
+        <meshBasicMaterial ref={materialRef} color="#60a5fa" transparent opacity={0.8} side={THREE.DoubleSide} />
       </mesh>
-      <pointLight color="#818cf8" intensity={phase === 'out' ? 5 : 8} distance={6} />
+      <pointLight color="#60a5fa" intensity={phase === 'out' ? 5 : 8} distance={6} />
     </group>
   );
 };

@@ -73,33 +73,33 @@ export class AppErrorBoundary extends React.Component<
   render() {
     if (this.state.hasError) {
       return (
-        <div className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center gap-6 p-6">
-          <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center">
-            <svg className="w-10 h-10 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="fixed inset-0 z-[9999] bg-[#F5F8FC] flex flex-col items-center justify-center gap-6 p-6">
+          <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center">
+            <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
               />
             </svg>
           </div>
-          <h2 className="text-xl font-bold text-white">Algo salió mal</h2>
-          <p className="text-white/50 text-sm text-center max-w-md">
+          <h2 className="text-xl font-bold text-slate-800">Algo salió mal</h2>
+          <p className="text-slate-500 text-sm text-center max-w-md">
             {this.state.error?.message || 'Se produjo un error inesperado.'}
           </p>
           <div className="flex gap-3">
             <button
               onClick={this.handleRecover}
-              className="px-5 py-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-white text-sm font-medium transition-colors"
+              className="px-5 py-2.5 bg-white hover:bg-slate-50 border border-[#E3EAF2] rounded-xl text-slate-700 text-sm font-medium transition-colors"
             >
               Reintentar
             </button>
             <button
               onClick={this.handleReload}
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white text-sm font-medium transition-colors"
+              className="px-5 py-2.5 bg-sky-500 hover:bg-sky-600 rounded-xl text-white text-sm font-medium transition-colors"
             >
               Recargar página
             </button>
           </div>
-          <p className="text-zinc-700 text-xs mt-4">
+          <p className="text-slate-400 text-xs mt-4">
             Los logs de diagnóstico se han guardado internamente.
           </p>
         </div>

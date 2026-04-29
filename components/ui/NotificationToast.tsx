@@ -17,12 +17,12 @@ import { useStore } from '@/store/useStore';
 const TOAST_DURATION_MS = 4000;
 const EXIT_ANIMATION_MS = 300;
 
-const typeStyles: Record<string, { bg: string; icon: string; border: string }> = {
-  success: { bg: 'bg-emerald-900/90', icon: '✓', border: 'border-emerald-500/50' },
-  error:   { bg: 'bg-red-900/90',     icon: '✕', border: 'border-red-500/50' },
-  info:    { bg: 'bg-blue-900/90',    icon: 'ℹ', border: 'border-blue-500/50' },
-  mention: { bg: 'bg-indigo-900/90',  icon: '@', border: 'border-indigo-500/50' },
-  entry:   { bg: 'bg-zinc-800/90',    icon: '→', border: 'border-zinc-500/50' },
+const typeStyles: Record<string, { bg: string; icon: string; border: string; text: string }> = {
+  success: { bg: 'bg-white', icon: '✓', border: 'border-emerald-200', text: 'text-slate-700' },
+  error:   { bg: 'bg-white', icon: '✕', border: 'border-red-200',     text: 'text-slate-700' },
+  info:    { bg: 'bg-white', icon: 'ℹ', border: 'border-sky-200',     text: 'text-slate-700' },
+  mention: { bg: 'bg-white', icon: '@', border: 'border-sky-300',     text: 'text-slate-700' },
+  entry:   { bg: 'bg-white', icon: '→', border: 'border-[#E3EAF2]',   text: 'text-slate-700' },
 };
 
 interface ToastItemProps {
@@ -56,7 +56,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ id, message, type, onRemove }) =>
     <div
       className={`
         pointer-events-auto max-w-sm w-full flex items-center gap-3
-        px-4 py-3 rounded-lg border shadow-lg backdrop-blur-sm
+        px-4 py-3 rounded-lg border shadow-lg
         ${style.bg} ${style.border}
         transition-all duration-300 ease-in-out
         ${isExiting ? 'opacity-0 translate-x-8' : 'opacity-100 translate-x-0'}
@@ -64,7 +64,7 @@ const ToastItem: React.FC<ToastItemProps> = ({ id, message, type, onRemove }) =>
       role="alert"
     >
       <span className="text-lg flex-shrink-0">{style.icon}</span>
-      <p className="text-sm text-white/90 leading-snug">{message}</p>
+      <p className={`text-sm leading-snug ${style.text}`}>{message}</p>
     </div>
   );
 };

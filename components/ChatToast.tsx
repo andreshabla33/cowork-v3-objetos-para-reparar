@@ -84,7 +84,7 @@ const ToastItem: React.FC<{
         {/* Avatar */}
         <div className={`
           w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0
-          ${isArcade ? 'bg-[#00ff41]/20 text-[#00ff41]' : 'bg-indigo-600/30 text-indigo-400'}
+          ${isArcade ? 'bg-[#00ff41]/20 text-[#00ff41]' : 'bg-blue-700/30 text-blue-500'}
         `}>
           {notification.userInitial}
         </div>
@@ -101,7 +101,7 @@ const ToastItem: React.FC<{
               </span>
             )}
             {notification.isDirect && (
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${isArcade ? 'bg-[#00ff41]/20 text-[#00ff41]' : 'bg-indigo-600/30 text-indigo-400'}`}>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${isArcade ? 'bg-[#00ff41]/20 text-[#00ff41]' : 'bg-blue-700/30 text-blue-500'}`}>
                 DM
               </span>
             )}
@@ -125,7 +125,7 @@ const ToastItem: React.FC<{
       {/* Progress bar */}
       <div className="mt-3 h-0.5 bg-white/10 rounded-full overflow-hidden">
         <div 
-          className={`h-full ${isArcade ? 'bg-[#00ff41]' : 'bg-indigo-500'} animate-shrink`}
+          className={`h-full ${isArcade ? 'bg-[#00ff41]' : 'bg-blue-600'} animate-shrink`}
           style={{ animationDuration: '5s' }}
         />
       </div>

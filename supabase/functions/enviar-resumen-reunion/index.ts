@@ -85,9 +85,9 @@ serve(async (req) => {
 
       // Sección de análisis SOLO para usuarios internos
       const analisisHtml = incluirAnalisis && resumen.analisis_comportamiento
-        ? `<div style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 12px; padding: 16px; margin-top: 16px;">
+        ? `<div style="background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(37, 99, 235, 0.3); border-radius: 12px; padding: 16px; margin-top: 16px;">
              <h3 style="color: #c4b5fd; font-size: 14px; font-weight: 600; margin: 0 0 12px 0;">📊 Análisis de la reunión</h3>
-             <p style="color: #a78bfa; font-size: 13px; margin: 0;">Este análisis está disponible en el panel de la aplicación.</p>
+             <p style="color: #38bdf8; font-size: 13px; margin: 0;">Este análisis está disponible en el panel de la aplicación.</p>
            </div>`
         : '';
 
@@ -99,7 +99,7 @@ serve(async (req) => {
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #09090b; color: #fafafa; padding: 40px 20px; margin: 0; }
             .container { max-width: 600px; margin: 0 auto; background: linear-gradient(135deg, #18181b 0%, #0f0f12 100%); border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
-            .header { padding: 32px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); text-align: center; }
+            .header { padding: 32px; background: linear-gradient(135deg, #2563eb 0%, #2563eb 100%); text-align: center; }
             .header h1 { margin: 0; font-size: 22px; font-weight: 700; color: white; }
             .header p { margin: 8px 0 0 0; font-size: 14px; color: rgba(255,255,255,0.8); }
             .content { padding: 32px; }
@@ -112,7 +112,7 @@ serve(async (req) => {
             .section ul { margin: 0; padding-left: 20px; }
             .footer { padding: 24px 32px; background: rgba(0,0,0,0.3); text-align: center; }
             .footer p { margin: 0; font-size: 12px; color: #52525b; }
-            .btn { display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 12px; font-weight: 600; font-size: 14px; margin-top: 24px; }
+            .btn { display: inline-block; background: linear-gradient(135deg, #2563eb 0%, #2563eb 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 12px; font-weight: 600; font-size: 14px; margin-top: 24px; }
           </style>
         </head>
         <body>

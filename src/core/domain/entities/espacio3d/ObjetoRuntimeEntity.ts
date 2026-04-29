@@ -129,7 +129,7 @@ export const obtenerModeloObjeto = (
 ): string | null =>
   objeto.modelo_url ||
   (objeto.built_in_geometry
-    ? `builtin:${objeto.built_in_geometry}:${(objeto.built_in_color || '#6366f1').replace('#', '')}`
+    ? `builtin:${objeto.built_in_geometry}:${(objeto.built_in_color || '#2563eb').replace('#', '')}`
     : null);
 
 /** Indica si un objeto es de tipo escritorio/reclamable */

@@ -82,8 +82,8 @@ export const AISummaryPanel: React.FC<AISummaryPanelProps> = ({
     return (
       <div className="bg-zinc-900/50 rounded-xl border border-zinc-800 p-6">
         <div className="text-center py-8">
-          <div className="w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-16 h-16 bg-blue-600/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
           </div>
@@ -97,7 +97,7 @@ export const AISummaryPanel: React.FC<AISummaryPanelProps> = ({
           <button
             onClick={onGenerateSummary}
             disabled={transcriptLength < 50}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
+            className="px-4 py-2 bg-blue-700 hover:bg-blue-600 disabled:bg-zinc-700 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
           >
             Generar Resumen
           </button>
@@ -110,7 +110,7 @@ export const AISummaryPanel: React.FC<AISummaryPanelProps> = ({
     return (
       <div className="bg-zinc-900/50 rounded-xl border border-zinc-800 p-6">
         <div className="flex flex-col items-center justify-center py-12">
-          <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mb-4" />
+          <div className="w-12 h-12 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin mb-4" />
           <p className="text-sm text-zinc-400">Generando resumen con IA...</p>
           <p className="text-xs text-zinc-500 mt-1">Esto puede tomar unos segundos</p>
         </div>
@@ -147,7 +147,7 @@ export const AISummaryPanel: React.FC<AISummaryPanelProps> = ({
       <div className="p-3 border-b border-zinc-800">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
             <span className="text-sm font-medium text-white">Resumen AI</span>
@@ -164,7 +164,7 @@ export const AISummaryPanel: React.FC<AISummaryPanelProps> = ({
               onClick={() => setActiveTab(tab.id)}
               className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                 activeTab === tab.id
-                  ? 'bg-indigo-600 text-white'
+                  ? 'bg-blue-700 text-white'
                   : 'text-zinc-400 hover:text-white hover:bg-zinc-700/50'
               }`}
             >
@@ -200,7 +200,7 @@ export const AISummaryPanel: React.FC<AISummaryPanelProps> = ({
                 <ul className="space-y-2">
                   {summary.puntos_clave.map((punto, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-zinc-300">
-                      <span className="text-indigo-400 mt-0.5">•</span>
+                      <span className="text-blue-500 mt-0.5">•</span>
                       {punto}
                     </li>
                   ))}
@@ -257,7 +257,7 @@ export const AISummaryPanel: React.FC<AISummaryPanelProps> = ({
                       </p>
                       <div className="flex items-center gap-2 mt-1.5">
                         {item.responsable && (
-                          <span className="text-xs text-indigo-400">@{item.responsable}</span>
+                          <span className="text-xs text-blue-500">@{item.responsable}</span>
                         )}
                         <span className={`text-xs px-1.5 py-0.5 rounded ${
                           item.prioridad === 'alta' ? 'bg-red-500/20 text-red-400' :
@@ -300,7 +300,7 @@ export const AISummaryPanel: React.FC<AISummaryPanelProps> = ({
                       <path
                         d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                         fill="none"
-                        stroke="#6366f1"
+                        stroke="#2563eb"
                         strokeWidth="3"
                         strokeDasharray={`${(summary.metricas_conductuales.engagement_promedio || 0) * 100}, 100`}
                       />
@@ -323,7 +323,7 @@ export const AISummaryPanel: React.FC<AISummaryPanelProps> = ({
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                     insight.tipo === 'pico_engagement' ? 'bg-green-500/20' :
                     insight.tipo === 'baja_atencion' ? 'bg-red-500/20' :
-                    'bg-indigo-500/20'
+                    'bg-blue-600/20'
                   }`}>
                     {insight.tipo === 'pico_engagement' ? '📈' :
                      insight.tipo === 'baja_atencion' ? '📉' :

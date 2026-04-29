@@ -80,7 +80,7 @@ export const RecordingButton: React.FC<RecordingButtonProps> = ({
               : isPaused
                 ? 'bg-yellow-500 hover:bg-yellow-600 shadow-lg shadow-yellow-500/50'
                 : isProcessing
-                  ? 'bg-indigo-500 animate-pulse cursor-wait'
+                  ? 'bg-blue-600 animate-pulse cursor-wait'
                   : 'bg-zinc-700 hover:bg-zinc-600'
             }
             ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
@@ -146,7 +146,7 @@ export const RecordingButton: React.FC<RecordingButtonProps> = ({
       )}
 
       {isProcessing && (
-        <span className="text-xs text-indigo-400 animate-pulse">
+        <span className="text-xs text-blue-500 animate-pulse">
           {status === 'uploading' && 'Subiendo...'}
           {status === 'processing' && 'Procesando...'}
           {status === 'transcribing' && 'Transcribiendo...'}

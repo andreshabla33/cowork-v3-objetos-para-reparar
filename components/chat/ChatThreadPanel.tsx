@@ -9,11 +9,11 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { useStore } from '@/store/useStore';
+import { getThemeStyles } from '@/lib/theme';
 import { MessageContent } from './MessageContent';
 import type { ChatMessage } from '@/types';
 import type { MiembroChatData } from '@/src/core/domain/ports/IChatRepository';
-
-// ─── Props ───────────────────────────────────────────────────────────────────
 
 export interface ChatThreadPanelProps {
   activeThread: string | null;
@@ -28,8 +28,6 @@ export interface ChatThreadPanelProps {
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
-
 export const ChatThreadPanel: React.FC<ChatThreadPanelProps> = ({
   activeThread,
   threadMessages,
@@ -42,58 +40,60 @@ export const ChatThreadPanel: React.FC<ChatThreadPanelProps> = ({
   handleInputChange,
 }) => {
   const { t } = useTranslation();
+  const { theme } = useStore();
+  const s = getThemeStyles(theme);
 
   return (
     <>
-      <div className={`fixed top-0 right-0 h-full w-[400px] bg-[#0d0d15]/95 backdrop-blur-xl border-l border-white/10 shadow-2xl z-50 transform transition-transform duration-300 ease-out ${activeThread ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`fixed top-0 right-0 h-full w-[400px] backdrop-blur-xl border-l shadow-2xl z-50 transform transition-transform duration-300 ease-out ${s.surface} ${s.border} ${activeThread ? 'translate-x-0' : 'translate-x-full'}`}>
         {activeThread && (
           <div className="h-full flex flex-col">
-            {/* Thread header */}
-            <div className="p-4 border-b border-white/5 flex items-center justify-between bg-gradient-to-r from-indigo-500/10 to-transparent">
+            {/* Header */}
+            <div className={`p-4 border-b flex items-center justify-between ${s.borderSubtle} ${s.surfaceMuted}`}>
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
-                  <svg className="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${s.accentSurface}`}>
+                  <svg className={`w-4 h-4 ${s.accent}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
                 </div>
                 <div>
-                  <h3 className="font-black text-[11px] uppercase tracking-widest">{t('chat.thread')}</h3>
-                  <p className="text-[9px] opacity-50">{threadMessages.length} {threadMessages.length === 1 ? t('chat.message') : t('chat.messages')}</p>
+                  <h3 className={`font-black text-[11px] uppercase tracking-widest ${s.text}`}>{t('chat.thread')}</h3>
+                  <p className={`text-[9px] ${s.textSubtle}`}>{threadMessages.length} {threadMessages.length === 1 ? t('chat.message') : t('chat.messages')}</p>
                 </div>
               </div>
-              <button onClick={closeThread} className="p-2 hover:bg-white/10 rounded-xl transition-all hover:rotate-90 duration-200">
-                <svg className="w-5 h-5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              <button onClick={closeThread} className={`p-2 rounded-xl transition-all hover:rotate-90 duration-200 ${s.btnGhost}`}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
               </button>
             </div>
 
-            {/* Thread messages */}
+            {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
               {threadMessages.map((tm, idx) => (
-                <div key={tm.id} className={`group ${idx === 0 ? 'pb-4 mb-4 border-b border-white/5' : ''}`}>
+                <div key={tm.id} className={`group ${idx === 0 ? `pb-4 mb-4 border-b ${s.borderSubtle}` : ''}`}>
                   <div className="flex gap-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-[12px] font-bold shrink-0 ${idx === 0 ? 'bg-indigo-500/30 ring-2 ring-indigo-500/50' : 'bg-white/10'}`}>
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-[12px] font-bold shrink-0 ${idx === 0 ? `${s.accentSurface} ${s.accent} ring-2 ${s.accentBorder}` : `${s.surfaceMuted} ${s.textMuted}`}`}>
                       {tm.usuario?.nombre?.charAt(0) || '?'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold text-[12px]">{tm.usuario?.nombre || 'Usuario'}</span>
-                        <span className="text-[9px] opacity-30">{new Date(tm.creado_en).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</span>
-                        {idx === 0 && <span className="text-[8px] px-2 py-0.5 bg-indigo-500/20 text-indigo-300 rounded-full uppercase tracking-wider">{t('chat.original')}</span>}
+                        <span className={`font-bold text-[12px] ${s.text}`}>{tm.usuario?.nombre || 'Usuario'}</span>
+                        <span className={`text-[9px] ${s.textSubtle}`}>{new Date(tm.creado_en).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}</span>
+                        {idx === 0 && <span className={`text-[8px] px-2 py-0.5 rounded-full uppercase tracking-wider ${s.accentSurface} ${s.accent}`}>{t('chat.original')}</span>}
                       </div>
-                      <MessageContent content={tm.contenido} currentUserId={currentUserId} miembrosEspacio={miembrosEspacio} className="text-[13px] leading-relaxed break-words text-white/80" />
+                      <MessageContent content={tm.contenido} currentUserId={currentUserId} miembrosEspacio={miembrosEspacio} className={`text-[13px] leading-relaxed break-words ${s.text}`} />
                     </div>
                   </div>
                 </div>
               ))}
 
               {threadMessages.length === 1 && (
-                <div className="text-center py-8 opacity-30">
+                <div className={`text-center py-8 ${s.textSubtle}`}>
                   <svg className="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
                   <p className="text-[11px] font-medium">{t('chat.beFirstToReply')}</p>
                 </div>
               )}
             </div>
 
-            {/* Thread input */}
-            <div className="p-4 border-t border-white/5 bg-black/20">
+            {/* Input */}
+            <div className={`p-4 border-t ${s.borderSubtle} ${s.surfaceMuted}`}>
               <form onSubmit={enviarMensaje}>
                 <div className="flex gap-2">
                   <input
@@ -102,12 +102,12 @@ export const ChatThreadPanel: React.FC<ChatThreadPanelProps> = ({
                     value={nuevoMensaje}
                     onChange={handleInputChange}
                     placeholder={t('chat.replyInThread')}
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-[13px] focus:outline-none focus:border-indigo-500/50 focus:bg-white/10 transition-all placeholder:opacity-30"
+                    className={`flex-1 rounded-xl px-4 py-3 text-[13px] transition-all ${s.input}`}
                   />
                   <button
                     type="submit"
                     disabled={!nuevoMensaje.trim()}
-                    className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-[11px] font-black uppercase tracking-wider disabled:opacity-20 disabled:hover:bg-indigo-600 transition-all"
+                    className={`px-5 py-3 rounded-xl text-[11px] font-black uppercase tracking-wider disabled:opacity-30 transition-all ${s.accentBg}`}
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
                   </button>
@@ -118,9 +118,8 @@ export const ChatThreadPanel: React.FC<ChatThreadPanelProps> = ({
         )}
       </div>
 
-      {/* Overlay to close thread */}
       {activeThread && (
-        <div className="fixed inset-0 bg-black/30 z-40" onClick={closeThread} />
+        <div className="fixed inset-0 bg-black/20 z-40" onClick={closeThread} />
       )}
     </>
   );

@@ -6,7 +6,7 @@ const STATUS_OPTIONS = [
   { value: PresenceStatus.AVAILABLE, label: 'Disponible', color: 'bg-green-500', icon: '🟢' },
   { value: PresenceStatus.BUSY, label: 'Ocupado', color: 'bg-red-500', icon: '🔴' },
   { value: PresenceStatus.AWAY, label: 'Ausente', color: 'bg-yellow-500', icon: '🟡' },
-  { value: PresenceStatus.DND, label: 'No molestar', color: 'bg-purple-500', icon: '🟣' },
+  { value: PresenceStatus.DND, label: 'No molestar', color: 'bg-blue-500', icon: '🟣' },
 ];
 
 export const StatusSelector: React.FC = () => {
@@ -109,12 +109,12 @@ export const StatusSelector: React.FC = () => {
                   onKeyDown={handleKeyDown}
                   placeholder="¿Qué estás haciendo?"
                   maxLength={50}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-[12px] focus:outline-none focus:border-indigo-500/50 placeholder:opacity-30"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-[12px] focus:outline-none focus:border-blue-600/50 placeholder:opacity-30"
                 />
                 <div className="flex gap-2 mt-2">
                   <button
                     onClick={handleCustomStatusSave}
-                    className="flex-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-[10px] font-bold transition-colors"
+                    className="flex-1 px-3 py-1.5 bg-blue-700 hover:bg-blue-600 rounded-lg text-[10px] font-bold transition-colors"
                   >
                     Guardar
                   </button>

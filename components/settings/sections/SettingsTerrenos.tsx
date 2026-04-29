@@ -161,7 +161,7 @@ export const SettingsTerrenos: React.FC<SettingsTerrenosProps> = ({ workspaceId,
   }
 
   if (cargando) {
-    return <div className="flex items-center justify-center py-12"><RefreshCw className="w-5 h-5 text-violet-400 animate-spin" /></div>;
+    return <div className="flex items-center justify-center py-12"><RefreshCw className="w-5 h-5 text-sky-400 animate-spin" /></div>;
   }
 
   return (
@@ -199,7 +199,7 @@ export const SettingsTerrenos: React.FC<SettingsTerrenosProps> = ({ workspaceId,
       <div className="grid grid-cols-4 gap-3">
         <StatCard icon={<MapPin className="w-4 h-4 text-green-400" />} label="Disponibles" valor={stats.disponibles} />
         <StatCard icon={<ShoppingCart className="w-4 h-4 text-amber-400" />} label="Reservados" valor={stats.reservados} />
-        <StatCard icon={<Star className="w-4 h-4 text-violet-400" />} label="Vendidos" valor={stats.vendidos} />
+        <StatCard icon={<Star className="w-4 h-4 text-sky-400" />} label="Vendidos" valor={stats.vendidos} />
         <StatCard icon={<DollarSign className="w-4 h-4 text-emerald-400" />} label="Revenue/mes" valor={`$${stats.ingresoMensual}`} />
       </div>
 
@@ -218,7 +218,7 @@ export const SettingsTerrenos: React.FC<SettingsTerrenosProps> = ({ workspaceId,
               const t = v as TerrenoMarketplace['tier'];
               const auto = t === 'starter' ? { color: '#22c55e', precio: '49', precioA: '470' }
                 : t === 'professional' ? { color: '#3b82f6', precio: '149', precioA: '1430' }
-                : { color: '#a855f7', precio: '399', precioA: '3830' };
+                : { color: '#2563eb', precio: '399', precioA: '3830' };
               setFormData({ ...formData, tier: t, color_preview: auto.color, precio_mensual: auto.precio, precio_anual: auto.precioA });
             }} options={[{ value: 'starter', label: 'Starter' }, { value: 'professional', label: 'Professional' }, { value: 'enterprise', label: 'Enterprise' }]} />
             <SelectField label="Estado" value={formData.estado} onChange={(v) => setFormData({ ...formData, estado: v as any })} options={[{ value: 'disponible', label: 'Disponible' }, { value: 'reservado', label: 'Reservado' }, { value: 'vendido', label: 'Vendido' }, { value: 'bloqueado', label: 'Bloqueado' }]} />
@@ -237,7 +237,7 @@ export const SettingsTerrenos: React.FC<SettingsTerrenosProps> = ({ workspaceId,
                 Destacado
               </label>
               <label className="flex items-center gap-2 text-xs text-zinc-300">
-                <input type="checkbox" checked={formData.showroom} onChange={(e) => setFormData({ ...formData, showroom: e.target.checked })} className="rounded border-zinc-600 text-violet-500" />
+                <input type="checkbox" checked={formData.showroom} onChange={(e) => setFormData({ ...formData, showroom: e.target.checked })} className="rounded border-zinc-600 text-blue-500" />
                 Showroom incluido
               </label>
               <InputField label="Color" value={formData.color_preview} onChange={(v) => setFormData({ ...formData, color_preview: v })} type="color" inline />
@@ -271,7 +271,7 @@ export const SettingsTerrenos: React.FC<SettingsTerrenosProps> = ({ workspaceId,
                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                       t.estado === 'disponible' ? 'text-green-400 bg-green-500/10' :
                       t.estado === 'reservado' ? 'text-amber-400 bg-amber-500/10' :
-                      t.estado === 'vendido' ? 'text-violet-400 bg-violet-500/10' :
+                      t.estado === 'vendido' ? 'text-sky-400 bg-blue-500/10' :
                       'text-zinc-400 bg-zinc-500/10'
                     }`}>{t.estado}</span>
                   </div>

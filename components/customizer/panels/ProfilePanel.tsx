@@ -84,7 +84,7 @@ export const ProfilePanel: React.FC<ProfilePanelProps> = ({ profile, currentUser
 
       {/* Nombre */}
       <section>
-        <label className={`${typography.label.xs} text-violet-400 mb-1.5 block`}>Nombre</label>
+        <label className={`${typography.label.xs} text-sky-400 mb-1.5 block`}>Nombre</label>
         <div className="flex gap-2">
           <input
             type="text"
@@ -113,7 +113,7 @@ export const ProfilePanel: React.FC<ProfilePanelProps> = ({ profile, currentUser
 
       {/* Vista previa chat */}
       <section className={`${glass.card} ${radius.card} p-3`}>
-        <label className={`${typography.label.xs} text-violet-400 mb-2 block`}>Vista previa en chat</label>
+        <label className={`${typography.label.xs} text-sky-400 mb-2 block`}>Vista previa en chat</label>
         <div className="flex items-center gap-2.5 p-2.5 bg-black/30 rounded-xl">
           <UserAvatar name={currentUser.name} profilePhoto={profile.profilePhoto || ''} size="sm" showStatus status={currentUser.status} />
           <div className="flex-1 min-w-0">
@@ -122,7 +122,7 @@ export const ProfilePanel: React.FC<ProfilePanelProps> = ({ profile, currentUser
           </div>
           <span className="text-[8px] text-white/25">12:00</span>
         </div>
-        <div className="ml-10 mt-1 p-2.5 bg-violet-600/15 rounded-xl rounded-tl-none border border-violet-500/10">
+        <div className="ml-10 mt-1 p-2.5 bg-blue-600/15 rounded-xl rounded-tl-none border border-blue-500/10">
           <p className="text-[11px] text-white/70">Hola equipo, ¿cómo va el proyecto?</p>
         </div>
       </section>

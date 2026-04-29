@@ -33,14 +33,14 @@ export const PlacementHUD: React.FC<PlacementHUDProps> = ({ objectName, objectCa
     >
       <div className="flex items-center gap-3 p-2 pr-3 rounded-2xl bg-black/20 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] pointer-events-auto max-w-md">
         {/* Icono */}
-        <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-lg flex-shrink-0 animate-pulse">
+        <div className="w-9 h-9 rounded-xl bg-blue-600/15 border border-blue-600/30 flex items-center justify-center text-lg flex-shrink-0 animate-pulse">
           📦
         </div>
 
         {/* Info */}
         <div className="flex-1 min-w-0">
           <p className="text-white text-[13px] font-bold truncate">{objectName}</p>
-          <p className="text-indigo-300/70 text-[10px] font-semibold uppercase tracking-wider truncate">
+          <p className="text-sky-600/70 text-[10px] font-semibold uppercase tracking-wider truncate">
             {objectCategory || 'Objeto'} · Colocando
           </p>
         </div>
@@ -48,11 +48,11 @@ export const PlacementHUD: React.FC<PlacementHUDProps> = ({ objectName, objectCa
         {/* Atajos */}
         <div className="flex flex-col gap-1 flex-shrink-0">
           <div className="flex items-center gap-1.5">
-            <kbd className="bg-white/10 border border-white/15 rounded px-1.5 py-px text-indigo-200 text-[9px] font-mono font-bold">Clic</kbd>
+            <kbd className="bg-white/10 border border-white/15 rounded px-1.5 py-px text-sky-500 text-[9px] font-mono font-bold">Clic</kbd>
             <span className="text-white/40 text-[9px]">Colocar</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <kbd className="bg-white/10 border border-white/15 rounded px-1.5 py-px text-indigo-200 text-[9px] font-mono font-bold">ESC</kbd>
+            <kbd className="bg-white/10 border border-white/15 rounded px-1.5 py-px text-sky-500 text-[9px] font-mono font-bold">ESC</kbd>
             <span className="text-white/40 text-[9px]">Cancelar</span>
           </div>
         </div>
@@ -110,7 +110,7 @@ const EscalaSlider: React.FC<EscalaSliderProps> = ({ label, color, value, onChan
         step={ESCALA_PASO}
         value={value}
         onChange={(e) => onChange(clamp(Number(e.target.value)))}
-        className="flex-1 h-1.5 accent-indigo-400 cursor-pointer"
+        className="flex-1 h-1.5 accent-blue-500 cursor-pointer"
       />
       <button
         onClick={() => onChange(clamp(value + ESCALA_PASO))}
@@ -272,15 +272,15 @@ export const InspectorEdicionObjeto: React.FC<InspectorEdicionObjetoProps> = ({ 
           </div>
 
           {/* ── Escala ── */}
-          <div className="rounded-xl bg-indigo-500/[0.06] border border-indigo-400/[0.12] p-3.5">
+          <div className="rounded-xl bg-blue-600/[0.06] border border-blue-500/[0.12] p-3.5">
             <div className="mb-3 flex items-center justify-between">
-              <span className="text-[9px] uppercase tracking-wider text-indigo-200/60 font-bold">Escala</span>
+              <span className="text-[9px] uppercase tracking-wider text-sky-500/60 font-bold">Escala</span>
               {onTransformar && (
                 <button
                   onClick={() => setEscalaUniforme((prev) => !prev)}
                   className={`px-2.5 py-1 rounded-lg border text-[10px] font-semibold transition-all ${
                     escalaUniforme
-                      ? 'bg-indigo-500/20 border-indigo-400/25 text-indigo-200'
+                      ? 'bg-blue-600/20 border-blue-500/25 text-sky-500'
                       : 'bg-white/[0.04] border-white/[0.08] text-white/50 hover:bg-white/[0.08]'
                   }`}
                 >
@@ -292,7 +292,7 @@ export const InspectorEdicionObjeto: React.FC<InspectorEdicionObjetoProps> = ({ 
             {onTransformar ? (
               <div className="space-y-2.5">
                 {escalaUniforme ? (
-                  <EscalaSlider label="U" color="text-indigo-300" value={escX} onChange={handleEscalaX} />
+                  <EscalaSlider label="U" color="text-sky-600" value={escX} onChange={handleEscalaX} />
                 ) : (
                   <>
                     <EscalaSlider label="X" color="text-red-400" value={escX} onChange={handleEscalaX} />
@@ -301,14 +301,14 @@ export const InspectorEdicionObjeto: React.FC<InspectorEdicionObjetoProps> = ({ 
                   </>
                 )}
 
-                <div className="mt-3 pt-3 border-t border-indigo-400/[0.08] flex flex-wrap gap-1.5">
+                <div className="mt-3 pt-3 border-t border-blue-500/[0.08] flex flex-wrap gap-1.5">
                   {ESCALA_PRESETS.map((preset) => (
                     <button
                       key={preset}
                       onClick={() => handlePreset(preset)}
                       className={`px-2.5 py-1.5 rounded-lg border text-[10px] font-semibold transition-all ${
                         Math.abs(escX - preset) < 0.01 && Math.abs(escY - preset) < 0.01 && Math.abs(escZ - preset) < 0.01
-                          ? 'bg-indigo-500/25 border-indigo-400/35 text-indigo-100 shadow-[0_0_8px_rgba(99,102,241,0.15)]'
+                          ? 'bg-blue-600/25 border-blue-500/35 text-sky-400 shadow-[0_0_8px_rgba(37,99,235,0.15)]'
                           : 'bg-white/[0.04] border-white/[0.08] text-white/55 hover:bg-white/10 hover:text-white/80'
                       }`}
                     >
@@ -473,7 +473,7 @@ export const EditModeHUD: React.FC<EditModeHUDProps> = ({ onCancel, onUndo, onRe
               disabled={!canUndo}
               className={`w-10 h-10 rounded-xl border flex items-center justify-center text-[15px] transition-all duration-200 ${
                 canUndo
-                  ? 'bg-indigo-500/15 border-indigo-400/25 text-indigo-200 hover:bg-indigo-500/25 hover:shadow-[0_0_12px_rgba(99,102,241,0.15)]'
+                  ? 'bg-blue-600/15 border-blue-500/25 text-sky-500 hover:bg-blue-600/25 hover:shadow-[0_0_12px_rgba(37,99,235,0.15)]'
                   : 'bg-white/[0.03] border-white/[0.06] text-white/20 cursor-not-allowed'
               }`}
               title="Deshacer (Ctrl+Z)"
@@ -594,7 +594,7 @@ export const useToastEmitter = () => ({
 });
 
 const VARIANT_STYLES: Record<NonNullable<ToastItem['variant']>, { accent: string; icon: string }> = {
-  default: { accent: 'rgba(99,102,241,0.5)',  icon: '💬' },
+  default: { accent: 'rgba(37,99,235,0.5)',  icon: '💬' },
   success: { accent: 'rgba(34,197,94,0.55)',  icon: '✦' },
   error:   { accent: 'rgba(239,68,68,0.55)',  icon: '⚠' },
   info:    { accent: 'rgba(56,189,248,0.5)',  icon: 'ℹ' },

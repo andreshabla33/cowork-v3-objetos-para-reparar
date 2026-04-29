@@ -93,7 +93,7 @@ export const ObjectPanel: React.FC<ObjectPanelProps> = ({
     {/* Objects grid */}
     {catalog.loadingObjects ? (
       <div className="flex items-center justify-center gap-2 text-zinc-500 text-xs py-8">
-        <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
         Cargando objetos...
       </div>
     ) : (

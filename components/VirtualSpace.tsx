@@ -150,11 +150,11 @@ const Minimap: React.FC<MinimapProps> = ({ currentUser, users, workspace }) => {
   return (
     <div className="absolute bottom-6 left-6 w-[140px] h-[140px] bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden pointer-events-none shadow-2xl z-20">
       <div className="absolute inset-0 opacity-10">
-        <div className="w-full h-full" style={{ backgroundImage: 'radial-gradient(circle, #6366f1 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+        <div className="w-full h-full" style={{ backgroundImage: 'radial-gradient(circle, #2563eb 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
       </div>
       <div className="relative w-full h-full">
         <div 
-          className="absolute w-2.5 h-2.5 bg-indigo-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,1)] z-10"
+          className="absolute w-2.5 h-2.5 bg-blue-600 rounded-full shadow-[0_0_10px_rgba(37,99,235,1)] z-10"
           style={{ 
             left: `${currentUser.x * scaleX}px`, 
             top: `${currentUser.y * scaleY}px`,
@@ -223,7 +223,7 @@ const VideoHUD = React.memo((props: VideoHUDProps) => {
   const expandedUser = expandedId === 'local' ? { name: 'Tú' } : usersInCall.find((u: User) => u.id === expandedId);
   const emojis = ['👍', '🔥', '❤️', '👏', '😂', '😮', '🚀', '✨'];
 
-  const accentColor = theme === 'arcade' ? 'bg-[#00ff41] text-black' : 'bg-indigo-600 text-white';
+  const accentColor = theme === 'arcade' ? 'bg-[#00ff41] text-black' : 'bg-blue-700 text-white';
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (zoomLevel > 1) {
@@ -269,7 +269,7 @@ const VideoHUD = React.memo((props: VideoHUDProps) => {
         )}
         <button
           onClick={(e) => { e.stopPropagation(); setExpandedId(targetId === expandedId ? null : targetId); }}
-          className="w-8 h-8 rounded-full bg-indigo-600 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-indigo-500 transition-all shadow-xl"
+          className="w-8 h-8 rounded-full bg-blue-700 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-blue-600 transition-all shadow-xl"
         >
           <IconExpand on={targetId === expandedId} />
         </button>
@@ -330,7 +330,7 @@ const VideoHUD = React.memo((props: VideoHUDProps) => {
                 </button>
                 <button 
                   onClick={() => setExpandedId(null)} 
-                  className="w-12 h-12 rounded-full bg-indigo-600 backdrop-blur-md text-white flex items-center justify-center hover:bg-indigo-500 transition-all border border-white/10 shadow-lg"
+                  className="w-12 h-12 rounded-full bg-blue-700 backdrop-blur-md text-white flex items-center justify-center hover:bg-blue-600 transition-all border border-white/10 shadow-lg"
                   title="Minimizar"
                 >
                     <IconExpand on={true} />
@@ -348,7 +348,7 @@ const VideoHUD = React.memo((props: VideoHUDProps) => {
             </div>
             {(!camOn && !sharingOn) && (
               <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center">
-                 <div className={`w-14 h-14 rounded-full border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-black text-2xl bg-black/50`}>{userName.charAt(0)}</div>
+                 <div className={`w-14 h-14 rounded-full border border-blue-600/30 flex items-center justify-center text-blue-500 font-black text-2xl bg-black/50`}>{userName.charAt(0)}</div>
               </div>
             )}
             <BubbleControls isLocal={true} targetId="local" />
@@ -667,7 +667,7 @@ export const VirtualSpace: React.FC = () => {
           this.cameras.main.setBackgroundColor(themeColors[theme]);
           this.cameras.main.setRoundPixels(true); // Evita artefactos rectangulares en zoom
 
-          const gridColor = theme === 'arcade' ? 0x00ff41 : 0x6366f1;
+          const gridColor = theme === 'arcade' ? 0x00ff41 : 0x2563eb;
           const gridAlpha = theme === 'arcade' ? 0.2 : 0.05;
           
           // REPARACIÓN: Extendemos el grid mucho más allá de los bordes para evitar el vacío negro
@@ -810,7 +810,7 @@ export const VirtualSpace: React.FC = () => {
         } else {
           // Crear nuevo avatar remoto
           const texKey = `remote-${user.id}`;
-          scene.generatePixelAvatar(texKey, user.avatarConfig || { skinColor: '#fcd34d', clothingColor: '#6366f1', hairColor: '#4b2c20', accessory: 'none' });
+          scene.generatePixelAvatar(texKey, user.avatarConfig || { skinColor: '#fcd34d', clothingColor: '#2563eb', hairColor: '#4b2c20', accessory: 'none' });
           scene.createRemotePlayer({ ...user, name: user.name }, texKey);
         }
       });

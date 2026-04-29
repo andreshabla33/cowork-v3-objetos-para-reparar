@@ -19,7 +19,7 @@ type AppState = StoreState;
 
 const initialAvatar: AvatarConfig = {
   skinColor: '#fcd34d',
-  clothingColor: '#6366f1',
+  clothingColor: '#2563eb',
   hairColor: '#4b2c20',
   accessory: 'headphones'
 };

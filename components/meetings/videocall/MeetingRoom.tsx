@@ -15,7 +15,7 @@ const themeStyles = {
     bg: 'bg-[#0f0f1a]',
     card: 'bg-white/5 border-white/10',
     text: 'text-white',
-    accent: 'bg-indigo-600 hover:bg-indigo-500',
+    accent: 'bg-blue-700 hover:bg-blue-600',
     danger: 'bg-red-600 hover:bg-red-500',
   },
   arcade: {
@@ -89,7 +89,7 @@ export const MeetingRoom: React.FC<MeetingRoomProps> = ({
     return (
       <div className={`h-full w-full flex items-center justify-center ${s.bg}`}>
         <div className="text-center">
-          <div className={`w-12 h-12 border-4 ${theme === 'arcade' ? 'border-[#00ff41]' : 'border-indigo-500'} border-t-transparent rounded-full animate-spin mx-auto mb-4`} />
+          <div className={`w-12 h-12 border-4 ${theme === 'arcade' ? 'border-[#00ff41]' : 'border-blue-600'} border-t-transparent rounded-full animate-spin mx-auto mb-4`} />
           <p className={`${s.text} opacity-60`}>{recoveryState.recoveryMessage || 'Conectando a la sala...'}</p>
         </div>
       </div>

@@ -306,7 +306,7 @@ const PreviewPlantillaZonaMesh: React.FC<{
         renderOrder={30}
       >
         <planeGeometry args={[plantilla.anchoMetros, plantilla.altoMetros]} />
-        <meshBasicMaterial color="#8b5cf6" transparent opacity={0.18} side={THREE.DoubleSide} depthWrite={false} />
+        <meshBasicMaterial color="#2563eb" transparent opacity={0.18} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
       <mesh
         position={[plantilla.posicionX, 0.112, plantilla.posicionZ]}
@@ -431,7 +431,7 @@ export const Scene: React.FC<SceneProps> = ({
   setAdaptiveDpr,
   gpuRenderConfig,
 }) => {
-  const gridColor = theme === 'arcade' ? '#00ff41' : '#6366f1';
+  const gridColor = theme === 'arcade' ? '#00ff41' : '#2563eb';
 
   // Dominio: resuelve colores del skydome (override explícito o derivación HSL).
   // Memoizado por tema para evitar recalcular la conversión HSL en cada render.

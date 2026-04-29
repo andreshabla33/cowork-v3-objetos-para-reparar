@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistema de Estilos — Urpeverso</title>
+  <style>
+    :root {
+      --bg: #F1F5FA;
+      --surface: #ffffff;
+      --surface-muted: #f8fafc;
+      --border: #E3EAF2;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --text-subtle: #94a3b8;
+      --accent: #0284c7;
+      --accent-light: #e0f2fe;
+      --accent-border: #bae6fd;
+      --danger: #dc2626;
+      --danger-light: #fef2f2;
+      --success: #059669;
+      --success-light: #ecfdf5;
+      --warning: #d97706;
+      --warning-light: #fffbeb;
+      --gradient: linear-gradient(135deg, #2563eb, #0ea5e9, #06b6d4);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.07), 0 4px 12px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.05);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.65;
+    }
+
+    /* ── Layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar nav ── */
+    nav {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 32px 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .nav-logo {
+      padding: 0 24px 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .nav-logo h2 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-subtle);
+      margin-bottom: 4px;
+    }
+    .nav-logo p {
+      font-size: 18px;
+      font-weight: 800;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    nav a {
+      display: block;
+      padding: 8px 24px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13.5px;
+      font-weight: 500;
+      border-left: 3px solid transparent;
+      transition: all 0.15s;
+    }
+    nav a:hover {
+      color: var(--accent);
+      background: var(--accent-light);
+      border-left-color: var(--accent);
+    }
+    nav .nav-section {
+      padding: 16px 24px 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-subtle);
+    }
+
+    /* ── Main content ── */
+    main {
+      padding: 48px 56px;
+      max-width: 920px;
+    }
+
+    /* ── Page header ── */
+    .page-header {
+      margin-bottom: 48px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    .page-header .badge {
+      display: inline-block;
+      background: var(--accent-light);
+      color: var(--accent);
+      border: 1px solid var(--accent-border);
+      border-radius: 100px;
+      padding: 4px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 16px;
+    }
+    .page-header h1 {
+      font-size: 36px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+    .page-header p {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 560px;
+    }
+    .page-header .meta {
+      margin-top: 20px;
+      display: flex;
+      gap: 20px;
+    }
+    .meta-item {
+      font-size: 12.5px;
+      color: var(--text-subtle);
+    }
+    .meta-item strong { color: var(--text-muted); }
+
+    /* ── Sections ── */
+    section {
+      margin-bottom: 56px;
+      scroll-margin-top: 32px;
+    }
+    section h2 {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 6px;
+      letter-spacing: -0.01em;
+    }
+    .section-sub {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    section h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 28px 0 10px;
+    }
+
+    p { color: var(--text-muted); margin-bottom: 12px; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .card-file {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      box-shadow: var(--shadow);
+    }
+    .card-file .file-path {
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 12px;
+      color: var(--accent);
+      background: var(--accent-light);
+      border: 1px solid var(--accent-border);
+      border-radius: var(--radius-sm);
+      padding: 4px 10px;
+      display: inline-block;
+      margin-bottom: 10px;
+    }
+    .card-file h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .card-file p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin: 0;
+    }
+    .card-file .role-badge {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 3px 10px;
+      border-radius: 100px;
+    }
+    .role-primary { background: var(--accent-light); color: var(--accent); }
+    .role-config  { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+    .role-legacy  { background: #fefce8; color: #ca8a04; border: 1px solid #fde68a; }
+    .role-css     { background: var(--surface-muted); color: var(--text-muted); border: 1px solid var(--border); }
+
+    /* ── Architecture diagram ── */
+    .arch {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      box-shadow: var(--shadow);
+    }
+    .arch-layers {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .arch-layer {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 20px;
+      border-radius: var(--radius-sm);
+      position: relative;
+    }
+    .arch-layer + .arch-layer::before {
+      content: '↓';
+      position: absolute;
+      top: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 16px;
+      color: var(--text-subtle);
+    }
+    .layer-1 { background: #eff6ff; border: 1px solid #bfdbfe; }
+    .layer-2 { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .layer-3 { background: #fdf4ff; border: 1px solid #e9d5ff; }
+    .layer-4 { background: var(--surface-muted); border: 1px solid var(--border); }
+    .layer-5 { background: var(--accent-light); border: 1px solid var(--accent-border); }
+
+    .arch-layer .layer-icon {
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+    .arch-layer .layer-info h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+    .arch-layer .layer-info p {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      margin: 0;
+    }
+    .arch-layer .layer-file {
+      margin-left: auto;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 11.5px;
+      color: var(--text-subtle);
+    }
+
+    /* ── Token tables ── */
+    .token-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      margin-bottom: 16px;
+    }
+    .token-table thead {
+      background: var(--surface-muted);
+    }
+    .token-table th {
+      padding: 12px 16px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .token-table td {
+      padding: 11px 16px;
+      font-size: 13.5px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .token-table tbody tr:last-child td { border-bottom: none; }
+    .token-table tbody tr:hover { background: var(--surface-muted); }
+    .token-table td code,
+    .token-table th code {
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 12px;
+      background: var(--accent-light);
+      color: var(--accent);
+      border: 1px solid var(--accent-border);
+      padding: 2px 7px;
+      border-radius: 5px;
+    }
+    .token-table td strong { color: var(--text); font-weight: 600; }
+
+    /* ── Code blocks ── */
+    pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      border-radius: var(--radius);
+      padding: 22px 24px;
+      overflow-x: auto;
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      margin: 16px 0;
+      box-shadow: var(--shadow-md);
+    }
+    pre .comment { color: #64748b; }
+    pre .keyword { color: #93c5fd; }
+    pre .string  { color: #86efac; }
+    pre .fn      { color: #fbbf24; }
+    pre .var     { color: #f9a8d4; }
+    pre .token-name { color: #67e8f9; }
+
+    code {
+      font-family: 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 12.5px;
+      background: var(--accent-light);
+      color: var(--accent);
+      border: 1px solid var(--accent-border);
+      padding: 2px 7px;
+      border-radius: 5px;
+    }
+
+    /* ── Callout boxes ── */
+    .callout {
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin: 16px 0;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .callout .icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .callout-body { font-size: 13.5px; }
+    .callout-body strong { display: block; margin-bottom: 4px; font-weight: 700; font-size: 14px; }
+    .callout-body p { margin: 0; }
+
+    .callout-danger  { background: var(--danger-light);  border: 1px solid #fecaca; }
+    .callout-danger  .callout-body { color: #991b1b; }
+    .callout-success { background: var(--success-light); border: 1px solid #a7f3d0; }
+    .callout-success .callout-body { color: #065f46; }
+    .callout-warning { background: var(--warning-light); border: 1px solid #fde68a; }
+    .callout-warning .callout-body { color: #92400e; }
+    .callout-info    { background: var(--accent-light);  border: 1px solid var(--accent-border); }
+    .callout-info    .callout-body { color: #0c4a6e; }
+
+    /* ── Comparison ── */
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin: 16px 0;
+    }
+    .compare-box {
+      border-radius: var(--radius);
+      padding: 20px;
+      border: 1px solid;
+    }
+    .compare-bad  { background: var(--danger-light);  border-color: #fecaca; }
+    .compare-good { background: var(--success-light); border-color: #a7f3d0; }
+    .compare-box h4 {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+    .compare-bad  h4 { color: var(--danger);  }
+    .compare-good h4 { color: var(--success); }
+    .compare-box pre {
+      margin: 0;
+      font-size: 12px;
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+    }
+
+    /* ── Theme swatches ── */
+    .theme-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .theme-card {
+      border-radius: var(--radius);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    .theme-preview {
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+    .theme-preview-light  { background: #F1F5FA; }
+    .theme-preview-arcade { background: #000; }
+    .theme-preview-dark   { background: #0a0a0f; }
+    .theme-preview-space  { background: #020617; }
+    .theme-info { background: var(--surface); padding: 12px 14px; }
+    .theme-info h4 { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+    .theme-info p  { font-size: 12px; color: var(--text-muted); margin: 0; }
+    .theme-default { font-size: 10px; font-weight: 700; text-transform: uppercase;
+                     color: var(--accent); letter-spacing: 0.06em; }
+
+    /* ── Rules list ── */
+    .rule-list {
+      list-style: none;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .rule-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px 18px;
+      font-size: 13.5px;
+      color: var(--text-muted);
+      box-shadow: var(--shadow);
+    }
+    .rule-list .num {
+      flex-shrink: 0;
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: var(--gradient);
+      color: white;
+      font-size: 12px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .rule-list strong { color: var(--text); }
+
+    /* ── Dividers ── */
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 40px 0;
+    }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      font-size: 12.5px;
+      color: var(--text-subtle);
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <nav>
+    <div class="nav-logo">
+      <h2>Urpeverso</h2>
+      <p>Sistema de Estilos</p>
+    </div>
+
+    <span class="nav-section">Introducción</span>
+    <a href="#overview">Resumen general</a>
+    <a href="#principio">Principio fundamental</a>
+
+    <span class="nav-section">Arquitectura</span>
+    <a href="#capas">Capas del sistema</a>
+    <a href="#archivos">Archivos y ubicaciones</a>
+
+    <span class="nav-section">Tokens</span>
+    <a href="#design-tokens">design-tokens.ts</a>
+    <a href="#theme">lib/theme.ts</a>
+    <a href="#temas">Temas disponibles</a>
+
+    <span class="nav-section">Uso correcto</span>
+    <a href="#como-usar">Cómo consumir tokens</a>
+    <a href="#comparacion">Correcto vs incorrecto</a>
+    <a href="#reglas">Reglas del equipo</a>
+
+    <span class="nav-section">Estado actual</span>
+    <a href="#problemas">Problemas detectados</a>
+    <a href="#changelog">Qué cambió</a>
+  </nav>
+
+  <!-- ── Main ── -->
+  <main>
+
+    <div class="page-header">
+      <span class="badge">Documentación técnica</span>
+      <h1>Sistema de Estilos</h1>
+      <p>Guía completa de cómo están organizados los estilos visuales de Urpeverso, dónde viven y cómo deben usarse correctamente.</p>
+      <div class="meta">
+        <span class="meta-item"><strong>Actualizado:</strong> Abr 2026</span>
+        <span class="meta-item"><strong>Motor de estilos:</strong> Tailwind CSS v3 (JIT)</span>
+        <span class="meta-item"><strong>Tema default:</strong> light</span>
+      </div>
+    </div>
+
+    <!-- ── Overview ── -->
+    <section id="overview">
+      <h2>Resumen general</h2>
+      <p class="section-sub">El sistema de estilos usa Tailwind CSS como motor, con dos capas de tokens TypeScript encima para mantener consistencia visual y soporte multi-tema.</p>
+
+      <div class="callout callout-info">
+        <span class="icon">ℹ️</span>
+        <div class="callout-body">
+          <strong>Una sola fuente de verdad</strong>
+          <p>Todos los colores, tipografías, espaciados y efectos deben venir de <code>lib/theme.ts</code> o <code>styles/design-tokens.ts</code>. Ningún componente debe tener colores hardcodeados directamente.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Principio ── -->
+    <section id="principio">
+      <h2>Principio fundamental</h2>
+      <p class="section-sub">Por qué los estilos deben ser globales y no hardcodeados componente por componente.</p>
+
+      <ul class="rule-list">
+        <li>
+          <span class="num">1</span>
+          <div><strong>Mantenimiento centralizado:</strong> si el color primario cambia, se modifica en <em>un solo lugar</em> (el token) y afecta toda la app automáticamente. Con hardcode habría que buscar y reemplazar en decenas de archivos.</div>
+        </li>
+        <li>
+          <span class="num">2</span>
+          <div><strong>Temas funcionales:</strong> el sistema soporta 4 temas (light, arcade, dark, space). Si un componente usa <code>bg-zinc-900</code> hardcodeado en vez de <code>t.surface</code>, ese componente <em>ignora el tema activo</em> y siempre se ve oscuro aunque el usuario tenga el tema claro.</div>
+        </li>
+        <li>
+          <span class="num">3</span>
+          <div><strong>Consistencia visual:</strong> los tokens garantizan que todos los botones primarios, inputs, bordes y superficies sean visualmente coherentes en toda la aplicación, sin variaciones accidentales.</div>
+        </li>
+        <li>
+          <span class="num">4</span>
+          <div><strong>Legibilidad del código:</strong> <code>t.surface</code> comunica intención semántica ("superficie elevada"). <code>bg-zinc-900</code> solo dice qué color es hoy, no qué rol cumple.</div>
+        </li>
+        <li>
+          <span class="num">5</span>
+          <div><strong>Escalabilidad:</strong> agregar un quinto tema o ajustar la paleta de marca requiere tocar solo los archivos de tokens, no rastrear cientos de clases hardcodeadas en componentes.</div>
+        </li>
+      </ul>
+    </section>
+
+    <!-- ── Capas ── -->
+    <section id="capas">
+      <h2>Capas del sistema</h2>
+      <p class="section-sub">El sistema tiene 5 capas ordenadas de más bajo nivel a más alto nivel de abstracción.</p>
+
+      <div class="arch">
+        <div class="arch-layers">
+
+          <div class="arch-layer layer-1">
+            <span class="layer-icon">⚙️</span>
+            <div class="layer-info">
+              <h4>Capa 1 — Configuración del motor</h4>
+              <p>Breakpoints, fuentes, keyframes de animaciones. No contiene colores.</p>
+            </div>
+            <span class="layer-file">tailwind.config.ts</span>
+          </div>
+
+          <div class="arch-layer layer-2">
+            <span class="layer-icon">🌐</span>
+            <div class="layer-info">
+              <h4>Capa 2 — CSS global base</h4>
+              <p>@tailwind base/components/utilities. Clases custom: .glass-card, .scrollbar-hide.</p>
+            </div>
+            <span class="layer-file">styles/tailwind.css</span>
+          </div>
+
+          <div class="arch-layer layer-3">
+            <span class="layer-icon">🧱</span>
+            <div class="layer-info">
+              <h4>Capa 3 — Tokens primitivos</h4>
+              <p>Bloques reutilizables del estilo glass/dark: colores, radios, tipografía, spacing, composites.</p>
+            </div>
+            <span class="layer-file">styles/design-tokens.ts</span>
+          </div>
+
+          <div class="arch-layer layer-4">
+            <span class="layer-icon">🎨</span>
+            <div class="layer-info">
+              <h4>Capa 4 — Tokens semánticos (temas)</h4>
+              <p>Superficie, borde, texto, botones, inputs — con variantes por tema. Fuente de verdad principal.</p>
+            </div>
+            <span class="layer-file">lib/theme.ts</span>
+          </div>
+
+          <div class="arch-layer layer-5">
+            <span class="layer-icon">🖥️</span>
+            <div class="layer-info">
+              <h4>Capa 5 — Componentes</h4>
+              <p>Consumen <code>getThemeStyles(theme)</code>. Nunca definen colores propios.</p>
+            </div>
+            <span class="layer-file">components/**/*.tsx</span>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Archivos ── -->
+    <section id="archivos">
+      <h2>Archivos y ubicaciones</h2>
+      <p class="section-sub">Mapa completo de todos los archivos que controlan los estilos.</p>
+
+      <div class="card-grid">
+
+        <div class="card-file">
+          <span class="file-path">lib/theme.ts</span>
+          <h4>Tokens semánticos multi-tema</h4>
+          <p>Fuente de verdad principal. Define los 4 temas (light, arcade, dark, space) con tokens como <code>surface</code>, <code>border</code>, <code>btn</code>, <code>input</code>.</p>
+          <span class="role-badge role-primary">Principal ★</span>
+        </div>
+
+        <div class="card-file">
+          <span class="file-path">styles/design-tokens.ts</span>
+          <h4>Tokens primitivos (glass/dark)</h4>
+          <p>Bloques reutilizables del estilo glassmorphism: colores, radios, tipografía, spacing, composites, helpers responsivos.</p>
+          <span class="role-badge role-config">Primitivos</span>
+        </div>
+
+        <div class="card-file">
+          <span class="file-path">tailwind.config.ts</span>
+          <h4>Configuración de Tailwind</h4>
+          <p>Breakpoints extra (3xl, 4xl), fuente Inter, animaciones y keyframes custom. No define colores.</p>
+          <span class="role-badge role-config">Config</span>
+        </div>
+
+        <div class="card-file">
+          <span class="file-path">styles/tailwind.css</span>
+          <h4>CSS global de entrada</h4>
+          <p>Importa las directivas @tailwind. Define clases utilitarias globales: <code>.glass-card</code>, <code>.scrollbar-hide</code>, reduced motion.</p>
+          <span class="role-badge role-css">CSS global</span>
+        </div>
+
+        <div class="card-file">
+          <span class="file-path">styles/driver-tour.css</span>
+          <h4>Estilos del tour guiado</h4>
+          <p>CSS específico del componente Driver.js para los tours interactivos. Solo importado por <code>ProductTour.tsx</code>.</p>
+          <span class="role-badge role-css">Específico</span>
+        </div>
+
+        <div class="card-file">
+          <span class="file-path">index.html</span>
+          <h4>CSS crítico inline</h4>
+          <p>Scrollbars, body base, clase <code>.mirror</code>. Tiene hardcodeado <code>#09090b</code> como fondo (pendiente de alinear con el tema light).</p>
+          <span class="role-badge role-legacy">⚠ Revisar</span>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── design-tokens.ts ── -->
+    <section id="design-tokens">
+      <h2>design-tokens.ts — Tokens primitivos</h2>
+      <p class="section-sub">Contiene los bloques de construcción del estilo visual. Pensado para el look glassmorphism/dark.</p>
+
+      <table class="token-table">
+        <thead>
+          <tr>
+            <th>Export</th>
+            <th>Qué contiene</th>
+            <th>Ejemplo de uso</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>colors</code></td>
+            <td>Fondos, gradientes, bordes, texto, sombras</td>
+            <td><code>colors.gradient.primary</code></td>
+          </tr>
+          <tr>
+            <td><code>spacing</code></td>
+            <td>Padding modal, gap entre elementos, space-y por sección</td>
+            <td><code>spacing.gap.lg</code> → <code>gap-4</code></td>
+          </tr>
+          <tr>
+            <td><code>modalSizes</code></td>
+            <td>Anchos de modal (xs → full)</td>
+            <td><code>modalSizes['2xl']</code> → <code>max-w-2xl</code></td>
+          </tr>
+          <tr>
+            <td><code>radius</code></td>
+            <td>Border radius semánticos: card, modal, button, input</td>
+            <td><code>radius.card</code> → <code>rounded-2xl</code></td>
+          </tr>
+          <tr>
+            <td><code>typography</code></td>
+            <td>Heading (xl→xs), label, body con tamaños de fuente</td>
+            <td><code>typography.heading.lg</code></td>
+          </tr>
+          <tr>
+            <td><code>glass</code></td>
+            <td>Efecto glassmorphism: card, overlay, input</td>
+            <td><code>glass.card</code></td>
+          </tr>
+          <tr>
+            <td><code>animation</code></td>
+            <td>Transiciones (fast/normal/slow), hovers, pulse</td>
+            <td><code>animation.transition.normal</code></td>
+          </tr>
+          <tr>
+            <td><code>composites</code></td>
+            <td>Clases completas listas para usar: buttonPrimary, cardGlass, inputBase, modalContainer</td>
+            <td><code>composites.buttonPrimary</code></td>
+          </tr>
+          <tr>
+            <td><code>responsiveModal</code></td>
+            <td>Anchos responsivos desktop-first para modales</td>
+            <td><code>responsiveModal.form</code></td>
+          </tr>
+          <tr>
+            <td><code>responsivePadding</code></td>
+            <td>Padding con breakpoints integrados</td>
+            <td><code>responsivePadding.modal</code></td>
+          </tr>
+          <tr>
+            <td><code>responsiveText</code></td>
+            <td>Texto con tamaños responsivos</td>
+            <td><code>responsiveText.heading</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ── lib/theme.ts ── -->
+    <section id="theme">
+      <h2>lib/theme.ts — Tokens semánticos</h2>
+      <p class="section-sub">La fuente de verdad principal. Cada token tiene nombre semántico (describe su rol, no su color). Los componentes deben consumir exclusivamente estos tokens.</p>
+
+      <table class="token-table">
+        <thead>
+          <tr>
+            <th>Token</th>
+            <th>Rol semántico</th>
+            <th>light</th>
+            <th>arcade</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>t.bg</code></td>
+            <td>Fondo de página</td>
+            <td><strong>#F1F5FA</strong></td>
+            <td>negro</td>
+          </tr>
+          <tr>
+            <td><code>t.surface</code></td>
+            <td>Card / panel elevado</td>
+            <td><strong>blanco</strong></td>
+            <td>negro</td>
+          </tr>
+          <tr>
+            <td><code>t.surfaceMuted</code></td>
+            <td>Sub-card, drop-zones, badges</td>
+            <td><strong>slate-50</strong></td>
+            <td>#00ff41/5</td>
+          </tr>
+          <tr>
+            <td><code>t.border</code></td>
+            <td>Borde de cards e inputs</td>
+            <td><strong>#E3EAF2</strong></td>
+            <td>#00ff41/40</td>
+          </tr>
+          <tr>
+            <td><code>t.text</code></td>
+            <td>Texto primario (máximo énfasis)</td>
+            <td><strong>slate-800</strong></td>
+            <td>#00ff41</td>
+          </tr>
+          <tr>
+            <td><code>t.textMuted</code></td>
+            <td>Texto secundario (descripciones)</td>
+            <td><strong>slate-500</strong></td>
+            <td>#00ff41/60</td>
+          </tr>
+          <tr>
+            <td><code>t.accent</code></td>
+            <td>Color de acento (links, activos)</td>
+            <td><strong>sky-600</strong></td>
+            <td>#00ff41</td>
+          </tr>
+          <tr>
+            <td><code>t.btn</code></td>
+            <td>Botón primario CTA</td>
+            <td><strong>gradiente azul</strong></td>
+            <td>verde neón</td>
+          </tr>
+          <tr>
+            <td><code>t.btnSecondary</code></td>
+            <td>Botón secundario (outlined)</td>
+            <td><strong>blanco + borde</strong></td>
+            <td>borde verde</td>
+          </tr>
+          <tr>
+            <td><code>t.btnGhost</code></td>
+            <td>Botón ghost (hover only)</td>
+            <td><strong>hover slate-100</strong></td>
+            <td>hover verde</td>
+          </tr>
+          <tr>
+            <td><code>t.input</code></td>
+            <td>Inputs y textareas completos</td>
+            <td><strong>blanco + borde sky</strong></td>
+            <td>negro + borde verde</td>
+          </tr>
+          <tr>
+            <td><code>t.globalNav</code></td>
+            <td>Barra de navegación lateral</td>
+            <td><strong>#F1F5FA + borde</strong></td>
+            <td>negro + borde</td>
+          </tr>
+          <tr>
+            <td><code>t.sidebar</code></td>
+            <td>Sidebar secundario (chat, etc.)</td>
+            <td><strong>blanco</strong></td>
+            <td>negro</td>
+          </tr>
+          <tr>
+            <td><code>t.header</code></td>
+            <td>Barra superior</td>
+            <td><strong>blanco + borde</strong></td>
+            <td>negro + borde</td>
+          </tr>
+          <tr>
+            <td><code>t.success / warning / danger</code></td>
+            <td>Estados de feedback</td>
+            <td><strong>emerald / amber / red</strong></td>
+            <td>verde / amber / red</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout callout-info">
+        <span class="icon">💡</span>
+        <div class="callout-body">
+          <strong>Constantes de marca exportadas</strong>
+          <p>También se exportan: <code>COLOR_PAGE_BG</code>, <code>COLOR_BORDER</code>, <code>GRADIENT_PRIMARY</code>, <code>GLASS_BASE</code>, <code>GLASS_PANEL</code>, <code>GLASS_PANEL_LIGHT</code>, <code>GLOW_BRAND</code>, <code>GLOW_CYAN</code>. Úsalos cuando necesites los valores de marca sin pasar por el objeto de tema completo.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Temas ── -->
+    <section id="temas">
+      <h2>Temas disponibles</h2>
+      <p class="section-sub">El sistema soporta 4 temas. El usuario puede cambiarlos desde Configuración → General.</p>
+
+      <div class="theme-grid">
+        <div class="theme-card">
+          <div class="theme-preview theme-preview-light">☀️</div>
+          <div class="theme-info">
+            <div class="theme-default">Default ★</div>
+            <h4>light</h4>
+            <p>Azul-slate suave. #F1F5FA de fondo, sky de acento.</p>
+          </div>
+        </div>
+        <div class="theme-card">
+          <div class="theme-preview theme-preview-arcade">🎮</div>
+          <div class="theme-info">
+            <h4>arcade</h4>
+            <p>Negro + verde neón #00ff41. Estética retro terminal.</p>
+          </div>
+        </div>
+        <div class="theme-card">
+          <div class="theme-preview theme-preview-dark">🌑</div>
+          <div class="theme-info">
+            <h4>dark</h4>
+            <p>Zinc oscuro con glassmorphism. Legacy, mantenido por compatibilidad.</p>
+          </div>
+        </div>
+        <div class="theme-card">
+          <div class="theme-preview theme-preview-space">🚀</div>
+          <div class="theme-info">
+            <h4>space</h4>
+            <p>Azul oscuro con acentos cyan. Legacy, mantenido por compatibilidad.</p>
+          </div>
+        </div>
+      </div>
+
+      <p>Para agregar un nuevo tema: añadir un nuevo objeto <code>ThemeStyleSet</code> en <code>lib/theme.ts</code> y registrarlo en <code>THEME_STYLES</code> y <code>THEME_LIST</code>. El tipo <code>ThemeType</code> vive en <code>types/index.ts</code>.</p>
+    </section>
+
+    <hr />
+
+    <!-- ── Cómo usar ── -->
+    <section id="como-usar">
+      <h2>Cómo consumir tokens en componentes</h2>
+      <p class="section-sub">El patrón estándar para aplicar estilos correctamente.</p>
+
+      <h3>Patrón básico con tema</h3>
+      <pre><span class="comment">// 1. Obtener tema del store</span>
+<span class="keyword">import</span> { useStore } <span class="keyword">from</span> <span class="string">'@/store/useStore'</span>;
+<span class="keyword">import</span> { getThemeStyles } <span class="keyword">from</span> <span class="string">'@/lib/theme'</span>;
+
+<span class="keyword">const</span> <span class="fn">MiComponente</span> = () => {
+  <span class="keyword">const</span> theme = useStore(s => s.theme);
+  <span class="keyword">const</span> t = getThemeStyles(theme);
+
+  <span class="keyword">return</span> (
+    &lt;<span class="keyword">div</span> className={t.surface}&gt;
+      &lt;<span class="keyword">h2</span> className={t.text}&gt;Título&lt;/<span class="keyword">h2</span>&gt;
+      &lt;<span class="keyword">p</span> className={t.textMuted}&gt;Descripción&lt;/<span class="keyword">p</span>&gt;
+      &lt;<span class="keyword">button</span> className={t.btn}&gt;Acción&lt;/<span class="keyword">button</span>&gt;
+    &lt;/<span class="keyword">div</span>&gt;
+  );
+};</pre>
+
+      <h3>Usando tokens primitivos de design-tokens.ts</h3>
+      <pre><span class="keyword">import</span> { composites, radius, animation } <span class="keyword">from</span> <span class="string">'@/styles/design-tokens'</span>;
+
+<span class="comment">// Para elementos 3D o que no cambian con el tema:</span>
+&lt;<span class="keyword">div</span> className={`${composites.cardGlass} ${animation.transition.normal}`}&gt;
+  &lt;<span class="keyword">button</span> className={composites.buttonPrimary}&gt;Guardar&lt;/<span class="keyword">button</span>&gt;
+&lt;/<span class="keyword">div</span>&gt;</pre>
+
+      <h3>Combinando ambos</h3>
+      <pre><span class="comment">// Usar tema para colores semánticos + design-tokens para layout/efectos</span>
+&lt;<span class="keyword">div</span> className={`
+  ${t.surface}
+  ${composites.cardGlass}
+  ${radius.card}
+  ${animation.transition.normal}
+`}&gt;</pre>
+    </section>
+
+    <!-- ── Comparacion ── -->
+    <section id="comparacion">
+      <h2>Correcto vs incorrecto</h2>
+      <p class="section-sub">Ejemplos reales del código actual.</p>
+
+      <div class="compare">
+        <div class="compare-box compare-bad">
+          <h4>❌ Incorrecto — hardcodeado</h4>
+          <pre><span class="comment">// No hacer esto nunca:</span>
+&lt;div className=<span class="string">"bg-[#050508]"</span>&gt;
+
+&lt;div className=<span class="string">"bg-zinc-900
+  border-zinc-800"</span>&gt;
+
+&lt;div className=<span class="string">"
+  from-blue-600
+  via-sky-500
+  to-cyan-500"</span>&gt;
+
+&lt;div className=<span class="string">"bg-[#1a1a2e]"</span>&gt;
+<span class="comment">// Colores que ignoran el tema activo</span></pre>
+        </div>
+        <div class="compare-box compare-good">
+          <h4>✅ Correcto — usando tokens</h4>
+          <pre><span class="comment">// Tokens semánticos:</span>
+&lt;div className={t.bg}&gt;
+
+&lt;div className={t.surface}&gt;
+
+&lt;div className={t.btn}&gt;
+<span class="comment">// Ya incluye el gradiente correcto</span>
+
+&lt;div className={t.globalNav}&gt;
+<span class="comment">// Cambia automáticamente con el tema</span></pre>
+        </div>
+      </div>
+
+      <div class="compare">
+        <div class="compare-box compare-bad">
+          <h4>❌ Gradiente duplicado</h4>
+          <pre><span class="comment">// Repetido en 20+ componentes:</span>
+className=<span class="string">"bg-gradient-to-r
+  from-blue-600
+  via-sky-500
+  to-cyan-500"</span></pre>
+        </div>
+        <div class="compare-box compare-good">
+          <h4>✅ Constante centralizada</h4>
+          <pre><span class="keyword">import</span> { GRADIENT_PRIMARY }
+  <span class="keyword">from</span> <span class="string">'@/lib/theme'</span>;
+
+className={`bg-gradient-to-r
+  ${GRADIENT_PRIMARY}`}</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Reglas ── -->
+    <section id="reglas">
+      <h2>Reglas del equipo</h2>
+
+      <ul class="rule-list">
+        <li>
+          <span class="num">1</span>
+          <div><strong>Nunca hardcodear colores hex</strong> (<code>#050508</code>, <code>#1a1a2e</code>, etc.) en componentes. Si el color no está en los tokens, agregarlo ahí primero.</div>
+        </li>
+        <li>
+          <span class="num">2</span>
+          <div><strong>Nunca usar clases Tailwind de color directamente</strong> (<code>bg-zinc-900</code>, <code>text-slate-400</code>, <code>border-white/5</code>) en componentes. Usar el token semántico equivalente.</div>
+        </li>
+        <li>
+          <span class="num">3</span>
+          <div><strong>El gradiente primario es <code>GRADIENT_PRIMARY</code></strong> exportado desde <code>lib/theme.ts</code>. No repetirlo manualmente en cada componente.</div>
+        </li>
+        <li>
+          <span class="num">4</span>
+          <div><strong>Agregar tokens nuevos a los 4 temas</strong>. Si se añade un token a <code>ThemeStyleSet</code>, debe tener valor en light, arcade, dark y space.</div>
+        </li>
+        <li>
+          <span class="num">5</span>
+          <div><strong>Componentes 3D/canvas son la excepción</strong>. El espacio 3D tiene su propio sistema visual (Three.js). Pueden usar design-tokens para efectos HUD sin pasar por el tema.</div>
+        </li>
+        <li>
+          <span class="num">6</span>
+          <div><strong>Spacing y radios de <code>design-tokens.ts</code></strong>. Usar <code>radius.card</code>, <code>spacing.gap.lg</code>, etc. en lugar de <code>rounded-2xl</code> o <code>gap-4</code> directo.</div>
+        </li>
+      </ul>
+    </section>
+
+    <hr />
+
+    <!-- ── Problemas ── -->
+    <section id="problemas">
+      <h2>Problemas detectados (deuda técnica)</h2>
+      <p class="section-sub">Inconsistencias actuales que deben corregirse gradualmente.</p>
+
+      <div class="callout callout-danger">
+        <span class="icon">🚨</span>
+        <div class="callout-body">
+          <strong>index.html — fondo hardcodeado</strong>
+          <p><code>index.html</code> tiene <code>background: #09090b</code> inline en el <code>&lt;html&gt;</code>. Esto fuerza fondo oscuro aunque el tema activo sea <code>light</code>. Debe alinearse con el tema default o setearse por JS al inicializar.</p>
+        </div>
+      </div>
+
+      <div class="callout callout-warning">
+        <span class="icon">⚠️</span>
+        <div class="callout-body">
+          <strong>Componentes con hex hardcodeados</strong>
+          <p>Varios componentes usan colores hex literales: <code>InvitationProcessor</code> (<code>bg-[#050508]</code>), <code>MeetingRooms</code> (<code>bg-[#1a1a2e]</code>), múltiples componentes de onboarding con <code>#0a0a0c</code>, <code>#1e2328</code>, <code>#c8aa6e</code>. Pendiente migrar a tokens.</p>
+        </div>
+      </div>
+
+      <div class="callout callout-warning">
+        <span class="icon">⚠️</span>
+        <div class="callout-body">
+          <strong>design-tokens.ts poco adoptado</strong>
+          <p>El archivo existe pero apenas se importa. La mayoría del codebase sigue usando clases Tailwind directas en lugar de los composites y primitivos definidos ahí.</p>
+        </div>
+      </div>
+
+      <div class="callout callout-warning">
+        <span class="icon">⚠️</span>
+        <div class="callout-body">
+          <strong>Gradiente primario duplicado</strong>
+          <p><code>from-blue-600 via-sky-500 to-cyan-500</code> aparece copiado en +20 componentes. La constante <code>GRADIENT_PRIMARY</code> ya existe en <code>lib/theme.ts</code> pero no se usa.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Changelog ── -->
+    <section id="changelog">
+      <h2>Qué cambió en los estilos</h2>
+      <p class="section-sub">Historial de las decisiones de arquitectura de estilos más importantes.</p>
+
+      <table class="token-table">
+        <thead>
+          <tr>
+            <th>Cuándo</th>
+            <th>Qué cambió</th>
+            <th>Impacto</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>2026 Q1</strong></td>
+            <td>Migración de CDN de Tailwind a compilación local (PostCSS + Vite)</td>
+            <td>Eliminó dependencia de red en runtime, habilitó JIT tree-shaking, mejoró performance inicial</td>
+          </tr>
+          <tr>
+            <td><strong>2026 Q1</strong></td>
+            <td>Creación de <code>lib/theme.ts</code> con <code>ThemeStyleSet</code> y 4 temas</td>
+            <td>Sistema multi-tema funcional. El workspace shell (nav, sidebar, header) ya lo usa correctamente</td>
+          </tr>
+          <tr>
+            <td><strong>2026 Q1</strong></td>
+            <td>Tema default cambiado de <code>dark</code> a <code>light</code></td>
+            <td>La experiencia default pasó de zinc oscuro a azul-slate claro (#F1F5FA). dark y space quedan como legacy</td>
+          </tr>
+          <tr>
+            <td><strong>2026 Q1</strong></td>
+            <td>Creación de <code>styles/design-tokens.ts</code></td>
+            <td>Tokens primitivos para el sistema glassmorphism. Definido pero sub-adoptado en componentes</td>
+          </tr>
+          <tr>
+            <td><strong>2026 Q1</strong></td>
+            <td>Adición de <code>breakpoints</code> 3xl (1920px) y 4xl (2560px) en tailwind.config</td>
+            <td>Soporte para monitores ultrawide (27"–32"+)</td>
+          </tr>
+          <tr>
+            <td><strong>2026 Q1</strong></td>
+            <td>Adición del tema <code>arcade</code> (verde neón / negro)</td>
+            <td>Nuevo tema opt-in con identidad retro. Disponible en Configuración → General</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>
+      <p>Urpeverso — Documentación interna de sistema de estilos. Generado Abr 2026.</p>
+    </footer>
+
+  </main>
+</div>
+
+</body>
+</html>

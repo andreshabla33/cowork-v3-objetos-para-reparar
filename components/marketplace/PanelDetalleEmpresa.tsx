@@ -31,7 +31,7 @@ export const PanelDetalleEmpresa: React.FC<PanelDetalleEmpresaProps> = ({
 }) => {
   if (!zona) return null;
 
-  const color = zona.color || '#6366f1';
+  const color = zona.color || '#2563eb';
   const nombre = empresa?.nombre || zona.nombre_zona || 'Empresa';
   const esComun = zona.es_comun;
 

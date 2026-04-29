@@ -40,7 +40,7 @@ export const TeleportEffect: React.FC<TeleportEffectProps> = ({ position, phase 
     <mesh ref={meshRef} position={position} geometry={teleportCylinderGeometry}>
       <meshBasicMaterial
         ref={materialRef}
-        color={phase === 'out' ? '#8b5cf6' : '#6366f1'}
+        color={phase === 'out' ? '#2563eb' : '#2563eb'}
         transparent
         opacity={phase === 'out' ? 1 : 0}
         depthWrite={false}

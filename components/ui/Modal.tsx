@@ -67,7 +67,7 @@ export const Modal: React.FC<ModalProps> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className={`fixed inset-0 z-[2000] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto ${className}`}
+        className={`fixed inset-0 z-[2000] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 overflow-y-auto ${className}`}
         onClick={closeOnOverlayClick ? onClose : undefined}
       >
         <motion.div
@@ -77,33 +77,30 @@ export const Modal: React.FC<ModalProps> = ({
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
           className={`
             relative w-full ${responsiveSizes[size]}
-            backdrop-blur-xl bg-white/[0.03] 
-            border border-white/[0.08] 
+            bg-white
+            border border-[#E3EAF2]
             rounded-3xl lg:rounded-2xl
-            shadow-2xl
+            shadow-xl
             my-auto
             ${contentClassName}
           `}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Glow exterior sutil */}
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-600/10 via-fuchsia-600/10 to-cyan-500/10 rounded-3xl lg:rounded-2xl blur-xl opacity-50 pointer-events-none" />
-          
           {/* Contenido */}
           <div className="relative">
             {/* Header con título opcional */}
             {(title || showCloseButton) && (
-              <div className="flex items-center justify-between p-6 lg:p-5 md:p-4 border-b border-white/5">
+              <div className="flex items-center justify-between p-6 lg:p-5 md:p-4 border-b border-[#E3EAF2]">
                 {title && (
                   <div>
-                    <h2 className="text-xl lg:text-lg font-bold text-white">{title}</h2>
-                    {subtitle && <p className="text-sm lg:text-xs text-zinc-400 mt-1">{subtitle}</p>}
+                    <h2 className="text-xl lg:text-lg font-bold text-slate-800">{title}</h2>
+                    {subtitle && <p className="text-sm lg:text-xs text-slate-500 mt-1">{subtitle}</p>}
                   </div>
                 )}
                 {showCloseButton && (
                   <button
                     onClick={onClose}
-                    className="p-2 hover:bg-white/5 rounded-xl transition-colors text-zinc-500 hover:text-white"
+                    className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400 hover:text-slate-700"
                   >
                     <X className="w-5 h-5 lg:w-4 lg:h-4" />
                   </button>

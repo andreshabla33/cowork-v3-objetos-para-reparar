@@ -90,7 +90,7 @@ export const GamificacionPanel: React.FC<GamificacionPanelProps> = ({ usuarioId,
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-lg font-black text-white">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-700 to-blue-600 flex items-center justify-center text-lg font-black text-white">
               {nivelInfo.nivel}
             </div>
             <div>
@@ -107,11 +107,11 @@ export const GamificacionPanel: React.FC<GamificacionPanelProps> = ({ usuarioId,
         <div className="px-5 py-3 border-b border-white/5">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[10px] text-white/30">Progreso nivel {nivelInfo.nivel} → {nivelInfo.nivel + 1}</span>
-            <span className="text-[10px] text-indigo-400 font-mono">{nivelInfo.xpActual}/{nivelInfo.xpSiguiente} XP</span>
+            <span className="text-[10px] text-blue-500 font-mono">{nivelInfo.xpActual}/{nivelInfo.xpSiguiente} XP</span>
           </div>
           <div className="h-2 bg-white/5 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-indigo-600 to-purple-500 rounded-full transition-all duration-700"
+              className="h-full bg-gradient-to-r from-blue-700 to-blue-500 rounded-full transition-all duration-700"
               style={{ width: `${Math.min(nivelInfo.progreso * 100, 100)}%` }}
             />
           </div>
@@ -134,7 +134,7 @@ export const GamificacionPanel: React.FC<GamificacionPanelProps> = ({ usuarioId,
               onClick={() => setTab(t.key)}
               className={`flex-1 py-2.5 text-center text-[11px] font-medium transition-colors ${
                 tab === t.key
-                  ? 'text-indigo-400 border-b-2 border-indigo-500 bg-indigo-500/5'
+                  ? 'text-blue-500 border-b-2 border-blue-600 bg-blue-600/5'
                   : 'text-white/40 hover:text-white/60'
               }`}
             >
@@ -147,7 +147,7 @@ export const GamificacionPanel: React.FC<GamificacionPanelProps> = ({ usuarioId,
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {cargando ? (
             <div className="flex items-center justify-center py-12">
-              <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+              <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : tab === 'perfil' ? (
             <PerfilTab perfil={perfil} nivelInfo={nivelInfo} logrosCount={logrosUsuario.length} totalLogros={logros.length} />
@@ -182,9 +182,9 @@ const PerfilTab: React.FC<{ perfil: PerfilGamificacion | null; nivelInfo: any; l
     <div className="space-y-4">
       {/* Título activo */}
       {perfil.titulo_activo && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-indigo-600/10 rounded-xl border border-indigo-500/20">
+        <div className="flex items-center gap-2 px-3 py-2 bg-blue-700/10 rounded-xl border border-blue-600/20">
           <span className="text-xs">🏷️</span>
-          <span className="text-xs text-indigo-300 font-medium">{perfil.titulo_activo}</span>
+          <span className="text-xs text-sky-600 font-medium">{perfil.titulo_activo}</span>
         </div>
       )}
 
@@ -195,7 +195,7 @@ const PerfilTab: React.FC<{ perfil: PerfilGamificacion | null; nivelInfo: any; l
           <p className="text-[9px] text-white/30 uppercase tracking-wider">Nivel</p>
         </div>
         <div className="bg-white/5 rounded-xl p-3 text-center">
-          <p className="text-lg font-black text-indigo-400">{perfil.xp_total}</p>
+          <p className="text-lg font-black text-blue-500">{perfil.xp_total}</p>
           <p className="text-[9px] text-white/30 uppercase tracking-wider">XP Total</p>
         </div>
         <div className="bg-white/5 rounded-xl p-3 text-center">
@@ -237,14 +237,14 @@ const MisionesTab: React.FC<{ misiones: Mision[] }> = ({ misiones }) => {
                 <p className={`text-xs font-bold ${completada ? 'text-green-400 line-through' : 'text-white/80'}`}>{m.titulo}</p>
                 {m.descripcion && <p className="text-[10px] text-white/30 mt-0.5">{m.descripcion}</p>}
               </div>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${completada ? 'bg-green-500/20 text-green-400' : 'bg-indigo-500/20 text-indigo-400'}`}>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${completada ? 'bg-green-500/20 text-green-400' : 'bg-blue-600/20 text-blue-500'}`}>
                 +{m.xp_recompensa} XP
               </span>
             </div>
             <div className="flex items-center gap-2">
               <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all duration-500 ${completada ? 'bg-green-500' : 'bg-indigo-500'}`}
+                  className={`h-full rounded-full transition-all duration-500 ${completada ? 'bg-green-500' : 'bg-blue-600'}`}
                   style={{ width: `${Math.min(progreso * 100, 100)}%` }}
                 />
               </div>
@@ -269,7 +269,7 @@ const LogrosTab: React.FC<{ logros: Logro[]; desbloqueadosIds: Set<string> }> = 
             <span className="text-2xl block mb-1">{l.icono || '🎯'}</span>
             <p className={`text-[10px] font-bold ${desbloqueado ? 'text-amber-300' : 'text-white/40'}`}>{l.titulo}</p>
             {l.descripcion && <p className="text-[9px] text-white/20 mt-0.5 line-clamp-2">{l.descripcion}</p>}
-            <p className="text-[9px] text-indigo-400/60 mt-1">+{l.xp_recompensa} XP</p>
+            <p className="text-[9px] text-blue-500/60 mt-1">+{l.xp_recompensa} XP</p>
           </div>
         );
       })}
@@ -298,7 +298,7 @@ const ItemsTab: React.FC<{ items: ItemCosmetico[]; nivelActual: number; itemsDes
               {equipado ? (
                 <span className="text-[9px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-bold">Equipado</span>
               ) : disponible ? (
-                <span className="text-[9px] bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full font-bold">Disponible</span>
+                <span className="text-[9px] bg-blue-600/20 text-blue-500 px-2 py-0.5 rounded-full font-bold">Disponible</span>
               ) : (
                 <span className="text-[9px] text-white/20">Nv. {it.nivel_requerido}</span>
               )}

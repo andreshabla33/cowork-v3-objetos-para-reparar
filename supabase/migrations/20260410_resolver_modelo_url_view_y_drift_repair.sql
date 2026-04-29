@@ -57,7 +57,7 @@ SELECT
     NULLIF(eo.modelo_url, ''),
     CASE
       WHEN c.built_in_geometry IS NOT NULL
-        THEN 'builtin:' || c.built_in_geometry || ':' || COALESCE(REPLACE(c.built_in_color, '#', ''), '6366f1')
+        THEN 'builtin:' || c.built_in_geometry || ':' || COALESCE(REPLACE(c.built_in_color, '#', ''), '2563eb')
       ELSE NULL
     END
   ) AS modelo_url,

@@ -212,7 +212,7 @@ export const VideoHUD: React.FC<VideoHUDProps> = ({
               {/* Fullscreen */}
               <button 
                 onClick={() => setZoomLevel(z => z === 1 ? 1.5 : 1)}
-                className="w-10 h-10 rounded-xl bg-indigo-500/20 hover:bg-indigo-500/30 flex items-center justify-center text-indigo-400 transition-all"
+                className="w-10 h-10 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 flex items-center justify-center text-blue-500 transition-all"
                 title="Ajustar pantalla"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" /></svg>
@@ -276,7 +276,7 @@ export const VideoHUD: React.FC<VideoHUDProps> = ({
           </div>
           {!camOn && (
             <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center">
-              <div className="w-14 h-14 rounded-full border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-black text-2xl bg-black/50 overflow-hidden">
+              <div className="w-14 h-14 rounded-full border border-blue-600/30 flex items-center justify-center text-blue-500 font-black text-2xl bg-black/50 overflow-hidden">
                 {userAvatar ? (
                   <img src={userAvatar} alt={userName} className="w-full h-full object-cover" />
                 ) : (
@@ -288,7 +288,7 @@ export const VideoHUD: React.FC<VideoHUDProps> = ({
           
           {/* Control de expandir */}
           <div className="absolute bottom-3 right-3 flex justify-end items-center gap-1 transition-all duration-300 opacity-0 group-hover:opacity-100">
-            <button onClick={() => setExpandedId('local')} className="w-7 h-7 rounded-full flex items-center justify-center bg-indigo-600 backdrop-blur-md border border-white/10 text-white hover:bg-indigo-500 transition-all shadow-lg">
+            <button onClick={() => setExpandedId('local')} className="w-7 h-7 rounded-full flex items-center justify-center bg-blue-700 backdrop-blur-md border border-white/10 text-white hover:bg-blue-600 transition-all shadow-lg">
               <IconExpand on={false}/>
             </button>
           </div>
@@ -313,12 +313,12 @@ export const VideoHUD: React.FC<VideoHUDProps> = ({
 
         {/* Burbuja de screen share (separada) */}
         {sharingOn && screenStream && (
-          <div className="relative bg-black rounded-[28px] overflow-hidden border border-indigo-500/50 shadow-2xl group w-52 h-36">
+          <div className="relative bg-black rounded-[28px] overflow-hidden border border-blue-600/50 shadow-2xl group w-52 h-36">
             <StableVideo stream={screenStream} className="w-full h-full object-cover" />
-            <div className="absolute top-3 left-3 bg-indigo-600 backdrop-blur-md px-2 py-1 rounded-lg">
+            <div className="absolute top-3 left-3 bg-blue-700 backdrop-blur-md px-2 py-1 rounded-lg">
               <span className="text-[10px] font-bold uppercase tracking-wide text-white">Tu pantalla</span>
             </div>
-            <button onClick={() => setExpandedId('screen')} className="absolute bottom-3 right-3 w-8 h-8 rounded-full flex items-center justify-center bg-indigo-600 text-white opacity-0 group-hover:opacity-100 transition-all">
+            <button onClick={() => setExpandedId('screen')} className="absolute bottom-3 right-3 w-8 h-8 rounded-full flex items-center justify-center bg-blue-700 text-white opacity-0 group-hover:opacity-100 transition-all">
               <IconExpand on={false}/>
             </button>
           </div>
@@ -345,7 +345,7 @@ export const VideoHUD: React.FC<VideoHUDProps> = ({
               )}
               {/* Wave animation overlay */}
               {isWaving && (
-                <div className="absolute inset-0 bg-indigo-500/20 flex items-center justify-center z-20 animate-pulse">
+                <div className="absolute inset-0 bg-blue-600/20 flex items-center justify-center z-20 animate-pulse">
                   <span className="text-4xl animate-bounce">👋</span>
                 </div>
               )}
@@ -353,11 +353,11 @@ export const VideoHUD: React.FC<VideoHUDProps> = ({
               {!shouldShowRemoteCam ? (
                 /* Usuario tiene cámara apagada - mostrar foto de perfil o inicial */
                 <div className="absolute inset-0 flex items-center justify-center bg-zinc-900">
-                  <div className="w-14 h-14 rounded-full border border-indigo-500/30 flex items-center justify-center bg-black/50 overflow-hidden">
+                  <div className="w-14 h-14 rounded-full border border-blue-600/30 flex items-center justify-center bg-black/50 overflow-hidden">
                     {u.avatar ? (
                       <img src={u.avatar} alt={u.name} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-indigo-400 font-black text-2xl">{u.name.charAt(0)}</span>
+                      <span className="text-blue-500 font-black text-2xl">{u.name.charAt(0)}</span>
                     )}
                   </div>
                 </div>
@@ -373,8 +373,8 @@ export const VideoHUD: React.FC<VideoHUDProps> = ({
                 /* Usuario tiene cámara ON pero stream no disponible aún */
                 <div className="absolute inset-0 flex items-center justify-center bg-zinc-900">
                   <div className="flex flex-col items-center">
-                    <div className="w-12 h-12 rounded-full bg-indigo-500/20 flex items-center justify-center mb-1 animate-pulse">
-                      <svg className="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-12 h-12 rounded-full bg-blue-600/20 flex items-center justify-center mb-1 animate-pulse">
+                      <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
                     </div>
@@ -419,7 +419,7 @@ export const VideoHUD: React.FC<VideoHUDProps> = ({
                 >
                   👋
                 </button>
-                <button onClick={() => setExpandedId(participantId)} className="w-8 h-8 rounded-full flex items-center justify-center bg-indigo-600 text-white hover:bg-indigo-500 transition-all">
+                <button onClick={() => setExpandedId(participantId)} className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-700 text-white hover:bg-blue-600 transition-all">
                   <IconExpand on={false}/>
                 </button>
               </div>
@@ -456,7 +456,7 @@ export const VideoHUD: React.FC<VideoHUDProps> = ({
               
               {/* Burbuja de cámara pequeña (PiP) cuando también comparte pantalla */}
               {hasActiveCamera && (
-                <div className="relative bg-black rounded-2xl overflow-hidden border border-indigo-500/40 shadow-xl group w-28 h-20">
+                <div className="relative bg-black rounded-2xl overflow-hidden border border-blue-600/40 shadow-xl group w-28 h-20">
                   <StableVideo 
                     stream={remoteStream} 
                     className="w-full h-full object-cover" 
@@ -468,8 +468,8 @@ export const VideoHUD: React.FC<VideoHUDProps> = ({
                     <span className="text-[7px] font-medium text-white/80">{u.name.split(' ')[0]}</span>
                   </div>
                   {/* Icono de cámara */}
-                  <div className="absolute top-1 right-1 w-4 h-4 rounded bg-indigo-500/30 backdrop-blur-sm flex items-center justify-center">
-                    <svg className="w-2.5 h-2.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                  <div className="absolute top-1 right-1 w-4 h-4 rounded bg-blue-600/30 backdrop-blur-sm flex items-center justify-center">
+                    <svg className="w-2.5 h-2.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                   </div>
                   <button onClick={() => setExpandedId(participantId)} className="absolute inset-0 w-full h-full opacity-0 group-hover:opacity-100 bg-black/20 flex items-center justify-center transition-all">
                     <IconExpand on={false}/>

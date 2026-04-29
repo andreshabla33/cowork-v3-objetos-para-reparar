@@ -172,7 +172,7 @@ export const ScavengerHuntGame: React.FC<ScavengerHuntGameProps> = ({ onClose })
             <div className="p-4 bg-zinc-900 rounded-xl"><p className="text-3xl font-bold text-white">{foundCount}/{totalItems}</p><p className="text-xs text-zinc-500">Objetos</p></div>
             <div className="p-4 bg-zinc-900 rounded-xl"><p className="text-3xl font-bold text-white">{formatTime(timeUsed)}</p><p className="text-xs text-zinc-500">Tiempo</p></div>
             <div className="p-4 bg-zinc-900 rounded-xl"><p className="text-3xl font-bold text-emerald-400">{score}</p><p className="text-xs text-zinc-500">Puntos base</p></div>
-            <div className="p-4 bg-zinc-900 rounded-xl"><p className="text-3xl font-bold text-violet-400">{totalScore}</p><p className="text-xs text-zinc-500">Total</p></div>
+            <div className="p-4 bg-zinc-900 rounded-xl"><p className="text-3xl font-bold text-sky-400">{totalScore}</p><p className="text-xs text-zinc-500">Total</p></div>
           </div>
 
           <div className="flex gap-4 justify-center">

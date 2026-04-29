@@ -51,10 +51,10 @@ const construirModeloUrl = (catalogo: CatalogoPlantilla) => {
   }
 
   if (catalogo.built_in_geometry) {
-    return `builtin:${catalogo.built_in_geometry}:${(catalogo.built_in_color || '#6366f1').replace('#', '')}`;
+    return `builtin:${catalogo.built_in_geometry}:${(catalogo.built_in_color || '#2563eb').replace('#', '')}`;
   }
 
-  return 'builtin:cubo:6366f1';
+  return 'builtin:cubo:2563eb';
 };
 
 const usaDimensionRotada = (rotacionY: number) => {

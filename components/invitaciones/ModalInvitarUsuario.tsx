@@ -47,7 +47,7 @@ const ROLES: RolConfig[] = [
 ];
 
 const COLOR_MAP: Record<'violet' | 'cyan' | 'amber', { bg: string; border: string; text: string; glow: string; dot: string }> = {
-  violet: { bg: 'bg-violet-500/10', border: 'border-violet-500/50', text: 'text-violet-400', glow: 'shadow-violet-500/20', dot: 'bg-violet-400' },
+  violet: { bg: 'bg-blue-500/10', border: 'border-blue-500/50', text: 'text-sky-400', glow: 'shadow-blue-500/20', dot: 'bg-sky-400' },
   cyan:   { bg: 'bg-cyan-500/10',   border: 'border-cyan-500/50',   text: 'text-cyan-400',   glow: 'shadow-cyan-500/20',   dot: 'bg-cyan-400'   },
   amber:  { bg: 'bg-amber-500/10',  border: 'border-amber-500/50',  text: 'text-amber-400',  glow: 'shadow-amber-500/20',  dot: 'bg-amber-400'  },
 };

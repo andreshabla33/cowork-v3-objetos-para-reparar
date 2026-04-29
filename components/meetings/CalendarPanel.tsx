@@ -10,6 +10,7 @@ import {
   validarInvitadoExterno,
 } from '../../types/meeting-types';
 import { useCalendarPanel } from '@/hooks/meetings/useCalendarPanel';
+import { getThemeStyles } from '@/lib/theme';
 
 interface CalendarPanelProps {
   onJoinMeeting?: (salaId: string) => void;
@@ -89,31 +90,21 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
 
 
 
-  const themeStyles = {
-    dark: {
-      bg: 'bg-[#1a1a2e]',
-      card: 'bg-white/5 border-white/10 hover:bg-white/10',
-      cardActive: 'bg-indigo-500/20 border-indigo-500/50',
-      btn: 'bg-indigo-600 hover:bg-indigo-500',
-      btnGoogle: 'bg-white text-gray-800 hover:bg-gray-100',
-      input: 'bg-white/5 border-white/10 focus:border-indigo-500/50'
-    },
-    arcade: {
-      bg: 'bg-black',
-      card: 'bg-black border-[#00ff41]/30 hover:border-[#00ff41]/60',
-      cardActive: 'bg-[#00ff41]/10 border-[#00ff41]',
-      btn: 'bg-[#00ff41] text-black hover:bg-white',
-      btnGoogle: 'bg-[#00ff41] text-black hover:bg-white',
-      input: 'bg-black border-[#00ff41]/30 focus:border-[#00ff41]'
-    }
+  // Derived from global design tokens (lib/theme.ts) so all themes look right.
+  const tokens = getThemeStyles(theme);
+  const s = {
+    bg:         tokens.bg,
+    card:       `${tokens.surface} ${tokens.border} hover:border-sky-300`,
+    cardActive: `${tokens.accentSurface} ${tokens.accentBorder}`,
+    btn:        tokens.accentBg,
+    btnGoogle:  tokens.btnSecondary,
+    input:      tokens.input,
   };
-
-  const s = themeStyles[theme as keyof typeof themeStyles] || themeStyles.dark;
 
   return (
     <div className={`${s.bg}`}>
       {/* Header */}
-      <div className="p-5 lg:p-4 border-b border-white/10">
+      <div className="p-5 lg:p-4 border-b border-[#E3EAF2]">
         <div className="flex items-center justify-between mb-4 lg:mb-3">
           <h1 className={`text-xl font-bold ${theme === 'arcade' ? 'text-[#00ff41]' : ''}`}>
             Calendario
@@ -142,18 +133,18 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[10px] opacity-40 font-mono">
-            <span className="px-1.5 py-0.5 bg-white/10 rounded">Ctrl</span>
-            <span className="px-1.5 py-0.5 bg-white/10 rounded">F</span>
+            <span className="px-1.5 py-0.5 bg-slate-100 rounded">Ctrl</span>
+            <span className="px-1.5 py-0.5 bg-slate-100 rounded">F</span>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex bg-white/5 rounded-xl p-1">
+        <div className="flex bg-slate-50 rounded-xl p-1">
           <button
             onClick={() => setActiveTab('scheduled')}
             className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
               activeTab === 'scheduled' 
-                ? (theme === 'arcade' ? 'bg-[#00ff41] text-black' : 'bg-indigo-600 text-white') 
+                ? (theme === 'arcade' ? 'bg-[#00ff41] text-black' : 'bg-sky-500 text-white') 
                 : 'opacity-50 hover:opacity-100'
             }`}
           >
@@ -163,7 +154,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
             onClick={() => setActiveTab('notes')}
             className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
               activeTab === 'notes' 
-                ? (theme === 'arcade' ? 'bg-[#00ff41] text-black' : 'bg-indigo-600 text-white') 
+                ? (theme === 'arcade' ? 'bg-[#00ff41] text-black' : 'bg-sky-500 text-white') 
                 : 'opacity-50 hover:opacity-100'
             }`}
           >
@@ -176,16 +167,16 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
       <div className="p-6">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className={`w-10 h-10 border-3 ${theme === 'arcade' ? 'border-[#00ff41]' : 'border-indigo-500'} border-t-transparent rounded-full animate-spin`} />
+            <div className={`w-10 h-10 border-3 ${theme === 'arcade' ? 'border-[#00ff41]' : 'border-sky-500'} border-t-transparent rounded-full animate-spin`} />
           </div>
         ) : activeTab === 'scheduled' ? (
           <>
             {/* Mini Calendar */}
-            <div className={`rounded-xl p-4 mb-4 ${theme === 'arcade' ? 'bg-zinc-900/50 border border-[#00ff41]/20' : 'bg-zinc-800/50 border border-zinc-700/50'}`}>
+            <div className={`rounded-xl p-4 mb-4 ${theme === 'arcade' ? 'bg-zinc-900/50 border border-[#00ff41]/20' : 'bg-white border border-[#E3EAF2]'}`}>
               <div className="flex items-center justify-between mb-3">
                 <button
                   onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() - 1))}
-                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                  className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
@@ -196,7 +187,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                 </h4>
                 <button
                   onClick={() => setSelectedDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1))}
-                  className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                  className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
@@ -206,7 +197,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
 
               <div className="grid grid-cols-7 gap-1 text-center">
                 {['D', 'L', 'M', 'X', 'J', 'V', 'S'].map(day => (
-                  <div key={day} className="text-[10px] font-bold text-zinc-400 py-1">{day}</div>
+                  <div key={day} className="text-[10px] font-bold text-slate-400 py-1">{day}</div>
                 ))}
                 {getDaysInMonth(selectedDate).map((date, i) => {
                   if (!date) return <div key={i} className="p-1" />;
@@ -228,18 +219,18 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                       key={i}
                       onClick={handleDayClick}
                       className={`p-1.5 rounded-lg text-[11px] font-medium cursor-pointer transition-all ${
-                        isPast ? 'text-zinc-600 cursor-not-allowed' :
+                        isPast ? 'text-slate-300 cursor-not-allowed' :
                         isToday 
-                          ? (theme === 'arcade' ? 'bg-[#00ff41] text-black font-bold' : 'bg-indigo-500 text-white font-bold') 
+                          ? (theme === 'arcade' ? 'bg-[#00ff41] text-black font-bold' : 'bg-sky-500 text-white font-bold') 
                           : dayMeetings.length > 0 
-                            ? 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30' 
-                            : 'text-zinc-300 hover:bg-white/10'
+                            ? 'bg-sky-50 text-sky-700 hover:bg-sky-100' 
+                            : 'text-slate-600 hover:bg-slate-100'
                       }`}
                       title={isPast ? 'Fecha pasada' : 'Click para crear reunión'}
                     >
                       {date.getDate()}
                       {dayMeetings.length > 0 && (
-                        <div className={`w-1.5 h-1.5 rounded-full mx-auto mt-0.5 ${theme === 'arcade' ? 'bg-[#00ff41]' : 'bg-indigo-400'}`} />
+                        <div className={`w-1.5 h-1.5 rounded-full mx-auto mt-0.5 ${theme === 'arcade' ? 'bg-[#00ff41]' : 'bg-blue-500'}`} />
                       )}
                     </div>
                   );
@@ -250,7 +241,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
             {/* Meetings List */}
             {filteredMeetings.length === 0 ? (
               <div className="text-center py-6">
-                <div className={`w-16 h-16 mx-auto mb-3 rounded-2xl ${theme === 'arcade' ? 'bg-[#00ff41]/10' : 'bg-indigo-500/10'} flex items-center justify-center`}>
+                <div className={`w-16 h-16 mx-auto mb-3 rounded-2xl ${theme === 'arcade' ? 'bg-[#00ff41]/10' : 'bg-sky-50'} flex items-center justify-center`}>
                   <svg className={`w-8 h-8 ${theme === 'arcade' ? 'text-[#00ff41]/40' : 'opacity-30'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
@@ -290,7 +281,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                           <div className="flex items-center gap-2 mb-1">
                             <h4 className="font-bold truncate">{meeting.titulo}</h4>
                             {isCreator(meeting) && (
-                              <span className={`px-2 py-0.5 ${theme === 'arcade' ? 'bg-[#00ff41]/20 text-[#00ff41]' : 'bg-indigo-500/20 text-indigo-300'} rounded text-[9px] font-bold`}>
+                              <span className={`px-2 py-0.5 ${theme === 'arcade' ? 'bg-[#00ff41]/20 text-[#00ff41]' : 'bg-sky-50 text-sky-700'} rounded text-[9px] font-bold`}>
                                 ORGANIZADOR
                               </span>
                             )}
@@ -325,7 +316,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                                       p.estado === 'aceptado' ? 'bg-green-500/30 text-green-300' :
                                       p.estado === 'rechazado' ? 'bg-red-500/30 text-red-300' :
                                       p.estado === 'tentativo' ? 'bg-amber-500/30 text-amber-300' :
-                                      'bg-white/10'
+                                      'bg-slate-100'
                                     }`}
                                     title={`${p.usuario?.nombre} (${p.estado})`}
                                   >
@@ -345,7 +336,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                           {meeting.sala_id && (
                             <button
                               onClick={() => setActiveMeeting({ salaId: meeting.sala_id!, titulo: meeting.titulo })}
-                              className={`px-4 py-2 ${theme === 'arcade' ? 'bg-[#00ff41] text-black' : 'bg-gradient-to-r from-indigo-500 to-purple-600'} hover:opacity-80 rounded-xl text-xs font-bold transition-all flex items-center gap-2 justify-center`}
+                              className={`px-4 py-2 ${theme === 'arcade' ? 'bg-[#00ff41] text-black' : 'bg-gradient-to-r from-blue-600 to-blue-600'} hover:opacity-80 rounded-xl text-xs font-bold transition-all flex items-center gap-2 justify-center`}
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
@@ -361,7 +352,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                               {meeting.meeting_link && (
                                 <button
                                   onClick={() => copyMeetingLink(meeting.meeting_link ?? '', meeting.id)}
-                                  className={`flex-1 px-3 py-1.5 ${copiedLink === meeting.id ? 'bg-green-500/30 text-green-300' : 'bg-white/10 hover:bg-white/20'} rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 justify-center`}
+                                  className={`flex-1 px-3 py-1.5 ${copiedLink === meeting.id ? 'bg-green-500/30 text-green-300' : 'bg-slate-100 hover:bg-slate-200'} rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 justify-center`}
                                   title="Copiar link para equipo interno"
                                 >
                                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -376,7 +367,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                               {/* Invitar externos (genera /join/TOKEN) */}
                               <button
                                 onClick={() => setShowInviteModal(meeting.sala_id!)}
-                                className="flex-1 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 justify-center"
+                                className="flex-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 justify-center"
                                 title="Invitar personas externas"
                               >
                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -441,7 +432,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
         ) : (
           /* Meeting Notes Tab */
           <div className="text-center py-16">
-            <div className={`w-24 h-24 mx-auto mb-4 rounded-3xl ${theme === 'arcade' ? 'bg-[#00ff41]/10' : 'bg-indigo-500/10'} flex items-center justify-center`}>
+            <div className={`w-24 h-24 mx-auto mb-4 rounded-3xl ${theme === 'arcade' ? 'bg-[#00ff41]/10' : 'bg-sky-50'} flex items-center justify-center`}>
               <svg className={`w-12 h-12 ${theme === 'arcade' ? 'text-[#00ff41]/40' : 'opacity-30'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
@@ -449,7 +440,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
             <h4 className="font-bold mb-2">Notas de Reunión</h4>
             <p className="text-sm opacity-50 mb-1">Las notas de reuniones con AI</p>
             <p className="text-sm opacity-50">estarán disponibles próximamente</p>
-            <span className={`inline-block mt-4 px-3 py-1 ${theme === 'arcade' ? 'bg-[#00ff41]/20 text-[#00ff41]' : 'bg-indigo-500/20 text-indigo-300'} rounded-full text-xs font-bold`}>
+            <span className={`inline-block mt-4 px-3 py-1 ${theme === 'arcade' ? 'bg-[#00ff41]/20 text-[#00ff41]' : 'bg-sky-50 text-sky-700'} rounded-full text-xs font-bold`}>
               Fase 2
             </span>
           </div>
@@ -492,12 +483,12 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
           onClick={() => setShowScheduleModal(false)}
         >
           <div 
-            className={`w-full max-w-md lg:max-w-sm rounded-2xl lg:rounded-xl ${s.bg} border border-white/10 shadow-2xl overflow-hidden`}
+            className={`w-full max-w-md lg:max-w-sm rounded-2xl lg:rounded-xl ${s.bg} border border-[#E3EAF2] shadow-2xl overflow-hidden`}
             onClick={e => e.stopPropagation()}
           >
-            <div className={`p-4 lg:p-3 border-b border-white/10 ${theme === 'arcade' ? 'bg-[#00ff41]/5' : 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10'}`}>
+            <div className={`p-4 lg:p-3 border-b border-[#E3EAF2] ${theme === 'arcade' ? 'bg-[#00ff41]/5' : 'bg-gradient-to-r from-blue-600/10 to-blue-500/10'}`}>
               <div className="flex items-center gap-3 lg:gap-2">
-                <div className={`w-10 h-10 lg:w-8 lg:h-8 rounded-xl lg:rounded-lg ${theme === 'arcade' ? 'bg-[#00ff41]' : 'bg-gradient-to-br from-indigo-500 to-purple-600'} flex items-center justify-center`}>
+                <div className={`w-10 h-10 lg:w-8 lg:h-8 rounded-xl lg:rounded-lg ${theme === 'arcade' ? 'bg-[#00ff41]' : 'bg-gradient-to-br from-blue-600 to-blue-600'} flex items-center justify-center`}>
                   <svg className={`w-5 h-5 lg:w-4 lg:h-4 ${theme === 'arcade' ? 'text-black' : 'text-white'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
@@ -517,7 +508,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                   value={newMeeting.titulo}
                   onChange={e => updateMeetingField('titulo', e.target.value)}
                   placeholder="Ej: Daily Standup..."
-                  className={`w-full ${s.input} border rounded-lg px-3 py-2 lg:py-1.5 text-sm lg:text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all`}
+                  className={`w-full ${s.input} border rounded-lg px-3 py-2 lg:py-1.5 text-sm lg:text-xs focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition-all`}
                 />
               </div>
 
@@ -549,7 +540,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                         className={`relative flex flex-col items-center gap-1 p-2.5 lg:p-2 rounded-xl border transition-all duration-200 ${
                           isSelected
                             ? `bg-gradient-to-br ${config.color} border-transparent shadow-lg`
-                            : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
+                            : 'bg-slate-50 border-[#E3EAF2] hover:bg-slate-100 hover:border-sky-300'
                         }`}
                       >
                         <span className="text-xl lg:text-lg">{config.icon}</span>
@@ -574,7 +565,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
 
               {/* Formulario de Invitado Externo (solo para cliente/candidato) */}
               {configTipoActual.requiereInvitadoExterno && (
-                <div className="bg-white/5 rounded-xl p-3 border border-white/10 space-y-3">
+                <div className="bg-slate-50 rounded-xl p-3 border border-[#E3EAF2] space-y-3">
                   <label className="block text-[9px] font-bold uppercase tracking-wider opacity-60 mb-2">
                     {newMeeting.tipo_reunion === 'cliente' ? '🤝 Invitar Cliente' : '🎯 Invitar Candidato'}
                   </label>
@@ -583,8 +574,8 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                   {invitadosExternos.length > 0 && (
                     <div className="mb-3 space-y-2">
                       {invitadosExternos.map((inv, idx) => (
-                        <div key={idx} className="flex items-center gap-2 bg-white/5 rounded-lg p-2">
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
+                        <div key={idx} className="flex items-center gap-2 bg-slate-50 rounded-lg p-2">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
                             {inv.nombre.charAt(0).toUpperCase()}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -613,14 +604,14 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                         placeholder="📧 Email *"
                         value={nuevoInvitado.email || ''}
                         onChange={e => setNuevoInvitado({ ...nuevoInvitado, email: e.target.value })}
-                        className={`w-full ${s.input} border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20`}
+                        className={`w-full ${s.input} border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600/20`}
                       />
                       <input
                         type="text"
                         placeholder="👤 Nombre *"
                         value={nuevoInvitado.nombre || ''}
                         onChange={e => setNuevoInvitado({ ...nuevoInvitado, nombre: e.target.value })}
-                        className={`w-full ${s.input} border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20`}
+                        className={`w-full ${s.input} border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600/20`}
                       />
                     </div>
                     
@@ -630,7 +621,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                         placeholder="🏢 Nombre de la empresa *"
                         value={nuevoInvitado.empresa || ''}
                         onChange={e => setNuevoInvitado({ ...nuevoInvitado, empresa: e.target.value })}
-                        className={`w-full ${s.input} border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20`}
+                        className={`w-full ${s.input} border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600/20`}
                       />
                     )}
                     
@@ -640,7 +631,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                         placeholder="💼 Puesto al que aplica *"
                         value={nuevoInvitado.puesto_aplicado || ''}
                         onChange={e => setNuevoInvitado({ ...nuevoInvitado, puesto_aplicado: e.target.value })}
-                        className={`w-full ${s.input} border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20`}
+                        className={`w-full ${s.input} border rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600/20`}
                       />
                     )}
 
@@ -662,7 +653,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                           setErroresInvitado(validacion.errores);
                         }
                       }}
-                      className="w-full py-2 bg-indigo-600/30 hover:bg-indigo-600/50 border border-indigo-500/50 rounded-lg text-xs font-bold transition-all"
+                      className="w-full py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 rounded-lg text-xs font-bold transition-all"
                     >
                       + Agregar {newMeeting.tipo_reunion === 'cliente' ? 'Cliente' : 'Candidato'}
                     </button>
@@ -670,7 +661,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
 
                   {/* Toggle Showroom — solo para deals tipo cliente */}
                   {newMeeting.tipo_reunion === 'cliente' && (
-                    <div className="mt-3 p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border border-purple-500/20">
+                    <div className="mt-3 p-3 rounded-lg bg-gradient-to-r from-blue-500/10 to-blue-600/10 border border-blue-500/20">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <span className="text-base">🏢</span>
@@ -682,7 +673,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                         <button
                           type="button"
                           onClick={() => setShowroomHabilitado(!showroomHabilitado)}
-                          className={`relative w-10 h-5 rounded-full transition-all ${showroomHabilitado ? 'bg-purple-500' : 'bg-white/20'}`}
+                          className={`relative w-10 h-5 rounded-full transition-all ${showroomHabilitado ? 'bg-blue-500' : 'bg-slate-200'}`}
                         >
                           <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${showroomHabilitado ? 'left-5' : 'left-0.5'}`} />
                         </button>
@@ -693,13 +684,13 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                           <select
                             value={showroomDuracion}
                             onChange={e => setShowroomDuracion(parseInt(e.target.value))}
-                            className="bg-white/10 border border-white/10 rounded-lg px-2 py-1 text-[10px] focus:outline-none"
+                            className="bg-slate-100 border border-[#E3EAF2] rounded-lg px-2 py-1 text-[10px] focus:outline-none"
                             style={{ colorScheme: 'dark' }}
                           >
-                            <option value={3} className="bg-zinc-800">3 min</option>
-                            <option value={5} className="bg-zinc-800">5 min</option>
-                            <option value={10} className="bg-zinc-800">10 min</option>
-                            <option value={15} className="bg-zinc-800">15 min</option>
+                            <option value={3} className="bg-white">3 min</option>
+                            <option value={5} className="bg-white">5 min</option>
+                            <option value={10} className="bg-white">10 min</option>
+                            <option value={15} className="bg-white">15 min</option>
                           </select>
                         </div>
                       )}
@@ -758,11 +749,11 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                   className={`w-full ${s.input} border rounded-lg px-3 py-2 lg:py-1.5 text-sm lg:text-xs focus:outline-none transition-all`}
                   style={{ colorScheme: 'dark' }}
                 >
-                  <option value={5} className="bg-zinc-800 text-white">5 min antes</option>
-                  <option value={10} className="bg-zinc-800 text-white">10 min antes</option>
-                  <option value={15} className="bg-zinc-800 text-white">15 min antes</option>
-                  <option value={30} className="bg-zinc-800 text-white">30 min antes</option>
-                  <option value={60} className="bg-zinc-800 text-white">1 hora antes</option>
+                  <option value={5} className="bg-white text-white">5 min antes</option>
+                  <option value={10} className="bg-white text-white">10 min antes</option>
+                  <option value={15} className="bg-white text-white">15 min antes</option>
+                  <option value={30} className="bg-white text-white">30 min antes</option>
+                  <option value={60} className="bg-white text-white">1 hora antes</option>
                 </select>
               </div>
 
@@ -779,20 +770,20 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                           onClick={() => toggleParticipant(member.id)}
                           className={`w-full flex items-center gap-2 p-1.5 rounded-lg transition-all ${
                             newMeeting.participantes.includes(member.id)
-                              ? (theme === 'arcade' ? 'bg-[#00ff41]/20 border border-[#00ff41]/50' : 'bg-indigo-500/20 border border-indigo-500/50')
-                              : 'hover:bg-white/5'
+                              ? (theme === 'arcade' ? 'bg-[#00ff41]/20 border border-[#00ff41]/50' : 'bg-sky-50 border border-sky-200')
+                              : 'hover:bg-slate-50'
                           }`}
                         >
                           <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
                             newMeeting.participantes.includes(member.id) 
-                              ? (theme === 'arcade' ? 'bg-[#00ff41] text-black' : 'bg-indigo-500') 
-                              : 'bg-white/10'
+                              ? (theme === 'arcade' ? 'bg-[#00ff41] text-black' : 'bg-sky-500') 
+                              : 'bg-slate-100'
                           }`}>
                             {member.nombre?.charAt(0) || '?'}
                           </div>
                           <span className="text-xs font-medium flex-1 text-left truncate">{member.nombre}</span>
                           {newMeeting.participantes.includes(member.id) && (
-                            <svg className={`w-3.5 h-3.5 ${theme === 'arcade' ? 'text-[#00ff41]' : 'text-indigo-400'}`} fill="currentColor" viewBox="0 0 24 24">
+                            <svg className={`w-3.5 h-3.5 ${theme === 'arcade' ? 'text-[#00ff41]' : 'text-sky-500'}`} fill="currentColor" viewBox="0 0 24 24">
                               <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
                             </svg>
                           )}
@@ -804,10 +795,10 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
               </div>
             </div>
 
-            <div className="p-4 lg:p-3 border-t border-white/10 flex gap-2">
+            <div className="p-4 lg:p-3 border-t border-[#E3EAF2] flex gap-2">
               <button
                 onClick={() => { setShowScheduleModal(false); resetNewMeeting(); }}
-                className="flex-1 px-3 py-2.5 lg:py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm lg:text-xs font-bold transition-all"
+                className="flex-1 px-3 py-2.5 lg:py-2 bg-slate-50 hover:bg-slate-100 rounded-lg text-sm lg:text-xs font-bold transition-all"
               >
                 Cancelar
               </button>
@@ -848,17 +839,17 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
           onClick={() => setSelectedMeeting(null)}
         >
           <div 
-            className={`w-full max-w-md lg:max-w-sm rounded-2xl lg:rounded-xl ${s.bg} border border-white/10 shadow-2xl overflow-hidden`}
+            className={`w-full max-w-md lg:max-w-sm rounded-2xl lg:rounded-xl ${s.bg} border border-[#E3EAF2] shadow-2xl overflow-hidden`}
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
-            <div className={`p-4 lg:p-3 border-b border-white/10 ${theme === 'arcade' ? 'bg-[#00ff41]/5' : 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10'}`}>
+            <div className={`p-4 lg:p-3 border-b border-[#E3EAF2] ${theme === 'arcade' ? 'bg-[#00ff41]/5' : 'bg-gradient-to-r from-blue-600/10 to-blue-500/10'}`}>
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <h3 className="text-base lg:text-sm font-bold truncate">{selectedMeeting.titulo}</h3>
                     {isCreator(selectedMeeting) && (
-                      <span className={`px-1.5 py-0.5 ${theme === 'arcade' ? 'bg-[#00ff41]/20 text-[#00ff41]' : 'bg-indigo-500/20 text-indigo-300'} rounded text-[8px] font-bold shrink-0`}>
+                      <span className={`px-1.5 py-0.5 ${theme === 'arcade' ? 'bg-[#00ff41]/20 text-[#00ff41]' : 'bg-sky-50 text-sky-700'} rounded text-[8px] font-bold shrink-0`}>
                         ORGANIZADOR
                       </span>
                     )}
@@ -867,7 +858,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                 </div>
                 <button 
                   onClick={() => setSelectedMeeting(null)}
-                  className="p-1.5 hover:bg-white/10 rounded-lg transition-all shrink-0"
+                  className="p-1.5 hover:bg-slate-100 rounded-lg transition-all shrink-0"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -880,7 +871,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
             <div className="p-4 lg:p-3 space-y-3 lg:space-y-2 max-h-[50vh] lg:max-h-[45vh] overflow-y-auto">
               {/* Fecha y Hora */}
               <div className="grid grid-cols-2 gap-2">
-                <div className={`p-2 lg:p-1.5 rounded-lg ${theme === 'arcade' ? 'bg-[#00ff41]/10' : 'bg-indigo-500/10'}`}>
+                <div className={`p-2 lg:p-1.5 rounded-lg ${theme === 'arcade' ? 'bg-[#00ff41]/10' : 'bg-sky-50'}`}>
                   <div className="flex items-center gap-1.5 mb-0.5">
                     <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -889,7 +880,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                   </div>
                   <p className="text-xs lg:text-[11px] font-medium">{formatDateShort(selectedMeeting.fecha_inicio)}</p>
                 </div>
-                <div className={`p-2 lg:p-1.5 rounded-lg ${theme === 'arcade' ? 'bg-[#00ff41]/10' : 'bg-purple-500/10'}`}>
+                <div className={`p-2 lg:p-1.5 rounded-lg ${theme === 'arcade' ? 'bg-[#00ff41]/10' : 'bg-sky-50'}`}>
                   <div className="flex items-center gap-1.5 mb-0.5">
                     <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -904,7 +895,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
               {selectedMeeting.tipo_reunion && (
                 <div>
                   <h4 className="text-[9px] font-bold opacity-60 uppercase mb-1.5 lg:mb-1">Tipo de Reunión</h4>
-                  <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs ${theme === 'arcade' ? 'bg-[#00ff41]/10' : 'bg-white/10'}`}>
+                  <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs ${theme === 'arcade' ? 'bg-[#00ff41]/10' : 'bg-slate-100'}`}>
                     <span>{TIPOS_REUNION_CONFIG[selectedMeeting.tipo_reunion as TipoReunionUnificado]?.icon || '📅'}</span>
                     <span className="font-medium text-xs">{TIPOS_REUNION_CONFIG[selectedMeeting.tipo_reunion as TipoReunionUnificado]?.label || selectedMeeting.tipo_reunion}</span>
                   </div>
@@ -924,7 +915,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                     />
                     <button
                       onClick={() => copyMeetingLink(selectedMeeting.meeting_link ?? '', selectedMeeting.id)}
-                      className={`px-3 py-1.5 text-xs ${copiedLink === selectedMeeting.id ? 'bg-green-500/30 text-green-300' : theme === 'arcade' ? 'bg-[#00ff41]/20 text-[#00ff41]' : 'bg-indigo-500/20 text-indigo-300'} rounded-lg font-medium transition-all`}
+                      className={`px-3 py-1.5 text-xs ${copiedLink === selectedMeeting.id ? 'bg-green-500/30 text-green-300' : theme === 'arcade' ? 'bg-[#00ff41]/20 text-[#00ff41]' : 'bg-sky-50 text-sky-700'} rounded-lg font-medium transition-all`}
                     >
                       {copiedLink === selectedMeeting.id ? '✓' : 'Copiar'}
                     </button>
@@ -938,13 +929,13 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                 {selectedMeeting.participantes && selectedMeeting.participantes.length > 0 ? (
                   <div className="space-y-1.5 max-h-28 overflow-y-auto">
                     {selectedMeeting.participantes.map(p => (
-                      <div key={p.id} className="flex items-center justify-between p-1.5 rounded-lg bg-white/5">
+                      <div key={p.id} className="flex items-center justify-between p-1.5 rounded-lg bg-slate-50">
                         <div className="flex items-center gap-2">
                           <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ${
                             p.estado === 'aceptado' ? 'bg-green-500/30 text-green-300' :
                             p.estado === 'rechazado' ? 'bg-red-500/30 text-red-300' :
                             p.estado === 'tentativo' ? 'bg-amber-500/30 text-amber-300' :
-                            'bg-white/10'
+                            'bg-slate-100'
                           }`}>
                             {p.usuario?.nombre?.charAt(0) || '?'}
                           </div>
@@ -954,7 +945,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                           p.estado === 'aceptado' ? 'bg-green-500/20 text-green-400' :
                           p.estado === 'rechazado' ? 'bg-red-500/20 text-red-400' :
                           p.estado === 'tentativo' ? 'bg-amber-500/20 text-amber-400' :
-                          'bg-white/10 opacity-60'
+                          'bg-slate-100 opacity-60'
                         }`}>
                           {p.estado}
                         </span>
@@ -968,11 +959,11 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
             </div>
 
             {/* Footer Actions */}
-            <div className="p-3 lg:p-2 border-t border-white/10 flex gap-2">
+            <div className="p-3 lg:p-2 border-t border-[#E3EAF2] flex gap-2">
               {/* Botón Cerrar - siempre visible */}
               <button
                 onClick={() => setSelectedMeeting(null)}
-                className="px-3 py-2 lg:py-1.5 bg-white/10 hover:bg-white/20 rounded-lg lg:rounded-md text-xs font-bold transition-all"
+                className="px-3 py-2 lg:py-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg lg:rounded-md text-xs font-bold transition-all"
               >
                 Cerrar
               </button>
@@ -983,7 +974,7 @@ export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) =
                     setSelectedMeeting(null);
                     setActiveMeeting({ salaId: selectedMeeting.sala_id!, titulo: selectedMeeting.titulo });
                   }}
-                  className={`flex-1 px-3 py-2 lg:py-1.5 ${theme === 'arcade' ? 'bg-[#00ff41] text-black' : 'bg-gradient-to-r from-indigo-500 to-purple-600'} rounded-lg lg:rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5`}
+                  className={`flex-1 px-3 py-2 lg:py-1.5 ${theme === 'arcade' ? 'bg-[#00ff41] text-black' : 'bg-gradient-to-r from-blue-600 to-blue-600'} rounded-lg lg:rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5`}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />

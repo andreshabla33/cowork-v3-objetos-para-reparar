@@ -225,7 +225,7 @@ export const ConsentimientoPendiente: React.FC<ConsentimientoPendienteProps> = (
         {/* Información del solicitante */}
         <div className="bg-zinc-800/50 rounded-2xl p-4 mb-5">
           <p className="text-white text-center">
-            <span className="font-bold text-indigo-400">{solicitud.creador_nombre}</span>
+            <span className="font-bold text-blue-500">{solicitud.creador_nombre}</span>
             {' '}desea grabarte en una sesión de{' '}
             <span className="font-bold text-amber-400">{tipoInfo.titulo}</span>
           </p>

@@ -68,7 +68,7 @@ interface MeetingControlBarProps {
 const TIPO_REUNION_CONFIG = {
   equipo: { label: 'Equipo', icon: '👥', color: 'from-blue-500 to-cyan-500' },
   deal: { label: 'Cliente', icon: '💼', color: 'from-emerald-500 to-teal-500' },
-  entrevista: { label: 'Candidato', icon: '🎯', color: 'from-purple-500 to-pink-500' },
+  entrevista: { label: 'Candidato', icon: '🎯', color: 'from-blue-500 to-pink-500' },
 };
 
 export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
@@ -324,7 +324,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
                 ? 'border-amber-400/30 bg-black/70 text-amber-200'
                 : recordingDiagnostics.severity === 'success'
                   ? 'border-emerald-400/30 bg-emerald-950/60 text-emerald-100'
-                  : 'border-indigo-400/30 bg-indigo-950/60 text-indigo-100'
+                  : 'border-blue-500/30 bg-blue-950/60 text-sky-400'
           }`}>
             <div className="font-semibold">{recordingDiagnostics.title}</div>
             <div className="mt-0.5 opacity-90">{recordingDiagnostics.message}</div>
@@ -390,7 +390,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
             <button
               onClick={toggleScreenShare}
               className={`${iconButtonClass} shrink-0 flex items-center justify-center transition-all duration-300 ${
-                isScreenSharing ? 'bg-indigo-500 text-white' : 'bg-transparent text-white/70 hover:bg-white/10 hover:text-white'
+                isScreenSharing ? 'bg-blue-600 text-white' : 'bg-transparent text-white/70 hover:bg-white/10 hover:text-white'
               }`}
               title={isScreenSharing ? "Dejar de compartir" : "Compartir pantalla"}
             >
@@ -401,7 +401,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
             <button
               onClick={() => setShareScreenWithAudio((current) => !current)}
               className={`h-10 shrink-0 rounded-xl px-2 text-[10px] font-semibold uppercase tracking-wide transition-all duration-300 ${
-                shareScreenWithAudio ? 'bg-indigo-500/20 text-indigo-100' : 'bg-transparent text-white/60 hover:bg-white/10 hover:text-white'
+                shareScreenWithAudio ? 'bg-blue-600/20 text-sky-400' : 'bg-transparent text-white/60 hover:bg-white/10 hover:text-white'
               }`}
               title={shareScreenWithAudio ? 'Compartir con sonido del sistema' : 'Compartir sin sonido del sistema'}
             >
@@ -522,7 +522,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
           {onGoToVirtualSpace && !isMobileLayout && (
             <button
               onClick={onGoToVirtualSpace}
-              className={`${iconButtonClass} shrink-0 bg-transparent text-white/70 hover:bg-indigo-500/20 hover:text-indigo-400 flex items-center justify-center transition-all duration-300`}
+              className={`${iconButtonClass} shrink-0 bg-transparent text-white/70 hover:bg-blue-600/20 hover:text-blue-500 flex items-center justify-center transition-all duration-300`}
               title="Ir al espacio virtual"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

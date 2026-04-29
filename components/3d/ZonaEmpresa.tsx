@@ -173,7 +173,7 @@ export const ZonaEmpresa: React.FC<ZonaEmpresaProps> = ({
   const bordeZona = useMemo(() => {
     if (variante === 'ajena') return { color: '#f97316', opacity: 0.45 };
     if (variante === 'comun') return { color: '#7dd3fc', opacity: 0.3 };
-    return { color: '#a78bfa', opacity: 0.25 };
+    return { color: '#38bdf8', opacity: 0.25 };
   }, [variante]);
 
   const tipoSueloNormalizado = useMemo(() => normalizarTipoSuelo(tipoSuelo), [tipoSuelo]);

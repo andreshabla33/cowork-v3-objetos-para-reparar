@@ -20,7 +20,7 @@
  *      contiene ese id con `modelo_url` no vacío → **gana el catálogo**.
  *   2. Si la instancia ya tiene `modelo_url` no-builtin → se respeta (legacy).
  *   3. Si el catálogo tiene `built_in_geometry` → se construye una URL builtin.
- *   4. Fallback absoluto: `'builtin:cubo:6366f1'`.
+ *   4. Fallback absoluto: `'builtin:cubo:2563eb'`.
  *
  * La URL que empieza con `'builtin:'` NUNCA se sobreescribe por una URL real:
  * los builtins son primitivas procedurales y no deben convertirse en GLBs.
@@ -68,7 +68,7 @@ export interface ResolucionModeloUrl {
 
 const BUILTIN_PREFIX = 'builtin:';
 const BUILTIN_FALLBACK: ResolucionModeloUrl = Object.freeze({
-  modeloUrl: 'builtin:cubo:6366f1',
+  modeloUrl: 'builtin:cubo:2563eb',
   fuente: 'builtin_fallback',
 });
 
@@ -84,7 +84,7 @@ const construirBuiltinDesdeCatalogo = (
   catalogo: CatalogoModeloInfo,
 ): string | null => {
   if (!catalogo.built_in_geometry) return null;
-  const color = (catalogo.built_in_color ?? '#6366f1').replace('#', '') || '6366f1';
+  const color = (catalogo.built_in_color ?? '#2563eb').replace('#', '') || '2563eb';
   return `${BUILTIN_PREFIX}${catalogo.built_in_geometry}:${color}`;
 };
 

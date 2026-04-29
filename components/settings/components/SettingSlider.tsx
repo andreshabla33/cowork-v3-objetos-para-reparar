@@ -23,16 +23,18 @@ export const SettingSlider: React.FC<SettingSliderProps> = ({
   onChange,
   disabled = false
 }) => {
+  const pct = ((value - min) / (max - min)) * 100;
+
   return (
-    <div className="py-4 lg:py-3 border-b border-white/[0.05] last:border-b-0">
+    <div className="py-4 lg:py-3 border-b border-[#E3EAF2] last:border-b-0">
       <div className="flex items-center justify-between mb-3 lg:mb-2">
         <div>
-          <p className="text-sm lg:text-xs font-medium text-white">{label}</p>
+          <p className="text-sm lg:text-xs font-medium text-slate-800">{label}</p>
           {description && (
-            <p className="text-xs lg:text-[11px] text-zinc-400 mt-0.5">{description}</p>
+            <p className="text-xs lg:text-[11px] text-slate-500 mt-0.5">{description}</p>
           )}
         </div>
-        <span className="px-3 lg:px-2 py-1 rounded-lg bg-violet-600/20 border border-violet-500/40 text-sm lg:text-xs font-bold text-violet-300">
+        <span className="px-3 lg:px-2 py-1 rounded-lg bg-sky-50 border border-sky-200 text-sm lg:text-xs font-bold text-sky-700">
           {value}{unit}
         </span>
       </div>
@@ -45,11 +47,11 @@ export const SettingSlider: React.FC<SettingSliderProps> = ({
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
           disabled={disabled}
-          className={`w-full h-3 rounded-full appearance-none cursor-pointer ${
+          className={`w-full h-2 rounded-full appearance-none cursor-pointer ${
             disabled ? 'opacity-50 cursor-not-allowed' : ''
           }`}
           style={{
-            background: `linear-gradient(to right, #8b5cf6 0%, #d946ef ${((value - min) / (max - min)) * 100}%, #3f3f46 ${((value - min) / (max - min)) * 100}%, #3f3f46 100%)`
+            background: `linear-gradient(to right, #0ea5e9 0%, #38bdf8 ${pct}%, #e2e8f0 ${pct}%, #e2e8f0 100%)`
           }}
         />
       </div>

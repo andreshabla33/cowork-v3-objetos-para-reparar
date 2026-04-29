@@ -34,7 +34,7 @@ const ZonaExistente3D: React.FC<{
   const altoW = zona.alto * escala;
   const posX = zona.posicion_x * escala;
   const posZ = zona.posicion_y * escala;
-  const color = zona.color || '#6366f1';
+  const color = zona.color || '#2563eb';
   const esComun = zona.es_comun;
   const miembros = empresa?.miembros_count || 0;
   const nombre = esComun ? 'Zona Común' : (empresa?.nombre || zona.nombre_zona || 'Empresa');
@@ -531,9 +531,9 @@ export const ExploradorPublico3D: React.FC = () => {
     return (
       <div className="fixed inset-0 bg-[#0a0a1a] flex flex-col items-center justify-center gap-6">
         <div className="relative">
-          <div className="w-20 h-20 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+          <div className="w-20 h-20 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin" />
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-violet-500 rounded-lg" />
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-500 rounded-lg" />
           </div>
         </div>
         <div className="text-center">

@@ -23,7 +23,7 @@ export const Input: React.FC<InputProps> = ({
   return (
     <div className={fullWidth ? 'w-full' : ''}>
       {label && (
-        <label className="block text-[10px] lg:text-[9px] font-black uppercase tracking-widest text-zinc-500 mb-2">
+        <label className="block text-[10px] lg:text-[9px] font-black uppercase tracking-widest text-slate-500 mb-2">
           {label}
         </label>
       )}
@@ -36,17 +36,17 @@ export const Input: React.FC<InputProps> = ({
         <input
           className={`
             w-full
-            bg-black/40 
-            border ${error ? 'border-red-500/50' : 'border-white/5'}
+            bg-white
+            border ${error ? 'border-red-400' : 'border-[#E3EAF2]'}
             rounded-xl lg:rounded-lg
-            ${icon ? 'pl-12 lg:pl-10' : 'pl-4 lg:pl-3'} 
-            pr-4 lg:pr-3 
+            ${icon ? 'pl-12 lg:pl-10' : 'pl-4 lg:pl-3'}
+            pr-4 lg:pr-3
             py-4 lg:py-3 md:py-2.5
             text-sm lg:text-xs
-            text-white placeholder-zinc-600
-            focus:outline-none 
-            focus:ring-2 focus:ring-violet-500/50 
-            focus:border-violet-500/50 
+            text-slate-800 placeholder-slate-400
+            focus:outline-none
+            focus:ring-2 focus:ring-sky-200
+            focus:border-sky-400
             transition-all
             ${className}
           `.trim().replace(/\s+/g, ' ')}

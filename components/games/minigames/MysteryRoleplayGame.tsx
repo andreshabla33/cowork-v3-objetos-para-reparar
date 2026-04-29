@@ -119,7 +119,7 @@ export const MysteryRoleplayGame: React.FC<MysteryRoleplayGameProps> = ({ onClos
       <div className="h-full flex flex-col">
         <div className="flex items-center justify-between p-6 lg:p-4 border-b border-zinc-800">
           <div className="flex items-center gap-4 lg:gap-3">
-            <div className="w-12 h-12 lg:w-10 lg:h-10 rounded-xl lg:rounded-lg bg-indigo-500/20 flex items-center justify-center"><Star className="w-6 h-6 lg:w-5 lg:h-5 text-indigo-400" /></div>
+            <div className="w-12 h-12 lg:w-10 lg:h-10 rounded-xl lg:rounded-lg bg-blue-600/20 flex items-center justify-center"><Star className="w-6 h-6 lg:w-5 lg:h-5 text-blue-500" /></div>
             <div><h2 className="text-2xl lg:text-xl font-bold text-white">Mystery Role Play</h2><p className="text-sm lg:text-xs text-zinc-400">Resuelve el misterio en equipo</p></div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-zinc-800 rounded-xl"><X className="w-5 h-5 text-zinc-400" /></button>
@@ -147,14 +147,14 @@ export const MysteryRoleplayGame: React.FC<MysteryRoleplayGameProps> = ({ onClos
               <div className="space-y-3">
                 {['Cada jugador recibe un rol secreto con información exclusiva', 'Investiga revelando pistas y interrogando a sospechosos', 'Discute con tu equipo para analizar la evidencia', 'Vota por el culpable al final del tiempo'].map((text, i) => (
                   <div key={i} className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-sm">{i + 1}</div>
+                    <div className="w-8 h-8 rounded-lg bg-blue-600/20 flex items-center justify-center text-blue-500 font-bold text-sm">{i + 1}</div>
                     <p className="text-zinc-400">{text}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            <button onClick={handleStartGame} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors">
+            <button onClick={handleStartGame} className="w-full py-4 bg-blue-700 hover:bg-blue-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors">
               <Search className="w-5 h-5" />Comenzar Investigación
             </button>
           </div>
@@ -182,16 +182,16 @@ export const MysteryRoleplayGame: React.FC<MysteryRoleplayGameProps> = ({ onClos
       <div className="h-full flex flex-col items-center justify-center p-8">
         <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center max-w-md w-full">
           <p className="text-zinc-400 mb-4">Tu rol secreto es...</p>
-          <div className="p-8 bg-gradient-to-br from-indigo-600 to-purple-700 rounded-3xl mb-6">
+          <div className="p-8 bg-gradient-to-br from-blue-700 to-blue-700 rounded-3xl mb-6">
             <div className="text-6xl mb-4">{assignedRole.avatar}</div>
             <h2 className="text-3xl font-bold text-white mb-2">{assignedRole.name}</h2>
-            <p className="text-indigo-200">{assignedRole.description}</p>
+            <p className="text-sky-500">{assignedRole.description}</p>
           </div>
           <div className="p-4 bg-zinc-900 rounded-xl border border-zinc-800 mb-6">
             <p className="text-sm text-zinc-500 mb-2">Tu información secreta:</p>
             <p className="text-zinc-300">{assignedRole.secretInfo}</p>
           </div>
-          <button onClick={handleBeginInvestigation} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold transition-colors">Comenzar a Investigar</button>
+          <button onClick={handleBeginInvestigation} className="w-full py-4 bg-blue-700 hover:bg-blue-600 text-white rounded-xl font-semibold transition-colors">Comenzar a Investigar</button>
         </motion.div>
       </div>
     );
@@ -201,22 +201,22 @@ export const MysteryRoleplayGame: React.FC<MysteryRoleplayGameProps> = ({ onClos
     return (
       <div className="h-full flex flex-col items-center justify-center p-8">
         <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center max-w-lg w-full">
-          <div className="w-20 h-20 rounded-full bg-indigo-500/20 flex items-center justify-center mx-auto mb-6"><MessageSquare className="w-10 h-10 text-indigo-400" /></div>
+          <div className="w-20 h-20 rounded-full bg-blue-600/20 flex items-center justify-center mx-auto mb-6"><MessageSquare className="w-10 h-10 text-blue-500" /></div>
           <h2 className="text-3xl font-bold text-white mb-2">¡Tiempo de Votar!</h2>
           <p className="text-zinc-400 mb-8">Basándote en la evidencia y las discusiones, ¿quién crees que es el culpable?</p>
 
           {!hasVoted ? (
             <div className="space-y-3">
               {ROLES.filter(r => r.isSuspect).map((role) => (
-                <motion.button key={role.id} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setSelectedSuspect(role.id)} className={`w-full p-4 rounded-xl border-2 text-left transition-all ${selectedSuspect === role.id ? 'bg-indigo-500/20 border-indigo-500' : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'}`}>
+                <motion.button key={role.id} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => setSelectedSuspect(role.id)} className={`w-full p-4 rounded-xl border-2 text-left transition-all ${selectedSuspect === role.id ? 'bg-blue-600/20 border-blue-600' : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'}`}>
                   <div className="flex items-center gap-4">
                     <span className="text-3xl">{role.avatar}</span>
                     <div className="flex-1"><p className="font-semibold text-white">{role.name}</p><p className="text-sm text-zinc-500">{role.alibi}</p></div>
-                    {selectedSuspect === role.id && <CheckCircle2 className="w-6 h-6 text-indigo-400" />}
+                    {selectedSuspect === role.id && <CheckCircle2 className="w-6 h-6 text-blue-500" />}
                   </div>
                 </motion.button>
               ))}
-              <button onClick={handleVote} disabled={!selectedSuspect} className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-colors mt-4">Confirmar Voto</button>
+              <button onClick={handleVote} disabled={!selectedSuspect} className="w-full py-4 bg-blue-700 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-colors mt-4">Confirmar Voto</button>
             </div>
           ) : (
             <div className="p-6 bg-green-500/10 border border-green-500/30 rounded-xl">
@@ -257,11 +257,11 @@ export const MysteryRoleplayGame: React.FC<MysteryRoleplayGameProps> = ({ onClos
           <div className="grid grid-cols-3 gap-4">
             <div className="p-4 bg-zinc-900 rounded-xl"><p className="text-2xl font-bold text-white">{clues.filter(c => c.revealed).length}</p><p className="text-xs text-zinc-500">Pistas reveladas</p></div>
             <div className="p-4 bg-zinc-900 rounded-xl"><p className="text-2xl font-bold text-white">{chatMessages.length}</p><p className="text-xs text-zinc-500">Mensajes</p></div>
-            <div className="p-4 bg-zinc-900 rounded-xl"><p className="text-2xl font-bold text-indigo-400">{isCorrect ? '500' : '100'}</p><p className="text-xs text-zinc-500">Puntos</p></div>
+            <div className="p-4 bg-zinc-900 rounded-xl"><p className="text-2xl font-bold text-blue-500">{isCorrect ? '500' : '100'}</p><p className="text-xs text-zinc-500">Puntos</p></div>
           </div>
 
           <div className="flex gap-4 justify-center">
-            <button onClick={() => window.location.reload()} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold transition-colors">Nuevo Caso</button>
+            <button onClick={() => window.location.reload()} className="px-6 py-3 bg-blue-700 hover:bg-blue-600 text-white rounded-xl font-semibold transition-colors">Nuevo Caso</button>
             <button onClick={onClose} className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-semibold transition-colors">Volver al Lobby</button>
           </div>
         </motion.div>
@@ -273,7 +273,7 @@ export const MysteryRoleplayGame: React.FC<MysteryRoleplayGameProps> = ({ onClos
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center"><Star className="w-5 h-5 text-indigo-400" /></div>
+          <div className="w-10 h-10 rounded-xl bg-blue-600/20 flex items-center justify-center"><Star className="w-5 h-5 text-blue-500" /></div>
           <div>
             <p className="text-sm text-zinc-400">Investigación en curso</p>
             <div className="flex items-center gap-2"><span className="text-xs text-zinc-500">Pistas:</span><span className="text-sm font-bold text-white">{clues.filter(c => c.revealed).length}/{clues.length}</span></div>
@@ -290,7 +290,7 @@ export const MysteryRoleplayGame: React.FC<MysteryRoleplayGameProps> = ({ onClos
           <h3 className="font-semibold text-white mb-4 flex items-center gap-2"><Fingerprint className="w-4 h-4" />Pistas</h3>
           <div className="space-y-2">
             {clues.map((clue) => (
-              <div key={clue.id} onClick={() => !clue.revealed && handleRevealClue(clue.id)} className={`p-3 rounded-xl border cursor-pointer transition-all ${clue.revealed ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'}`}>
+              <div key={clue.id} onClick={() => !clue.revealed && handleRevealClue(clue.id)} className={`p-3 rounded-xl border cursor-pointer transition-all ${clue.revealed ? 'bg-blue-600/10 border-blue-600/30' : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'}`}>
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{clue.icon}</span>
                   <div className="flex-1">
@@ -307,7 +307,7 @@ export const MysteryRoleplayGame: React.FC<MysteryRoleplayGameProps> = ({ onClos
             <h4 className="font-medium text-white mb-2 flex items-center gap-2"><Star className="w-4 h-4" />Tu Rol</h4>
             <div className="flex items-center gap-2">
               <span className="text-2xl">{assignedRole.avatar}</span>
-              <div><p className="text-sm text-white">{assignedRole.name}</p><button onClick={() => setRevealedInfo(!revealedInfo)} className="text-xs text-indigo-400 hover:text-indigo-300">{revealedInfo ? 'Ocultar info' : 'Ver info secreta'}</button></div>
+              <div><p className="text-sm text-white">{assignedRole.name}</p><button onClick={() => setRevealedInfo(!revealedInfo)} className="text-xs text-blue-500 hover:text-sky-600">{revealedInfo ? 'Ocultar info' : 'Ver info secreta'}</button></div>
             </div>
             {revealedInfo && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-2 text-xs text-zinc-400 p-2 bg-zinc-800 rounded-lg">{assignedRole.secretInfo}</motion.p>}
           </div>
@@ -321,7 +321,7 @@ export const MysteryRoleplayGame: React.FC<MysteryRoleplayGameProps> = ({ onClos
                   <span className="inline-block px-4 py-2 bg-zinc-800 rounded-full text-sm text-zinc-400">{msg.message}</span>
                 ) : (
                   <div className={`flex ${msg.sender.startsWith('Tú') ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[70%] px-4 py-3 rounded-2xl ${msg.sender.startsWith('Tú') ? 'bg-indigo-600 text-white rounded-br-md' : 'bg-zinc-800 text-zinc-300 rounded-bl-md'}`}>
+                    <div className={`max-w-[70%] px-4 py-3 rounded-2xl ${msg.sender.startsWith('Tú') ? 'bg-blue-700 text-white rounded-br-md' : 'bg-zinc-800 text-zinc-300 rounded-bl-md'}`}>
                       <p className="text-xs text-zinc-400 mb-1">{msg.sender}</p>
                       <p>{msg.message}</p>
                     </div>
@@ -333,8 +333,8 @@ export const MysteryRoleplayGame: React.FC<MysteryRoleplayGameProps> = ({ onClos
 
           <div className="p-4 border-t border-zinc-800">
             <div className="flex gap-2">
-              <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()} placeholder="Haz una pregunta o comparte tu teoría..." className="flex-1 px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-indigo-500" />
-              <button onClick={handleSendMessage} className="px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition-colors"><Send className="w-5 h-5" /></button>
+              <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()} placeholder="Haz una pregunta o comparte tu teoría..." className="flex-1 px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:border-blue-600" />
+              <button onClick={handleSendMessage} className="px-4 py-3 bg-blue-700 hover:bg-blue-600 text-white rounded-xl transition-colors"><Send className="w-5 h-5" /></button>
             </div>
           </div>
         </div>

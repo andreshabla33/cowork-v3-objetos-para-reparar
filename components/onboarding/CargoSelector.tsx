@@ -71,9 +71,9 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
 // Colores por categoría
 const COLORES_CATEGORIA: Record<string, string> = {
   liderazgo: 'from-amber-500 to-orange-600',
-  rrhh: 'from-purple-500 to-pink-600',
+  rrhh: 'from-blue-500 to-pink-600',
   comercial: 'from-emerald-500 to-teal-600',
-  producto: 'from-blue-500 to-indigo-600',
+  producto: 'from-blue-500 to-blue-700',
   otros: 'from-slate-500 to-gray-600',
   general: 'from-slate-500 to-gray-600',
 };
@@ -200,9 +200,9 @@ export const CargoSelector: React.FC<CargoSelectorProps> = ({
     <div className="fixed inset-0 bg-[#050508] flex items-center justify-center p-4 lg:p-3 overflow-y-auto">
       {/* Fondo neon + grid — mismo que LoginScreen */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-30%] left-[-20%] w-[70%] h-[70%] rounded-full bg-violet-600/15 blur-[180px] animate-pulse" />
+        <div className="absolute top-[-30%] left-[-20%] w-[70%] h-[70%] rounded-full bg-blue-600/15 blur-[180px] animate-pulse" />
         <div className="absolute bottom-[-30%] right-[-20%] w-[70%] h-[70%] rounded-full bg-cyan-500/10 blur-[180px] animate-pulse" style={{ animationDelay: '1.5s' }} />
-        <div className="absolute top-[40%] left-[50%] w-[40%] h-[40%] rounded-full bg-fuchsia-600/10 blur-[120px] animate-pulse" style={{ animationDelay: '3s' }} />
+        <div className="absolute top-[40%] left-[50%] w-[40%] h-[40%] rounded-full bg-cyan-500/10 blur-[120px] animate-pulse" style={{ animationDelay: '3s' }} />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
       </div>
 
@@ -212,21 +212,21 @@ export const CargoSelector: React.FC<CargoSelectorProps> = ({
         transition={{ duration: 0.5 }}
         className="w-full max-w-md lg:max-w-sm relative z-10 my-auto"
       >
-        <div className="absolute -inset-1 bg-gradient-to-r from-violet-600/20 via-fuchsia-600/20 to-cyan-500/20 rounded-[40px] lg:rounded-[32px] blur-xl opacity-60" />
+        <div className="absolute -inset-1 bg-gradient-to-r from-blue-600/20 via-sky-500/20 to-cyan-500/20 rounded-[40px] lg:rounded-[32px] blur-xl opacity-60" />
         <div className="relative backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-[36px] lg:rounded-[28px] p-6 lg:p-5">
 
         {/* Header */}
         <div className="text-center mb-5 lg:mb-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-violet-600/20 to-fuchsia-600/20 border border-violet-500/30 rounded-full text-violet-400 text-[9px] lg:text-[8px] font-bold uppercase tracking-wider mb-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-blue-600/20 to-cyan-500/20 border border-blue-500/30 rounded-full text-sky-400 text-[9px] lg:text-[8px] font-bold uppercase tracking-wider mb-3">
             {etiquetaPaso}
           </div>
           <div className="relative group mx-auto w-12 h-12 lg:w-10 lg:h-10 mb-3">
-            <div className="absolute -inset-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-xl blur-lg opacity-40" />
-            <div className="relative w-12 h-12 lg:w-10 lg:h-10 bg-gradient-to-br from-violet-600 via-fuchsia-600 to-cyan-500 rounded-xl flex items-center justify-center">
+            <div className="absolute -inset-2 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl blur-lg opacity-40" />
+            <div className="relative w-12 h-12 lg:w-10 lg:h-10 bg-gradient-to-br from-blue-600 via-sky-500 to-cyan-500 rounded-xl flex items-center justify-center">
               <Sparkles className="w-6 h-6 lg:w-5 lg:h-5 text-white" />
             </div>
           </div>
-          <h1 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-1">
+          <h1 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-sky-200 to-white mb-1">
             {titulo ?? `¡Bienvenido a ${espacioNombre}!`}
           </h1>
           <p className="text-zinc-500 text-xs lg:text-[10px]">
@@ -235,7 +235,7 @@ export const CargoSelector: React.FC<CargoSelectorProps> = ({
         </div>
 
         {/* Categorías y Cargos */}
-        <div className="bg-black/20 backdrop-blur-sm rounded-2xl lg:rounded-xl border border-white/[0.06] p-4 lg:p-3 mb-4 lg:mb-3 max-h-[45vh] overflow-y-auto scrollbar-thin scrollbar-thumb-violet-500/20">
+        <div className="bg-black/20 backdrop-blur-sm rounded-2xl lg:rounded-xl border border-white/[0.06] p-4 lg:p-3 mb-4 lg:mb-3 max-h-[45vh] overflow-y-auto scrollbar-thin scrollbar-thumb-blue-500/20">
           <div className="space-y-2.5">
             {categoriasVisibles.map(([catId, categoria], index) => {
               const cargos = cargosPorCategoria[catId] || [];
@@ -255,7 +255,7 @@ export const CargoSelector: React.FC<CargoSelectorProps> = ({
                     onClick={() => setCategoriaExpandida(isExpanded ? null : catId)}
                     className={`w-full flex items-center justify-between p-3 lg:p-2.5 rounded-xl transition-all duration-300 ${
                       isExpanded || hasSelectedCargo
-                        ? `bg-gradient-to-r ${categoria.color} text-white shadow-lg shadow-violet-500/10`
+                        ? `bg-gradient-to-r ${categoria.color} text-white shadow-lg shadow-blue-500/10`
                         : 'bg-white/[0.03] text-zinc-300 hover:bg-white/[0.06] border border-white/[0.06]'
                     }`}
                   >
@@ -303,13 +303,13 @@ export const CargoSelector: React.FC<CargoSelectorProps> = ({
                                 whileTap={{ scale: 0.98 }}
                                 className={`relative p-3 lg:p-2.5 rounded-xl border text-left transition-all duration-300 ${
                                   isSelected
-                                    ? 'border-violet-500 bg-violet-500/15 shadow-lg shadow-violet-500/10'
+                                    ? 'border-blue-500 bg-blue-500/15 shadow-lg shadow-blue-500/10'
                                     : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]'
                                 }`}
                               >
                                 <div className="flex items-start gap-2.5">
                                   <div className={`p-1.5 rounded-lg ${
-                                    isSelected ? 'bg-violet-500 text-white' : 'bg-white/[0.06] text-zinc-400'
+                                    isSelected ? 'bg-blue-500 text-white' : 'bg-white/[0.06] text-zinc-400'
                                   }`}>
                                     <CargoIcon className="w-4 h-4" />
                                   </div>
@@ -334,7 +334,7 @@ export const CargoSelector: React.FC<CargoSelectorProps> = ({
                                     <motion.div
                                       initial={{ scale: 0 }}
                                       animate={{ scale: 1 }}
-                                      className="absolute top-1.5 right-1.5 w-5 h-5 bg-violet-500 rounded-full flex items-center justify-center"
+                                      className="absolute top-1.5 right-1.5 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center"
                                     >
                                       <Check className="w-3 h-3 text-white" />
                                     </motion.div>
@@ -353,7 +353,7 @@ export const CargoSelector: React.FC<CargoSelectorProps> = ({
                                       <div className="text-[9px] text-zinc-500 mb-1">Análisis disponibles:</div>
                                       <div className="flex flex-wrap gap-1">
                                         {cargo.analisisDisponibles.map((a, i) => (
-                                          <span key={i} className="px-1.5 py-0.5 bg-violet-500/20 text-violet-300 rounded text-[9px]">
+                                          <span key={i} className="px-1.5 py-0.5 bg-blue-500/20 text-sky-300 rounded text-[9px]">
                                             {a}
                                           </span>
                                         ))}
@@ -383,8 +383,8 @@ export const CargoSelector: React.FC<CargoSelectorProps> = ({
                 animate={{ opacity: 1 }}
                 className="flex items-center gap-2 text-zinc-300"
               >
-                <div className="p-1.5 bg-violet-500/20 rounded-lg">
-                  <cargoActual.icono className="w-3.5 h-3.5 text-violet-400" />
+                <div className="p-1.5 bg-blue-500/20 rounded-lg">
+                  <cargoActual.icono className="w-3.5 h-3.5 text-sky-400" />
                 </div>
                 <div className="truncate">
                   <div className="text-[9px] text-zinc-500">Seleccionado:</div>
@@ -406,7 +406,7 @@ export const CargoSelector: React.FC<CargoSelectorProps> = ({
             whileTap={{ scale: cargoSeleccionado ? 0.98 : 1 }}
             className={`px-5 py-3 lg:py-2.5 rounded-xl font-black text-xs lg:text-[10px] uppercase tracking-[0.15em] flex items-center gap-2 transition-all duration-300 ${
               cargoSeleccionado
-                ? 'bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500 text-white shadow-2xl shadow-violet-600/30'
+                ? 'bg-gradient-to-r from-blue-600 via-sky-500 to-cyan-500 text-white shadow-2xl shadow-blue-600/30'
                 : 'bg-white/[0.03] border border-white/[0.08] text-zinc-500 cursor-not-allowed'
             }`}
           >

@@ -197,7 +197,7 @@ export const MobileJoystick: React.FC<MobileJoystickProps> = ({
       {/* Label run indicator */}
       {isActive && isRunVisual && (
         <div
-          className="absolute text-[9px] font-bold text-indigo-300 uppercase tracking-wider pointer-events-none"
+          className="absolute text-[9px] font-bold text-sky-600 uppercase tracking-wider pointer-events-none"
           style={{
             bottom: -16,
             left: '50%',

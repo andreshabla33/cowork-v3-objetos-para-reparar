@@ -7,21 +7,21 @@ const STATUS_OPTIONS = [
   { value: PresenceStatus.AVAILABLE, label: 'Disponible', color: 'bg-green-500' },
   { value: PresenceStatus.BUSY, label: 'Ocupado', color: 'bg-red-500' },
   { value: PresenceStatus.AWAY, label: 'Ausente', color: 'bg-amber-500' },
-  { value: PresenceStatus.DND, label: 'No molestar', color: 'bg-violet-500' },
+  { value: PresenceStatus.DND, label: 'No molestar', color: 'bg-blue-500' },
 ];
 
 const statusColorMap: Record<string, string> = {
   [PresenceStatus.AVAILABLE]: 'bg-green-500',
   [PresenceStatus.BUSY]: 'bg-red-500',
   [PresenceStatus.AWAY]: 'bg-amber-500',
-  [PresenceStatus.DND]: 'bg-violet-500',
+  [PresenceStatus.DND]: 'bg-blue-500',
 };
 
 const statusHexMap: Record<string, string> = {
   [PresenceStatus.AVAILABLE]: '#22c55e',
   [PresenceStatus.BUSY]: '#ef4444',
   [PresenceStatus.AWAY]: '#f59e0b',
-  [PresenceStatus.DND]: '#8b5cf6',
+  [PresenceStatus.DND]: '#2563eb',
 };
 
 // ========== MINI MAPA CANVAS ==========
@@ -67,7 +67,7 @@ const MiniMapCanvas: React.FC<{ currentUser: any; onlineUsers: any[] }> = ({ cur
     // Radio de proximidad visual (círculo punteado alrededor del usuario actual)
     const me = toCanvas(currentUser.x || 500, currentUser.y || 500);
     const proxRadius = (300 / SPACE_SIZE) * MAP_W; // ~300 unidades de proximidad
-    ctx.strokeStyle = 'rgba(139, 92, 246, 0.2)';
+    ctx.strokeStyle = 'rgba(37, 99, 235, 0.2)';
     ctx.lineWidth = 1;
     ctx.setLineDash([3, 3]);
     ctx.beginPath();
@@ -95,9 +95,9 @@ const MiniMapCanvas: React.FC<{ currentUser: any; onlineUsers: any[] }> = ({ cur
     });
 
     // Dibujar usuario actual (más grande, con anillo)
-    ctx.shadowColor = '#818cf8';
+    ctx.shadowColor = '#60a5fa';
     ctx.shadowBlur = 10;
-    ctx.fillStyle = '#818cf8';
+    ctx.fillStyle = '#60a5fa';
     ctx.beginPath();
     ctx.arc(me.cx, me.cy, 4.5, 0, Math.PI * 2);
     ctx.fill();
@@ -255,19 +255,19 @@ export const MiniModeOverlay: React.FC = () => {
               setCollapsed(false);
             }
           }}
-          className="relative w-11 h-11 rounded-full bg-black/70 backdrop-blur-2xl border border-white/10 shadow-2xl flex items-center justify-center cursor-pointer hover:scale-110 transition-transform duration-200 hover:border-violet-500/50"
+          className="relative w-11 h-11 rounded-full bg-black/70 backdrop-blur-2xl border border-white/10 shadow-2xl flex items-center justify-center cursor-pointer hover:scale-110 transition-transform duration-200 hover:border-blue-500/50"
           title="Expandir Mini Mode"
         >
           {currentUser.profilePhoto ? (
             <img src={currentUser.profilePhoto} alt="" className="w-7 h-7 rounded-full object-cover" />
           ) : (
-            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center text-[8px] font-black text-white">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-[8px] font-black text-white">
               {currentUser.name?.[0]?.toUpperCase() || 'U'}
             </div>
           )}
           <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-black ${statusColorMap[currentStatus]}`} />
           {onlineUsers.length > 0 && (
-            <div className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-violet-600 border-2 border-black flex items-center justify-center text-[7px] font-bold text-white">
+            <div className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-blue-600 border-2 border-black flex items-center justify-center text-[7px] font-bold text-white">
               {onlineUsers.length}
             </div>
           )}
@@ -301,7 +301,7 @@ export const MiniModeOverlay: React.FC = () => {
                 {currentUser.profilePhoto ? (
                   <img src={currentUser.profilePhoto} alt="" className="w-7 h-7 rounded-lg object-cover" />
                 ) : (
-                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center text-[10px] font-black text-white">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-[10px] font-black text-white">
                     {currentUser.name?.[0]?.toUpperCase() || 'U'}
                   </div>
                 )}
@@ -367,7 +367,7 @@ export const MiniModeOverlay: React.FC = () => {
 
             <div className="flex-1" />
 
-            <button onClick={handleGoToSpace} className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-violet-600/20 hover:bg-violet-600/40 text-violet-400 transition-colors" title="Volver al espacio">
+            <button onClick={handleGoToSpace} className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600/40 text-sky-400 transition-colors" title="Volver al espacio">
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
               <span className="text-[8px] font-bold uppercase tracking-wider">Espacio</span>
             </button>
@@ -387,7 +387,7 @@ export const MiniModeOverlay: React.FC = () => {
               <button
                 key={opt.value}
                 onClick={() => { updateStatus(opt.value); setShowStatusPicker(false); }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-white/10 transition-colors first:rounded-t-xl last:rounded-b-xl ${currentStatus === opt.value ? 'bg-violet-600/20' : ''}`}
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-white/10 transition-colors first:rounded-t-xl last:rounded-b-xl ${currentStatus === opt.value ? 'bg-blue-600/20' : ''}`}
               >
                 <div className={`w-2.5 h-2.5 rounded-full ${opt.color}`} />
                 <span className="text-[10px] font-medium text-white/80">{opt.label}</span>

@@ -33,7 +33,7 @@ const STATUS_COLORS: Record<string, string> = {
   [PresenceStatus.AVAILABLE]: 'bg-green-500',
   [PresenceStatus.BUSY]: 'bg-red-500',
   [PresenceStatus.AWAY]: 'bg-yellow-500',
-  [PresenceStatus.DND]: 'bg-purple-500',
+  [PresenceStatus.DND]: 'bg-blue-500',
 };
 
 function getInitials(name: string): string {
@@ -48,7 +48,7 @@ function getInitials(name: string): string {
 
 function getColorFromName(name: string): string {
   const colors = [
-    'bg-indigo-600', 'bg-violet-600', 'bg-fuchsia-600', 'bg-pink-600',
+    'bg-blue-700', 'bg-blue-600', 'bg-cyan-500', 'bg-pink-600',
     'bg-rose-600', 'bg-red-600', 'bg-orange-600', 'bg-amber-600',
     'bg-emerald-600', 'bg-teal-600', 'bg-cyan-600', 'bg-sky-600',
   ];

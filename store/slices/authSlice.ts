@@ -41,7 +41,7 @@ export const createAuthSlice: StateCreator<AuthSlice, [], [], AuthSlice> = (set,
     avatar: '',
     avatarConfig: {
       skinColor: '#fcd34d',
-      clothingColor: '#6366f1',
+      clothingColor: '#2563eb',
       hairColor: '#4b2c20',
       accessory: 'headphones',
     },

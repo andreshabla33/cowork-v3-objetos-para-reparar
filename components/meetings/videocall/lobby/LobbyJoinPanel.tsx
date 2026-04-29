@@ -105,7 +105,7 @@ export const LobbyJoinPanel: React.FC<LobbyJoinPanelProps> = ({
             autoComplete="name"
             maxLength={80}
             disabled={joining}
-            className="w-full rounded-xl border border-white/5 bg-black/40 px-4 py-3.5 text-sm text-white placeholder:text-zinc-600 transition-all focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/50 disabled:opacity-50 2xl:px-5 2xl:py-4 2xl:text-base"
+            className="w-full rounded-xl border border-white/5 bg-black/40 px-4 py-3.5 text-sm text-white placeholder:text-zinc-600 transition-all focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 2xl:px-5 2xl:py-4 2xl:text-base"
           />
           <p className="mt-2 text-xs text-zinc-500">
             Este nombre será visible para los demás participantes.
@@ -132,7 +132,7 @@ export const LobbyJoinPanel: React.FC<LobbyJoinPanelProps> = ({
               placeholder="tu@email.com"
               autoComplete="email"
               disabled={joining}
-              className="w-full rounded-xl border border-white/5 bg-black/40 px-4 py-3.5 text-sm text-white placeholder:text-zinc-600 transition-all focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/50 disabled:opacity-50 2xl:px-5 2xl:py-4 2xl:text-base"
+              className="w-full rounded-xl border border-white/5 bg-black/40 px-4 py-3.5 text-sm text-white placeholder:text-zinc-600 transition-all focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 2xl:px-5 2xl:py-4 2xl:text-base"
             />
           </div>
         )}
@@ -144,10 +144,10 @@ export const LobbyJoinPanel: React.FC<LobbyJoinPanelProps> = ({
         <button
           type="submit"
           disabled={joining || !nombre.trim()}
-          className="relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500 px-5 py-4 text-xs font-black uppercase tracking-wider text-white shadow-2xl shadow-violet-600/30 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 2xl:py-5 2xl:text-sm"
+          className="relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-blue-600 via-sky-500 to-cyan-500 px-5 py-4 text-xs font-black uppercase tracking-wider text-white shadow-2xl shadow-blue-600/30 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 2xl:py-5 2xl:text-sm"
         >
           {/* Hover overlay */}
-          <span className="absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400 opacity-0 transition-opacity duration-300 hover:opacity-100" />
+          <span className="absolute inset-0 bg-gradient-to-r from-blue-500 via-sky-400 to-cyan-400 opacity-0 transition-opacity duration-300 hover:opacity-100" />
           {joining ? (
             <span className="relative flex items-center gap-2">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/50 border-t-white" />

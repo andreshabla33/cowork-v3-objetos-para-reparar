@@ -17,9 +17,9 @@ interface CardProps {
 }
 
 const variantClasses = {
-  glass: 'backdrop-blur-xl bg-white/[0.03] border border-white/[0.08]',
-  solid: 'bg-zinc-900 border border-zinc-800',
-  outline: 'bg-transparent border border-white/[0.08]',
+  glass: 'bg-white border border-[#E3EAF2]',
+  solid: 'bg-white border border-[#E3EAF2]',
+  outline: 'bg-transparent border border-[#E3EAF2]',
 };
 
 const paddingClasses = {
@@ -47,7 +47,7 @@ export const Card: React.FC<CardProps> = ({
         rounded-2xl lg:rounded-xl
         ${variantClasses[variant]}
         ${paddingClasses[padding]}
-        ${hover ? 'hover:bg-white/[0.05] hover:border-violet-500/30 transition-all cursor-pointer' : ''}
+        ${hover ? 'hover:bg-slate-50 hover:border-sky-300 transition-all cursor-pointer' : ''}
         ${className}
       `}
       onClick={onClick}
@@ -55,7 +55,7 @@ export const Card: React.FC<CardProps> = ({
       whileTap={onClick ? { scale: 0.99 } : undefined}
     >
       {glow && (
-        <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-600/20 via-fuchsia-600/20 to-cyan-500/20 rounded-2xl lg:rounded-xl blur-lg opacity-40 pointer-events-none" />
+        <div className="absolute -inset-0.5 bg-sky-400/10 rounded-2xl lg:rounded-xl blur-lg opacity-60 pointer-events-none" />
       )}
       <div className="relative">{children}</div>
     </Component>

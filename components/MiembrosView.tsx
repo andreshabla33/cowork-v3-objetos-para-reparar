@@ -5,9 +5,12 @@ import { supabase } from '../lib/supabase';
 import { Role } from '../types';
 import { ModalInvitarUsuario } from './invitaciones/ModalInvitarUsuario';
 import { UserAvatar } from './UserAvatar';
+import { getThemeStyles } from '@/lib/theme';
 
 export const MiembrosView: React.FC = () => {
   const { activeWorkspace, userRoleInActiveWorkspace, theme, session } = useStore();
+  const s = getThemeStyles(theme);
+
   const [miembros, setMiembros] = useState<any[]>([]);
   const [invitaciones, setInvitaciones] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +37,7 @@ export const MiembrosView: React.FC = () => {
         .select('*, usuario:usuarios(*), departamento:departamentos(*), cargo_ref:cargos!cargo_id(nombre, clave)')
         .eq('espacio_id', activeWorkspace.id)
         .eq('aceptado', true);
-      
+
       const { data: iData } = await supabase
         .from('invitaciones_pendientes')
         .select('*')
@@ -44,7 +47,6 @@ export const MiembrosView: React.FC = () => {
       setMiembros(mData || []);
       setInvitaciones(iData || []);
 
-      // Obtener cargo del usuario actual
       if (session?.user?.id) {
         const miMiembro = mData?.find((m: any) => m.usuario_id === session.user.id);
         const clave = miMiembro?.cargo_ref?.clave || miMiembro?.cargo;
@@ -55,7 +57,6 @@ export const MiembrosView: React.FC = () => {
     }
   };
 
-  // Cargar datos de conexión (solo si es CEO/COO)
   const fetchConexiones = async () => {
     if (!activeWorkspace || !esCeoCoo) return;
     const ahora = new Date();
@@ -85,14 +86,24 @@ export const MiembrosView: React.FC = () => {
   useEffect(() => { fetchConexiones(); }, [activeWorkspace, esCeoCoo]);
 
   const getRolColor = (rol: string) => {
-    const map: any = { 
-      super_admin: isArcade ? 'bg-[#00ff41]/20 text-[#00ff41] border border-[#00ff41]' : 'bg-purple-500', 
-      admin: isArcade ? 'bg-red-500/20 text-red-500 border border-red-500' : 'bg-red-500', 
-      moderador: 'bg-orange-500', 
-      miembro: isArcade ? 'bg-[#00ff41]/10 text-[#00ff41]/80 border border-[#00ff41]/30' : 'bg-blue-500', 
-      invitado: 'bg-zinc-500' 
+    if (isArcade) {
+      const arcadeMap: Record<string, string> = {
+        super_admin: 'bg-[#00ff41]/20 text-[#00ff41] border border-[#00ff41]/40',
+        admin:       'bg-red-500/20 text-red-400 border border-red-500/30',
+        moderador:   'bg-amber-500/20 text-amber-400 border border-amber-500/30',
+        miembro:     'bg-[#00ff41]/10 text-[#00ff41]/80 border border-[#00ff41]/20',
+        invitado:    'bg-[#00ff41]/5 text-[#00ff41]/40 border border-[#00ff41]/10',
+      };
+      return arcadeMap[rol] || arcadeMap.invitado;
+    }
+    const lightMap: Record<string, string> = {
+      super_admin: 'bg-sky-50 text-blue-700 border border-sky-200',
+      admin:       'bg-red-50 text-red-600 border border-red-200',
+      moderador:   'bg-amber-50 text-amber-600 border border-amber-200',
+      miembro:     'bg-sky-50 text-sky-700 border border-sky-200',
+      invitado:    'bg-slate-50 text-slate-600 border border-slate-200',
     };
-    return map[rol] || 'bg-zinc-500';
+    return lightMap[rol] || lightMap.invitado;
   };
 
   const formatMinutos = (mins: number) => {
@@ -104,25 +115,33 @@ export const MiembrosView: React.FC = () => {
   };
 
   return (
-    <div className="p-12 max-w-6xl mx-auto h-full overflow-y-auto custom-scrollbar">
-      <div className="flex justify-between items-end mb-12">
+    <div className={`p-12 lg:p-8 max-w-6xl mx-auto h-full overflow-y-auto custom-scrollbar ${s.bg}`}>
+      <div className="flex justify-between items-end mb-12 lg:mb-8">
         <div>
-           <h2 className={`text-4xl font-black uppercase italic tracking-tighter ${isArcade ? 'text-[#00ff41] neon-text' : ''}`}>Miembros del Equipo</h2>
-           <p className={`text-[10px] font-black uppercase tracking-[0.3em] mt-2 ${isArcade ? 'text-[#00ff41]/60' : 'text-zinc-500'}`}>Gestiona el acceso de tu organización</p>
+          <h2 className={`text-3xl lg:text-2xl font-black tracking-tight ${s.text}`}>Miembros del Equipo</h2>
+          <p className={`text-[10px] font-bold uppercase tracking-[0.3em] mt-2 ${s.textSubtle}`}>Gestiona el acceso de tu organización</p>
         </div>
         <div className="flex items-center gap-3">
           {esCeoCoo && (
-            <div className={`flex rounded-xl overflow-hidden border ${isArcade ? 'border-[#00ff41]/30' : 'border-white/10'}`}>
-              <button onClick={() => setFiltroTiempo('hoy')} className={`px-4 py-2 text-[9px] font-black uppercase tracking-widest transition-all ${filtroTiempo === 'hoy' ? (isArcade ? 'bg-[#00ff41] text-black' : 'bg-indigo-600 text-white') : 'bg-transparent opacity-50 hover:opacity-100'}`}>Hoy</button>
-              <button onClick={() => setFiltroTiempo('semana')} className={`px-4 py-2 text-[9px] font-black uppercase tracking-widest transition-all ${filtroTiempo === 'semana' ? (isArcade ? 'bg-[#00ff41] text-black' : 'bg-indigo-600 text-white') : 'bg-transparent opacity-50 hover:opacity-100'}`}>7 días</button>
+            <div className={`flex rounded-xl overflow-hidden border ${s.border}`}>
+              <button
+                onClick={() => setFiltroTiempo('hoy')}
+                className={`px-4 py-2 text-[9px] font-black uppercase tracking-widest transition-all ${
+                  filtroTiempo === 'hoy' ? s.accentBg : `${s.surface} ${s.textMuted}`
+                }`}
+              >Hoy</button>
+              <button
+                onClick={() => setFiltroTiempo('semana')}
+                className={`px-4 py-2 text-[9px] font-black uppercase tracking-widest transition-all ${
+                  filtroTiempo === 'semana' ? s.accentBg : `${s.surface} ${s.textMuted}`
+                }`}
+              >7 días</button>
             </div>
           )}
           {isAdmin && (
-            <button 
-              onClick={() => setShowInvite(true)} 
-              className={`px-8 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-2xl transition-all active:scale-95 ${
-                isArcade ? 'bg-[#00ff41] text-black shadow-[#00ff41]/30' : 'bg-indigo-600 text-white shadow-indigo-600/20'
-              }`}
+            <button
+              onClick={() => setShowInvite(true)}
+              className={`px-6 py-3 rounded-2xl font-bold uppercase tracking-widest text-[10px] transition-all active:scale-95 ${s.btn}`}
             >
               Invitar Usuario
             </button>
@@ -130,85 +149,81 @@ export const MiembrosView: React.FC = () => {
         </div>
       </div>
 
-      <div className="space-y-12">
+      <div className="space-y-12 lg:space-y-8">
         <section>
-          <div className={`overflow-hidden rounded-[32px] border ${isArcade ? 'border-[#00ff41]/30 bg-black' : 'border-white/5 bg-zinc-950/40'} shadow-2xl`}>
+          <div className={`overflow-hidden rounded-2xl border shadow-sm ${s.surface} ${s.border}`}>
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className={`${isArcade ? 'bg-[#00ff41]/5' : 'bg-black/40'}`}>
-                  <th className={`p-6 text-[10px] font-black uppercase tracking-[0.2em] ${isArcade ? 'text-[#00ff41]/40' : 'text-zinc-500'}`}>Usuario</th>
-                  <th className={`p-6 text-[10px] font-black uppercase tracking-[0.2em] ${isArcade ? 'text-[#00ff41]/40' : 'text-zinc-500'}`}>Rol</th>
-                  <th className={`p-6 text-[10px] font-black uppercase tracking-[0.2em] ${isArcade ? 'text-[#00ff41]/40' : 'text-zinc-500'}`}>Departamento</th>
+                <tr className={`border-b ${s.borderSubtle} ${s.surfaceMuted}`}>
+                  <th className={`p-5 text-[10px] font-black uppercase tracking-[0.2em] ${s.textSubtle}`}>Usuario</th>
+                  <th className={`p-5 text-[10px] font-black uppercase tracking-[0.2em] ${s.textSubtle}`}>Rol</th>
+                  <th className={`p-5 text-[10px] font-black uppercase tracking-[0.2em] ${s.textSubtle}`}>Departamento</th>
                   {esCeoCoo && (
-                    <th className={`p-6 text-[10px] font-black uppercase tracking-[0.2em] ${isArcade ? 'text-[#00ff41]/40' : 'text-zinc-500'}`}>
-                      Tiempo Conectado
-                    </th>
+                    <th className={`p-5 text-[10px] font-black uppercase tracking-[0.2em] ${s.textSubtle}`}>Tiempo Conectado</th>
                   )}
-                  <th className={`p-6 text-[10px] font-black uppercase tracking-[0.2em] ${isArcade ? 'text-[#00ff41]/40' : 'text-zinc-500'}`}>Acciones</th>
+                  <th className={`p-5 text-[10px] font-black uppercase tracking-[0.2em] ${s.textSubtle}`}>Acciones</th>
                 </tr>
               </thead>
-              <tbody className={`divide-y ${isArcade ? 'divide-[#00ff41]/10' : 'divide-white/5'}`}>
+              <tbody className={`divide-y ${s.borderSubtle}`}>
                 {miembros.map(m => {
                   const conn = conexiones[m.usuario_id];
                   const tiempoMins = conn ? (filtroTiempo === 'hoy' ? conn.hoy : conn.semana) : 0;
                   return (
-                  <tr key={m.id} className={`${isArcade ? 'hover:bg-[#00ff41]/5' : 'hover:bg-white/[0.02]'} transition-colors`}>
-                    <td className="p-6">
-                      <div className="flex items-center gap-4">
-                        <div className="relative">
-                          <UserAvatar
-                            name={m.usuario?.nombre || ''}
-                            profilePhoto={m.usuario?.avatar_url}
-                            size="md"
-                          />
-                          {esCeoCoo && conn?.conectado && (
-                            <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-black animate-pulse" title="Conectado ahora" />
-                          )}
-                        </div>
-                        <div>
-                          <p className={`text-sm font-black uppercase tracking-widest ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>{m.usuario?.nombre}</p>
-                          <p className={`text-[10px] font-bold ${isArcade ? 'text-[#00ff41]/40' : 'text-zinc-500'}`}>{m.usuario?.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-6">
-                       <span className={`px-3 py-1.5 rounded-xl text-[8px] font-black uppercase tracking-widest ${getRolColor(m.rol)}`}>
-                         {m.rol.replace('_', ' ')}
-                       </span>
-                    </td>
-                    <td className="p-6">
-                       <p className={`text-[10px] font-black uppercase tracking-widest ${isArcade ? 'text-[#00ff41]/60' : 'text-zinc-400'}`}>
-                         {m.departamento?.nombre || 'General'}
-                       </p>
-                    </td>
-                    {esCeoCoo && (
-                      <td className="p-6">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-20 h-2 rounded-full overflow-hidden ${isArcade ? 'bg-[#00ff41]/10' : 'bg-white/5'}`}>
-                            <div 
-                              className={`h-full rounded-full transition-all ${
-                                tiempoMins > 360 ? (isArcade ? 'bg-[#00ff41]' : 'bg-green-500') :
-                                tiempoMins > 120 ? (isArcade ? 'bg-[#00ff41]/70' : 'bg-indigo-500') :
-                                tiempoMins > 0 ? (isArcade ? 'bg-[#00ff41]/40' : 'bg-amber-500') :
-                                'bg-transparent'
-                              }`}
-                              style={{ width: `${Math.min(100, (tiempoMins / (filtroTiempo === 'hoy' ? 480 : 2400)) * 100)}%` }}
+                    <tr key={m.id} className={`transition-colors ${s.surfaceHover}`}>
+                      <td className="p-5">
+                        <div className="flex items-center gap-4">
+                          <div className="relative">
+                            <UserAvatar
+                              name={m.usuario?.nombre || ''}
+                              profilePhoto={m.usuario?.avatar_url}
+                              size="md"
                             />
+                            {esCeoCoo && conn?.conectado && (
+                              <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 animate-pulse ${isArcade ? 'border-black' : 'border-white'}`} title="Conectado ahora" />
+                            )}
                           </div>
-                          <span className={`text-[10px] font-black ${
-                            tiempoMins > 0 ? (isArcade ? 'text-[#00ff41]' : 'text-white') : 'text-zinc-600'
-                          }`}>
-                            {tiempoMins > 0 ? formatMinutos(tiempoMins) : 'Sin datos'}
-                          </span>
+                          <div>
+                            <p className={`text-sm font-bold ${s.text}`}>{m.usuario?.nombre}</p>
+                            <p className={`text-[10px] ${s.textSubtle}`}>{m.usuario?.email}</p>
+                          </div>
                         </div>
                       </td>
-                    )}
-                    <td className="p-6">
-                       {isAdmin && m.rol !== 'super_admin' && (
-                         <button className="text-red-500 text-[10px] font-black uppercase tracking-widest hover:text-red-400 hover:underline underline-offset-4">Eliminar</button>
-                       )}
-                    </td>
-                  </tr>
+                      <td className="p-5">
+                        <span className={`px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest ${getRolColor(m.rol)}`}>
+                          {m.rol.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="p-5">
+                        <p className={`text-[11px] font-medium ${s.textMuted}`}>
+                          {m.departamento?.nombre || 'General'}
+                        </p>
+                      </td>
+                      {esCeoCoo && (
+                        <td className="p-5">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-20 h-2 rounded-full overflow-hidden ${s.surfaceMuted}`}>
+                              <div
+                                className={`h-full rounded-full transition-all ${
+                                  tiempoMins > 360 ? 'bg-emerald-500' :
+                                  tiempoMins > 120 ? 'bg-sky-500' :
+                                  tiempoMins > 0   ? 'bg-amber-500' :
+                                  'bg-transparent'
+                                }`}
+                                style={{ width: `${Math.min(100, (tiempoMins / (filtroTiempo === 'hoy' ? 480 : 2400)) * 100)}%` }}
+                              />
+                            </div>
+                            <span className={`text-[10px] font-bold ${tiempoMins > 0 ? s.text : s.textSubtle}`}>
+                              {tiempoMins > 0 ? formatMinutos(tiempoMins) : 'Sin datos'}
+                            </span>
+                          </div>
+                        </td>
+                      )}
+                      <td className="p-5">
+                        {isAdmin && m.rol !== 'super_admin' && (
+                          <button className={`text-[10px] font-bold uppercase tracking-widest hover:underline underline-offset-4 ${s.danger}`}>Eliminar</button>
+                        )}
+                      </td>
+                    </tr>
                   );
                 })}
               </tbody>
@@ -218,23 +233,23 @@ export const MiembrosView: React.FC = () => {
 
         {isAdmin && invitaciones.length > 0 && (
           <section>
-            <h3 className={`text-[10px] font-black uppercase tracking-[0.3em] mb-6 ${isArcade ? 'text-[#00ff41]/60' : 'text-zinc-600'}`}>Invitaciones Pendientes</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-               {invitaciones.map(inv => (
-                 <div key={inv.id} className={`p-8 rounded-[40px] border shadow-2xl transition-all hover:scale-[1.02] ${isArcade ? 'bg-black border-[#00ff41]/20' : 'bg-zinc-900/40 border-white/5'}`}>
-                    <div className="flex justify-between items-start mb-4">
-                       <div className={`p-3 rounded-2xl ${isArcade ? 'bg-[#00ff41]/10 text-[#00ff41]' : 'bg-indigo-600/10 text-indigo-400'}`}>
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                       </div>
-                       <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${isArcade ? 'bg-[#00ff41]/5 text-[#00ff41]/40' : 'bg-black/40 text-zinc-600'}`}>
-                         Pendiente
-                       </span>
+            <h3 className={`text-[10px] font-black uppercase tracking-[0.3em] mb-6 ${s.textSubtle}`}>Invitaciones Pendientes</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {invitaciones.map(inv => (
+                <div key={inv.id} className={`p-6 rounded-2xl border shadow-sm transition-all hover:shadow-md ${s.surface} ${s.border}`}>
+                  <div className="flex justify-between items-start mb-4">
+                    <div className={`p-3 rounded-xl ${s.accentSurface} ${s.accent}`}>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                     </div>
-                    <p className={`text-xs font-black uppercase tracking-widest mb-1 truncate ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>{inv.email}</p>
-                    <p className={`text-[9px] font-bold uppercase tracking-widest mb-6 ${isArcade ? 'text-[#00ff41]/40' : 'text-zinc-500'}`}>{inv.rol}</p>
-                    <button onClick={() => cancelarInvitacion(inv.id)} className="text-red-500 text-[10px] font-black uppercase tracking-widest hover:text-red-400 hover:underline underline-offset-4">Cancelar</button>
-                 </div>
-               ))}
+                    <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${s.surfaceMuted} ${s.textSubtle}`}>
+                      Pendiente
+                    </span>
+                  </div>
+                  <p className={`text-xs font-bold mb-1 truncate ${s.text}`}>{inv.email}</p>
+                  <p className={`text-[9px] font-bold uppercase tracking-widest mb-5 ${s.textSubtle}`}>{inv.rol}</p>
+                  <button onClick={() => cancelarInvitacion(inv.id)} className={`text-[10px] font-bold uppercase tracking-widest hover:underline underline-offset-4 ${s.danger}`}>Cancelar</button>
+                </div>
+              ))}
             </div>
           </section>
         )}

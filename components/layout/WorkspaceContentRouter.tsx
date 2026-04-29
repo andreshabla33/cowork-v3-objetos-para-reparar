@@ -24,8 +24,8 @@ const MetricasEmpresaPanel = lazy(() => import('../MetricasEmpresaPanel'));
 
 const FallbackPanel = () => (
   <div className="flex h-full w-full items-center justify-center">
-    <div className="flex flex-col items-center gap-4 text-zinc-500">
-      <div className="w-10 h-10 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+    <div className="flex flex-col items-center gap-4 text-slate-500">
+      <div className="w-10 h-10 border-2 border-sky-200 border-t-sky-500 rounded-full animate-spin" />
       <p className="text-[10px] font-black uppercase tracking-[0.3em]">Cargando módulo</p>
     </div>
   </div>
@@ -62,17 +62,17 @@ export const WorkspaceContentRouter: React.FC<WorkspaceContentRouterProps> = Rea
   workspaceName, workspaceId, isAdmin, isLoggingOut,
   onNavigateToSpace, onLogout,
 }) => (
-  <div className="h-full w-full flex flex-col overflow-hidden animate-in fade-in duration-500">
+  <div className={`h-full w-full flex flex-col overflow-hidden animate-in fade-in duration-500 ${s.bg}`}>
     {/* Mobile: header with back button */}
     {isMobile && (
-      <div className={`flex items-center gap-3 px-4 py-3 border-b ${s.border} shrink-0 ${s.header} backdrop-blur-xl`}>
+      <div className={`flex items-center gap-3 px-4 py-3 border-b shrink-0 ${s.surface} ${s.border}`}>
         <button
           onClick={onNavigateToSpace}
-          className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
+          className={`w-8 h-8 rounded-xl flex items-center justify-center transition-colors ${s.btnGhost}`}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
         </button>
-        <span className="text-xs font-black uppercase tracking-wider opacity-70">
+        <span className={`text-xs font-bold uppercase tracking-wider ${s.text}`}>
           {SUB_TAB_LABELS[activeSubTab] ?? activeSubTab}
         </span>
       </div>
@@ -90,21 +90,21 @@ export const WorkspaceContentRouter: React.FC<WorkspaceContentRouterProps> = Rea
       </Suspense>
 
       {activeSubTab === 'settings' && (
-        <div className="p-6 md:p-16 max-w-4xl mx-auto">
-          <h2 className="text-2xl md:text-5xl font-black uppercase italic tracking-tighter mb-6 md:mb-10">{t('settings.title', currentLang)}</h2>
-          <div className={`p-4 md:p-12 rounded-2xl md:rounded-[50px] border-2 ${s.border} bg-black/10 backdrop-blur-3xl shadow-2xl`}>
-            <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 md:pb-10 border-b-2 ${s.border}`}>
+        <div className="p-6 md:p-12 max-w-4xl mx-auto">
+          <h2 className={`text-2xl md:text-3xl font-bold tracking-tight mb-6 md:mb-8 ${s.text}`}>{t('settings.title', currentLang)}</h2>
+          <div className={`p-6 md:p-10 rounded-2xl border ${s.surface} ${s.border} shadow-sm`}>
+            <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 md:pb-8 border-b ${s.borderSubtle}`}>
               <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.3em] opacity-30">{t('workspace.inUse', currentLang)}</p>
-                <p className="text-xl md:text-4xl font-bold mt-2">{workspaceName}</p>
+                <p className={`text-[11px] font-bold uppercase tracking-[0.3em] ${s.textSubtle}`}>{t('workspace.inUse', currentLang)}</p>
+                <p className={`text-xl md:text-2xl font-bold mt-2 ${s.text}`}>{workspaceName}</p>
               </div>
-              <button className={`px-6 md:px-10 py-3 md:py-4 rounded-2xl md:rounded-3xl text-[11px] font-black uppercase tracking-widest transition-all ${s.btn}`}>{t('button.customize', currentLang)}</button>
+              <button className={`px-6 md:px-8 py-2.5 md:py-3 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all ${s.btn}`}>{t('button.customize', currentLang)}</button>
             </div>
-            <div className="pt-6 md:pt-10">
+            <div className="pt-6 md:pt-8">
               <button
                 onClick={onLogout}
                 disabled={isLoggingOut}
-                className="text-red-500 text-[11px] font-black uppercase tracking-[0.2em] hover:text-red-400 flex items-center gap-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`text-[11px] font-bold uppercase tracking-[0.2em] flex items-center gap-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${s.danger} hover:opacity-80`}
               >
                 {isLoggingOut ? (
                   <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">

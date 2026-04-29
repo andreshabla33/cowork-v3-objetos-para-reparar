@@ -598,7 +598,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
   if (cargando) {
     return (
       <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-5 h-5 text-violet-400 animate-spin" />
+        <RefreshCw className="w-5 h-5 text-sky-400 animate-spin" />
       </div>
     );
   }
@@ -721,7 +721,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
             <button
               onClick={() => setMostrarGeneradorCompleto(true)}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-400 hover:to-indigo-400 text-white rounded-xl text-sm font-medium transition-all shadow-lg shadow-indigo-500/20"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white rounded-xl text-sm font-medium transition-all shadow-lg shadow-blue-600/20"
             >
               <Sparkles className="w-4 h-4" /> Plantilla Completa
             </button>
@@ -736,7 +736,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 if (onCloseModal) onCloseModal();
                 useStore.getState().setIsDrawingZone(true);
               }}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition-all"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-xl text-sm font-medium transition-all"
             >
               <LayoutGrid className="w-4 h-4" /> Dibujar 3D
             </button>
@@ -745,7 +745,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 resetFormulario();
                 setMostrarFormulario(true);
               }}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-sm font-medium transition-all"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-medium transition-all"
             >
               <Plus className="w-4 h-4" /> Nueva zona
             </button>
@@ -766,10 +766,10 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
 
       {/* ========== GENERADOR DE PLANTILLA COMPLETA ========== */}
       {mostrarGeneradorCompleto && (
-        <div className="p-5 bg-gradient-to-br from-zinc-800/80 to-zinc-900/80 border border-violet-500/20 rounded-2xl shadow-xl">
+        <div className="p-5 bg-gradient-to-br from-zinc-800/80 to-zinc-900/80 border border-blue-500/20 rounded-2xl shadow-xl">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -789,7 +789,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 onClick={() => setPlantillaCompletaSeleccionada(plantilla.id)}
                 className={`text-left p-4 rounded-xl border transition-all ${
                   plantillaCompletaSeleccionada === plantilla.id
-                    ? 'bg-violet-500/20 border-violet-500/50'
+                    ? 'bg-blue-500/20 border-blue-500/50'
                     : 'bg-zinc-900/60 border-zinc-700/50 hover:border-zinc-500'
                 }`}
               >
@@ -805,7 +805,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
           </div>
 
           {progresoPlantilla && (
-            <div className="mb-4 p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl text-indigo-300 text-sm flex items-center gap-2">
+            <div className="mb-4 p-3 bg-blue-600/10 border border-blue-600/30 rounded-xl text-sky-600 text-sm flex items-center gap-2">
               <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
               {progresoPlantilla}
             </div>
@@ -827,7 +827,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 <button
                   onClick={() => setConfirmarPlantilla(true)}
                   disabled={!plantillaCompletaSeleccionada || aplicandoPlantillaCompleta}
-                  className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-400 hover:to-indigo-400 text-white rounded-lg text-sm font-medium transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white rounded-lg text-sm font-medium transition-all shadow-lg shadow-blue-600/20 disabled:opacity-50"
                 >
                   <Sparkles className="w-4 h-4" /> Aplicar Plantilla
                 </button>
@@ -1078,7 +1078,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                     empresa_id: e.target.checked ? '' : prev.empresa_id,
                   }))
                 }
-                className="h-4 w-4 rounded border-zinc-600 text-violet-500"
+                className="h-4 w-4 rounded border-zinc-600 text-blue-500"
               />
               <label htmlFor="zona-comun" className="text-xs font-medium text-zinc-300">
                 Zona común (sin empresa asignada)
@@ -1090,7 +1090,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 value={formData.empresa_id}
                 onChange={(e) => setFormData((prev) => ({ ...prev, empresa_id: e.target.value }))}
                 disabled={formData.es_comun}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               >
                 <option value="">Selecciona empresa</option>
                 {empresas.map((empresa) => (
@@ -1106,7 +1106,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 type="text"
                 value={formData.nombre_zona}
                 onChange={(e) => setFormData((prev) => ({ ...prev, nombre_zona: e.target.value }))}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
                 placeholder="Ej: Zona Diseño"
               />
             </div>
@@ -1116,7 +1116,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 type="number"
                 value={formData.posicion_x}
                 onChange={(e) => setFormData((prev) => ({ ...prev, posicion_x: e.target.value }))}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               />
             </div>
             <div>
@@ -1125,7 +1125,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 type="number"
                 value={formData.posicion_y}
                 onChange={(e) => setFormData((prev) => ({ ...prev, posicion_y: e.target.value }))}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               />
             </div>
             <div>
@@ -1134,7 +1134,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 type="number"
                 value={formData.ancho}
                 onChange={(e) => setFormData((prev) => ({ ...prev, ancho: e.target.value }))}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               />
             </div>
             <div>
@@ -1143,7 +1143,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 type="number"
                 value={formData.alto}
                 onChange={(e) => setFormData((prev) => ({ ...prev, alto: e.target.value }))}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               />
             </div>
             <div>
@@ -1160,7 +1160,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
               <select
                 value={formData.estado}
                 onChange={(e) => setFormData((prev) => ({ ...prev, estado: e.target.value }))}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               >
                 <option value="activa">Activa</option>
                 <option value="inactiva">Inactiva</option>
@@ -1176,7 +1176,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                     tipo_suelo: normalizarTipoSuelo(e.target.value),
                   }))
                 }
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               >
                 {Object.entries(FLOOR_TYPE_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
@@ -1218,7 +1218,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                     <Building2 className="w-3 h-3" /> {zona.es_comun ? 'Zona común' : (zona.empresa?.nombre || obtenerNombreEmpresa(zona.empresa_id))}
                   </p>
                   {obtenerPlantillaAplicadaZona(zona) && (
-                    <p className="text-[11px] text-violet-300 mt-1">Plantilla: {obtenerPlantillaAplicadaZona(zona)?.nombre}</p>
+                    <p className="text-[11px] text-sky-300 mt-1">Plantilla: {obtenerPlantillaAplicadaZona(zona)?.nombre}</p>
                   )}
                 </div>
               </div>
@@ -1231,7 +1231,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 </button>
                 <button
                   onClick={() => handleEditarZona(zona)}
-                  className="text-xs text-violet-300 hover:text-white transition"
+                  className="text-xs text-sky-300 hover:text-white transition"
                 >
                   Editar
                 </button>
@@ -1279,7 +1279,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 <select
                   value={empresaDestinoId}
                   onChange={(e) => setEmpresaDestinoId(e.target.value)}
-                  className="px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                  className="px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
                 >
                   <option value="">Selecciona empresa</option>
                   {empresasDisponibles.map((empresa) => (
@@ -1291,7 +1291,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 <button
                   onClick={handleSolicitarAcceso}
                   disabled={guardando || !empresaDestinoId}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition disabled:opacity-60"
+                  className="px-4 py-2 bg-blue-700 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition disabled:opacity-60"
                 >
                   <span className="flex items-center gap-2">
                     <Send className="w-4 h-4" /> Solicitar acceso
@@ -1418,14 +1418,14 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                       <button
                         key={plantilla.id}
                         onClick={() => setPlantillaZonaSeleccionada(plantilla.id)}
-                        className={`text-left rounded-2xl border p-4 transition-all min-w-0 ${activa ? 'border-violet-400 bg-violet-500/10 shadow-lg shadow-violet-500/10' : 'border-white/8 bg-zinc-900/70 hover:border-white/20 hover:bg-zinc-900'}`}
+                        className={`text-left rounded-2xl border p-4 transition-all min-w-0 ${activa ? 'border-sky-400 bg-blue-500/10 shadow-lg shadow-blue-500/10' : 'border-white/8 bg-zinc-900/70 hover:border-white/20 hover:bg-zinc-900'}`}
                       >
                         <div className="flex items-center justify-between gap-3 mb-3">
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-white">{plantilla.nombre}</p>
                             <p className="text-[11px] text-zinc-400 mt-1">{plantilla.descripcion}</p>
                           </div>
-                          {activa && <Sparkles className="w-4 h-4 text-violet-300 shrink-0" />}
+                          {activa && <Sparkles className="w-4 h-4 text-sky-300 shrink-0" />}
                         </div>
                         <div className="rounded-xl border border-white/5 bg-black/30 p-2 mb-3">
                           <svg viewBox="0 0 100 100" className="w-full aspect-square rounded-lg overflow-hidden">
@@ -1495,7 +1495,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                     </button>
                     <button
                       onClick={() => zonaPlantillaActiva && handleIniciarColocacionPlantillaZona(zonaPlantillaActiva, plantillaZonaSeleccionada)}
-                      className="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition"
+                      className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition"
                     >
                       Arrastrar en espacio
                     </button>

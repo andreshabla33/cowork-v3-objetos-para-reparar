@@ -64,26 +64,26 @@ export interface LayoutResult {
 // ===== Paleta de Colores 2026 =====
 // Colores vibrantes pero profesionales, alta diferenciación visual
 const PALETA_COLORES: string[] = [
-  '#6366f1', // indigo
+  '#2563eb', // blue-600
   '#10b981', // emerald
   '#f59e0b', // amber
   '#ef4444', // red
-  '#8b5cf6', // violet
+  '#0369a1', // sky-700
   '#06b6d4', // cyan
   '#ec4899', // pink
   '#14b8a6', // teal
   '#f97316', // orange
   '#84cc16', // lime
-  '#a855f7', // purple
-  '#0ea5e9', // sky
+  '#0ea5e9', // sky-500
+  '#0284c7', // sky-600
   '#e11d48', // rose
   '#22d3ee', // light cyan
   '#facc15', // yellow
   '#4ade80', // green light
-  '#c084fc', // purple light
+  '#93c5fd', // blue-300
   '#fb923c', // orange light
   '#2dd4bf', // teal light
-  '#818cf8', // indigo light
+  '#60a5fa', // blue-400
 ];
 
 const COLOR_ZONA_COMUN = '#3b82f6'; // blue-500

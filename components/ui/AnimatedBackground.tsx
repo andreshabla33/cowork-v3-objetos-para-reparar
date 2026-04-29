@@ -16,19 +16,19 @@ export const AnimatedBackground: React.FC<AnimatedBackgroundProps> = ({
 }) => {
   const intensityConfig = {
     default: {
-      blob1: 'bg-violet-600/15',
+      blob1: 'bg-blue-600/15',
       blob2: 'bg-cyan-500/10',
-      blob3: 'bg-fuchsia-600/10',
+      blob3: 'bg-cyan-500/10',
     },
     subtle: {
-      blob1: 'bg-violet-600/10',
+      blob1: 'bg-blue-600/10',
       blob2: 'bg-cyan-500/5',
-      blob3: 'bg-fuchsia-600/5',
+      blob3: 'bg-cyan-500/5',
     },
     intense: {
-      blob1: 'bg-violet-600/25',
+      blob1: 'bg-blue-600/25',
       blob2: 'bg-cyan-500/20',
-      blob3: 'bg-fuchsia-600/15',
+      blob3: 'bg-cyan-500/15',
     },
   };
 

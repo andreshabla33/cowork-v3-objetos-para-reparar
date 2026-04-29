@@ -187,7 +187,7 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
         {!showNew && (
           <button
             onClick={() => { resetForm(); setShowNew(true); }}
-            className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-sm font-medium transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-medium transition-all"
           >
             <Plus className="w-4 h-4" /> Nuevo cargo
           </button>
@@ -216,7 +216,7 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
                 value={formData.nombre}
                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                 placeholder="Ej: Director de Marketing"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               />
             </div>
             <div>
@@ -224,7 +224,7 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
               <select
                 value={formData.categoria}
                 onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
               >
                 {CATEGORIAS.map(c => (
                   <option key={c.value} value={c.value}>{c.label}</option>
@@ -239,7 +239,7 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
               value={formData.descripcion}
               onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
               placeholder="Descripción breve del cargo"
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-blue-500 outline-none"
             />
           </div>
           <div className="flex items-center gap-6 mb-4">
@@ -254,7 +254,7 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
                       onClick={() => setFormData({ ...formData, icono: iconName })}
                       className={`p-1.5 rounded-lg transition-all ${
                         formData.icono === iconName
-                          ? 'bg-violet-600 text-white'
+                          ? 'bg-blue-600 text-white'
                           : 'bg-zinc-800 text-zinc-400 hover:text-white'
                       }`}
                       title={iconName}
@@ -270,7 +270,7 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
             <label className="flex items-center gap-2 cursor-pointer">
               <button onClick={() => setFormData({ ...formData, solo_admin: !formData.solo_admin })}>
                 {formData.solo_admin
-                  ? <ToggleRight className="w-5 h-5 text-violet-400" />
+                  ? <ToggleRight className="w-5 h-5 text-sky-400" />
                   : <ToggleLeft className="w-5 h-5 text-zinc-500" />
                 }
               </button>
@@ -290,7 +290,7 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-all"
             >
               {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               {editingId ? 'Actualizar' : 'Crear'}
@@ -305,7 +305,7 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
       {/* Lista de cargos */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <RefreshCw className="w-5 h-5 text-violet-400 animate-spin" />
+          <RefreshCw className="w-5 h-5 text-sky-400 animate-spin" />
         </div>
       ) : cargos.length === 0 ? (
         <div className="text-center py-12 text-zinc-500">No hay cargos configurados</div>
@@ -323,7 +323,7 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
                     : 'bg-zinc-900/50 border-zinc-800/30 opacity-60'
                 }`}
               >
-                <div className={`p-2 rounded-lg ${cargo.activo ? 'bg-violet-600/20 text-violet-400' : 'bg-zinc-800 text-zinc-600'}`}>
+                <div className={`p-2 rounded-lg ${cargo.activo ? 'bg-blue-600/20 text-sky-400' : 'bg-zinc-800 text-zinc-600'}`}>
                   <CargoIcon className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">

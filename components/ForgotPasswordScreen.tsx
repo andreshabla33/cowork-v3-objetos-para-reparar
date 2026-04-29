@@ -57,7 +57,6 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
     } else {
       const msg = result.error || 'Error al enviar el correo.';
       setError(msg);
-      // Activar countdown automáticamente cuando hay rate limit
       if (msg.toLowerCase().includes('60 segundo') || msg.toLowerCase().includes('demasiados')) {
         startCountdown(RATE_LIMIT_SECONDS);
       }
@@ -66,67 +65,67 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
     setLoading(false);
   };
 
-  // Arco de progreso SVG para el countdown
   const radius = 20;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - countdown / RATE_LIMIT_SECONDS);
 
   return (
-    <div className="fixed inset-0 z-[500] flex items-center justify-center bg-[#050508] p-4 overflow-y-auto">
-      {/* Fondo animado */}
+    <div className="fixed inset-0 z-[500] flex items-center justify-center bg-gradient-to-br from-[#EEF4FC] via-sky-50 to-sky-50 p-4 overflow-y-auto">
+
+      {/* Animated background orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-30%] left-[-20%] w-[70%] h-[70%] rounded-full bg-violet-600/15 blur-[180px] animate-pulse" />
-        <div className="absolute bottom-[-30%] right-[-20%] w-[70%] h-[70%] rounded-full bg-cyan-500/10 blur-[180px] animate-pulse" style={{ animationDelay: '1.5s' }} />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
+        <div className="absolute -top-40 -left-40 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-sky-300/25 to-sky-400/10 blur-[120px] animate-orb-float" />
+        <div className="absolute -bottom-48 -right-40 w-[650px] h-[650px] rounded-full bg-gradient-to-br from-sky-600/20 to-sky-200/8 blur-[130px] animate-orb-float-slow" />
+        <div className="absolute top-1/3 right-[5%] w-[280px] h-[280px] rounded-full bg-gradient-to-br from-sky-200/20 to-transparent blur-[80px] animate-orb-float-alt" />
+        <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: 'radial-gradient(circle, #0ea5e9 1px, transparent 1px)', backgroundSize: '48px 48px' }} />
       </div>
 
       <div className="w-full max-w-md my-auto relative z-10">
-        {/* Glow exterior */}
-        <div className="absolute -inset-1 bg-gradient-to-r from-violet-600/20 via-fuchsia-600/20 to-cyan-500/20 rounded-[40px] blur-xl opacity-60" />
-
-        <div className="relative backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-[36px] p-6 shadow-2xl">
+        <div className="relative bg-white/75 backdrop-blur-2xl border border-white/60 rounded-[40px] p-8 shadow-[0_32px_64px_rgba(14,40,90,0.10),inset_0_1px_0_rgba(255,255,255,0.9)] animate-auth-in">
+          {/* top sheen */}
+          <div className="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-white/90 to-transparent rounded-full" />
 
           {/* Header */}
-          <div className="flex flex-col items-center mb-6">
-            <div className="relative group mb-4">
-              <div className="absolute -inset-2 bg-gradient-to-r from-violet-600 to-cyan-500 rounded-2xl blur-lg opacity-40 group-hover:opacity-60 transition-opacity duration-500" />
-              <div className="relative w-14 h-14 bg-gradient-to-br from-violet-600 via-fuchsia-600 to-cyan-500 rounded-2xl flex items-center justify-center shadow-2xl">
+          <div className="flex flex-col items-center mb-7">
+            <div className="relative group mb-5">
+              <div className="absolute -inset-3 bg-gradient-to-br from-sky-400/40 to-sky-600/20 rounded-[28px] blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-700 animate-pulse" />
+              <div className="relative w-16 h-16 bg-gradient-to-br from-sky-400 to-sky-600 rounded-[22px] flex items-center justify-center shadow-[0_8px_24px_rgba(14,165,233,0.45)]">
                 <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                 </svg>
               </div>
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-1">
+            <h1 className="text-2xl font-black tracking-tight text-slate-800 mb-1.5">
               Recuperar Contraseña
             </h1>
-            <p className="text-zinc-500 text-[10px] font-bold uppercase tracking-[0.3em] text-center">
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.35em] text-center">
               Te enviaremos un enlace de acceso
             </p>
           </div>
 
           {/* ── Estado: correo enviado ── */}
           {sent ? (
-            <div className="space-y-5 animate-in fade-in duration-500">
-              <div className="p-5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-center space-y-3">
-                <div className="w-12 h-12 mx-auto bg-emerald-500/20 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="space-y-5">
+              <div className="p-5 bg-emerald-50/80 border border-emerald-200/70 rounded-2xl text-center space-y-3">
+                <div className="w-12 h-12 mx-auto bg-emerald-100 rounded-full flex items-center justify-center">
+                  <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-emerald-400 font-black text-sm">¡Correo enviado!</p>
-                  <p className="text-zinc-400 text-[11px] mt-1 leading-relaxed">
-                    Revisa tu bandeja de entrada en <span className="text-white font-bold">{email}</span>.<br />
-                    El enlace expira en <span className="text-emerald-400 font-bold">60 minutos</span>.
+                  <p className="text-emerald-600 font-black text-sm">¡Correo enviado!</p>
+                  <p className="text-slate-500 text-[11px] mt-1 leading-relaxed">
+                    Revisa tu bandeja de entrada en <span className="text-slate-800 font-bold">{email}</span>.<br />
+                    El enlace expira en <span className="text-emerald-600 font-bold">60 minutos</span>.
                   </p>
                 </div>
               </div>
 
-              <p className="text-zinc-600 text-[10px] text-center leading-relaxed">
+              <p className="text-slate-400 text-[10px] text-center leading-relaxed">
                 ¿No lo ves? Revisa la carpeta de spam o{' '}
                 <button
                   onClick={() => { setSent(false); setError(null); }}
-                  className="text-violet-400 hover:text-violet-300 underline font-bold transition-colors"
+                  className="text-sky-600 hover:text-sky-700 underline font-bold transition-colors"
                 >
                   intenta con otro correo
                 </button>.
@@ -135,7 +134,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
               <button
                 id="forgot-back-after-sent"
                 onClick={onBack}
-                className="w-full py-3 bg-white/[0.03] border border-white/[0.08] rounded-xl font-black text-[10px] text-zinc-400 hover:border-violet-500/30 hover:text-white transition-all uppercase tracking-widest"
+                className="w-full py-3 bg-white/60 backdrop-blur-sm border border-slate-200/60 rounded-2xl font-black text-[10px] text-slate-500 hover:bg-white/90 hover:border-sky-300/50 hover:text-slate-700 transition-all duration-200 uppercase tracking-widest"
               >
                 ← Volver al inicio de sesión
               </button>
@@ -144,15 +143,13 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
             /* ── Estado: formulario ── */
             <div className="space-y-4">
 
-              {/* Mensaje de error / rate limit */}
               {error && (
-                <div className={`p-3 border rounded-xl animate-in slide-in-from-top-2 flex items-start gap-3 ${
+                <div className={`p-3.5 border rounded-2xl flex items-start gap-3 ${
                   isRateLimited
-                    ? 'bg-amber-500/10 border-amber-500/30'
-                    : 'bg-red-500/10 border-red-500/30'
+                    ? 'bg-amber-50/80 border-amber-200/70'
+                    : 'bg-red-50/80 border-red-200/70'
                 }`}>
                   {isRateLimited ? (
-                    /* Countdown circular SVG */
                     <div className="shrink-0 relative w-10 h-10">
                       <svg className="w-10 h-10 -rotate-90" viewBox="0 0 48 48">
                         <circle cx="24" cy="24" r={radius} fill="none" stroke="rgba(245,158,11,0.15)" strokeWidth="4" />
@@ -175,11 +172,11 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
                     <div className="shrink-0 w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 font-bold text-xs mt-0.5">!</div>
                   )}
                   <div className="flex-1">
-                    <p className={`text-[10px] font-bold leading-tight ${isRateLimited ? 'text-amber-400' : 'text-red-400'}`}>
+                    <p className={`text-[10px] font-bold leading-tight ${isRateLimited ? 'text-amber-600' : 'text-red-600'}`}>
                       {error}
                     </p>
                     {isRateLimited && (
-                      <p className="text-amber-400/60 text-[9px] mt-1">
+                      <p className="text-amber-500 text-[9px] mt-1">
                         El botón se habilitará automáticamente al terminar el contador.
                       </p>
                     )}
@@ -189,14 +186,14 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
 
               <form id="forgot-password-form" onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <p className="text-zinc-500 text-[11px] leading-relaxed mb-4 text-center">
+                  <p className="text-slate-500 text-[11px] leading-relaxed mb-4 text-center">
                     Ingresa el correo asociado a tu cuenta y te enviaremos
                     un enlace para restablecer tu contraseña.
                   </p>
 
                   <div className="relative group">
-                    <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none opacity-20 group-focus-within:opacity-100 transition-opacity">
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none opacity-35 group-focus-within:opacity-80 transition-opacity duration-200">
+                      <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
                     </div>
@@ -211,7 +208,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
                       autoComplete="email"
                       autoFocus
                       disabled={isRateLimited}
-                      className="w-full bg-black/40 border border-white/5 rounded-xl pl-11 pr-4 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all placeholder:text-zinc-700 text-white disabled:opacity-40"
+                      className="w-full bg-white/60 backdrop-blur-sm border border-slate-200/70 rounded-2xl pl-11 pr-4 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200/60 focus:border-sky-400/60 focus:bg-white/90 transition-all duration-200 placeholder:text-slate-400/70 text-slate-800 disabled:opacity-40"
                     />
                   </div>
                 </div>
@@ -220,10 +217,9 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
                   id="forgot-submit-btn"
                   type="submit"
                   disabled={loading || isRateLimited}
-                  className="relative w-full group overflow-hidden bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500 text-white px-5 py-3.5 rounded-xl font-black text-xs uppercase tracking-[0.15em] transition-all shadow-2xl shadow-violet-600/30 active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="w-full bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white px-5 py-3.5 rounded-2xl font-black text-xs uppercase tracking-[0.15em] transition-all duration-200 shadow-[0_4px_15px_rgba(14,165,233,0.30)] hover:shadow-[0_8px_24px_rgba(14,165,233,0.40)] hover:-translate-y-0.5 active:scale-[0.98] active:translate-y-0 disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none flex items-center justify-center gap-2"
                 >
-                  <span className="absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400 opacity-0 group-hover:opacity-100 group-disabled:opacity-0 transition-opacity duration-300" />
-                  <span className="relative flex items-center gap-2">
+                  <span className="flex items-center gap-2">
                     {loading ? (
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : isRateLimited ? (
@@ -248,7 +244,7 @@ export const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({ onBa
               <button
                 id="forgot-back-btn"
                 onClick={onBack}
-                className="w-full text-center text-[10px] text-zinc-500 hover:text-zinc-300 font-bold uppercase tracking-widest transition-colors"
+                className="w-full text-center text-[10px] text-slate-400 hover:text-slate-600 font-bold uppercase tracking-widest transition-colors duration-150"
               >
                 ← Volver al inicio de sesión
               </button>

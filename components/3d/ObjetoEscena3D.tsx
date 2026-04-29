@@ -47,16 +47,16 @@ const normalizarEscala = (objeto: EspacioObjeto | ObjetoPreview3D) => {
 };
 
 const obtenerColorHex = (valor?: string | null) => {
-  if (!valor) return '#6366f1';
+  if (!valor) return '#2563eb';
   return valor.startsWith('#') ? valor : `#${valor}`;
 };
 
 const descomponerModelo = (modeloUrl?: string | null) => {
   if (!modeloUrl || !modeloUrl.startsWith('builtin:')) {
-    return { incorporado: false, geometria: 'cubo', color: '#6366f1' };
+    return { incorporado: false, geometria: 'cubo', color: '#2563eb' };
   }
 
-  const [, geometria = 'cubo', color = '6366f1'] = modeloUrl.split(':');
+  const [, geometria = 'cubo', color = '2563eb'] = modeloUrl.split(':');
   return {
     incorporado: true,
     geometria,
@@ -103,7 +103,7 @@ const GeometriaIncorporada: React.FC<{
     color,
     transparent: transparente,
     opacity: opacidad,
-    emissive: resaltar ? '#818cf8' : '#000000',
+    emissive: resaltar ? '#60a5fa' : '#000000',
     emissiveIntensity: resaltar ? 0.35 : 0,
     roughness: 0.55,
     metalness: 0.08,
@@ -228,7 +228,7 @@ const ModeloGLTFObjeto: React.FC<{
             material.color = new THREE.Color('#67e8f9');
           }
           if (transparente && 'emissive' in material && material.emissive) {
-            material.emissive = new THREE.Color('#818cf8');
+            material.emissive = new THREE.Color('#60a5fa');
             if ('emissiveIntensity' in material) {
               material.emissiveIntensity = 0.75;
             }
@@ -292,7 +292,7 @@ const RepresentacionObjeto: React.FC<{
   if (!configuracion.incorporado && modeloUrl) {
     const fallbackCubo = (
       <group scale={escala}>
-        <GeometriaIncorporada geometria="cubo" color="#6366f1" opacidad={opacidad} transparente={transparente} resaltar={resaltar} />
+        <GeometriaIncorporada geometria="cubo" color="#2563eb" opacidad={opacidad} transparente={transparente} resaltar={resaltar} />
       </group>
     );
     return (
@@ -337,7 +337,7 @@ export const FantasmaColocacion3D: React.FC<FantasmaColocacion3DProps> = ({ obje
     <group ref={grupoRef} position={[objeto.posicion_x, objeto.posicion_y, objeto.posicion_z]} rotation={[0, objeto.rotacion_y || 0, 0]}>
       <RepresentacionObjeto
         objeto={objeto}
-        modeloUrl={objeto.modelo_url || (objeto.built_in_geometry ? `builtin:${objeto.built_in_geometry}:${(objeto.built_in_color || '#6366f1').replace('#', '')}` : null)}
+        modeloUrl={objeto.modelo_url || (objeto.built_in_geometry ? `builtin:${objeto.built_in_geometry}:${(objeto.built_in_color || '#2563eb').replace('#', '')}` : null)}
         escala={escala}
         opacidad={0.5}
         transparente={true}
@@ -349,7 +349,7 @@ export const FantasmaColocacion3D: React.FC<FantasmaColocacion3DProps> = ({ obje
       </mesh>
       <mesh ref={aroRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, -(escala[1] / 2) + 0.02, 0]}>
         <ringGeometry args={[Math.max(escala[0], escala[2]) * 0.42, Math.max(escala[0], escala[2]) * 0.58, 32]} />
-        <meshBasicMaterial color="#818cf8" transparent opacity={0.55} />
+        <meshBasicMaterial color="#60a5fa" transparent opacity={0.55} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -(escala[1] / 2) + 0.021, 0]}>
         <ringGeometry args={[Math.max(escala[0], escala[2]) * 0.60, Math.max(escala[0], escala[2]) * 0.68, 32]} />
@@ -536,9 +536,9 @@ const _ObjetoEscena3D: React.FC<ObjetoEscena3DProps> = ({
         <>
           <mesh scale={[escala[0] * 1.08, Math.max(escala[1] * 1.08, 1.02), escala[2] * 1.08]}>
             <boxGeometry args={[1, 1, 1]} />
-            <meshBasicMaterial color="#6366f1" transparent opacity={0.18} side={THREE.BackSide} />
+            <meshBasicMaterial color="#2563eb" transparent opacity={0.18} side={THREE.BackSide} />
           </mesh>
-          <pointLight color="#6366f1" intensity={2.5} distance={5} position={[0, Math.max(escala[1], 1), 0]} />
+          <pointLight color="#2563eb" intensity={2.5} distance={5} position={[0, Math.max(escala[1], 1), 0]} />
         </>
       )}
 
@@ -664,9 +664,9 @@ const ObjectContextMenu: React.FC<ObjectContextMenuProps> = ({
         <button
           onClick={(e) => { e.stopPropagation(); onRotate(e); resetTimer(); }}
           title="Rotar 90°"
-          className="group w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150 hover:bg-indigo-500/30 active:scale-90"
+          className="group w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150 hover:bg-blue-600/30 active:scale-90"
         >
-          <svg className="w-3.5 h-3.5 text-indigo-300 group-hover:text-indigo-100 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-3.5 h-3.5 text-sky-600 group-hover:text-sky-400 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
         </button>

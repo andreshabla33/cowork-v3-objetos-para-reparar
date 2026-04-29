@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Hand } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { UserAvatar } from './UserAvatar';
 import { AvatarConfig, PresenceStatus } from '../types';
@@ -45,7 +46,7 @@ const STATUS_CONFIG = {
   [PresenceStatus.AVAILABLE]: { color: '#22c55e', icon: '●', label: 'Disponible' },
   [PresenceStatus.BUSY]: { color: '#ef4444', icon: '◉', label: 'Ocupado' },
   [PresenceStatus.AWAY]: { color: '#f59e0b', icon: '◐', label: 'Ausente' },
-  [PresenceStatus.DND]: { color: '#8b5cf6', icon: '⊘', label: 'No molestar' },
+  [PresenceStatus.DND]: { color: '#2563eb', icon: '⊘', label: 'No molestar' },
 };
 
 export const BottomControlBar: React.FC<BottomControlBarProps> = ({
@@ -132,14 +133,20 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
         ? 'left-3 top-1/2 -translate-y-1/2 flex flex-col items-start gap-2' 
         : 'bottom-6 left-1/2 -translate-x-1/2 flex items-end gap-2'
     }`} onClick={(e) => e.stopPropagation()}>
-      {/* Barra Principal Glassmorphism 2026 - Adaptativa: horizontal (normal) / vertical (juego) */}
-      <div className={`${isGameActive ? 'flex flex-col' : 'flex'} items-center gap-1.5 p-1.5 rounded-2xl bg-black/20 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500 hover:bg-black/30 hover:border-white/20 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)]`}>
+      {/* Action Dock — tema claro */}
+      <div
+        className={`${isGameActive ? 'flex flex-col' : 'flex'} items-center gap-1.5 p-1.5 rounded-[22px]
+          bg-white/[0.52] backdrop-blur-[28px] backdrop-saturate-[180%]
+          border border-white/45 ring-1 ring-white/25 ring-inset
+          shadow-[0_12px_48px_-8px_rgba(15,23,42,0.12),0_4px_16px_-4px_rgba(15,23,42,0.06),inset_0_1px_0_0_rgba(255,255,255,0.72),inset_0_-1px_0_0_rgba(255,255,255,0.18)]
+          transition-all duration-500`}
+      >
         
         {/* Foto de usuario con indicador de estado */}
         <div className="relative">
-          <button 
+          <button
             onClick={onToggleStatusPicker}
-            className={`w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center border border-white/5 hover:border-white/20 transition-colors cursor-pointer ${isGameActive ? 'mb-0' : 'mr-1'}`}
+            className={`w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center border border-slate-200/40 hover:border-slate-300/60 transition-colors cursor-pointer ${isGameActive ? 'mb-0' : 'mr-1'}`}
           >
             <UserAvatar
               name={currentUser.name}
@@ -148,15 +155,15 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
             />
           </button>
           {/* Indicador de estado actual */}
-          <div 
-            className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-black/50"
+          <div
+            className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white"
             style={{ backgroundColor: statusConfig.color }}
           />
           
           {/* Status Picker Popup - Iconos minimalistas 2026 */}
           {showStatusPicker && (
             <div className="absolute bottom-full left-0 mb-2 animate-emoji-popup">
-              <div className="p-1.5 bg-black/80 backdrop-blur-xl rounded-xl border border-white/10 flex flex-col gap-1">
+              <div className="p-1.5 bg-white backdrop-blur-xl rounded-xl border border-slate-200 shadow-lg flex flex-col gap-1">
                 {Object.entries(STATUS_CONFIG).map(([status, config]) => (
                   <button
                     key={status}
@@ -166,8 +173,8 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
                     }}
                     className={`
                       w-8 h-8 rounded-lg flex items-center justify-center text-lg transition-all duration-150
-                      hover:bg-white/20 hover:scale-110 active:scale-90
-                      ${currentStatus === status ? 'bg-white/15 ring-1 ring-white/30' : ''}
+                      hover:bg-slate-100 hover:scale-110 active:scale-90
+                      ${currentStatus === status ? 'bg-slate-100 ring-1 ring-slate-300' : ''}
                     `}
                     title={config.label}
                   >
@@ -201,14 +208,14 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
 
         {showShareButton && !isGameActive && (
           <>
-            <div className={`${isGameActive ? 'h-px w-6' : 'w-px h-6'} bg-white/10 mx-0.5`}></div>
+            <div className={`${isGameActive ? 'h-px w-6' : 'w-px h-6'} bg-slate-300/60 mx-0.5`}></div>
 
             {/* Compartir Pantalla */}
             <ControlButton 
               onClick={onToggleShare} 
               isActive={isSharing} 
-              activeColor="bg-indigo-500 text-white" 
-              inactiveColor="bg-transparent text-white/70 hover:bg-white/10 hover:text-white"
+              activeColor="bg-sky-100 text-sky-700"
+              inactiveColor="bg-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-700"
               icon={<IconScreen on={isSharing} />}
               tooltip={isSharing ? "Dejar de compartir" : "Compartir pantalla"}
             />
@@ -217,25 +224,25 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
 
         {/* Bloquear conversación (solo visible cuando hay usuarios en proximidad) */}
         {showLockButton && onToggleLock && !isGameActive && (
-          <ControlButton 
-            onClick={onToggleLock} 
-            isActive={isLocked} 
-            activeColor="bg-amber-500 text-white" 
-            inactiveColor="bg-transparent text-white/70 hover:bg-white/10 hover:text-white"
+          <ControlButton
+            onClick={onToggleLock}
+            isActive={isLocked}
+            activeColor="bg-amber-100 text-amber-700"
+            inactiveColor="bg-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-700"
             icon={<IconLock on={isLocked} />}
             tooltip={isLocked ? "Desbloquear conversación" : "Bloquear conversación (privada)"}
           />
         )}
 
-        <div className={`${isGameActive ? 'h-px w-6' : 'w-px h-6'} bg-white/10 mx-0.5`}></div>
+        <div className={`${isGameActive ? 'h-px w-6' : 'w-px h-6'} bg-slate-300/60 mx-0.5`}></div>
 
         {/* Chat */}
         <div data-tour-step="chat-btn">
         <ControlButton 
           onClick={onToggleChat} 
           isActive={showChat} 
-          activeColor="bg-blue-500 text-white" 
-          inactiveColor="bg-transparent text-white/70 hover:bg-white/10 hover:text-white"
+          activeColor="bg-sky-100 text-sky-700"
+          inactiveColor="bg-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-700"
           icon={<IconChat />}
           tooltip="Chat"
         />
@@ -246,8 +253,8 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
           <ControlButton 
             onClick={onToggleEmojis} 
             isActive={showEmojis} 
-            activeColor="bg-amber-500 text-white" 
-            inactiveColor="bg-transparent text-white/70 hover:bg-white/10 hover:text-white"
+            activeColor="bg-amber-100 text-amber-700"
+            inactiveColor="bg-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-700"
             icon={<IconReaction />}
             tooltip="Reacciones"
           />
@@ -256,9 +263,9 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
         <ControlButton 
           onClick={onToggleRaiseHand} 
           isActive={isHandRaised} 
-          activeColor="bg-sky-500 text-white" 
-          inactiveColor="bg-transparent text-white/70 hover:bg-white/10 hover:text-white"
-          icon={<span className="text-base leading-none">✋</span>}
+          activeColor="bg-sky-100 text-sky-700"
+          inactiveColor="bg-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+          icon={<Hand className="w-5 h-5 shrink-0" strokeWidth={2} aria-hidden />}
           tooltip={isHandRaised ? 'Bajar la mano' : 'Levantar la mano'}
         />
 
@@ -267,8 +274,8 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
           <ControlButton 
             onClick={onIrAMiEscritorio} 
             isActive={false} 
-            activeColor="bg-indigo-500 text-white" 
-            inactiveColor="bg-transparent text-white/70 hover:bg-white/10 hover:text-white"
+            activeColor="bg-sky-100 text-sky-700"
+            inactiveColor="bg-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-700"
             icon={<IconDesk />}
             tooltip="Ir a mi escritorio"
           />
@@ -279,14 +286,14 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
           <ControlButton 
             onClick={() => setShowBuildMenu(!showBuildMenu)} 
             isActive={isEditMode} 
-            activeColor="bg-amber-500 text-white" 
-            inactiveColor="bg-transparent text-white/70 hover:bg-white/10 hover:text-white"
+            activeColor="bg-amber-100 text-amber-700"
+            inactiveColor="bg-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-700"
             icon={<IconEditMode on={isEditMode} />}
             tooltip="Modo construcción"
           />
           
           {showBuildMenu && (
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-black/80 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-2 duration-200">
+            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xl animate-in slide-in-from-bottom-2 duration-200">
               <div className="p-2 space-y-1">
                 <button
                   onClick={() => {
@@ -296,14 +303,14 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     isEditMode && useStore.getState().modoEdicionObjeto !== 'add'
-                      ? 'bg-white/15 text-white font-medium'
-                      : 'text-white/70 hover:bg-white/10 hover:text-white'
+                      ? 'bg-slate-100 text-slate-800 font-medium'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
                   }`}
                 >
                   <span className="text-lg">🏗️</span>
                   <div className="flex flex-col items-start">
                     <span>Editar objetos</span>
-                    <span className="text-[9px] text-white/40">Mover, rotar o eliminar</span>
+                    <span className="text-[9px] text-slate-400">Mover, rotar o eliminar</span>
                   </div>
                 </button>
 
@@ -315,14 +322,14 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                     isEditMode && useStore.getState().modoEdicionObjeto === 'add'
-                      ? 'bg-white/15 text-white font-medium'
-                      : 'text-white/70 hover:bg-white/10 hover:text-white'
+                      ? 'bg-slate-100 text-slate-800 font-medium'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-800'
                   }`}
                 >
                   <span className="text-lg">📦</span>
                   <div className="flex flex-col items-start">
                     <span>Agregar objetos</span>
-                    <span className="text-[9px] text-white/40">Catálogo de mobiliario</span>
+                    <span className="text-[9px] text-slate-400">Catálogo de mobiliario</span>
                   </div>
                 </button>
 
@@ -332,7 +339,7 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
                       setIsEditMode(false);
                       setShowBuildMenu(false);
                     }}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors mt-1 border-t border-white/5"
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs text-red-500 hover:bg-red-50 hover:text-red-600 transition-colors mt-1 border-t border-slate-100"
                   >
                     <span>✕</span> Salir del modo edición
                   </button>
@@ -344,11 +351,11 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
 
         {/* Mini Juegos - Ocultar si ya estamos en un juego */}
         {onOpenGameHub && !isGameActive && (
-          <ControlButton 
-            onClick={onOpenGameHub} 
-            isActive={false} 
-            activeColor="bg-violet-500 text-white" 
-            inactiveColor="bg-transparent text-white/70 hover:bg-white/10 hover:text-white"
+          <ControlButton
+            onClick={onOpenGameHub}
+            isActive={false}
+            activeColor="bg-sky-100 text-blue-700"
+            inactiveColor="bg-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-700"
             icon={<IconGamepad />}
             tooltip="Mini Juegos"
           />
@@ -356,7 +363,7 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
 
         {showRecordingButton && !isGameActive && (
           <>
-            <div className={`${isGameActive ? 'h-px w-6' : 'w-px h-6'} bg-white/10 mx-0.5`}></div>
+            <div className={`${isGameActive ? 'h-px w-6' : 'w-px h-6'} bg-slate-300/60 mx-0.5`}></div>
 
             {isRecording ? (<div data-tour-step="recording-btn">
               <div className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-xl bg-red-500/15 border border-red-500/30">
@@ -381,10 +388,10 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
             </div>) : (
               <button data-tour-step="recording-btn"
                 onClick={onToggleRecording}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-all duration-300"
+                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all duration-300"
               >
                 <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <span className="text-xs font-medium text-white/90">Grabar</span>
+                <span className="text-xs font-medium">Grabar</span>
               </button>
             )}
           </>
@@ -398,12 +405,12 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
             ? 'left-full top-1/2 -translate-y-1/2 ml-2' 
             : 'bottom-full left-1/2 -translate-x-1/2 mb-2'
         }`}>
-          <div className={`px-2 py-1.5 bg-black/80 backdrop-blur-xl rounded-xl border border-white/10 ${isGameActive ? 'flex flex-col gap-0.5' : 'flex gap-0.5'}`}>
+          <div className={`px-2 py-1.5 bg-white border border-slate-200 shadow-lg rounded-xl ${isGameActive ? 'flex flex-col gap-0.5' : 'flex gap-0.5'}`}>
             {emojis.map((emoji) => (
               <button
                 key={emoji}
                 onClick={() => onTriggerReaction(emoji)}
-                className="w-7 h-7 flex items-center justify-center text-lg rounded-lg transition-all duration-150 hover:bg-white/20 hover:scale-110 active:scale-90"
+                className="w-7 h-7 flex items-center justify-center text-lg rounded-lg transition-all duration-150 hover:bg-slate-100 hover:scale-110 active:scale-90"
               >
                 {emoji}
               </button>
@@ -429,7 +436,7 @@ const ControlButton = ({ onClick, isActive, activeColor, inactiveColor, icon, to
     </button>
     {/* Tooltip */}
     <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none z-50">
-      <div className="bg-black/90 backdrop-blur-md text-white text-[10px] font-medium px-2 py-1 rounded-lg border border-white/10 whitespace-nowrap shadow-xl">
+      <div className="bg-slate-800 text-white text-[10px] font-medium px-2 py-1 rounded-lg whitespace-nowrap shadow-xl">
         {tooltip}
       </div>
     </div>

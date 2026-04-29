@@ -12,7 +12,7 @@ export const statusColors: Record<PresenceStatus, string> = {
   [PresenceStatus.AVAILABLE]: '#22c55e',
   [PresenceStatus.BUSY]: '#ef4444',
   [PresenceStatus.AWAY]: '#eab308',
-  [PresenceStatus.DND]: '#a855f7',
+  [PresenceStatus.DND]: '#2563eb',
 };
 
 // Labels de estado para mostrar al hacer clic
@@ -30,6 +30,9 @@ export interface VirtualSpace3DProps {
   showroomMode?: boolean;
   showroomDuracionMin?: number;
   showroomNombreVisitante?: string;
+  onToggleViben?: () => void;
+  onOpenGameHub?: () => void;
+  onOpenAvatarSettings?: () => void;
 }
 
 // ICE Servers para WebRTC - Servidores STUN/TURN actualizados

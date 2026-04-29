@@ -66,7 +66,7 @@ export const SettingsSpace3D: React.FC<SettingsSpace3DProps> = ({
   return (
     <div>
       <div className="mb-8 lg:mb-6">
-        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-2 lg:mb-1">
+        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-sky-200 to-white mb-2 lg:mb-1">
           {currentLang === 'en' ? '3D Space' : currentLang === 'pt' ? 'Espaço 3D' : 'Espacio 3D'}
         </h2>
         <p className="text-sm text-zinc-400">

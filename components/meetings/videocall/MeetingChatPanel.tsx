@@ -117,7 +117,7 @@ export const MeetingChatPanel: React.FC<MeetingChatPanelProps> = ({
             >
               <div className={`flex w-full max-w-full items-center gap-2 text-[11px] ${message.isOwn ? 'justify-end' : 'justify-between'}`}>
                 {!message.isOwn && (
-                  <span className="truncate rounded-full bg-indigo-500/10 px-2.5 py-1 font-semibold text-indigo-300">
+                  <span className="truncate rounded-full bg-blue-600/10 px-2.5 py-1 font-semibold text-sky-600">
                     {message.senderName}
                   </span>
                 )}
@@ -126,7 +126,7 @@ export const MeetingChatPanel: React.FC<MeetingChatPanelProps> = ({
               <div
                 className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm sm:max-w-[84%] ${
                   message.isOwn
-                    ? 'bg-indigo-500 text-white rounded-br-md'
+                    ? 'bg-blue-600 text-white rounded-br-md'
                     : 'bg-white/10 text-white/92 rounded-bl-md'
                 }`}
               >
@@ -142,12 +142,12 @@ export const MeetingChatPanel: React.FC<MeetingChatPanelProps> = ({
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder="Escribe un mensaje..."
-          className="h-12 flex-1 rounded-2xl border border-white/10 bg-white/10 px-4 text-sm text-white outline-none transition-colors placeholder:text-white/35 focus:border-indigo-400/60 focus:bg-white/12"
+          className="h-12 flex-1 rounded-2xl border border-white/10 bg-white/10 px-4 text-sm text-white outline-none transition-colors placeholder:text-white/35 focus:border-blue-500/60 focus:bg-white/12"
         />
         <button
           type="submit"
           disabled={isSending || draft.trim().length === 0}
-          className="flex h-12 w-12 shrink-0 touch-manipulation items-center justify-center rounded-2xl bg-indigo-500 text-white transition-all hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-45"
+          className="flex h-12 w-12 shrink-0 touch-manipulation items-center justify-center rounded-2xl bg-blue-600 text-white transition-all hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-45"
           aria-label="Enviar mensaje"
         >
           <Send className="h-4.5 w-4.5" />

@@ -4,7 +4,6 @@
  * Pure presentational — receives all data and callbacks via props.
  *
  * Clean Architecture: Presentation layer component.
- * F5 refactor: extracted from ChatPanel monolith.
  */
 
 import React from 'react';
@@ -21,15 +20,14 @@ import type { ToastNotification } from '@/components/ChatToast';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const getStatusColor = (status?: PresenceStatus) => {
-  switch (status) {
-    case PresenceStatus.AVAILABLE: return 'bg-green-500';
-    case PresenceStatus.BUSY: return 'bg-red-500';
-    case PresenceStatus.AWAY: return 'bg-yellow-500';
-    case PresenceStatus.DND: return 'bg-purple-500';
-    default: return 'bg-zinc-500';
-  }
+const STATUS_BG: Record<string, string> = {
+  [PresenceStatus.AVAILABLE]: '#3DCB7E',
+  [PresenceStatus.BUSY]: '#F26B6B',
+  [PresenceStatus.AWAY]: '#F5B638',
+  [PresenceStatus.DND]: '#A78BFA',
 };
+
+const getStatusBg = (status?: PresenceStatus) => STATUS_BG[status ?? ''] ?? '#B8C2D0';
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
@@ -53,6 +51,38 @@ export interface ChatSidebarContentProps {
   dismissToast: (id: string) => void;
 }
 
+// ─── Sub-components ──────────────────────────────────────────────────────────
+
+const SectionTitle: React.FC<{ children: React.ReactNode; action?: React.ReactNode; isArcade: boolean }> = ({ children, action, isArcade }) => (
+  <div className="flex justify-between items-center px-3 pt-4 pb-1.5">
+    <span className={`text-[9.5px] font-bold uppercase tracking-[0.12em] ${isArcade ? 'text-[#00ff41]/60' : 'text-slate-400'}`}>{children}</span>
+    {action}
+  </div>
+);
+
+const SidebarRow: React.FC<{
+  active?: boolean;
+  isArcade: boolean;
+  onClick?: () => void;
+  children: React.ReactNode;
+  muted?: boolean;
+}> = ({ active, isArcade, onClick, children, muted }) => (
+  <button
+    onClick={onClick}
+    className={`w-full text-left flex items-center gap-2 px-3 py-[6px] rounded-lg text-[11.5px] font-medium transition-all duration-100 ${
+      isArcade
+        ? active ? 'bg-[#00ff41]/15 text-[#00ff41]' : 'text-[#00ff41]/50 hover:bg-[#00ff41]/10 hover:text-[#00ff41]'
+        : active
+          ? 'bg-sky-100 text-sky-800 font-semibold'
+          : muted
+            ? 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-800'
+    }`}
+  >
+    {children}
+  </button>
+);
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
@@ -75,181 +105,191 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 }) => {
   const { t } = useTranslation();
   const { activeWorkspace, currentUser, setActiveSubTab, theme, onlineUsers, userRoleInActiveWorkspace } = useStore();
-
-  const s = { activeItem: 'bg-indigo-500/20 text-indigo-400 opacity-100', sidebarBg: 'bg-[#0d0d15]' };
+  const isArcade = theme === 'arcade';
 
   return (
-    <div className={`h-full flex flex-col overflow-hidden transition-all duration-500 ${s.sidebarBg}`}>
-      {/* Workspace Header */}
-      <div className="p-5 border-b border-white/5 flex items-center justify-between hover:bg-white/5 cursor-pointer transition-colors group">
-        <h2 className={`font-black text-xs uppercase tracking-tight truncate ${theme === 'arcade' ? 'text-[#00ff41]' : ''}`}>{activeWorkspace?.name || 'Workspace'}</h2>
-        <svg className="w-4 h-4 opacity-50 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+    <div className={`h-full flex flex-col overflow-hidden transition-all duration-300 ${isArcade ? 'bg-black' : 'bg-white'}`}>
+      {/* Workspace switcher */}
+      <div className={`px-4 py-3 border-b flex items-center gap-3 ${isArcade ? 'border-[#00ff41]/20' : 'border-[#E3EAF2]'}`}>
+        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-white text-[11px] font-bold shrink-0 ${isArcade ? 'bg-[#00ff41] text-black' : 'bg-gradient-to-br from-sky-400 to-sky-600'}`}>
+          {(activeWorkspace?.name || 'W').charAt(0).toUpperCase()}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className={`text-[12px] font-bold truncate ${isArcade ? 'text-[#00ff41]' : 'text-slate-800'}`}>{activeWorkspace?.name || 'Workspace'}</div>
+          <div className={`text-[9px] ${isArcade ? 'text-[#00ff41]/50' : 'text-slate-400'}`}>Spatial World</div>
+        </div>
+        <svg className={`w-3.5 h-3.5 shrink-0 ${isArcade ? 'text-[#00ff41]/50' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+        </svg>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {/* Navigation: Meetings, Calendar */}
-        <div className="px-2 py-4 space-y-0.5">
-          <button
-            onClick={() => setShowMeetingRooms(!showMeetingRooms)}
-            className={`w-full text-left px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-3 ${showMeetingRooms ? s.activeItem : 'hover:bg-white/5'}`}
-          >
-            <span className="w-4 text-center opacity-60">🎧</span>
-            <span className="truncate">{t('sidebar.meetings')}</span>
-            <svg className={`w-3 h-3 ml-auto opacity-50 transition-transform ${showMeetingRooms ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          {showMeetingRooms && <MeetingRooms />}
-          <button
-            onClick={() => setActiveSubTab('calendar')}
-            className={`w-full text-left px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-3 ${true ? s.activeItem : 'hover:bg-white/5'}`}
-          >
-            <span className="w-4 text-center opacity-60">📅</span>
-            <span className="truncate">{t('sidebar.calendar')}</span>
-            <svg className="w-3 h-3 ml-auto opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
+      <div className="flex-1 overflow-y-auto px-2 pb-4" style={{ scrollbarWidth: 'thin', scrollbarColor: '#E3EAF2 transparent' }}>
 
-        <div className="h-px bg-white/5 mx-4 my-2" />
+        {/* Meetings / Calendar */}
+        <SectionTitle isArcade={isArcade}>Meetings</SectionTitle>
+        <SidebarRow isArcade={isArcade} onClick={() => setActiveSubTab('calendar')}>
+          <svg className={`w-[14px] h-[14px] shrink-0 ${isArcade ? 'text-[#00ff41]/60' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span>Calendar</span>
+        </SidebarRow>
+        <SidebarRow isArcade={isArcade} active={showMeetingRooms} onClick={() => setShowMeetingRooms(!showMeetingRooms)}>
+          <svg className={`w-[14px] h-[14px] shrink-0 ${isArcade ? 'text-[#00ff41]/60' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+          </svg>
+          <span className="flex-1">{t('sidebar.meetings')}</span>
+          <svg className={`w-3 h-3 transition-transform shrink-0 ${showMeetingRooms ? 'rotate-180' : ''} ${isArcade ? 'text-[#00ff41]/50' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </SidebarRow>
+        {showMeetingRooms && <MeetingRooms />}
+
+        {/* Divider */}
+        <div className={`h-px mx-2 my-2 ${isArcade ? 'bg-[#00ff41]/10' : 'bg-[#E3EAF2]'}`} />
 
         {/* Channels */}
-        <div className="px-2 py-4">
-          <div className="px-3 mb-2 group flex items-center justify-between">
-            <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] opacity-40 ${theme === 'arcade' ? 'text-[#00ff41]' : ''}`}>{t('sidebar.channels')}</h3>
+        <SectionTitle
+          isArcade={isArcade}
+          action={
             <button
               onClick={(e) => { e.stopPropagation(); setShowCreateModal(true); }}
-              className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${theme === 'arcade' ? 'bg-[#00ff41] text-black shadow-[0_0_10px_#00ff41]' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+              className={`w-5 h-5 rounded-md flex items-center justify-center text-lg leading-none transition-all ${isArcade ? 'bg-[#00ff41] text-black' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
               title="Crear Canal"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4"/></svg>
-            </button>
-          </div>
-          <div className="space-y-0.5">
-            {grupos.filter(g => g.tipo !== 'directo').map(g => {
-              const unreadCount = unreadByChannel[g.id] || 0;
-              return (
-              <div key={g.id} className="group/channel relative flex items-center">
-                <button
+            >＋</button>
+          }
+        >
+          {t('sidebar.channels')}
+        </SectionTitle>
+        <div className="space-y-0.5">
+          {grupos.filter(g => g.tipo !== 'directo').map(g => {
+            const unread = unreadByChannel[g.id] || 0;
+            return (
+              <div key={g.id} className="group/ch relative flex items-center">
+                <SidebarRow
+                  isArcade={isArcade}
+                  active={grupoActivo === g.id}
+                  muted={unread === 0 && grupoActivo !== g.id}
                   onClick={() => handleChannelSelect(g.id)}
-                  className={`w-full text-left px-4 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${grupoActivo === g.id ? s.activeItem : (unreadCount > 0 ? 'opacity-100 bg-white/5' : 'opacity-50 hover:opacity-100 hover:bg-white/5')}`}
                 >
-                  <span className="opacity-40">{g.tipo === 'privado' ? '🔒' : '#'}</span>
-                  <span className="truncate flex-1">{g.nombre}</span>
-                  {unreadCount > 0 && (
-                    <span className="w-5 h-5 bg-red-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center animate-pulse">
-                      {unreadCount > 9 ? '9+' : unreadCount}
+                  <span className={`text-[11px] font-bold w-4 shrink-0 ${isArcade ? 'text-[#00ff41]/60' : grupoActivo === g.id ? 'text-sky-500' : 'text-slate-400'}`}>
+                    {g.tipo === 'privado' ? '🔒' : '#'}
+                  </span>
+                  <span className="flex-1 truncate">{g.nombre}</span>
+                  {unread > 0 && (
+                    <span className="w-5 h-5 bg-red-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center shrink-0">
+                      {unread > 9 ? '9+' : unread}
                     </span>
                   )}
-                </button>
+                </SidebarRow>
                 {canDeleteChannel(g) && (
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDeleteChannel(g.id, g.nombre); }}
-                    className="absolute right-2 opacity-0 group-hover/channel:opacity-60 hover:!opacity-100 p-1 rounded-lg hover:bg-red-500/20 text-red-400 transition-all"
+                    className="absolute right-2 opacity-0 group-hover/ch:opacity-60 hover:!opacity-100 p-1 rounded-lg hover:bg-red-50 text-red-400 transition-all"
                     title="Eliminar canal"
                   >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
                   </button>
                 )}
               </div>
-            );})}
-          </div>
+            );
+          })}
         </div>
 
-        <div className="h-px bg-white/5 mx-4 my-2" />
+        {/* Divider */}
+        <div className={`h-px mx-2 my-2 ${isArcade ? 'bg-[#00ff41]/10' : 'bg-[#E3EAF2]'}`} />
 
         {/* Direct Messages */}
-        <div className="px-2 py-4">
-          <div className="px-3 mb-2">
-            <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] opacity-40 ${theme === 'arcade' ? 'text-[#00ff41]' : ''}`}>{t('sidebar.directMessages')}</h3>
-          </div>
-          <div className="space-y-0.5">
-            {grupos.filter(g => g.tipo === 'directo' && g.nombre.includes(currentUser.id)).map(g => {
-              const unreadCount = unreadByChannel[g.id] || 0;
-              const otherUserId = g.nombre.split('|').find((id: string) => id !== currentUser.id);
-              const otherUser = miembrosEspacio.find((m) => m.id === otherUserId);
-              const isOnline = onlineUsers.some(ou => ou.id === otherUserId);
-              return (
-              <button
+        <SectionTitle isArcade={isArcade}>{t('sidebar.directMessages')}</SectionTitle>
+        <div className="space-y-0.5">
+          {grupos.filter(g => g.tipo === 'directo' && g.nombre.includes(currentUser.id)).map(g => {
+            const unread = unreadByChannel[g.id] || 0;
+            const otherUserId = g.nombre.split('|').find((id: string) => id !== currentUser.id);
+            const otherUser = miembrosEspacio.find((m) => m.id === otherUserId);
+            const onlineMatch = onlineUsers.find(ou => ou.id === otherUserId);
+            const isOnline = !!onlineMatch;
+            return (
+              <SidebarRow
                 key={g.id}
+                isArcade={isArcade}
+                active={grupoActivo === g.id}
+                muted={unread === 0 && grupoActivo !== g.id}
                 onClick={() => handleChannelSelect(g.id)}
-                className={`w-full text-left px-4 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-3 ${grupoActivo === g.id ? s.activeItem : (unreadCount > 0 ? 'opacity-100 bg-white/5' : 'opacity-50 hover:opacity-100 hover:bg-white/5')}`}
               >
-                <div className="relative">
-                  <div className="w-5 h-5 rounded-full bg-indigo-500/20 flex items-center justify-center text-[8px] font-black">{otherUser?.nombre?.charAt(0) || '?'}</div>
-                  <div className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-[#19171d] ${isOnline ? getStatusColor(onlineUsers.find(ou => ou.id === otherUserId)?.status) : 'bg-zinc-500'}`} />
+                <div className="relative shrink-0">
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold ${isArcade ? 'bg-[#00ff41]/20 text-[#00ff41]' : 'bg-sky-100 text-sky-700'}`}>
+                    {otherUser?.nombre?.charAt(0) || '?'}
+                  </div>
+                  <span
+                    className="absolute -bottom-px -right-px w-2 h-2 rounded-full border-2 border-white"
+                    style={{ background: isOnline ? getStatusBg(onlineMatch?.status) : '#B8C2D0' }}
+                  />
                 </div>
-                <span className="truncate flex-1">{otherUser?.nombre || 'Usuario'}</span>
-                {unreadCount > 0 && (
-                  <span className="w-5 h-5 bg-red-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center animate-pulse">
-                    {unreadCount > 9 ? '9+' : unreadCount}
+                <span className="flex-1 truncate">{otherUser?.nombre || 'Usuario'}</span>
+                {unread > 0 && (
+                  <span className="w-5 h-5 bg-red-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center shrink-0">
+                    {unread > 9 ? '9+' : unread}
                   </span>
                 )}
-              </button>
-            );})}
-            {grupos.filter(g => g.tipo === 'directo' && g.nombre.includes(currentUser.id)).length === 0 && (
-              <p className="px-4 py-2 text-[9px] opacity-30 italic font-bold">Sin mensajes directos</p>
-            )}
-          </div>
+              </SidebarRow>
+            );
+          })}
+          {grupos.filter(g => g.tipo === 'directo' && g.nombre.includes(currentUser.id)).length === 0 && (
+            <p className={`px-3 py-2 text-[10px] italic ${isArcade ? 'text-[#00ff41]/30' : 'text-slate-400'}`}>Sin mensajes directos</p>
+          )}
         </div>
 
-        <div className="h-px bg-white/5 mx-4 my-2" />
+        {/* Divider */}
+        <div className={`h-px mx-2 my-2 ${isArcade ? 'bg-[#00ff41]/10' : 'bg-[#E3EAF2]'}`} />
 
-        {/* Online Members */}
-        <div className="px-2 py-4">
-          <div className="px-3 mb-2">
-            <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] opacity-40 ${theme === 'arcade' ? 'text-[#00ff41]' : ''}`}>CONECTADOS ({onlineUsers.length})</h3>
-          </div>
-          <div className="space-y-0.5">
-            {miembrosEspacio.filter((u) => u.id !== currentUser.id).length > 0 ? miembrosEspacio.filter((u) => u.id !== currentUser.id).map((u) => {
-              const isOnline = onlineUsers.some(ou => ou.id === u.id);
-              return (
-              <button
-                key={u.id}
-                onClick={() => { openDirectChat(u); }}
-                className="w-full text-left px-4 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-white/5 transition-all flex items-center gap-3 cursor-pointer opacity-50 hover:opacity-100"
-              >
-                <UserAvatar
-                  name={u.nombre || ''}
-                  profilePhoto={u.avatar_url ?? undefined}
-                  size="xs"
-                  showStatus
-                  status={isOnline ? onlineUsers.find(ou => ou.id === u.id)?.status : undefined}
-                />
-                <span className="truncate flex-1">{u.nombre}</span>
-              </button>
-            );}) : (
-               <p className="px-4 py-2 text-[9px] opacity-30 italic font-bold">No hay otros miembros</p>
-            )}
-            {userRoleInActiveWorkspace && !['member', 'miembro'].includes(userRoleInActiveWorkspace) && (
-              <button
-                onClick={() => setActiveSubTab('miembros')}
-                className="w-full text-left px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] text-indigo-400 hover:bg-indigo-500/10 transition-all flex items-center gap-3 mt-2"
-              >
-                <span className="w-5 h-5 flex items-center justify-center bg-indigo-500/20 rounded-lg text-lg">+</span>
-                {t('sidebar.invitePeople')}
-              </button>
-            )}
-          </div>
+        {/* In the world */}
+        <SectionTitle isArcade={isArcade}>
+          In the world · {onlineUsers.length}
+        </SectionTitle>
+        <div className="space-y-0.5">
+          {miembrosEspacio.filter(u => u.id !== currentUser.id).map(u => {
+            const onlineMatch = onlineUsers.find(ou => ou.id === u.id);
+            const isOnline = !!onlineMatch;
+            return (
+              <SidebarRow key={u.id} isArcade={isArcade} muted={!isOnline} onClick={() => openDirectChat(u)}>
+                <div className="relative shrink-0">
+                  <UserAvatar name={u.nombre || ''} profilePhoto={u.avatar_url ?? undefined} size="xs" />
+                  <span
+                    className="absolute -bottom-px -right-px w-2 h-2 rounded-full border-2 border-white"
+                    style={{ background: isOnline ? getStatusBg(onlineMatch?.status) : '#B8C2D0' }}
+                  />
+                </div>
+                <span className="flex-1 truncate">{u.nombre}</span>
+              </SidebarRow>
+            );
+          })}
+          {miembrosEspacio.filter(u => u.id !== currentUser.id).length === 0 && (
+            <p className={`px-3 py-2 text-[10px] italic ${isArcade ? 'text-[#00ff41]/30' : 'text-slate-400'}`}>No hay otros miembros</p>
+          )}
         </div>
+
+        {/* Invite button */}
+        {userRoleInActiveWorkspace && !['member', 'miembro'].includes(userRoleInActiveWorkspace) && (
+          <button
+            onClick={() => setActiveSubTab('miembros')}
+            className={`w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-[10px] font-semibold mt-2 transition-all ${isArcade ? 'text-[#00ff41] hover:bg-[#00ff41]/10' : 'text-sky-600 hover:bg-sky-50'}`}
+          >
+            <span className={`w-5 h-5 flex items-center justify-center rounded-md text-sm ${isArcade ? 'bg-[#00ff41]/20' : 'bg-sky-100'}`}>+</span>
+            {t('sidebar.invitePeople')}
+          </button>
+        )}
       </div>
 
-      {showCreateModal && <ModalCrearGrupo
-        onClose={() => setShowCreateModal(false)}
-        onCreate={async () => {
-          await refetchGrupos();
-          setShowCreateModal(false);
-        }}
-      />}
+      {showCreateModal && (
+        <ModalCrearGrupo
+          onClose={() => setShowCreateModal(false)}
+          onCreate={async () => { await refetchGrupos(); setShowCreateModal(false); }}
+        />
+      )}
 
       {showNotifications && (
-        <ChatToast
-          notifications={toastNotifications}
-          onDismiss={dismissToast}
-          onOpen={handleChannelSelect}
-          theme={theme}
-        />
+        <ChatToast notifications={toastNotifications} onDismiss={dismissToast} onOpen={handleChannelSelect} theme={theme} />
       )}
     </div>
   );

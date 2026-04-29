@@ -34,7 +34,7 @@ const COLORS = [
   { name: 'Azul', value: '#3b82f6' },
   { name: 'Verde', value: '#22c55e' },
   { name: 'Amarillo', value: '#eab308' },
-  { name: 'Morado', value: '#a855f7' },
+  { name: 'Azul', value: '#2563eb' },
   { name: 'Naranja', value: '#f97316' },
   { name: 'Rosa', value: '#ec4899' },
   { name: 'Cyan', value: '#06b6d4' },

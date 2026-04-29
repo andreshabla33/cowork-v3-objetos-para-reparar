@@ -63,7 +63,7 @@ export const SettingsPerformance: React.FC<SettingsPerformanceProps> = ({
   return (
     <div>
       <div className="mb-8 lg:mb-6">
-        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-2 lg:mb-1">
+        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-sky-200 to-white mb-2 lg:mb-1">
           {currentLang === 'en' ? 'Performance' : currentLang === 'pt' ? 'Desempenho' : 'Rendimiento'}
         </h2>
         <p className="text-sm text-zinc-400">
@@ -126,13 +126,13 @@ export const SettingsPerformance: React.FC<SettingsPerformanceProps> = ({
         />
       </SettingSection>
 
-      <div className="mt-8 p-4 bg-violet-500/10 border border-violet-500/20 rounded-xl">
+      <div className="mt-8 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
         <div className="flex items-start gap-3">
-          <svg className="w-5 h-5 text-violet-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-sky-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
           <div>
-            <p className="text-sm font-medium text-violet-400">{currentLang === 'en' ? 'Performance tip' : currentLang === 'pt' ? 'Dica de desempenho' : 'Consejo de rendimiento'}</p>
+            <p className="text-sm font-medium text-sky-400">{currentLang === 'en' ? 'Performance tip' : currentLang === 'pt' ? 'Dica de desempenho' : 'Consejo de rendimiento'}</p>
             <p className="text-xs text-zinc-400 mt-1">
               {currentLang === 'en' 
                 ? 'If you experience lag or slowness, try reducing graphics quality or limiting the number of simultaneous videos.'

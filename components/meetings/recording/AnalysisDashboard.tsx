@@ -37,7 +37,7 @@ const EMOTION_COLORS: Record<EmotionType, string> = {
   sad: 'bg-blue-500',
   angry: 'bg-red-500',
   surprised: 'bg-yellow-500',
-  fearful: 'bg-purple-500',
+  fearful: 'bg-blue-500',
   disgusted: 'bg-orange-500',
   contempt: 'bg-pink-500',
   neutral: 'bg-gray-500',
@@ -50,8 +50,8 @@ const CONFIG_DEFAULT: typeof CONFIGURACIONES_GRABACION['equipo'] = {
   titulo: 'Reunión',
   descripcion: 'Análisis de reunión',
   icono: '📊',
-  color: 'from-indigo-600 to-purple-600',
-  colorAccent: '#6366f1',
+  color: 'from-blue-700 to-blue-600',
+  colorAccent: '#2563eb',
   requiereDisclaimer: false,
   metricas: [],
   cargosPermitidos: [],
@@ -177,7 +177,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
           {/* Cohesión y Participación - visible si engagement_grupal o dinamica_grupal activas */}
           {stats && (metricasActivas.has('engagement_grupal') || metricasActivas.has('dinamica_grupal') || metricasActivas.has('engagement_por_tema') || metricasActivas.has('engagement_por_pregunta')) && (
             <div className="p-4 border-b border-white/10">
-              <div className="bg-gradient-to-r from-purple-600/20 to-violet-600/20 rounded-xl p-4">
+              <div className="bg-gradient-to-r from-blue-600/20 to-blue-600/20 rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-white/60 text-xs mb-1">Cohesión del Equipo</p>
@@ -244,7 +244,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
                     <span className="text-white text-xs font-medium w-24 truncate">{p.usuario_nombre}</span>
                     <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-indigo-500 rounded-full"
+                        className="h-full bg-blue-600 rounded-full"
                         style={{ width: `${p.engagement_promedio * 100}%` }}
                       />
                     </div>
@@ -286,7 +286,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             )}
             <button
               onClick={onClose}
-              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white text-xs transition-colors"
+              className="px-3 py-1.5 bg-blue-700 hover:bg-blue-600 rounded-lg text-white text-xs transition-colors"
             >
               Cerrar
             </button>
@@ -593,7 +593,7 @@ const DealsAnalysisContent: React.FC<{ analisis: AnalisisDeals }> = ({ analisis 
       <ul className="space-y-2">
         {analisis.resumen.recomendaciones_seguimiento.map((r, i) => (
           <li key={i} className="text-white/80 text-sm flex items-start gap-2 bg-white/5 rounded-lg p-3">
-            <span className="text-indigo-400">→</span> {r}
+            <span className="text-blue-500">→</span> {r}
           </li>
         ))}
       </ul>
@@ -604,7 +604,7 @@ const DealsAnalysisContent: React.FC<{ analisis: AnalisisDeals }> = ({ analisis 
 const EquipoAnalysisContent: React.FC<{ analisis: AnalisisEquipo }> = ({ analisis }) => (
   <div className="space-y-6">
     {/* Dinámica grupal */}
-    <div className="bg-gradient-to-r from-purple-600/20 to-violet-600/20 rounded-xl p-6">
+    <div className="bg-gradient-to-r from-blue-600/20 to-blue-600/20 rounded-xl p-6">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-white/60 text-sm mb-1">Cohesión del Equipo</p>
@@ -656,7 +656,7 @@ const EquipoAnalysisContent: React.FC<{ analisis: AnalisisEquipo }> = ({ analisi
               <div className="flex-1">
                 <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-indigo-500 rounded-full"
+                    className="h-full bg-blue-600 rounded-full"
                     style={{ width: `${p.engagement_promedio * 100}%` }}
                   />
                 </div>
@@ -695,7 +695,7 @@ const EquipoAnalysisContent: React.FC<{ analisis: AnalisisEquipo }> = ({ analisi
       <ul className="space-y-2">
         {analisis.resumen.recomendaciones.map((r, i) => (
           <li key={i} className="text-white/80 text-sm flex items-start gap-2 bg-white/5 rounded-lg p-3">
-            <span className="text-purple-400">→</span> {r}
+            <span className="text-sky-400">→</span> {r}
           </li>
         ))}
       </ul>

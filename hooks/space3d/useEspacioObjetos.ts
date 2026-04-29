@@ -347,8 +347,8 @@ export function useEspacioObjetos(
 
     const modeloUrl = catalogo.modelo_url
       || (catalogo.built_in_geometry
-        ? `builtin:${catalogo.built_in_geometry}:${(catalogo.built_in_color || '#6366f1').replace('#', '')}`
-        : 'builtin:cubo:6366f1');
+        ? `builtin:${catalogo.built_in_geometry}:${(catalogo.built_in_color || '#2563eb').replace('#', '')}`
+        : 'builtin:cubo:2563eb');
 
     const escalaX = 1;
     const escalaY = 1;
@@ -406,8 +406,8 @@ export function useEspacioObjetos(
 
     const modeloUrl = catalogo.modelo_url
       || (catalogo.built_in_geometry
-        ? `builtin:${catalogo.built_in_geometry}:${(catalogo.built_in_color || '#6366f1').replace('#', '')}`
-        : 'builtin:cubo:6366f1');
+        ? `builtin:${catalogo.built_in_geometry}:${(catalogo.built_in_color || '#2563eb').replace('#', '')}`
+        : 'builtin:cubo:2563eb');
 
     const configuracionCatalogo = catalogo.configuracion_geometria && typeof catalogo.configuracion_geometria === 'object'
       ? { ...((catalogo.configuracion_geometria as unknown) as Record<string, unknown>) }

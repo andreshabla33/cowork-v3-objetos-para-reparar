@@ -85,7 +85,7 @@ serve(async (req) => {
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #fff; padding: 40px 20px; }
             .container { max-width: 500px; margin: 0 auto; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
-            .header { padding: 24px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); text-align: center; }
+            .header { padding: 24px; background: linear-gradient(135deg, #2563eb 0%, #2563eb 100%); text-align: center; }
             .header h1 { margin: 0; font-size: 20px; font-weight: 700; }
             .content { padding: 24px; }
             .info-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.1); }
@@ -93,7 +93,7 @@ serve(async (req) => {
             .icon { width: 32px; height: 32px; background: rgba(99, 102, 241, 0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
             .label { font-size: 11px; text-transform: uppercase; opacity: 0.6; font-weight: 600; }
             .value { font-size: 14px; font-weight: 500; }
-            .btn { display: inline-block; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 14px; margin-top: 16px; }
+            .btn { display: inline-block; background: linear-gradient(135deg, #2563eb 0%, #2563eb 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 14px; margin-top: 16px; }
             .footer { padding: 16px 24px; background: rgba(0,0,0,0.3); text-align: center; font-size: 12px; opacity: 0.6; }
             .note { background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 8px; padding: 12px; margin-top: 16px; font-size: 12px; color: #22c55e; }
           </style>

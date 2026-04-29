@@ -183,8 +183,8 @@ export const EscapeRoomGame: React.FC<EscapeRoomGameProps> = ({ onClose }) => {
       <div className="h-full flex flex-col">
         <div className="flex items-center justify-between p-6 lg:p-4 border-b border-zinc-800">
           <div className="flex items-center gap-4 lg:gap-3">
-            <div className="w-12 h-12 lg:w-10 lg:h-10 rounded-xl lg:rounded-lg bg-violet-500/20 flex items-center justify-center">
-              <Lock className="w-6 h-6 lg:w-5 lg:h-5 text-violet-400" />
+            <div className="w-12 h-12 lg:w-10 lg:h-10 rounded-xl lg:rounded-lg bg-blue-500/20 flex items-center justify-center">
+              <Lock className="w-6 h-6 lg:w-5 lg:h-5 text-sky-400" />
             </div>
             <div>
               <h2 className="text-2xl lg:text-xl font-bold text-white">Escape Room Virtual</h2>
@@ -221,14 +221,14 @@ export const EscapeRoomGame: React.FC<EscapeRoomGameProps> = ({ onClose }) => {
               <div className="space-y-3">
                 {['Trabaja en equipo para resolver cada puzzle', 'Usa el chat para comunicarte con tus compañeros', 'Tienes 3 pistas disponibles durante el juego', '¡Escapa antes de que se acabe el tiempo!'].map((text, i) => (
                   <div key={i} className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-violet-500/20 flex items-center justify-center text-violet-400 font-bold text-sm">{i + 1}</div>
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-sky-400 font-bold text-sm">{i + 1}</div>
                     <p className="text-zinc-400">{text}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            <button onClick={handleStartGame} className="w-full py-4 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors">
+            <button onClick={handleStartGame} className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors">
               <Unlock className="w-5 h-5" />
               Iniciar Escape Room
             </button>
@@ -287,13 +287,13 @@ export const EscapeRoomGame: React.FC<EscapeRoomGameProps> = ({ onClose }) => {
               <p className="text-xs text-zinc-500">Pistas usadas</p>
             </div>
             <div className="p-4 bg-zinc-900 rounded-xl">
-              <p className="text-3xl font-bold text-violet-400">{totalScore}</p>
+              <p className="text-3xl font-bold text-sky-400">{totalScore}</p>
               <p className="text-xs text-zinc-500">Puntos totales</p>
             </div>
           </div>
 
           <div className="flex gap-4 justify-center">
-            <button onClick={() => window.location.reload()} className="px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-semibold transition-colors">Jugar de Nuevo</button>
+            <button onClick={() => window.location.reload()} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-semibold transition-colors">Jugar de Nuevo</button>
             <button onClick={onClose} className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl font-semibold transition-colors">Volver al Lobby</button>
           </div>
         </motion.div>
@@ -305,8 +305,8 @@ export const EscapeRoomGame: React.FC<EscapeRoomGameProps> = ({ onClose }) => {
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center">
-            <Lock className="w-5 h-5 text-violet-400" />
+          <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+            <Lock className="w-5 h-5 text-sky-400" />
           </div>
           <div>
             <h2 className="font-bold text-white">Escape Room</h2>
@@ -321,7 +321,7 @@ export const EscapeRoomGame: React.FC<EscapeRoomGameProps> = ({ onClose }) => {
               <span>{Math.round(progress)}%</span>
             </div>
             <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-              <motion.div className="h-full bg-violet-500" initial={{ width: 0 }} animate={{ width: `${progress}%` }} />
+              <motion.div className="h-full bg-blue-500" initial={{ width: 0 }} animate={{ width: `${progress}%` }} />
             </div>
           </div>
 
@@ -346,7 +346,7 @@ export const EscapeRoomGame: React.FC<EscapeRoomGameProps> = ({ onClose }) => {
           <AnimatePresence mode="wait">
             <motion.div key={currentPuzzle.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="max-w-2xl mx-auto space-y-6">
               <div className="text-center space-y-2">
-                <span className="inline-block px-3 py-1 bg-violet-500/20 text-violet-400 rounded-full text-xs font-medium">Puzzle {currentPuzzleIndex + 1}</span>
+                <span className="inline-block px-3 py-1 bg-blue-500/20 text-sky-400 rounded-full text-xs font-medium">Puzzle {currentPuzzleIndex + 1}</span>
                 <h3 className="text-2xl font-bold text-white">{currentPuzzle.title}</h3>
               </div>
 
@@ -374,9 +374,9 @@ export const EscapeRoomGame: React.FC<EscapeRoomGameProps> = ({ onClose }) => {
                     onChange={(e) => setAnswer(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Escribe tu respuesta..."
-                    className={`flex-1 px-4 py-3 bg-zinc-900 border rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 transition-all ${feedback === 'correct' ? 'border-green-500 focus:ring-green-500/50' : feedback === 'incorrect' ? 'border-red-500 focus:ring-red-500/50' : 'border-zinc-700 focus:ring-violet-500/50'}`}
+                    className={`flex-1 px-4 py-3 bg-zinc-900 border rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 transition-all ${feedback === 'correct' ? 'border-green-500 focus:ring-green-500/50' : feedback === 'incorrect' ? 'border-red-500 focus:ring-red-500/50' : 'border-zinc-700 focus:ring-blue-500/50'}`}
                   />
-                  <button onClick={handleSubmitAnswer} disabled={!answer.trim()} className="px-6 py-3 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-semibold flex items-center gap-2 transition-colors">
+                  <button onClick={handleSubmitAnswer} disabled={!answer.trim()} className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-semibold flex items-center gap-2 transition-colors">
                     <ArrowRight className="w-5 h-5" />
                   </button>
                 </div>
@@ -417,7 +417,7 @@ export const EscapeRoomGame: React.FC<EscapeRoomGameProps> = ({ onClose }) => {
           <div className="flex-1 overflow-auto p-4 space-y-3">
             {chatMessages.map((msg, idx) => (
               <div key={idx} className={`${msg.user === 'Tú' ? 'ml-auto' : ''}`}>
-                <div className={`inline-block max-w-[85%] px-3 py-2 rounded-xl text-sm ${msg.user === 'Sistema' ? 'bg-zinc-800 text-zinc-400 w-full text-center' : msg.user === 'Tú' ? 'bg-violet-600 text-white' : 'bg-zinc-800 text-zinc-300'}`}>
+                <div className={`inline-block max-w-[85%] px-3 py-2 rounded-xl text-sm ${msg.user === 'Sistema' ? 'bg-zinc-800 text-zinc-400 w-full text-center' : msg.user === 'Tú' ? 'bg-blue-600 text-white' : 'bg-zinc-800 text-zinc-300'}`}>
                   {msg.user !== 'Sistema' && msg.user !== 'Tú' && <p className="text-xs text-zinc-500 mb-1">{msg.user}</p>}
                   <p>{msg.message}</p>
                 </div>
@@ -433,9 +433,9 @@ export const EscapeRoomGame: React.FC<EscapeRoomGameProps> = ({ onClose }) => {
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSendChat()}
                 placeholder="Escribe un mensaje..."
-                className="flex-1 px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-violet-500"
+                className="flex-1 px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-blue-500"
               />
-              <button onClick={handleSendChat} className="p-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors">
+              <button onClick={handleSendChat} className="p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors">
                 <Send className="w-4 h-4" />
               </button>
             </div>

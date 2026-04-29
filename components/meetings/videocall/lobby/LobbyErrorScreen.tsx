@@ -20,7 +20,7 @@ export const LobbyErrorScreen: React.FC<LobbyErrorScreenProps> = ({ message }) =
   <div className="fixed inset-0 flex items-center justify-center bg-[#050508] p-6">
     {/* Fondo neon sutil */}
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      <div className="absolute top-[-30%] left-[-20%] h-[70%] w-[70%] rounded-full bg-violet-600/15 blur-[180px] animate-pulse" />
+      <div className="absolute top-[-30%] left-[-20%] h-[70%] w-[70%] rounded-full bg-blue-600/15 blur-[180px] animate-pulse" />
       <div className="absolute bottom-[-30%] right-[-20%] h-[70%] w-[70%] rounded-full bg-cyan-500/10 blur-[180px] animate-pulse" style={{ animationDelay: '1.5s' }} />
     </div>
 

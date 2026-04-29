@@ -64,7 +64,7 @@ export const SettingsSecurity: React.FC<SettingsSecurityProps> = ({
   return (
     <div>
       <div className="mb-8 lg:mb-6">
-        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-2 lg:mb-1">
+        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-sky-200 to-white mb-2 lg:mb-1">
           {currentLang === 'en' ? 'Security' : currentLang === 'pt' ? 'Segurança' : 'Seguridad'}
         </h2>
         <p className="text-sm text-zinc-400">
@@ -95,7 +95,7 @@ export const SettingsSecurity: React.FC<SettingsSecurityProps> = ({
                     type={showPassword ? 'text' : 'password'}
                     value={settings.spacePassword}
                     onChange={(e) => updateSetting('spacePassword', e.target.value)}
-                    className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-violet-500/50"
+                    className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500/50"
                     placeholder={currentLang === 'en' ? 'Enter password' : currentLang === 'pt' ? 'Digite a senha' : 'Ingresa la contraseña'}
                   />
                   <button
@@ -127,13 +127,13 @@ export const SettingsSecurity: React.FC<SettingsSecurityProps> = ({
               type="text"
               value={newDomain}
               onChange={(e) => setNewDomain(e.target.value)}
-              className="flex-1 bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-violet-500/50"
+              className="flex-1 bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-500/50"
               placeholder={currentLang === 'en' ? 'example.com' : currentLang === 'pt' ? 'exemplo.com' : 'ejemplo.com'}
               onKeyDown={(e) => e.key === 'Enter' && addDomain()}
             />
             <button
               onClick={addDomain}
-              className="px-4 py-2.5 bg-violet-600 hover:bg-violet-500 rounded-xl text-sm font-medium transition-all"
+              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-xl text-sm font-medium transition-all"
             >
               {currentLang === 'en' ? 'Add' : currentLang === 'pt' ? 'Adicionar' : 'Agregar'}
             </button>
@@ -144,7 +144,7 @@ export const SettingsSecurity: React.FC<SettingsSecurityProps> = ({
               {settings.allowedDomains.map((domain) => (
                 <span
                   key={domain}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-500/20 text-violet-300 rounded-lg text-xs font-medium"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 text-sky-300 rounded-lg text-xs font-medium"
                 >
                   @{domain}
                   <button

@@ -49,11 +49,11 @@ export const GamePortalUI: React.FC<GamePortalUIProps> = ({ onOpenGameHub }) => 
 
   const getColorClasses = (color: string) => {
     const colors: Record<string, string> = {
-      violet: 'bg-violet-500/20 text-violet-400 border-violet-500/30',
+      violet: 'bg-blue-500/20 text-sky-400 border-blue-500/30',
       amber: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
       emerald: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
       pink: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
-      indigo: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
+      indigo: 'bg-blue-600/20 text-blue-500 border-blue-600/30',
       cyan: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
     };
     return colors[color] || colors.violet;
@@ -71,7 +71,7 @@ export const GamePortalUI: React.FC<GamePortalUIProps> = ({ onOpenGameHub }) => 
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-pink-500 flex items-center justify-center">
                 <Gamepad2 className="w-4 h-4 text-white" />
               </div>
               <span className="font-semibold text-white">Mini Juegos</span>
@@ -99,7 +99,7 @@ export const GamePortalUI: React.FC<GamePortalUIProps> = ({ onOpenGameHub }) => 
               <p className="text-xs text-zinc-500">Victorias</p>
             </div>
             <div className="p-2 bg-zinc-800/50 rounded-lg text-center">
-              <Star className="w-4 h-4 text-violet-400 mx-auto mb-1" />
+              <Star className="w-4 h-4 text-sky-400 mx-auto mb-1" />
               <p className="text-sm font-bold text-white">{playerStats.totalScore}</p>
               <p className="text-xs text-zinc-500">Puntos</p>
             </div>
@@ -113,7 +113,7 @@ export const GamePortalUI: React.FC<GamePortalUIProps> = ({ onOpenGameHub }) => 
           {/* Open Game Hub Button */}
           <button
             onClick={onOpenGameHub}
-            className="w-full py-3 bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-500 hover:to-pink-500 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-all"
+            className="w-full py-3 bg-gradient-to-r from-blue-600 to-pink-600 hover:from-blue-500 hover:to-pink-500 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-all"
           >
             <Gamepad2 className="w-4 h-4" />
             Abrir Game Hub
@@ -178,7 +178,7 @@ export const GamePortalUI: React.FC<GamePortalUIProps> = ({ onOpenGameHub }) => 
                       key={notif.id}
                       onClick={() => markNotificationRead(notif.id)}
                       className={`p-3 border-b border-zinc-800 cursor-pointer hover:bg-zinc-800/50 ${
-                        !notif.read ? 'bg-violet-500/5' : ''
+                        !notif.read ? 'bg-blue-500/5' : ''
                       }`}
                     >
                       <p className="text-sm font-medium text-white">{notif.title}</p>

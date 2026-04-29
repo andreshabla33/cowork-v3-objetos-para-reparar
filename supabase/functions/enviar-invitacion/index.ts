@@ -205,7 +205,7 @@ serve(async (req) => {
           
           <tr>
             <td align="center" style="padding-bottom: 32px;">
-              <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #8b5cf6, #d946ef, #06b6d4); border-radius: 16px; display: inline-flex; align-items: center; justify-content: center;">
+              <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #2563eb, #0ea5e9, #06b6d4); border-radius: 16px; display: inline-flex; align-items: center; justify-content: center;">
                 <span style="font-size: 32px; font-weight: 900; color: white;">C</span>
               </div>
             </td>
@@ -215,12 +215,12 @@ serve(async (req) => {
             <td style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 24px; padding: 40px 32px;">
               
               <div style="text-align: center; margin-bottom: 24px;">
-                <span style="display: inline-block; padding: 8px 16px; background: linear-gradient(90deg, rgba(139,92,246,0.2), rgba(217,70,239,0.2)); border: 1px solid rgba(139,92,246,0.3); border-radius: 20px; color: #a78bfa; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">
+                <span style="display: inline-block; padding: 8px 16px; background: linear-gradient(90deg, rgba(37,99,235,0.2), rgba(14,165,233,0.2)); border: 1px solid rgba(37,99,235,0.3); border-radius: 20px; color: #38bdf8; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">
                   🎉 Nueva invitación
                 </span>
               </div>
 
-              <h1 style="margin: 0 0 8px 0; font-size: 28px; font-weight: 800; text-align: center; background: linear-gradient(90deg, #ffffff, #c4b5fd, #ffffff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+              <h1 style="margin: 0 0 8px 0; font-size: 28px; font-weight: 800; text-align: center; background: linear-gradient(90deg, #ffffff, #93c5fd, #ffffff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
                 ¡Te han invitado a ${espacio.nombre}!
               </h1>
               
@@ -235,7 +235,7 @@ serve(async (req) => {
               </div>
 
               <p style="margin: 0 0 24px 0; color: #a1a1aa; font-size: 15px; text-align: center; line-height: 1.6;">
-                Has sido invitado a colaborar en <strong style="color: #8b5cf6;">${espacio.nombre}</strong>. Acepta la invitación para unirte al equipo y comenzar a trabajar juntos.
+                Has sido invitado a colaborar en <strong style="color: #2563eb;">${espacio.nombre}</strong>. Acepta la invitación para unirte al equipo y comenzar a trabajar juntos.
               </p>
 
               <div style="text-align: center; margin-bottom: 32px;">
@@ -245,7 +245,7 @@ serve(async (req) => {
                 </a>
               </div>
 
-              <div style="background: rgba(139,92,246,0.05); border: 1px solid rgba(139,92,246,0.1); border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+              <div style="background: rgba(37,99,235,0.05); border: 1px solid rgba(37,99,235,0.1); border-radius: 12px; padding: 16px; margin-bottom: 24px;">
                 <p style="margin: 0; color: #a1a1aa; font-size: 13px; text-align: center;">
                   ✨ Al unirte podrás colaborar en tiempo real con avatares 3D, chat, videollamadas y más.
                 </p>

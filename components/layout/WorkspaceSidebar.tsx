@@ -54,99 +54,118 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = React.memo(({
   unreadChatCount, isLoggingOut,
   onNavigate, onClearUnreadChat, onOpenSettings,
   onNavigateToDashboard, onNavigateToAvatar, onLogout,
-}) => (
-  <aside className={`w-[52px] ${s.globalNav} hidden md:flex flex-col items-center py-5 gap-4 shrink-0 z-[100] border-r ${s.border}`}>
-    {/* Logo */}
-    <div
-      onClick={onNavigateToDashboard}
-      className={`w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer hover:scale-105 transition-all shadow-lg overflow-hidden ${theme === 'arcade' ? 'bg-[#00ff41] border border-[#00ff41]' : 'bg-white'}`}
-    >
-      <svg className={`w-5 h-5 ${theme === 'arcade' ? 'text-black' : 'text-indigo-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-      </svg>
-    </div>
+}) => {
+  const isArcade = theme === 'arcade';
 
-    {/* Navigation */}
-    <nav className="flex-1 flex flex-col gap-1 mt-3" data-tour-step="sidebar-nav">
-      {NAV_ITEMS.map(item => (
+  return (
+    <aside className={`w-[52px] hidden md:flex flex-col items-center py-4 gap-3 shrink-0 z-[100] border-r ${
+      isArcade
+        ? 'bg-black border-[#00ff41]/40'
+        : 'bg-[#F1F5FA] border-[#E3EAF2]'
+    }`}>
+      {/* Logo */}
+      <div
+        onClick={onNavigateToDashboard}
+        className={`w-9 h-9 rounded-xl flex items-center justify-center cursor-pointer hover:scale-105 transition-all shadow-md overflow-hidden ${
+          isArcade ? 'bg-[#00ff41]' : 'bg-gradient-to-br from-sky-400 to-sky-600'
+        }`}
+      >
+        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+        </svg>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 flex flex-col gap-0.5 mt-2" data-tour-step="sidebar-nav">
+        {NAV_ITEMS.map(item => (
+          <button
+            key={item.id}
+            onClick={() => {
+              onNavigate(item.id);
+              if (item.id === 'chat') onClearUnreadChat();
+            }}
+            className={`relative w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 group ${
+              isArcade
+                ? activeSubTab === item.id
+                  ? 'bg-[#00ff41]/15 text-[#00ff41]'
+                  : 'text-[#00ff41]/40 hover:text-[#00ff41] hover:bg-[#00ff41]/10'
+                : activeSubTab === item.id
+                  ? 'bg-sky-100 text-sky-700'
+                  : 'text-slate-400 hover:text-slate-600 hover:bg-white'
+            }`}
+            title={t(item.labelKey, currentLang)}
+          >
+            {activeSubTab === item.id && !isArcade && (
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2.5px] h-5 rounded-r-full bg-sky-500" />
+            )}
+            {activeSubTab === item.id && isArcade && (
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 rounded-full bg-[#00ff41] shadow-[0_0_8px_#00ff41]" />
+            )}
+            <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d={item.icon} />
+            </svg>
+            {item.id === 'chat' && unreadChatCount > 0 && activeSubTab !== 'chat' && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[8px] font-bold text-white flex items-center justify-center">
+                {unreadChatCount > 9 ? '9+' : unreadChatCount}
+              </span>
+            )}
+          </button>
+        ))}
+      </nav>
+
+      {/* Bottom actions */}
+      <div className="mt-auto flex flex-col gap-1 items-center pb-2">
         <button
-          key={item.id}
-          onClick={() => {
-            onNavigate(item.id);
-            if (item.id === 'chat') onClearUnreadChat();
-          }}
-          className={`relative p-2.5 rounded-lg transition-all duration-200 group ${activeSubTab === item.id
-            ? (theme === 'arcade'
-              ? 'bg-[#00ff41]/15 text-[#00ff41]'
-              : 'bg-white/10 text-white')
-            : 'text-white/40 hover:text-white/80 hover:bg-white/[0.04]'}`}
-          title={t(item.labelKey, currentLang)}
+          data-tour-step="settings-btn"
+          onClick={onOpenSettings}
+          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 ${
+            isArcade
+              ? 'text-[#00ff41]/60 hover:text-[#00ff41] hover:bg-[#00ff41]/10'
+              : 'text-slate-400 hover:text-slate-600 hover:bg-white'
+          }`}
+          title={t('nav.settings', currentLang)}
         >
-          {activeSubTab === item.id && (
-            <span className={`absolute left-0 top-1/2 -translate-y-1/2 w-[2px] h-4 rounded-full ${theme === 'arcade' ? 'bg-[#00ff41] shadow-[0_0_8px_#00ff41]' : 'bg-gradient-to-b from-violet-400 to-cyan-400'}`} />
-          )}
-          <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d={item.icon} /></svg>
-          {item.id === 'chat' && unreadChatCount > 0 && activeSubTab !== 'chat' && (
-            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full text-[8px] font-bold text-white flex items-center justify-center">
-              {unreadChatCount > 9 ? '9+' : unreadChatCount}
-            </span>
+          <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </button>
+
+        <UserAvatar
+          name={userName}
+          profilePhoto={userProfilePhoto}
+          size="sm"
+          showStatus
+          status={userStatus}
+          onClick={onNavigateToAvatar}
+        />
+
+        <button
+          id="sidebar-logout-btn"
+          onClick={onLogout}
+          disabled={isLoggingOut}
+          title="Cerrar sesión"
+          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${
+            isArcade
+              ? 'text-red-400/70 hover:text-red-400 hover:bg-red-400/10'
+              : 'text-slate-400 hover:text-red-500 hover:bg-red-50'
+          }`}
+        >
+          {isLoggingOut ? (
+            <svg className="w-[18px] h-[18px] animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          ) : (
+            <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
           )}
         </button>
-      ))}
-    </nav>
-
-    {/* Bottom actions */}
-    <div className="mt-auto flex flex-col gap-1 items-center pb-3">
-      <button
-        data-tour-step="settings-btn"
-        onClick={onOpenSettings}
-        className={`p-2.5 rounded-lg transition-all duration-200 ${
-          theme === 'arcade'
-            ? 'text-[#00ff41]/60 hover:text-[#00ff41] hover:bg-[#00ff41]/10'
-            : 'text-white/40 hover:text-white/80 hover:bg-white/[0.04]'
-        }`}
-        title={t('nav.settings', currentLang)}
-      >
-        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-      </button>
-
-      <UserAvatar
-        name={userName}
-        profilePhoto={userProfilePhoto}
-        size="sm"
-        showStatus
-        status={userStatus}
-        onClick={onNavigateToAvatar}
-      />
-
-      <button
-        id="sidebar-logout-btn"
-        onClick={onLogout}
-        disabled={isLoggingOut}
-        title="Cerrar sesión"
-        className={`p-2.5 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
-          theme === 'arcade'
-            ? 'text-red-400/70 hover:text-red-400 hover:bg-red-400/10'
-            : 'text-white/30 hover:text-red-400 hover:bg-red-500/10'
-        }`}
-      >
-        {isLoggingOut ? (
-          <svg className="w-[18px] h-[18px] animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-        ) : (
-          <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5"
-              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-        )}
-      </button>
-    </div>
-  </aside>
-));
+      </div>
+    </aside>
+  );
+});
 
 WorkspaceSidebar.displayName = 'WorkspaceSidebar';

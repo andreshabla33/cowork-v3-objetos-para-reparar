@@ -22,7 +22,7 @@ interface CameraDeviceControlProps {
 }
 
 const selectionIcon = (
-  <svg className="w-4 h-4 text-violet-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+  <svg className="w-4 h-4 text-sky-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
   </svg>
 );
@@ -86,13 +86,13 @@ export const SharedAudioSettingsPanel: React.FC<SharedAudioSettingsPanelProps> =
   return (
     <div className="space-y-3">
       <div>
-        <div className="text-xs lg:text-[11px] font-medium text-white/50 px-1 mb-2">Seleccionar micrófono</div>
+        <div className="text-xs lg:text-[11px] font-medium text-slate-400 px-1 mb-2">Seleccionar micrófono</div>
         {microphones.length > 0 ? microphones.map((mic) => (
           <button
             key={mic.deviceId}
             onClick={() => onSettingsChange({ selectedMicrophoneId: mic.deviceId })}
             className={`w-full flex items-center gap-3 px-3 py-2 lg:py-1.5 rounded-lg text-sm lg:text-xs transition-colors ${
-              effectiveSelectedMicrophoneId === mic.deviceId ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5'
+              effectiveSelectedMicrophoneId === mic.deviceId ? 'bg-sky-100 text-sky-700 font-medium' : 'text-slate-600 hover:bg-slate-50'
             }`}
           >
             {effectiveSelectedMicrophoneId === mic.deviceId ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
@@ -101,20 +101,20 @@ export const SharedAudioSettingsPanel: React.FC<SharedAudioSettingsPanelProps> =
             </span>
           </button>
         )) : (
-          <div className="text-xs text-white/40 px-3 py-2">No detectamos micrófonos disponibles todavía.</div>
+          <div className="text-xs text-slate-400 px-3 py-2">No detectamos micrófonos disponibles todavía.</div>
         )}
       </div>
 
-      <div className="border-t border-white/10" />
+      <div className="border-t border-slate-100" />
 
       <div>
-        <div className="text-xs lg:text-[11px] font-medium text-white/50 px-1 mb-2">Seleccionar altavoz</div>
+        <div className="text-xs lg:text-[11px] font-medium text-slate-400 px-1 mb-2">Seleccionar altavoz</div>
         {speakers.length > 0 ? speakers.map((speaker) => (
           <button
             key={speaker.deviceId}
             onClick={() => onSettingsChange({ selectedSpeakerId: speaker.deviceId })}
             className={`w-full flex items-center gap-3 px-3 py-2 lg:py-1.5 rounded-lg text-sm lg:text-xs transition-colors ${
-              settings.selectedSpeakerId === speaker.deviceId ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5'
+              settings.selectedSpeakerId === speaker.deviceId ? 'bg-sky-100 text-sky-700 font-medium' : 'text-slate-600 hover:bg-slate-50'
             }`}
           >
             {settings.selectedSpeakerId === speaker.deviceId ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
@@ -123,53 +123,53 @@ export const SharedAudioSettingsPanel: React.FC<SharedAudioSettingsPanelProps> =
             </span>
           </button>
         )) : (
-          <div className="text-xs text-white/40 px-3 py-2">Tu navegador no soporta selección de altavoces</div>
+          <div className="text-xs text-slate-400 px-3 py-2">Tu navegador no soporta selección de altavoces</div>
         )}
       </div>
 
-      <div className="border-t border-white/10" />
+      <div className="border-t border-slate-100" />
 
       <button
         onClick={() => onSettingsChange({ noiseReduction: !settings.noiseReduction })}
-        className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-white/80 hover:bg-white/5 transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-slate-600 hover:bg-slate-50 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
           </svg>
           <span>Reducción de ruido</span>
         </div>
-        <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.noiseReduction ? 'bg-violet-500' : 'bg-zinc-600'}`}>
+        <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.noiseReduction ? 'bg-blue-500' : 'bg-zinc-600'}`}>
           <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.noiseReduction ? 'translate-x-4' : 'translate-x-0.5'}`} />
         </div>
       </button>
 
       <button
         onClick={() => onSettingsChange({ echoCancellation: !settings.echoCancellation })}
-        className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-white/80 hover:bg-white/5 transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-slate-600 hover:bg-slate-50 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
           </svg>
           <span>Cancelación de eco</span>
         </div>
-        <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.echoCancellation ? 'bg-violet-500' : 'bg-zinc-600'}`}>
+        <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.echoCancellation ? 'bg-blue-500' : 'bg-zinc-600'}`}>
           <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.echoCancellation ? 'translate-x-4' : 'translate-x-0.5'}`} />
         </div>
       </button>
 
       <button
         onClick={() => onSettingsChange({ autoGainControl: !settings.autoGainControl })}
-        className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-white/80 hover:bg-white/5 transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-slate-600 hover:bg-slate-50 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
           </svg>
           <span>Control automático de ganancia</span>
         </div>
-        <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.autoGainControl ? 'bg-violet-500' : 'bg-zinc-600'}`}>
+        <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.autoGainControl ? 'bg-blue-500' : 'bg-zinc-600'}`}>
           <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.autoGainControl ? 'translate-x-4' : 'translate-x-0.5'}`} />
         </div>
       </button>
@@ -223,14 +223,14 @@ export const SharedCameraSettingsPanel: React.FC<SharedCameraSettingsPanelProps>
 
   return (
     <>
-      <div className="p-3 border-b border-white/5">
-        <div className="text-xs lg:text-[11px] font-medium text-white/50 mb-2">Seleccionar cámara</div>
+      <div className="p-3 border-b border-slate-100">
+        <div className="text-xs lg:text-[11px] font-medium text-slate-400 mb-2">Seleccionar cámara</div>
         {cameras.length > 0 ? cameras.map((camera) => (
           <button
             key={camera.deviceId}
             onClick={() => onSettingsChange({ selectedCameraId: camera.deviceId })}
             className={`w-full text-left px-3 py-2 lg:py-1.5 rounded-lg text-sm lg:text-xs transition-colors flex items-center gap-2 ${
-              effectiveSelectedCameraId === camera.deviceId ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'
+              effectiveSelectedCameraId === camera.deviceId ? 'bg-sky-100 text-sky-700 font-medium' : 'text-slate-600 hover:bg-slate-50'
             }`}
           >
             {effectiveSelectedCameraId === camera.deviceId ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
@@ -239,32 +239,32 @@ export const SharedCameraSettingsPanel: React.FC<SharedCameraSettingsPanelProps>
             </span>
           </button>
         )) : (
-          <div className="text-xs text-white/40 px-3 py-2">No detectamos cámaras disponibles todavía.</div>
+          <div className="text-xs text-slate-400 px-3 py-2">No detectamos cámaras disponibles todavía.</div>
         )}
       </div>
 
       <div className="p-2">
         <button
           onClick={() => onSettingsChange({ hideSelfView: !settings.hideSelfView })}
-          className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-white/80 hover:bg-white/5 transition-colors"
+          className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-slate-600 hover:bg-slate-50 transition-colors"
         >
           <div className="flex items-center gap-3">
-            <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
             </svg>
             <span>Ocultar mi vista</span>
           </div>
-          <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.hideSelfView ? 'bg-violet-500' : 'bg-zinc-600'}`}>
+          <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.hideSelfView ? 'bg-blue-500' : 'bg-zinc-600'}`}>
             <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.hideSelfView ? 'translate-x-4' : 'translate-x-0.5'}`} />
           </div>
         </button>
 
         <div className="space-y-1">
-          <div className="text-xs lg:text-[11px] font-medium text-white/50 px-3 pt-2">Efectos de fondo</div>
+          <div className="text-xs lg:text-[11px] font-medium text-slate-400 px-3 pt-2">Efectos de fondo</div>
           <button
             onClick={() => onSettingsChange({ backgroundEffect: 'none', backgroundImage: null })}
             className={`w-full flex items-center gap-3 px-3 py-2 lg:py-1.5 rounded-lg text-sm lg:text-xs transition-colors ${
-              settings.backgroundEffect === 'none' ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5'
+              settings.backgroundEffect === 'none' ? 'bg-sky-100 text-sky-700 font-medium' : 'text-slate-600 hover:bg-slate-50'
             }`}
           >
             {settings.backgroundEffect === 'none' ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
@@ -273,7 +273,7 @@ export const SharedCameraSettingsPanel: React.FC<SharedCameraSettingsPanelProps>
           <button
             onClick={() => onSettingsChange({ backgroundEffect: 'blur' })}
             className={`w-full flex items-center gap-3 px-3 py-2 lg:py-1.5 rounded-lg text-sm lg:text-xs transition-colors ${
-              settings.backgroundEffect === 'blur' ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5'
+              settings.backgroundEffect === 'blur' ? 'bg-sky-100 text-sky-700 font-medium' : 'text-slate-600 hover:bg-slate-50'
             }`}
           >
             {settings.backgroundEffect === 'blur' ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
@@ -282,7 +282,7 @@ export const SharedCameraSettingsPanel: React.FC<SharedCameraSettingsPanelProps>
           <button
             onClick={() => fileInputRef.current?.click()}
             className={`w-full flex items-center gap-3 px-3 py-2 lg:py-1.5 rounded-lg text-sm lg:text-xs transition-colors ${
-              settings.backgroundEffect === 'image' ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5'
+              settings.backgroundEffect === 'image' ? 'bg-sky-100 text-sky-700 font-medium' : 'text-slate-600 hover:bg-slate-50'
             }`}
           >
             {settings.backgroundEffect === 'image' ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
@@ -294,15 +294,15 @@ export const SharedCameraSettingsPanel: React.FC<SharedCameraSettingsPanelProps>
 
         <button
           onClick={() => onSettingsChange({ mirrorVideo: !settings.mirrorVideo })}
-          className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-white/80 hover:bg-white/5 transition-colors"
+          className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-slate-600 hover:bg-slate-50 transition-colors"
         >
           <div className="flex items-center gap-3">
-            <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
             </svg>
             <span>Espejo de video</span>
           </div>
-          <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.mirrorVideo ? 'bg-violet-500' : 'bg-zinc-600'}`}>
+          <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.mirrorVideo ? 'bg-blue-500' : 'bg-zinc-600'}`}>
             <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.mirrorVideo ? 'translate-x-4' : 'translate-x-0.5'}`} />
           </div>
         </button>
@@ -330,7 +330,7 @@ export const SharedMediaSettingsSheet: React.FC<SharedMediaSettingsSheetProps> =
   title = 'Configuración',
   subtitle = 'Audio y cámara',
   overlayClassName = 'fixed inset-0 z-[240] bg-black/45 backdrop-blur-[1px]',
-  panelClassName = 'fixed inset-x-3 bottom-24 top-16 z-[250] overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950/97 shadow-2xl backdrop-blur-2xl',
+  panelClassName = 'fixed inset-x-3 bottom-24 top-16 z-[250] overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-2xl',
 }) => {
   if (!isOpen) {
     return null;
@@ -345,28 +345,28 @@ export const SharedMediaSettingsSheet: React.FC<SharedMediaSettingsSheetProps> =
         className={overlayClassName}
       />
       <div className={panelClassName}>
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
           <div>
-            <div className="text-sm font-semibold text-white">{title}</div>
-            <div className="text-xs text-white/50">{subtitle}</div>
+            <div className="text-sm font-semibold text-slate-800">{title}</div>
+            <div className="text-xs text-slate-400">{subtitle}</div>
           </div>
-          <button onClick={onClose} className="h-10 w-10 rounded-2xl bg-white/5 text-white/70 hover:bg-white/10 hover:text-white">
+          <button onClick={onClose} className="h-10 w-10 rounded-2xl bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700">
             <svg className="mx-auto h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
         <div className="h-full overflow-y-auto overscroll-contain px-3 pb-6 pt-3">
-          <div className="rounded-3xl border border-white/10 bg-black/20 p-3">
-            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Audio</div>
+          <div className="rounded-3xl border border-slate-100 bg-slate-50 p-3">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Audio</div>
             <SharedAudioSettingsPanel
               settings={audioSettings}
               currentStream={currentStream}
               onSettingsChange={onAudioSettingsChange}
             />
           </div>
-          <div className="mt-3 rounded-3xl border border-white/10 bg-black/20">
-            <div className="px-4 pt-4 text-xs font-semibold uppercase tracking-[0.18em] text-white/45">Cámara</div>
+          <div className="mt-3 rounded-3xl border border-slate-100 bg-slate-50">
+            <div className="px-4 pt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Cámara</div>
             <SharedCameraSettingsPanel
               settings={cameraSettings}
               currentStream={currentStream}
@@ -445,7 +445,7 @@ export const SharedAudioDeviceControl: React.FC<AudioDeviceControlProps> = ({
           <button
             onClick={handleToggle}
             className={`w-9 h-9 rounded-l-xl flex items-center justify-center transition-all duration-300 ${
-              optimisticEnabled ? 'bg-zinc-700 text-white' : 'bg-red-500/90 text-white animate-pulse-slow'
+              optimisticEnabled ? 'bg-sky-100 text-sky-700' : 'bg-red-400 text-white animate-pulse-slow'
             }`}
             title={optimisticEnabled ? 'Silenciar' : 'Activar micrófono'}
           >
@@ -453,8 +453,8 @@ export const SharedAudioDeviceControl: React.FC<AudioDeviceControlProps> = ({
           </button>
           <button
             onClick={() => setIsOpen((current) => !current)}
-            className={`w-5 h-9 rounded-r-xl flex items-center justify-center transition-all duration-300 border-l border-white/10 ${
-              optimisticEnabled ? 'bg-zinc-700 text-white hover:bg-zinc-600' : 'bg-red-500/90 text-white hover:bg-red-600'
+            className={`w-5 h-9 rounded-r-xl flex items-center justify-center transition-all duration-300 border-l border-slate-200 ${
+              optimisticEnabled ? 'bg-sky-100 text-sky-700 hover:bg-sky-200' : 'bg-red-400 text-white hover:bg-red-500'
             }`}
             title="Configuración de audio"
           >
@@ -467,7 +467,7 @@ export const SharedAudioDeviceControl: React.FC<AudioDeviceControlProps> = ({
         <button
           onClick={handleToggle}
           className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 ${
-            optimisticEnabled ? 'bg-zinc-700 text-white' : 'bg-red-500/90 text-white animate-pulse-slow'
+            optimisticEnabled ? 'bg-sky-100 text-sky-700' : 'bg-red-400 text-white animate-pulse-slow'
           }`}
           title={optimisticEnabled ? 'Silenciar' : 'Activar micrófono'}
         >
@@ -476,16 +476,16 @@ export const SharedAudioDeviceControl: React.FC<AudioDeviceControlProps> = ({
       )}
 
       {showMenuToggle && isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-72 lg:w-64 bg-zinc-900/95 backdrop-blur-xl rounded-xl lg:rounded-lg border border-white/10 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+        <div className="absolute bottom-full left-0 mb-2 w-72 lg:w-64 bg-white border border-slate-200 shadow-xl rounded-xl lg:rounded-lg overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
           <div className="p-3 space-y-3">
             <div>
-              <div className="text-xs lg:text-[11px] font-medium text-white/50 px-1 mb-2">Seleccionar micrófono</div>
+              <div className="text-xs lg:text-[11px] font-medium text-slate-400 px-1 mb-2">Seleccionar micrófono</div>
               {microphones.length > 0 ? microphones.map((mic) => (
                 <button
                   key={mic.deviceId}
                   onClick={() => onSettingsChange({ selectedMicrophoneId: mic.deviceId })}
                   className={`w-full flex items-center gap-3 px-3 py-2 lg:py-1.5 rounded-lg text-sm lg:text-xs transition-colors ${
-                    effectiveSelectedMicrophoneId === mic.deviceId ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5'
+                    effectiveSelectedMicrophoneId === mic.deviceId ? 'bg-sky-100 text-sky-700 font-medium' : 'text-slate-600 hover:bg-slate-50'
                   }`}
                 >
                   {effectiveSelectedMicrophoneId === mic.deviceId ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
@@ -494,20 +494,20 @@ export const SharedAudioDeviceControl: React.FC<AudioDeviceControlProps> = ({
                   </span>
                 </button>
               )) : (
-                <div className="text-xs text-white/40 px-3 py-2">No detectamos micrófonos disponibles todavía.</div>
+                <div className="text-xs text-slate-400 px-3 py-2">No detectamos micrófonos disponibles todavía.</div>
               )}
             </div>
 
-            <div className="border-t border-white/10" />
+            <div className="border-t border-slate-100" />
 
             <div>
-              <div className="text-xs lg:text-[11px] font-medium text-white/50 px-1 mb-2">Seleccionar altavoz</div>
+              <div className="text-xs lg:text-[11px] font-medium text-slate-400 px-1 mb-2">Seleccionar altavoz</div>
               {speakers.length > 0 ? speakers.map((speaker) => (
                 <button
                   key={speaker.deviceId}
                   onClick={() => onSettingsChange({ selectedSpeakerId: speaker.deviceId })}
                   className={`w-full flex items-center gap-3 px-3 py-2 lg:py-1.5 rounded-lg text-sm lg:text-xs transition-colors ${
-                    settings.selectedSpeakerId === speaker.deviceId ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5'
+                    settings.selectedSpeakerId === speaker.deviceId ? 'bg-sky-100 text-sky-700 font-medium' : 'text-slate-600 hover:bg-slate-50'
                   }`}
                 >
                   {settings.selectedSpeakerId === speaker.deviceId ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
@@ -516,53 +516,53 @@ export const SharedAudioDeviceControl: React.FC<AudioDeviceControlProps> = ({
                   </span>
                 </button>
               )) : (
-                <div className="text-xs text-white/40 px-3 py-2">Tu navegador no soporta selección de altavoces</div>
+                <div className="text-xs text-slate-400 px-3 py-2">Tu navegador no soporta selección de altavoces</div>
               )}
             </div>
 
-            <div className="border-t border-white/10" />
+            <div className="border-t border-slate-100" />
 
             <button
               onClick={() => onSettingsChange({ noiseReduction: !settings.noiseReduction })}
-              className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-white/80 hover:bg-white/5 transition-colors"
+              className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-slate-600 hover:bg-slate-50 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                 </svg>
                 <span>Reducción de ruido</span>
               </div>
-              <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.noiseReduction ? 'bg-violet-500' : 'bg-zinc-600'}`}>
+              <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.noiseReduction ? 'bg-blue-500' : 'bg-zinc-600'}`}>
                 <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.noiseReduction ? 'translate-x-4' : 'translate-x-0.5'}`} />
               </div>
             </button>
 
             <button
               onClick={() => onSettingsChange({ echoCancellation: !settings.echoCancellation })}
-              className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-white/80 hover:bg-white/5 transition-colors"
+              className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-slate-600 hover:bg-slate-50 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                 </svg>
                 <span>Cancelación de eco</span>
               </div>
-              <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.echoCancellation ? 'bg-violet-500' : 'bg-zinc-600'}`}>
+              <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.echoCancellation ? 'bg-blue-500' : 'bg-zinc-600'}`}>
                 <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.echoCancellation ? 'translate-x-4' : 'translate-x-0.5'}`} />
               </div>
             </button>
 
             <button
               onClick={() => onSettingsChange({ autoGainControl: !settings.autoGainControl })}
-              className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-white/80 hover:bg-white/5 transition-colors"
+              className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-slate-600 hover:bg-slate-50 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                 </svg>
                 <span>Control automático de ganancia</span>
               </div>
-              <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.autoGainControl ? 'bg-violet-500' : 'bg-zinc-600'}`}>
+              <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.autoGainControl ? 'bg-blue-500' : 'bg-zinc-600'}`}>
                 <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.autoGainControl ? 'translate-x-4' : 'translate-x-0.5'}`} />
               </div>
             </button>
@@ -660,7 +660,7 @@ export const SharedCameraDeviceControl: React.FC<CameraDeviceControlProps> = ({
           <button
             onClick={handleToggle}
             className={`w-9 h-9 rounded-l-xl flex items-center justify-center transition-all duration-300 ${
-              optimisticEnabled ? 'bg-zinc-700 text-white' : 'bg-red-500/90 text-white animate-pulse-slow'
+              optimisticEnabled ? 'bg-sky-100 text-sky-700' : 'bg-red-400 text-white animate-pulse-slow'
             }`}
             title={optimisticEnabled ? 'Apagar cámara' : 'Activar cámara'}
           >
@@ -668,8 +668,8 @@ export const SharedCameraDeviceControl: React.FC<CameraDeviceControlProps> = ({
           </button>
           <button
             onClick={() => setIsOpen((current) => !current)}
-            className={`w-5 h-9 rounded-r-xl flex items-center justify-center transition-all duration-300 border-l border-white/10 ${
-              optimisticEnabled ? 'bg-zinc-700 text-white hover:bg-zinc-600' : 'bg-red-500/90 text-white hover:bg-red-600'
+            className={`w-5 h-9 rounded-r-xl flex items-center justify-center transition-all duration-300 border-l border-slate-200 ${
+              optimisticEnabled ? 'bg-sky-100 text-sky-700 hover:bg-sky-200' : 'bg-red-400 text-white hover:bg-red-500'
             }`}
             title="Configuración de cámara"
           >
@@ -682,7 +682,7 @@ export const SharedCameraDeviceControl: React.FC<CameraDeviceControlProps> = ({
         <button
           onClick={handleToggle}
           className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 ${
-            optimisticEnabled ? 'bg-zinc-700 text-white' : 'bg-red-500/90 text-white animate-pulse-slow'
+            optimisticEnabled ? 'bg-sky-100 text-sky-700' : 'bg-red-400 text-white animate-pulse-slow'
           }`}
           title={optimisticEnabled ? 'Apagar cámara' : 'Activar cámara'}
         >
@@ -691,15 +691,15 @@ export const SharedCameraDeviceControl: React.FC<CameraDeviceControlProps> = ({
       )}
 
       {showMenuToggle && isOpen && (
-        <div className="absolute bottom-full left-0 mb-2 w-64 lg:w-56 bg-zinc-900/95 backdrop-blur-xl rounded-xl lg:rounded-lg border border-white/10 shadow-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <div className="p-3 border-b border-white/5">
-            <div className="text-xs lg:text-[11px] font-medium text-white/50 mb-2">Seleccionar cámara</div>
+        <div className="absolute bottom-full left-0 mb-2 w-64 lg:w-56 bg-white border border-slate-200 shadow-xl rounded-xl lg:rounded-lg overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="p-3 border-b border-slate-100">
+            <div className="text-xs lg:text-[11px] font-medium text-slate-400 mb-2">Seleccionar cámara</div>
             {cameras.length > 0 ? cameras.map((camera) => (
               <button
                 key={camera.deviceId}
                 onClick={() => onSettingsChange({ selectedCameraId: camera.deviceId })}
                 className={`w-full text-left px-3 py-2 lg:py-1.5 rounded-lg text-sm lg:text-xs transition-colors flex items-center gap-2 ${
-                  effectiveSelectedCameraId === camera.deviceId ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'
+                  effectiveSelectedCameraId === camera.deviceId ? 'bg-sky-100 text-sky-700 font-medium' : 'text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 {effectiveSelectedCameraId === camera.deviceId ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
@@ -708,32 +708,32 @@ export const SharedCameraDeviceControl: React.FC<CameraDeviceControlProps> = ({
                 </span>
               </button>
             )) : (
-              <div className="text-xs text-white/40 px-3 py-2">No detectamos cámaras disponibles todavía.</div>
+              <div className="text-xs text-slate-400 px-3 py-2">No detectamos cámaras disponibles todavía.</div>
             )}
           </div>
 
           <div className="p-2">
             <button
               onClick={() => onSettingsChange({ hideSelfView: !settings.hideSelfView })}
-              className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-white/80 hover:bg-white/5 transition-colors"
+              className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-slate-600 hover:bg-slate-50 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                 </svg>
                 <span>Ocultar mi vista</span>
               </div>
-              <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.hideSelfView ? 'bg-violet-500' : 'bg-zinc-600'}`}>
+              <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.hideSelfView ? 'bg-blue-500' : 'bg-zinc-600'}`}>
                 <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.hideSelfView ? 'translate-x-4' : 'translate-x-0.5'}`} />
               </div>
             </button>
 
             <div className="space-y-1">
-              <div className="text-xs lg:text-[11px] font-medium text-white/50 px-3 pt-2">Efectos de fondo</div>
+              <div className="text-xs lg:text-[11px] font-medium text-slate-400 px-3 pt-2">Efectos de fondo</div>
               <button
                 onClick={() => onSettingsChange({ backgroundEffect: 'none', backgroundImage: null })}
                 className={`w-full flex items-center gap-3 px-3 py-2 lg:py-1.5 rounded-lg text-sm lg:text-xs transition-colors ${
-                  settings.backgroundEffect === 'none' ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5'
+                  settings.backgroundEffect === 'none' ? 'bg-sky-100 text-sky-700 font-medium' : 'text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 {settings.backgroundEffect === 'none' ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
@@ -742,7 +742,7 @@ export const SharedCameraDeviceControl: React.FC<CameraDeviceControlProps> = ({
               <button
                 onClick={() => onSettingsChange({ backgroundEffect: 'blur' })}
                 className={`w-full flex items-center gap-3 px-3 py-2 lg:py-1.5 rounded-lg text-sm lg:text-xs transition-colors ${
-                  settings.backgroundEffect === 'blur' ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5'
+                  settings.backgroundEffect === 'blur' ? 'bg-sky-100 text-sky-700 font-medium' : 'text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 {settings.backgroundEffect === 'blur' ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
@@ -751,7 +751,7 @@ export const SharedCameraDeviceControl: React.FC<CameraDeviceControlProps> = ({
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className={`w-full flex items-center gap-3 px-3 py-2 lg:py-1.5 rounded-lg text-sm lg:text-xs transition-colors ${
-                  settings.backgroundEffect === 'image' ? 'bg-violet-500/20 text-white' : 'text-white/70 hover:bg-white/5'
+                  settings.backgroundEffect === 'image' ? 'bg-sky-100 text-sky-700 font-medium' : 'text-slate-600 hover:bg-slate-50'
                 }`}
               >
                 {settings.backgroundEffect === 'image' ? selectionIcon : <span className="w-4 h-4 flex-shrink-0" />}
@@ -763,15 +763,15 @@ export const SharedCameraDeviceControl: React.FC<CameraDeviceControlProps> = ({
 
             <button
               onClick={() => onSettingsChange({ mirrorVideo: !settings.mirrorVideo })}
-              className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-white/80 hover:bg-white/5 transition-colors"
+              className="w-full flex items-center justify-between px-3 py-2.5 lg:py-2 rounded-lg text-sm lg:text-xs text-slate-600 hover:bg-slate-50 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                 </svg>
                 <span>Espejo de video</span>
               </div>
-              <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.mirrorVideo ? 'bg-violet-500' : 'bg-zinc-600'}`}>
+              <div className={`w-9 h-5 rounded-full transition-colors relative ${settings.mirrorVideo ? 'bg-blue-500' : 'bg-zinc-600'}`}>
                 <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${settings.mirrorVideo ? 'translate-x-4' : 'translate-x-0.5'}`} />
               </div>
             </button>

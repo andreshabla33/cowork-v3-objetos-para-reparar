@@ -39,7 +39,7 @@ export const VideoPagination: React.FC<VideoPaginationProps> = ({
               <div
                 key={i}
                 className={`h-2 transition-all rounded-full ${
-                  paginaActual === i ? 'w-6 bg-indigo-400' : 'w-2 bg-white/30'
+                  paginaActual === i ? 'w-6 bg-blue-500' : 'w-2 bg-white/30'
                 }`}
               />
             ))}
@@ -78,7 +78,7 @@ export const VideoPagination: React.FC<VideoPaginationProps> = ({
             <div
               key={i}
               className={`h-2 transition-all rounded-full ${
-                paginaActual === i ? 'w-6 bg-indigo-500' : 'w-2 bg-white/30'
+                paginaActual === i ? 'w-6 bg-blue-600' : 'w-2 bg-white/30'
               }`}
             />
           ))}

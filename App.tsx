@@ -38,7 +38,7 @@ const ExploradorPublico3D = lazy(() => import('./components/marketplace/Explorad
 // ─── Shared loading fallback ────────────────────────────────────────────
 const FallbackPantalla = () => (
   <div className="fixed inset-0 z-[1000] bg-black flex flex-col items-center justify-center gap-6">
-    <div className="w-16 h-16 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
+    <div className="w-16 h-16 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
     <div className="text-center">
       <p className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-500 animate-pulse">Cargando módulo</p>
       <p className="text-[8px] font-bold text-zinc-700 uppercase mt-2">Preparando experiencia...</p>
@@ -48,14 +48,14 @@ const FallbackPantalla = () => (
 
 const LoadingVideocall = () => (
   <div className="fixed inset-0 z-[1000] bg-black flex flex-col items-center justify-center gap-6">
-    <div className="w-16 h-16 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
+    <div className="w-16 h-16 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
     <p className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-500">Cargando videollamada...</p>
   </div>
 );
 
 const LoadingWorkspace = () => (
   <div className="fixed inset-0 z-[1000] bg-black flex flex-col items-center justify-center gap-6">
-    <div className="w-16 h-16 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin"></div>
+    <div className="w-16 h-16 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin"></div>
     <div className="text-center">
       <p className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-500 animate-pulse">Sincronizando Workspace</p>
       <p className="text-[8px] font-bold text-zinc-700 uppercase mt-2">Cargando datos de sesión y mapas...</p>
@@ -181,7 +181,7 @@ const App: React.FC = () => {
     default:
       // Authenticated app shell
       return (
-        <div className="min-h-screen bg-[#09090b] text-zinc-100 font-inter selection:bg-indigo-500/30">
+        <div className="min-h-screen bg-[#09090b] text-zinc-100 font-inter selection:bg-blue-600/30">
           {route === 'app_loading' && <LoadingWorkspace />}
 
           {route === 'dashboard' && (

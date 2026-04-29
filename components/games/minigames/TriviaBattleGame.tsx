@@ -15,7 +15,7 @@ const TRIVIA_QUESTIONS: TriviaQuestion[] = [
   { id: 'q5', question: '¿Qué significa "OKR"?', options: ['Objectives and Key Results', 'Operations and Key Resources', 'Objectives and Knowledge Resources', 'Operations and Key Results'], correctAnswer: 0, category: 'Metodología', difficulty: 'medium', points: 200, timeLimit: 12 },
   { id: 'q6', question: '¿Cuál es el nombre de nuestra plataforma interna?', options: ['WorkHub', 'TeamSpace', 'CoworkV2', 'UnityDesk'], correctAnswer: 2, category: 'Tecnología', difficulty: 'easy', points: 100, timeLimit: 10 },
   { id: 'q7', question: '¿Qué día se celebra el Team Building mensual?', options: ['Primer viernes', 'Último viernes', 'Segundo jueves', 'Tercer miércoles'], correctAnswer: 0, category: 'Cultura', difficulty: 'hard', points: 250, timeLimit: 8 },
-  { id: 'q8', question: '¿Cuál es el color corporativo principal?', options: ['Azul', 'Verde', 'Morado', 'Naranja'], correctAnswer: 2, category: 'Identidad', difficulty: 'easy', points: 100, timeLimit: 5 },
+  { id: 'q8', question: '¿Cuál es el color corporativo principal?', options: ['Azul', 'Verde', 'Rojo', 'Naranja'], correctAnswer: 0, category: 'Identidad', difficulty: 'easy', points: 100, timeLimit: 5 },
   { id: 'q9', question: '¿Qué metodología ágil usamos?', options: ['Scrum', 'Kanban', 'Extreme Programming', 'Lean'], correctAnswer: 0, category: 'Metodología', difficulty: 'medium', points: 150, timeLimit: 10 },
   { id: 'q10', question: '¿Cuál es el lema de la empresa?', options: ['Trabajando juntos', 'Innovación sin límites', 'Conectando talento', 'Creciendo unidos'], correctAnswer: 2, category: 'Cultura', difficulty: 'hard', points: 300, timeLimit: 10 },
 ];
@@ -148,7 +148,7 @@ export const TriviaBattleGame: React.FC<TriviaBattleGameProps> = ({ onClose }) =
   };
 
   const getCategoryColor = (category: string) => {
-    const colors: Record<string, string> = { 'Cultura': 'bg-pink-500/20 text-pink-400', 'Historia': 'bg-amber-500/20 text-amber-400', 'Empresa': 'bg-blue-500/20 text-blue-400', 'Producto': 'bg-green-500/20 text-green-400', 'Metodología': 'bg-purple-500/20 text-purple-400', 'Tecnología': 'bg-cyan-500/20 text-cyan-400', 'Identidad': 'bg-orange-500/20 text-orange-400' };
+    const colors: Record<string, string> = { 'Cultura': 'bg-pink-500/20 text-pink-400', 'Historia': 'bg-amber-500/20 text-amber-400', 'Empresa': 'bg-blue-500/20 text-blue-400', 'Producto': 'bg-green-500/20 text-green-400', 'Metodología': 'bg-blue-500/20 text-sky-400', 'Tecnología': 'bg-cyan-500/20 text-cyan-400', 'Identidad': 'bg-orange-500/20 text-orange-400' };
     return colors[category] || 'bg-zinc-500/20 text-zinc-400';
   };
 

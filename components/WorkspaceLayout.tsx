@@ -42,8 +42,8 @@ const SettingsModal = lazy(() => import('./settings/SettingsModal'));
 
 const FallbackPanel = () => (
   <div className="flex h-full w-full items-center justify-center">
-    <div className="flex flex-col items-center gap-4 text-zinc-500">
-      <div className="w-10 h-10 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+    <div className="flex flex-col items-center gap-4 text-slate-500">
+      <div className="w-10 h-10 border-2 border-sky-200 border-t-sky-500 rounded-full animate-spin" />
       <p className="text-[10px] font-black uppercase tracking-[0.3em]">Cargando módulo</p>
     </div>
   </div>
@@ -202,7 +202,7 @@ export const WorkspaceLayout: React.FC = () => {
 
       {/* Sidebar Chat Drawer (desktop: fixed, mobile: overlay) */}
       {!isMobile ? (
-        <aside className={`w-[260px] ${s.sidebar} flex flex-col shrink-0 border-r ${s.border} z-90 shadow-2xl relative overflow-hidden`} data-tour-step="sidebar-chat">
+        <aside className={`w-[260px] flex flex-col shrink-0 border-r z-90 shadow-sm relative overflow-hidden ${theme === 'arcade' ? 'bg-black border-[#00ff41]/30' : 'bg-white border-[#E3EAF2]'}`} data-tour-step="sidebar-chat">
           {theme === 'arcade' && <div className="absolute top-0 left-0 w-full h-1 bg-[#00ff41] animate-pulse" />}
           <Suspense fallback={<FallbackPanel />}><ChatPanel sidebarOnly={true} showNotifications={true} /></Suspense>
         </aside>
@@ -240,7 +240,7 @@ export const WorkspaceLayout: React.FC = () => {
             data-tour-step="space-canvas"
           >
             <Suspense fallback={<FallbackPanel />}>
-              <VirtualSpace3D theme={theme} isGameHubOpen={showGameHub} isPlayingGame={isPlayingGame} />
+              <VirtualSpace3D theme={theme} isGameHubOpen={showGameHub} isPlayingGame={isPlayingGame} onToggleViben={() => setShowViben(prev => !prev)} onOpenGameHub={() => setShowGameHub(true)} />
             </Suspense>
           </div>
 

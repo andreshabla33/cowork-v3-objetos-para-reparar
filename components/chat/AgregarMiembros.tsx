@@ -91,7 +91,7 @@ export const AgregarMiembros: React.FC<Props> = ({ grupoId, espacioId, onClose }
           placeholder={t('chat.searchMembers', currentLang)}
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 mb-6 text-sm focus:ring-2 focus:ring-indigo-600 outline-none text-white placeholder:text-zinc-800"
+          className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 mb-6 text-sm focus:ring-2 focus:ring-blue-700 outline-none text-white placeholder:text-zinc-800"
         />
 
         <div className="max-h-64 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
@@ -107,7 +107,7 @@ export const AgregarMiembros: React.FC<Props> = ({ grupoId, espacioId, onClose }
                   esMiembro 
                     ? 'bg-zinc-900 border-zinc-800 opacity-40 cursor-not-allowed' 
                     : estaSeleccionado
-                      ? 'bg-indigo-600 border-indigo-500'
+                      ? 'bg-blue-700 border-blue-600'
                       : 'bg-black/20 border-white/5 hover:border-white/10'
                 }`}
               >
@@ -122,7 +122,7 @@ export const AgregarMiembros: React.FC<Props> = ({ grupoId, espacioId, onClose }
                   <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">{t('chat.member', currentLang)}</span>
                 )}
                 {!esMiembro && estaSeleccionado && (
-                  <span className="text-indigo-200">✓</span>
+                  <span className="text-sky-500">✓</span>
                 )}
               </div>
             );
@@ -139,7 +139,7 @@ export const AgregarMiembros: React.FC<Props> = ({ grupoId, espacioId, onClose }
           <button
             onClick={agregarMiembros}
             disabled={seleccionados.length === 0}
-            className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl disabled:opacity-50"
+            className="flex-1 bg-blue-700 hover:bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl disabled:opacity-50"
           >
             {t('action.add', currentLang)} ({seleccionados.length})
           </button>

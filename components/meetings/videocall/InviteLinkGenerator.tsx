@@ -131,10 +131,10 @@ export const InviteLinkGenerator: React.FC<InviteLinkGeneratorProps> = ({
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className={`w-full max-w-lg max-h-[85vh] rounded-2xl ${isArcade ? 'bg-black border-[#00ff41]/30' : 'bg-[#1a1a2e]'} border border-white/10 shadow-2xl overflow-hidden flex flex-col`}>
         {/* Header */}
-        <div className={`p-4 border-b border-white/10 ${isArcade ? 'bg-[#00ff41]/5' : 'bg-indigo-500/10'}`}>
+        <div className={`p-4 border-b border-white/10 ${isArcade ? 'bg-[#00ff41]/5' : 'bg-blue-600/10'}`}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-10 h-10 rounded-xl ${isArcade ? 'bg-[#00ff41]' : 'bg-gradient-to-br from-indigo-500 to-purple-600'} flex items-center justify-center`}>
+              <div className={`w-10 h-10 rounded-xl ${isArcade ? 'bg-[#00ff41]' : 'bg-gradient-to-br from-blue-600 to-blue-600'} flex items-center justify-center`}>
                 <svg className={`w-5 h-5 ${isArcade ? 'text-black' : 'text-white'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                 </svg>
@@ -170,7 +170,7 @@ export const InviteLinkGenerator: React.FC<InviteLinkGeneratorProps> = ({
                       value={nombreReferencia}
                       onChange={(e) => setNombreReferencia(e.target.value)}
                       placeholder="Ej. Invitados externos"
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/50"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-600/50"
                     />
                   </div>
 
@@ -217,7 +217,7 @@ export const InviteLinkGenerator: React.FC<InviteLinkGeneratorProps> = ({
                             ? 'bg-green-500 text-white'
                             : isArcade
                               ? 'bg-[#00ff41]/20 text-[#00ff41] hover:bg-[#00ff41]/30'
-                              : 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30'
+                              : 'bg-blue-600/20 text-sky-600 hover:bg-blue-600/30'
                         }`}
                       >
                         {copied === enlace.etiqueta ? '✓ Copiado' : 'Copiar'}
@@ -259,7 +259,7 @@ export const InviteLinkGenerator: React.FC<InviteLinkGeneratorProps> = ({
               className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all disabled:opacity-50 ${
                 isArcade
                   ? 'bg-[#00ff41] text-black hover:bg-white'
-                  : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                  : 'bg-blue-700 hover:bg-blue-600 text-white'
               }`}
             >
               {loading ? (

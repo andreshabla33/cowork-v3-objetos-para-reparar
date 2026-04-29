@@ -27,7 +27,7 @@ export const MeetingGuestConsentModal: React.FC<MeetingGuestConsentModalProps> =
           </div>
           <h3 className="mb-1 text-lg font-bold text-white">Solicitud de grabación</h3>
           <p className="text-sm text-zinc-400">
-            <span className="font-semibold text-indigo-400">{request.by}</span> desea grabar esta reunión con análisis conductual.
+            <span className="font-semibold text-blue-500">{request.by}</span> desea grabar esta reunión con análisis conductual.
           </p>
         </div>
         <div className="mb-5 space-y-2 rounded-xl border border-zinc-700/50 bg-zinc-800/50 p-4 text-xs text-zinc-400">

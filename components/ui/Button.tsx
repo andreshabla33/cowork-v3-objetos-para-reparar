@@ -17,21 +17,21 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 const variantClasses = {
   primary: `
     relative overflow-hidden
-    bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500
+    bg-gradient-to-r from-blue-600 via-sky-500 to-cyan-500
     text-white
-    shadow-2xl shadow-violet-600/30
-    hover:shadow-violet-600/40
+    shadow-2xl shadow-blue-600/30
+    hover:shadow-blue-600/40
     disabled:opacity-50 disabled:cursor-not-allowed
   `,
   secondary: `
-    bg-zinc-900 hover:bg-zinc-800
-    border border-white/5
-    text-white
+    bg-white hover:bg-slate-50
+    border border-[#E3EAF2] hover:border-slate-300
+    text-slate-700
     disabled:opacity-50
   `,
   ghost: `
-    bg-transparent hover:bg-white/5
-    text-zinc-400 hover:text-white
+    bg-transparent hover:bg-slate-100
+    text-slate-500 hover:text-slate-700
     disabled:opacity-50
   `,
   danger: `
@@ -76,7 +76,7 @@ export const Button: React.FC<ButtonProps> = ({
     >
       {/* Hover overlay para primary */}
       {variant === 'primary' && (
-        <span className="absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400 opacity-0 hover:opacity-100 transition-opacity duration-300" />
+        <span className="absolute inset-0 bg-gradient-to-r from-blue-500 via-sky-400 to-cyan-400 opacity-0 hover:opacity-100 transition-opacity duration-300" />
       )}
       
       <span className="relative flex items-center gap-2">

@@ -134,7 +134,7 @@ describe('store orchestrators', () => {
     const action = createInitializeAction(set as any, get as any, {
       initialAvatar: {
         skinColor: '#fcd34d',
-        clothingColor: '#6366f1',
+        clothingColor: '#2563eb',
         hairColor: '#4b2c20',
         accessory: 'headphones',
       },

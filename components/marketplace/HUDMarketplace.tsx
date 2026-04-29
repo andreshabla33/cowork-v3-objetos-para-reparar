@@ -40,7 +40,7 @@ export const HUDMarketplace: React.FC<HUDMarketplaceProps> = ({
         </button>
         <div className="px-4 py-2.5 bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl">
           <h1 className="text-sm font-black text-white tracking-tight">
-            <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">Cowork</span>
+            <span className="bg-gradient-to-r from-blue-500 to-sky-400 bg-clip-text text-transparent">Cowork</span>
             <span className="text-zinc-400 font-normal ml-1.5">Marketplace</span>
           </h1>
         </div>
@@ -49,7 +49,7 @@ export const HUDMarketplace: React.FC<HUDMarketplaceProps> = ({
       {/* Stats bar */}
       <div className="fixed top-5 right-5 z-40 flex items-center gap-2">
         <div className="flex items-center gap-4 px-5 py-2.5 bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl">
-          <StatItem icon={<Building2 className="w-3.5 h-3.5 text-violet-400" />} label="Empresas" valor={empresasActivas} />
+          <StatItem icon={<Building2 className="w-3.5 h-3.5 text-sky-400" />} label="Empresas" valor={empresasActivas} />
           <div className="w-px h-5 bg-white/10" />
           <StatItem icon={<MapPin className="w-3.5 h-3.5 text-green-400" />} label="Disponibles" valor={disponibles} />
           <div className="w-px h-5 bg-white/10" />
@@ -83,7 +83,7 @@ export const HUDMarketplace: React.FC<HUDMarketplaceProps> = ({
             label="Enterprise"
             activo={filtroTier === 'enterprise'}
             onClick={() => setFiltroTier('enterprise')}
-            color="#a855f7"
+            color="#2563eb"
           />
         </div>
       </div>
@@ -95,7 +95,7 @@ export const HUDMarketplace: React.FC<HUDMarketplaceProps> = ({
             onClick={onToggleGestos}
             className={`flex items-center gap-2 px-4 py-2.5 backdrop-blur-xl border rounded-2xl transition-all group ${
               gestosActivos
-                ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300'
+                ? 'bg-blue-600/20 border-blue-600/40 text-sky-600'
                 : 'bg-black/60 border-white/10 text-zinc-400 hover:bg-white/10 hover:text-white'
             }`}
           >

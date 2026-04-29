@@ -49,7 +49,7 @@ export const ChatSidebar: React.FC = () => {
             </div>
             <p className={`text-xs p-3 rounded-2xl border ${
               m.usuario_id === currentUser.id 
-                ? 'bg-indigo-600/10 border-indigo-500/20 text-indigo-100 rounded-tr-none' 
+                ? 'bg-blue-700/10 border-blue-600/20 text-sky-400 rounded-tr-none' 
                 : 'bg-zinc-800/40 border-white/5 text-zinc-300 rounded-tl-none'
             }`}>
               {m.contenido}
@@ -73,11 +73,11 @@ export const ChatSidebar: React.FC = () => {
             onChange={(e) => setMsg(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             placeholder="Enviar mensaje..."
-            className="w-full bg-black/40 border border-white/5 rounded-2xl pl-5 pr-14 py-4 text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none placeholder:text-zinc-800 transition-all"
+            className="w-full bg-black/40 border border-white/5 rounded-2xl pl-5 pr-14 py-4 text-xs focus:ring-1 focus:ring-blue-600 focus:outline-none placeholder:text-zinc-800 transition-all"
           />
           <button 
             onClick={handleSend}
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-indigo-500 hover:text-white transition-colors bg-indigo-500/10 hover:bg-indigo-600 rounded-xl"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-blue-600 hover:text-white transition-colors bg-blue-600/10 hover:bg-blue-700 rounded-xl"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 12h14M12 5l7 7-7 7" /></svg>
           </button>

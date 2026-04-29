@@ -219,7 +219,7 @@ export function usePresenceChannels({
               profilePhoto: presence.profilePhoto || '',
               avatarConfig: presence.avatarConfig || {
                 skinColor: '#fcd34d',
-                clothingColor: '#6366f1',
+                clothingColor: '#2563eb',
                 hairColor: '#4b2c20',
                 accessory: 'none',
               },
@@ -327,7 +327,7 @@ export function usePresenceChannels({
             profilePhoto: presence.profilePhoto || '',
             avatarConfig: presence.avatarConfig || {
               skinColor: '#fcd34d',
-              clothingColor: '#6366f1',
+              clothingColor: '#2563eb',
               hairColor: '#4b2c20',
               accessory: 'none',
             },
@@ -524,67 +524,102 @@ export function usePresenceChannels({
     //      The discovery channel fills the same role for Supabase Presence.
     const globalChannelName = `workspace:${activeWorkspaceId}:global:empresa:${empresaId}`;
     if (!globalChannelRef.current) {
-      const channel = supabase.channel(globalChannelName, {
-        config: { presence: { key: userId } },
-      });
-
-      channel
-        .on('presence', { event: 'sync' }, () => {
-          log.debug('Global channel presence:sync event', { channelName: globalChannelName });
-          recalcularUsuarios();
-        })
-        .on('presence', { event: 'join' }, (payload) => {
-          const keys = Object.keys(payload.newPresences || {});
-          log.debug('Global channel presence:join event', { channelName: globalChannelName, keys });
-          recalcularUsuarios();
-        })
-        .on('presence', { event: 'leave' }, (payload) => {
-          const keys = Object.keys(payload.leftPresences || {});
-          log.info('Global channel presence:leave event', { channelName: globalChannelName, keys });
-          recalcularUsuarios();
-        })
-        .subscribe(async (status: string) => {
-          if (status === 'SUBSCRIBED') {
-            retryCountRef.current = 0; // Reset backoff on success
-            await trackPresenceEnCanal(channel, 'empresa');
-            log.info('Global empresa discovery channel subscribed', {
-              channelName: globalChannelName,
-            });
-          } else if (status === 'CLOSED') {
-            // ── Recovery for CLOSED only ───────────────────────────────
-            // CLOSED has NO rejoinTimer → must remove + recreate.
-            // CHANNEL_ERROR, in contrast, is handled by RealtimeChannel's
-            // internal rejoinTimer; removing it pre-emptively races against
-            // that timer and turns a socket heartbeat timeout (which fires
-            // CHANNEL_ERROR on EVERY channel at once via _triggerChanError)
-            // into a mass remove+recreate flood.
-            // Ref: GitHub Discussion #27513 — "removeChannel and subscribe again"
-            //      applies ONLY to CLOSED; errored channels self-heal.
-            if (removingChannelsRef.current.has(globalChannelName)) return;
-            log.warn('Global discovery channel CLOSED — scheduling recovery', {
-              status,
-              channelName: globalChannelName,
-              retryCount: retryCountRef.current,
-            });
-            safeRemoveChannel(channel, globalChannelName);
-            globalChannelRef.current = null;
-            scheduleChannelRetry();
-          } else if (status === 'CHANNEL_ERROR') {
-            // Transient: trust the rejoinTimer. Health-check will promote
-            // to CLOSED and purge only if the channel never recovers.
-            log.debug('Global discovery channel CHANNEL_ERROR — trusting rejoinTimer', {
-              channelName: globalChannelName,
-            });
-          } else if (status === 'TIMED_OUT') {
-            // Supabase's rejoinTimer handles TIMED_OUT automatically.
-            // Log for diagnostics; if it persists, checkChannelHealth will catch it.
-            log.warn('Global discovery channel TIMED_OUT — awaiting auto-rejoin', {
-              channelName: globalChannelName,
-            });
-          }
+      // ── Guard: realtime-js 2.x deduplicates channels by topic ─────────────
+      // supabase.channel(topic) returns the EXISTING channel object when one
+      // with that topic is already in the client's internal registry. If that
+      // channel is in 'joining' or 'joined' state, calling .on() on it throws
+      // "cannot add presence callbacks after subscribe()".
+      //
+      // This race occurs because safeRemoveChannel does NOT await the async
+      // supabase.removeChannel() Promise, so the old channel stays in the
+      // registry until the Promise resolves — even though our ref is already
+      // null. If a retry or re-render calls syncPresenceByChunk in that window,
+      // supabase.channel() hands back the stale object and .on() explodes.
+      //
+      // Fix:
+      //   - 'joining'/'joined': re-adopt the existing channel (callbacks are
+      //     still registered on it from the previous setup cycle).
+      //   - dead/transitioning state: explicitly remove it this tick, then
+      //     schedule a retry so the next attempt gets a clean registry.
+      const existingGlobal = supabase.getChannels().find(
+        (ch) => ch.topic === `realtime:${globalChannelName}`,
+      );
+      if (existingGlobal) {
+        const st = existingGlobal.state;
+        if (st === 'joined' || st === 'joining') {
+          // Channel is still alive with callbacks already attached — just
+          // restore our ref so subsequent code paths can track/untrack it.
+          globalChannelRef.current = existingGlobal;
+          log.debug('Re-adopted existing global channel from registry', {
+            channelName: globalChannelName, state: st,
+          });
+        } else {
+          // Dead channel still in the registry (removeChannel hasn't resolved).
+          // Remove it and defer creation to the next retry cycle.
+          log.warn('Stale global channel in registry — removing and deferring', {
+            channelName: globalChannelName, state: st,
+          });
+          safeRemoveChannel(existingGlobal, globalChannelName);
+          scheduleChannelRetry();
+        }
+        // Do NOT call supabase.channel() this cycle — fall through to chunk setup.
+      } else {
+        // No existing channel with this topic — safe to create a fresh one.
+        const channel = supabase.channel(globalChannelName, {
+          config: { presence: { key: userId } },
         });
 
-      globalChannelRef.current = channel;
+        channel
+          .on('presence', { event: 'sync' }, () => {
+            log.debug('Global channel presence:sync event', { channelName: globalChannelName });
+            recalcularUsuarios();
+          })
+          .on('presence', { event: 'join' }, (payload) => {
+            const keys = Object.keys(payload.newPresences || {});
+            log.debug('Global channel presence:join event', { channelName: globalChannelName, keys });
+            recalcularUsuarios();
+          })
+          .on('presence', { event: 'leave' }, (payload) => {
+            const keys = Object.keys(payload.leftPresences || {});
+            log.info('Global channel presence:leave event', { channelName: globalChannelName, keys });
+            recalcularUsuarios();
+          })
+          .subscribe(async (status: string) => {
+            if (status === 'SUBSCRIBED') {
+              retryCountRef.current = 0; // Reset backoff on success
+              await trackPresenceEnCanal(channel, 'empresa');
+              log.info('Global empresa discovery channel subscribed', {
+                channelName: globalChannelName,
+              });
+            } else if (status === 'CLOSED') {
+              // ── Recovery for CLOSED only ─────────────────────────────
+              // CLOSED has NO rejoinTimer → must remove + recreate.
+              // CHANNEL_ERROR is handled by RealtimeChannel's internal
+              // rejoinTimer; removing pre-emptively races against it and
+              // turns a heartbeat timeout into a mass reconnect flood.
+              // Ref: GitHub Discussion #27513
+              if (removingChannelsRef.current.has(globalChannelName)) return;
+              log.warn('Global discovery channel CLOSED — scheduling recovery', {
+                status,
+                channelName: globalChannelName,
+                retryCount: retryCountRef.current,
+              });
+              safeRemoveChannel(channel, globalChannelName);
+              globalChannelRef.current = null;
+              scheduleChannelRetry();
+            } else if (status === 'CHANNEL_ERROR') {
+              log.debug('Global discovery channel CHANNEL_ERROR — trusting rejoinTimer', {
+                channelName: globalChannelName,
+              });
+            } else if (status === 'TIMED_OUT') {
+              log.warn('Global discovery channel TIMED_OUT — awaiting auto-rejoin', {
+                channelName: globalChannelName,
+              });
+            }
+          });
+
+        globalChannelRef.current = channel;
+      }
     }
 
     const canalesDeseados = new Map<string, 'publico' | 'empresa'>();
@@ -604,6 +639,31 @@ export function usePresenceChannels({
     canalesDeseados.forEach(
       (nivelDetalle: 'publico' | 'empresa', canalNombre: string) => {
         if (presenceChannelsRef.current.has(canalNombre)) return;
+
+        // ── Guard: same deduplication race as the global channel ──────────
+        // supabase.channel(topic) returns the existing object when the topic
+        // is still in the registry (async removeChannel not yet resolved).
+        // Calling .on() on a 'joining'/'joined' channel throws the error.
+        const existingChunk = supabase.getChannels().find(
+          (ch) => ch.topic === `realtime:${canalNombre}`,
+        );
+        if (existingChunk) {
+          const st = existingChunk.state;
+          if (st === 'joined' || st === 'joining') {
+            // Re-adopt — callbacks are already attached.
+            presenceChannelsRef.current.set(canalNombre, existingChunk);
+            log.debug('Re-adopted existing chunk channel from registry', {
+              channelName: canalNombre, state: st,
+            });
+          } else {
+            // Stale dead channel — remove and skip; next sync will recreate.
+            safeRemoveChannel(existingChunk, canalNombre);
+            log.warn('Stale chunk channel in registry — removing and skipping', {
+              channelName: canalNombre, state: st,
+            });
+          }
+          return;
+        }
 
         const channel = supabase.channel(canalNombre, {
           config: { presence: { key: userId } },

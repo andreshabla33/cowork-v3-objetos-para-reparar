@@ -282,8 +282,8 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
   const themeStyles = {
     dark: {
       card: 'bg-white/5 border-white/10 hover:bg-white/10',
-      cardActive: 'bg-indigo-500/20 border-indigo-500/50',
-      btn: 'bg-indigo-600 hover:bg-indigo-500',
+      cardActive: 'bg-blue-600/20 border-blue-600/50',
+      btn: 'bg-blue-700 hover:bg-blue-600',
       modal: 'bg-[#1a1a2e] border-white/10'
     },
     arcade: {
@@ -301,7 +301,7 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-white/5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-600 flex items-center justify-center">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
@@ -316,13 +316,13 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
           <div className="flex bg-white/5 rounded-xl p-1">
             <button
               onClick={() => setViewMode('list')}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${viewMode === 'list' ? 'bg-indigo-600 text-white' : 'opacity-50 hover:opacity-100'}`}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${viewMode === 'list' ? 'bg-blue-700 text-white' : 'opacity-50 hover:opacity-100'}`}
             >
               Lista
             </button>
             <button
               onClick={() => setViewMode('calendar')}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${viewMode === 'calendar' ? 'bg-indigo-600 text-white' : 'opacity-50 hover:opacity-100'}`}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${viewMode === 'calendar' ? 'bg-blue-700 text-white' : 'opacity-50 hover:opacity-100'}`}
             >
               Calendario
             </button>
@@ -344,13 +344,13 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
       <div className="flex-1 overflow-y-auto p-4">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : viewMode === 'list' ? (
           /* Vista Lista */
           meetings.length === 0 ? (
             <div className="text-center py-16">
-              <div className="w-20 h-20 mx-auto mb-4 rounded-3xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-3xl bg-gradient-to-br from-blue-600/20 to-blue-500/20 flex items-center justify-center">
                 <svg className="w-10 h-10 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
@@ -391,7 +391,7 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="font-bold text-sm truncate">{meeting.titulo}</h4>
                           {isCreator(meeting) && (
-                            <span className="px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 rounded text-[8px] font-bold">
+                            <span className="px-1.5 py-0.5 bg-blue-600/20 text-sky-600 rounded text-[8px] font-bold">
                               ORGANIZADOR
                             </span>
                           )}
@@ -550,24 +550,24 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
                   <div
                     key={i}
                     className={`p-2 min-h-[80px] border-r border-b border-white/5 hover:bg-white/5 transition-colors ${
-                      isToday ? 'bg-indigo-500/10' : ''
+                      isToday ? 'bg-blue-600/10' : ''
                     }`}
                   >
-                    <div className={`text-[11px] font-bold mb-1 ${isToday ? 'text-indigo-400' : 'opacity-60'}`}>
+                    <div className={`text-[11px] font-bold mb-1 ${isToday ? 'text-blue-500' : 'opacity-60'}`}>
                       {date.getDate()}
                     </div>
                     <div className="space-y-1">
                       {dayMeetings.slice(0, 2).map(m => (
                         <div
                           key={m.id}
-                          className="px-1.5 py-0.5 bg-indigo-500/30 rounded text-[8px] truncate cursor-pointer hover:bg-indigo-500/50 transition-colors"
+                          className="px-1.5 py-0.5 bg-blue-600/30 rounded text-[8px] truncate cursor-pointer hover:bg-blue-600/50 transition-colors"
                           title={`${m.titulo} - ${formatTime(m.fecha_inicio)}`}
                         >
                           {formatTime(m.fecha_inicio)} {m.titulo}
                         </div>
                       ))}
                       {dayMeetings.length > 2 && (
-                        <div className="text-[8px] text-indigo-400 pl-1">+{dayMeetings.length - 2} más</div>
+                        <div className="text-[8px] text-blue-500 pl-1">+{dayMeetings.length - 2} más</div>
                       )}
                     </div>
                   </div>
@@ -589,9 +589,9 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
             onClick={e => e.stopPropagation()}
           >
             {/* Header del modal */}
-            <div className="p-6 border-b border-white/10 bg-gradient-to-r from-indigo-500/10 to-purple-500/10">
+            <div className="p-6 border-b border-white/10 bg-gradient-to-r from-blue-600/10 to-blue-500/10">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-600 flex items-center justify-center">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
@@ -615,7 +615,7 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
                   value={newMeeting.titulo}
                   onChange={e => setNewMeeting({ ...newMeeting, titulo: e.target.value })}
                   placeholder="Ej: Daily Standup, Revisión de Sprint..."
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-600/50 focus:ring-2 focus:ring-blue-600/20 transition-all"
                 />
               </div>
 
@@ -630,7 +630,7 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
                     value={newMeeting.fecha}
                     onChange={e => setNewMeeting({ ...newMeeting, fecha: e.target.value })}
                     min={new Date().toISOString().split('T')[0]}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500/50 transition-all"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-600/50 transition-all"
                   />
                 </div>
                 <div>
@@ -641,7 +641,7 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
                     type="time"
                     value={newMeeting.hora_inicio}
                     onChange={e => setNewMeeting({ ...newMeeting, hora_inicio: e.target.value })}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500/50 transition-all"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-600/50 transition-all"
                   />
                 </div>
                 <div>
@@ -652,7 +652,7 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
                     type="time"
                     value={newMeeting.hora_fin}
                     onChange={e => setNewMeeting({ ...newMeeting, hora_fin: e.target.value })}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500/50 transition-all"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-600/50 transition-all"
                   />
                 </div>
               </div>
@@ -667,7 +667,7 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
                   onChange={e => setNewMeeting({ ...newMeeting, descripcion: e.target.value })}
                   placeholder="Agenda o detalles de la reunión..."
                   rows={3}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500/50 transition-all resize-none"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-600/50 transition-all resize-none"
                 />
               </div>
 
@@ -679,7 +679,7 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
                 <select
                   value={newMeeting.recordatorio_minutos}
                   onChange={e => setNewMeeting({ ...newMeeting, recordatorio_minutos: parseInt(e.target.value) })}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500/50 transition-all"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-600/50 transition-all"
                 >
                   <option value={5}>5 minutos antes</option>
                   <option value={10}>10 minutos antes</option>
@@ -705,18 +705,18 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
                           onClick={() => toggleParticipant(member.id)}
                           className={`w-full flex items-center gap-3 p-2 rounded-lg transition-all ${
                             newMeeting.participantes.includes(member.id)
-                              ? 'bg-indigo-500/20 border border-indigo-500/50'
+                              ? 'bg-blue-600/20 border border-blue-600/50'
                               : 'hover:bg-white/5'
                           }`}
                         >
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                            newMeeting.participantes.includes(member.id) ? 'bg-indigo-500' : 'bg-white/10'
+                            newMeeting.participantes.includes(member.id) ? 'bg-blue-600' : 'bg-white/10'
                           }`}>
                             {member.nombre?.charAt(0) || '?'}
                           </div>
                           <span className="text-[12px] font-medium flex-1 text-left">{member.nombre}</span>
                           {newMeeting.participantes.includes(member.id) && (
-                            <svg className="w-4 h-4 text-indigo-400" fill="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
                               <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
                             </svg>
                           )}
@@ -726,7 +726,7 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
                   )}
                 </div>
                 {newMeeting.participantes.length > 0 && (
-                  <p className="text-[10px] text-indigo-400 mt-2">
+                  <p className="text-[10px] text-blue-500 mt-2">
                     {newMeeting.participantes.length} participante(s) seleccionado(s)
                   </p>
                 )}

@@ -66,7 +66,7 @@ export const MeetingRooms: React.FC<MeetingRoomsProps> = ({ onJoinRoom }) => {
         </h3>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-[10px] font-bold transition-colors"
+          className="flex items-center gap-2 px-3 py-1.5 bg-blue-700 hover:bg-blue-600 rounded-xl text-[10px] font-bold transition-colors"
         >
           <svg
             className="w-3 h-3"
@@ -179,7 +179,7 @@ const RoomCard: React.FC<RoomCardProps> = ({
     <div
       className={`p-3 rounded-xl border transition-all ${
         isInRoom
-          ? 'bg-indigo-500/20 border-indigo-500/50'
+          ? 'bg-blue-600/20 border-blue-600/50'
           : 'bg-white/5 border-white/10 hover:bg-white/10'
       }`}
     >
@@ -224,7 +224,7 @@ const RoomCard: React.FC<RoomCardProps> = ({
               {room.participantes.slice(0, 5).map((p, i) => (
                 <div
                   key={p.id}
-                  className="w-6 h-6 rounded-full bg-indigo-500/30 flex items-center justify-center text-[8px] font-bold border border-white/20"
+                  className="w-6 h-6 rounded-full bg-blue-600/30 flex items-center justify-center text-[8px] font-bold border border-white/20"
                   style={{ marginLeft: i > 0 ? '-8px' : 0 }}
                   title={p.usuario?.nombre || p.nombre_externo || undefined}
                 >
@@ -271,7 +271,7 @@ const RoomCard: React.FC<RoomCardProps> = ({
                   : onJoin(room.id)
               }
               disabled={isFull}
-              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg text-[9px] font-bold transition-colors"
+              className="px-3 py-1.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-30 disabled:cursor-not-allowed rounded-lg text-[9px] font-bold transition-colors"
             >
               Unirse
             </button>
@@ -337,7 +337,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
               value={newRoom.nombre}
               onChange={(e) => onRoomChange({ ...newRoom, nombre: e.target.value })}
               placeholder="Ej: Daily Standup"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-[13px] focus:outline-none focus:border-indigo-500/50"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-[13px] focus:outline-none focus:border-blue-600/50"
             />
           </div>
 
@@ -353,7 +353,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 onRoomChange({ ...newRoom, descripcion: e.target.value })
               }
               placeholder="Opcional"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-[13px] focus:outline-none focus:border-indigo-500/50"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-[13px] focus:outline-none focus:border-blue-600/50"
             />
           </div>
 
@@ -370,7 +370,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                   max_participantes: parseInt(e.target.value),
                 })
               }
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-[13px] focus:outline-none focus:border-indigo-500/50"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-[13px] focus:outline-none focus:border-blue-600/50"
             >
               {[2, 5, 10, 15, 20, 50].map((n) => (
                 <option key={n} value={n}>
@@ -385,7 +385,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
             <button
               onClick={() => onRoomChange({ ...newRoom, es_privada: !newRoom.es_privada })}
               className={`w-10 h-6 rounded-full transition-colors ${
-                newRoom.es_privada ? 'bg-indigo-600' : 'bg-white/20'
+                newRoom.es_privada ? 'bg-blue-700' : 'bg-white/20'
               }`}
             >
               <div
@@ -408,7 +408,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
                 value={newRoom.password}
                 onChange={(e) => onRoomChange({ ...newRoom, password: e.target.value })}
                 placeholder="Contraseña de la sala"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-[13px] focus:outline-none focus:border-indigo-500/50"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-[13px] focus:outline-none focus:border-blue-600/50"
               />
             </div>
           )}
@@ -425,7 +425,7 @@ const CreateRoomModal: React.FC<CreateRoomModalProps> = ({
           <button
             onClick={onCreateRoom}
             disabled={!newRoom.nombre.trim() || loading}
-            className="flex-1 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 rounded-xl text-[12px] font-bold transition-colors"
+            className="flex-1 px-4 py-2.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-30 rounded-xl text-[12px] font-bold transition-colors"
           >
             {loading ? 'Creando...' : 'Crear Sala'}
           </button>
@@ -486,7 +486,7 @@ const JoinPrivateRoomModal: React.FC<JoinPrivateRoomModalProps> = ({
           value={password}
           onChange={(e) => onPasswordChange(e.target.value)}
           placeholder="Ingresa la contraseña"
-          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-[13px] focus:outline-none focus:border-indigo-500/50 mb-4"
+          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-[13px] focus:outline-none focus:border-blue-600/50 mb-4"
           autoFocus
         />
 
@@ -501,7 +501,7 @@ const JoinPrivateRoomModal: React.FC<JoinPrivateRoomModalProps> = ({
           <button
             onClick={onJoin}
             disabled={!password}
-            className="flex-1 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 rounded-xl text-[12px] font-bold transition-colors"
+            className="flex-1 px-4 py-2.5 bg-blue-700 hover:bg-blue-600 disabled:opacity-30 rounded-xl text-[12px] font-bold transition-colors"
           >
             Unirse
           </button>

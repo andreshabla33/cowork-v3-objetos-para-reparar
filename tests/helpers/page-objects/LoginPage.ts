@@ -29,7 +29,7 @@ export class LoginPage {
     this.toggleRegisterLink = page.locator('button:has-text("Crea una aquí"), button:has-text("Inicia Sesión")');
     this.errorMessage = page.locator('.bg-red-500\\/10');
     this.authFeedback = page.locator('.bg-green-500\\/10, .bg-red-500\\/10').first();
-    this.invitationBanner = page.locator('.bg-violet-500\\/10');
+    this.invitationBanner = page.locator('.bg-blue-500\\/10');
     this.helpLink = page.locator('button:has-text("Problemas para entrar")');
     this.title = page.locator('h1:has-text("COWORK")');
   }

@@ -117,7 +117,7 @@ const RendererMetricsProbe: React.FC<{ adaptiveDpr: number; gpuInfo?: GpuInfo | 
   return null;
 };
 
-const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameHubOpen = false, isPlayingGame = false, showroomMode = false, showroomDuracionMin = 5, showroomNombreVisitante }) => {
+const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameHubOpen = false, isPlayingGame = false, showroomMode = false, showroomDuracionMin = 5, showroomNombreVisitante, onToggleViben, onOpenGameHub, onOpenAvatarSettings }) => {
   // ========== Structured Logger ==========
   const log = logger.child('VirtualSpace3D');
 
@@ -902,6 +902,12 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     [currentUser.role, userRoleInActiveWorkspace]
   );
 
+  const glassDockClass = 'relative overflow-hidden rounded-2xl border border-white/72 bg-white/62 backdrop-blur-2xl shadow-[0_18px_38px_-26px_rgba(15,23,42,0.28)] ring-1 ring-sky-100/60';
+  const glassPanelClass = 'relative overflow-hidden rounded-xl border border-white/72 bg-white/66 backdrop-blur-2xl shadow-[0_12px_28px_-22px_rgba(14,165,233,0.2)]';
+  const glassIconButtonClass = 'group relative overflow-hidden rounded-xl px-2.5 py-1.5 text-slate-600 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/52 hover:text-slate-800';
+  const glassActionButtonClass = 'group relative overflow-hidden rounded-xl px-2.5 py-1.5 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/52';
+  const glassSeparatorClass = 'h-7 w-px bg-gradient-to-b from-white/10 via-slate-300/70 to-white/10';
+
   const onClickZonaStable = useMemo(
     () => (isAdminUser && isEditMode) ? handleSceneZonaClick : undefined,
     [isAdminUser, isEditMode, handleSceneZonaClick]
@@ -1074,9 +1080,9 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
         <Loader
           containerStyles={{ background: 'transparent', zIndex: 100 }}
           innerStyles={{ width: '300px', height: '8px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '4px', overflow: 'hidden' }}
-          barStyles={{ background: '#6366f1', height: '10px' }}
+          barStyles={{ background: '#2563eb', height: '10px' }}
           dataInterpolation={(p) => `Cargando Espacio Virtual... ${p.toFixed(0)}%`}
-          dataStyles={{ color: '#818cf8', fontSize: '12px', fontWeight: 'bold', fontFamily: 'monospace', letterSpacing: '0.05em' }}
+          dataStyles={{ color: '#60a5fa', fontSize: '12px', fontWeight: 'bold', fontFamily: 'monospace', letterSpacing: '0.05em' }}
         />
       )}
 
@@ -1085,19 +1091,86 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       {/* Indicador discreto de grabación para otros usuarios (no el grabador) */}
       {/* Indicador de grabación migrado a <VirtualSpace3DStatusOverlays> */}
       
+      {/* ── Avatar FAB — bola flotante centrada en la barra superior ─────── */}
+      <div
+        className="absolute z-[61] hidden md:flex flex-col items-center gap-1"
+        style={{ top: '0.75rem', left: '50%', transform: 'translateX(-50%)' }}
+      >
+        <div className="group relative">
+          {/* Anillo punteado giratorio */}
+          <span
+            className="pointer-events-none absolute -inset-[5px] rounded-full border border-dashed border-sky-400/45 group-hover:border-sky-400/75 transition-[border-color] duration-300"
+            style={{ animation: 'avatar-fab-spin 14s linear infinite' }}
+          />
+          {/* Halo glow en hover */}
+          <span
+            className="pointer-events-none absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+            style={{ boxShadow: '0 0 0 7px rgba(14,165,233,0.13), 0 0 0 14px rgba(14,165,233,0.05)' }}
+          />
+          <button
+            onClick={() => setShowAvatarModal(true)}
+            title="Mi avatar · Perfil"
+            className="relative w-11 h-11 rounded-full flex items-center justify-center overflow-hidden border-2 border-white/85 shadow-[0_14px_32px_-10px_rgba(14,165,233,0.5)] transition-all duration-200 hover:scale-110 hover:shadow-[0_18px_40px_-8px_rgba(14,165,233,0.65)] active:scale-95"
+            style={{
+              background: currentUser.profilePhoto
+                ? 'transparent'
+                : 'radial-gradient(circle at 32% 28%, #bae6fd, #2E96F5 52%, #1d4ed8)',
+            }}
+          >
+            {currentUser.profilePhoto ? (
+              <img
+                src={currentUser.profilePhoto}
+                alt={currentUser.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                strokeWidth="1.9"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+              </svg>
+            )}
+            {/* Brillo glass */}
+            <span className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-white/40 via-white/5 to-transparent" />
+          </button>
+        </div>
+        {/* Nombre debajo de la bola */}
+        <div className="text-[9px] font-semibold text-white/80 bg-slate-800/52 backdrop-blur-sm px-2.5 py-0.5 rounded-full border border-white/10 max-w-[88px] truncate text-center select-none whitespace-nowrap">
+          {currentUser.name?.split(' ')[0] ?? 'Avatar'}
+        </div>
+      </div>
+
       {/* Botón de resetear vista */}
       <button
         onClick={handleResetView}
-        className="absolute bottom-[180px] left-6 bg-gray-800/80 hover:bg-gray-700 text-white px-3 py-2 rounded-lg flex items-center gap-2 text-sm backdrop-blur-sm transition-colors z-10 hidden md:flex"
+        className="absolute bottom-[260px] left-6 z-10 hidden md:flex items-center gap-1.5 rounded-xl border border-white/72 bg-white/64 px-2.5 py-1.5 text-slate-600 shadow-[0_16px_34px_-24px_rgba(14,165,233,0.2)] backdrop-blur-2xl ring-1 ring-sky-100/55 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/76 hover:text-slate-800"
         title="Resetear vista (centrar cámara en tu avatar)"
         data-tour-step="avatar-area"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-          <path d="M3 3v5h5"/>
-        </svg>
-        Centrar
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500/12 via-cyan-400/8 to-white text-sky-700 ring-1 ring-white/70">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+          </svg>
+        </span>
+        <span className="flex flex-col items-start leading-none">
+          <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-slate-400">Camara</span>
+          <span className="text-[11px] font-semibold text-slate-700">Centrar</span>
+        </span>
       </button>
+
+      {/* Keyframe del anillo giratorio del avatar FAB */}
+      <style>{`@keyframes avatar-fab-spin { to { transform: rotate(360deg); } }`}</style>
       
       {/* VideoHUD - solo se muestra cuando hay usuarios cerca (burbuja local ahora está en el avatar) */}
       {usersInCall.length > 0 && (
@@ -1196,10 +1269,11 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
         tieneMiEscritorio={!!miEscritorio}
       />}
 
-      {/* Input de Chat Flotante - Minimalista */}
+      {/* Input de Chat Flotante - Toast translúcido */}
       {showChat && (
         <div className="absolute bottom-[88px] left-1/2 -translate-x-1/2 z-[201] animate-slide-up" onClick={(e) => e.stopPropagation()}>
-          <div className="bg-black/60 backdrop-blur-md px-1 py-1 rounded-2xl border border-white/10 flex gap-1 items-center">
+          <div className="bg-white/[0.92] backdrop-blur-xl px-2 py-1.5 rounded-full border border-sky-200/60 flex gap-2 items-center shadow-lg shadow-sky-900/10 min-w-[280px]">
+            <span className="text-sky-400 text-sm ml-1">💬</span>
             <input
               type="text"
               value={chatInput}
@@ -1210,17 +1284,18 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
                 if (e.key === 'Escape') setShowChat(false);
               }}
               onKeyUp={(e) => e.stopPropagation()}
-              placeholder="Mensaje..."
-              className="w-40 bg-transparent border-none px-2 py-1 text-xs text-white placeholder-white/40 focus:outline-none"
+              placeholder="Mensaje a personas cerca…"
+              className="flex-1 bg-transparent border-none px-1 py-0.5 text-xs text-slate-700 placeholder-slate-400 focus:outline-none"
               autoFocus
               maxLength={100}
             />
+            <kbd className="hidden sm:inline-grid place-items-center w-5 h-5 rounded text-[9px] font-bold text-slate-500 border border-slate-200 bg-slate-50 mr-1">↵</kbd>
             <button
               onClick={handleSendMessage}
               disabled={!chatInput.trim()}
-              className="w-7 h-7 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs flex items-center justify-center transition-colors"
+              className="w-7 h-7 rounded-full bg-sky-500 hover:bg-sky-400 disabled:opacity-30 text-white text-xs flex items-center justify-center transition-colors"
             >
-              ➤
+              ↑
             </button>
           </div>
         </div>
@@ -1271,11 +1346,29 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       
       {/* Controles de ayuda — desktop: WASD, mobile: oculto (tiene joystick) */}
       {!isMobile && (
-        <div className="absolute bottom-4 right-4 bg-black/50 backdrop-blur-sm px-3 py-2 rounded-lg text-white text-xs">
-          <div className="flex items-center gap-2">
-            <kbd className="px-1.5 py-0.5 bg-white/20 rounded text-[10px]">WASD</kbd>
-            <span className="opacity-70">o flechas para mover</span>
-          </div>
+        <div className="absolute bottom-4 right-4 bg-white/[0.85] backdrop-blur-xl px-3 py-2 rounded-xl border border-sky-200/50 shadow-sm flex items-center gap-2">
+          {['W','A','S','D'].map(k => (
+            <kbd key={k} className="inline-grid place-items-center w-[18px] h-[18px] rounded text-[9px] font-bold text-slate-600 border border-slate-200 bg-white shadow-[0_1px_0_rgba(0,0,0,0.12)]">{k}</kbd>
+          ))}
+          <span className="text-[10px] text-slate-500 ml-1">or arrows</span>
+        </div>
+      )}
+
+      {/* Mónica AI — FAB azul flotante */}
+      {!showroomMode && onToggleViben && (
+        <div className="absolute z-[60] hidden md:flex flex-col items-center gap-1.5" style={{ bottom: 88 + 16, right: 20 }}>
+          <div className="text-[9px] font-semibold text-white/70 bg-black/30 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/10">Ask Mónica</div>
+          <button
+            onClick={onToggleViben}
+            title="Asistente de IA — Mónica"
+            className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg transition-transform hover:scale-105 active:scale-95"
+            style={{
+              background: 'linear-gradient(135deg, #38BDF8, #0369A1)',
+              boxShadow: '0 12px 28px -8px rgba(14,165,233,0.5), 0 0 0 4px rgba(255,255,255,0.25)',
+            }}
+          >
+            ✦
+          </button>
         </div>
       )}
 
@@ -1321,15 +1414,117 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
         </>
       )}
 
-      {/* Botón XP / Gamificación — esquina superior izquierda */}
+      {/* Etiqueta del espacio + XP — esquina superior izquierda */}
+      <div className="absolute top-4 left-4 z-[60] hidden md:flex items-center">
+        <div className={`px-1.5 py-1 ${glassDockClass}`}>
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.78),transparent_42%),linear-gradient(135deg,rgba(255,255,255,0.28),rgba(186,230,253,0.1))]" />
+          <div className="relative flex items-center gap-1.5">
+            {/* Nombre del espacio */}
+            {activeWorkspace?.name && (
+              <div className={`px-2 py-1.5 ${glassPanelClass}`}>
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/58 via-white/12 to-sky-100/24" />
+                <div className="relative flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 via-cyan-400 to-sky-200 text-[8px] font-black tracking-[0.16em] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]">
+                    U
+                  </span>
+                  <span className="flex flex-col leading-none">
+                    <span className="text-[8px] font-semibold uppercase tracking-[0.16em] text-slate-400">Espacio</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-700">{activeWorkspace.name}</span>
+                  </span>
+                </div>
+              </div>
+            )}
+            {activeWorkspace?.name && <span className={glassSeparatorClass} aria-hidden="true" />}
+            {/* XP pill */}
+            <button
+              className={glassActionButtonClass}
+              onClick={() => setShowGamificacion(true)}
+              title="Gamificación"
+            >
+              <div className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-br from-amber-100/50 via-white/8 to-orange-100/24 opacity-80 transition-opacity duration-200 group-hover:opacity-95" />
+              <div className="relative flex items-center gap-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 via-orange-400 to-yellow-300 text-[12px] leading-none text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.28)]">
+                  ★
+                </span>
+                <span className="flex flex-col items-start leading-none">
+                  <span className="text-[8px] font-semibold uppercase tracking-[0.16em] text-amber-500/75">Progreso</span>
+                  <span className="text-[11px] font-semibold text-amber-700">XP</span>
+                </span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+      {/* Versión mobile del botón XP (sin etiqueta de espacio) */}
       <button
-        className="absolute top-4 left-4 z-[60] flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/50 backdrop-blur-sm border border-indigo-500/30 hover:border-indigo-500/60 transition-colors cursor-pointer"
+        className="absolute top-4 left-4 z-[60] flex md:hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/50 backdrop-blur-sm border border-blue-600/30 hover:border-blue-600/60 transition-colors cursor-pointer"
         onClick={() => setShowGamificacion(true)}
         title="Gamificación"
       >
         <span className="text-sm">⭐</span>
-        <span className="text-[10px] font-bold text-indigo-400">XP</span>
+        <span className="text-[10px] font-bold text-blue-500">XP</span>
       </button>
+
+      {/* Cluster top-right — reemplaza la barra superior cuando estamos en el espacio */}
+      {!showroomMode && (
+        <div className={`absolute top-4 right-4 z-[60] hidden md:flex items-center px-1.5 py-1 ${glassDockClass}`}>
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.74),transparent_40%),linear-gradient(135deg,rgba(255,255,255,0.24),rgba(125,211,252,0.08))]" />
+          <div className="relative flex items-center gap-1">
+          {onOpenAvatarSettings && (
+            <>
+              <button
+                onClick={onOpenAvatarSettings}
+                title="Estilos de avatar"
+                className={glassIconButtonClass}
+              >
+                <div className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-br from-fuchsia-100/46 via-white/4 to-sky-100/24 opacity-72 transition-opacity duration-200 group-hover:opacity-90" />
+                <div className="relative flex items-center gap-1.5">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-fuchsia-500/12 via-pink-400/12 to-white text-[12px] ring-1 ring-white/70">🎨</span>
+                  <span className="flex flex-col items-start leading-none">
+                    <span className="text-[8px] font-semibold uppercase tracking-[0.16em] text-slate-400">Avatar</span>
+                    <span className="text-[11px] font-semibold text-slate-700">Estilo</span>
+                  </span>
+                </div>
+              </button>
+              <span className={glassSeparatorClass} aria-hidden="true" />
+            </>
+          )}
+          {onOpenGameHub && (
+            <>
+              <button
+                onClick={onOpenGameHub}
+                title="Mini juegos"
+                className={glassIconButtonClass}
+              >
+                <div className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-br from-violet-100/46 via-white/4 to-sky-100/24 opacity-72 transition-opacity duration-200 group-hover:opacity-90" />
+                <div className="relative flex items-center gap-1.5">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/12 via-indigo-400/12 to-white text-[12px] ring-1 ring-white/70">🎮</span>
+                  <span className="flex flex-col items-start leading-none">
+                    <span className="text-[8px] font-semibold uppercase tracking-[0.16em] text-slate-400">Hub</span>
+                    <span className="text-[11px] font-semibold text-slate-700">Juegos</span>
+                  </span>
+                </div>
+              </button>
+              <span className={glassSeparatorClass} aria-hidden="true" />
+            </>
+          )}
+          <button
+            onClick={() => setShowAvatarModal(true)}
+            title="Perfil / avatar"
+            className={glassIconButtonClass}
+          >
+            <div className="pointer-events-none absolute inset-0 rounded-xl bg-gradient-to-br from-sky-100/48 via-white/6 to-cyan-100/26 opacity-72 transition-opacity duration-200 group-hover:opacity-90" />
+            <div className="relative flex items-center gap-1.5">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500/12 via-cyan-400/12 to-white text-[12px] ring-1 ring-white/70">◴</span>
+              <span className="flex flex-col items-start leading-none">
+                <span className="text-[8px] font-semibold uppercase tracking-[0.16em] text-slate-400">Perfil</span>
+                <span className="text-[11px] font-semibold text-slate-700">Avatar</span>
+              </span>
+            </div>
+          </button>
+          </div>
+        </div>
+      )}
 
       {/* Panel de Gamificación */}
       <GamificacionPanel

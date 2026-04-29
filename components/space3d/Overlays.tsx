@@ -34,7 +34,7 @@ import { statusColors, STATUS_LABELS, type VirtualSpace3DProps } from './spaceTy
 // --- Minimap ---
 export const Minimap: React.FC<{ currentUser: User; users: User[]; workspace: any; onTeleport?: (x: number, z: number) => void }> = ({ currentUser, users, workspace, onTeleport }) => {
   if (!workspace) return null;
-  const size = 140;
+  const size = 160;
   const mapWidth = workspace.width || 2000;
   const mapHeight = workspace.height || 2000;
   const scaleX = size / mapWidth;
@@ -45,43 +45,65 @@ export const Minimap: React.FC<{ currentUser: User; users: User[]; workspace: an
     const rect = e.currentTarget.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
-    // Convertir coordenadas del minimap a coordenadas del mundo (px)
     const worldX = (clickX / size) * mapWidth;
     const worldY = (clickY / size) * mapHeight;
-    // Convertir a coordenadas 3D (mundo 3D usa /16)
     onTeleport(worldX / 16, worldY / 16);
   };
 
   return (
     <div
-      className="absolute bottom-6 left-6 w-[140px] h-[140px] bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden shadow-2xl z-20 cursor-pointer hover:border-indigo-500/40 transition-colors hidden md:block"
+      className="absolute bottom-6 left-6 w-[160px] h-[110px] bg-white/[0.90] backdrop-blur-xl rounded-xl border border-sky-200/50 overflow-hidden shadow-lg z-20 cursor-pointer hover:border-sky-300/60 transition-all duration-200 hidden md:block"
       onClick={handleMinimapClick}
       title="Clic para teletransportarte"
     >
-      <div className="absolute inset-0 opacity-10 pointer-events-none">
-        <div className="w-full h-full" style={{ backgroundImage: 'radial-gradient(circle, #6366f1 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+      {/* Fondo con grid suave */}
+      <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, #EFF6FF 0%, #E0EEFF 100%)' }}>
+        <svg width="100%" height="100%" style={{ position: 'absolute', opacity: 0.5 }}>
+          <defs>
+            <pattern id="mm-grid" width="14" height="14" patternUnits="userSpaceOnUse">
+              <path d="M 14 0 L 0 0 0 14" fill="none" stroke="#BFDBFE" strokeWidth="0.5" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#mm-grid)" />
+        </svg>
       </div>
+
       <div className="relative w-full h-full pointer-events-none">
-        <div 
-          className="absolute w-2.5 h-2.5 bg-indigo-500 rounded-full shadow-[0_0_10px_rgba(99,102,241,1)] z-10"
-          style={{ 
-            left: `${currentUser.x * scaleX}px`, 
-            top: `${currentUser.y * scaleY}px`,
-            transform: 'translate(-50%, -50%)'
+        {/* Punto del usuario con halo */}
+        <div
+          className="absolute z-10"
+          style={{
+            left: `${Math.min(Math.max(currentUser.x * scaleX, 5), size - 5)}px`,
+            top: `${Math.min(Math.max(currentUser.y * scaleY, 5), 105)}px`,
+            transform: 'translate(-50%, -50%)',
           }}
-        />
+        >
+          <div
+            className="w-2.5 h-2.5 rounded-full"
+            style={{
+              background: '#0EA5E9',
+              boxShadow: '0 0 0 3px rgba(14,165,233,0.18), 0 0 0 6px rgba(14,165,233,0.07)',
+            }}
+          />
+        </div>
+
+        {/* Otros usuarios */}
         {users.map(u => (
-          <div 
+          <div
             key={u.id}
-            className="absolute w-1.5 h-1.5 bg-white/50 rounded-full"
-            style={{ 
-              left: `${u.x * scaleX}px`, 
+            className="absolute w-1.5 h-1.5 rounded-full"
+            style={{
+              background: 'rgba(100,116,139,0.45)',
+              left: `${u.x * scaleX}px`,
               top: `${u.y * scaleY}px`,
-              transform: 'translate(-50%, -50%)'
+              transform: 'translate(-50%, -50%)',
             }}
           />
         ))}
       </div>
+
+      {/* Label */}
+      <div className="absolute bottom-1.5 right-2 text-[8px] font-semibold text-sky-400/80 tracking-wider uppercase pointer-events-none">mapa</div>
     </div>
   );
 };
@@ -273,13 +295,13 @@ export const ScreenSpaceProfileCard: React.FC<{
 
   const dotClass = user.status === PresenceStatus.AVAILABLE ? 'bg-green-400' :
     user.status === PresenceStatus.BUSY ? 'bg-red-400' :
-    user.status === PresenceStatus.AWAY ? 'bg-yellow-400' : 'bg-purple-400';
+    user.status === PresenceStatus.AWAY ? 'bg-yellow-400' : 'bg-sky-400';
   const statusLabel = user.status === PresenceStatus.AVAILABLE ? 'Disponible' :
     user.status === PresenceStatus.BUSY ? 'Ocupado' :
     user.status === PresenceStatus.AWAY ? 'Ausente' : 'No molestar';
   const borderClass = user.status === PresenceStatus.AVAILABLE ? 'border-green-500/50' :
     user.status === PresenceStatus.BUSY ? 'border-red-500/50' :
-    user.status === PresenceStatus.AWAY ? 'border-yellow-500/50' : 'border-purple-500/50';
+    user.status === PresenceStatus.AWAY ? 'border-yellow-500/50' : 'border-blue-500/50';
 
   return (
     <div
@@ -330,7 +352,7 @@ export const ScreenSpaceProfileCard: React.FC<{
             onClick={(e) => { e.stopPropagation(); onFollow(user.id); }}
             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
               isFollowing
-                ? 'bg-violet-500/20 text-violet-400 border border-violet-500/30'
+                ? 'bg-blue-500/20 text-sky-400 border border-blue-500/30'
                 : 'bg-white/10 text-white/70 hover:bg-white/20 border border-white/10'
             }`}
           >

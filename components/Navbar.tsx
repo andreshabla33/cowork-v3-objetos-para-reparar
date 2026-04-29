@@ -13,7 +13,7 @@ export const AvatarPreview: React.FC<{
 }> = ({ config, size = 'small', direction = 'front', isSitting = false, isMoving = false }) => {
   const isLarge = size === 'large';
   const skin = config.skinColor || '#fcd34d';
-  const clothes = config.clothingColor || '#6366f1';
+  const clothes = config.clothingColor || '#2563eb';
   const hair = config.hairColor || '#4b2c20';
   const p = isLarge ? 4 : 2; 
 
@@ -71,20 +71,20 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onViben
   const themes: {id: ThemeType, label: string, icon: string, color: string}[] = [
     { id: 'dark', label: t('theme.dark', currentLang), icon: '🌑', color: 'bg-zinc-950' },
     { id: 'light', label: t('theme.light', currentLang), icon: '☀️', color: 'bg-white' },
-    { id: 'space', label: t('theme.space', currentLang), icon: '🚀', color: 'bg-indigo-950' },
+    { id: 'space', label: t('theme.space', currentLang), icon: '🚀', color: 'bg-blue-950' },
     { id: 'arcade', label: t('theme.arcade', currentLang), icon: '🎮', color: 'bg-black' }
   ];
 
   return (
-    <nav className={`h-16 border-b transition-all duration-500 flex items-center justify-between px-6 z-50 ${theme === 'dark' ? 'bg-zinc-950/80 border-zinc-800 text-white' : theme === 'light' ? 'bg-white/80 border-zinc-200 text-zinc-900' : theme === 'space' ? 'bg-[#020617]/80 border-indigo-900 text-indigo-100' : 'bg-black/80 border-[#00ff41]/30 text-[#00ff41]'} backdrop-blur-md`}>
+    <nav className={`h-16 border-b transition-all duration-500 flex items-center justify-between px-6 z-50 ${theme === 'dark' ? 'bg-zinc-950/80 border-zinc-800 text-white' : theme === 'light' ? 'bg-white/80 border-zinc-200 text-zinc-900' : theme === 'space' ? 'bg-[#020617]/80 border-blue-950 text-sky-400' : 'bg-black/80 border-[#00ff41]/30 text-[#00ff41]'} backdrop-blur-md`}>
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-2 cursor-pointer" onClick={() => setActiveTab('space')}>
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-white italic shadow-lg ${theme === 'arcade' ? 'bg-[#00ff41] text-black shadow-[#00ff41]/20' : 'bg-indigo-600 shadow-indigo-500/20'}`}>C</div>
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-white italic shadow-lg ${theme === 'arcade' ? 'bg-[#00ff41] text-black shadow-[#00ff41]/20' : 'bg-blue-700 shadow-blue-600/20'}`}>C</div>
           <span className="font-bold text-lg tracking-tighter uppercase">Cowork</span>
         </div>
         <div className={`flex items-center gap-1 p-1 border ${theme === 'light' ? 'bg-zinc-100 border-zinc-200' : 'bg-black/20 border-white/5'} rounded-lg`}>
           {(['space', 'tasks', 'builder', 'avatar', 'settings'] as const).map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} className={`px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? (theme === 'arcade' ? 'bg-[#00ff41] text-black' : 'bg-indigo-600 text-white shadow-md') : 'opacity-60 hover:opacity-100'}`}>{tab}</button>
+            <button key={tab} onClick={() => setActiveTab(tab)} className={`px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab ? (theme === 'arcade' ? 'bg-[#00ff41] text-black' : 'bg-blue-700 text-white shadow-md') : 'opacity-60 hover:opacity-100'}`}>{tab}</button>
           ))}
         </div>
       </div>
@@ -96,15 +96,15 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onViben
               key={t.id} 
               onClick={() => setTheme(t.id)} 
               title={t.label} 
-              className={`w-7 h-7 rounded-full flex items-center justify-center transition-all text-xs border-2 ${theme === t.id ? (theme === 'arcade' ? 'border-[#00ff41] bg-[#00ff41]/20 scale-110' : 'border-indigo-500 bg-white/10 scale-110') : 'border-transparent opacity-40 hover:opacity-100'}`}
+              className={`w-7 h-7 rounded-full flex items-center justify-center transition-all text-xs border-2 ${theme === t.id ? (theme === 'arcade' ? 'border-[#00ff41] bg-[#00ff41]/20 scale-110' : 'border-blue-600 bg-white/10 scale-110') : 'border-transparent opacity-40 hover:opacity-100'}`}
             >
               {t.icon}
             </button>
           ))}
         </div>
 
-        <button onClick={onVibenToggle} className={`flex items-center gap-2 border px-4 py-1.5 rounded-full transition-all group ${theme === 'arcade' ? 'bg-[#00ff41]/5 border-[#00ff41]/30 hover:bg-[#00ff41]/10 text-[#00ff41]' : 'bg-indigo-600/10 hover:bg-indigo-600/20 border-indigo-600/30 text-indigo-500'}`}>
-          <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${theme === 'arcade' ? 'bg-[#00ff41]' : 'bg-indigo-500'}`}></span>
+        <button onClick={onVibenToggle} className={`flex items-center gap-2 border px-4 py-1.5 rounded-full transition-all group ${theme === 'arcade' ? 'bg-[#00ff41]/5 border-[#00ff41]/30 hover:bg-[#00ff41]/10 text-[#00ff41]' : 'bg-blue-700/10 hover:bg-blue-700/20 border-blue-700/30 text-blue-600'}`}>
+          <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${theme === 'arcade' ? 'bg-[#00ff41]' : 'bg-blue-600'}`}></span>
           <span className="text-[10px] font-black uppercase tracking-widest">{t('button.askViben', currentLang)}</span>
         </button>
 

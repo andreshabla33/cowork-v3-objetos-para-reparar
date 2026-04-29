@@ -303,7 +303,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
       {showRecoveryBanner && (
         <div className="absolute inset-x-0 top-0 z-[120] flex flex-col gap-2 p-3 pointer-events-none">
           {showRecoveryBanner && recoveryState && (
-            <div className={`pointer-events-auto flex items-center justify-between rounded-xl border px-4 py-3 text-sm backdrop-blur-md ${recoveryState.phase === 'error' ? 'border-red-500/40 bg-red-500/15 text-red-100' : recoveryState.phase === 'degraded' ? 'border-amber-500/40 bg-amber-500/15 text-amber-50' : 'border-indigo-500/40 bg-indigo-500/15 text-indigo-50'}`}>
+            <div className={`pointer-events-auto flex items-center justify-between rounded-xl border px-4 py-3 text-sm backdrop-blur-md ${recoveryState.phase === 'error' ? 'border-red-500/40 bg-red-500/15 text-red-100' : recoveryState.phase === 'degraded' ? 'border-amber-500/40 bg-amber-500/15 text-amber-50' : 'border-blue-600/40 bg-blue-600/15 text-sky-50'}`}>
               <div>
                 <div className="font-semibold">
                   {recoveryState.phase === 'reconnecting' ? `Reconectando (${recoveryState.reconnectAttempt}/${recoveryState.maxReconnectAttempts})` : recoveryState.phase === 'degraded' ? 'Conexión inestable' : recoveryState.phase === 'error' ? 'Recuperación detenida' : 'Conectando'}
@@ -372,7 +372,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
           {isConnectedPopoverOpen && (
             <div className="absolute right-0 mt-2 w-60 max-w-[calc(100vw-2rem)] rounded-2xl border border-white/10 bg-zinc-950/90 p-3 text-white shadow-2xl backdrop-blur-xl">
               <div className="flex items-center justify-between gap-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-indigo-300">Conectados</div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-600">Conectados</div>
                 <div className="rounded-full bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/70">
                   {connectedParticipants.length}
                 </div>

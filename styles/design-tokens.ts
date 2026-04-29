@@ -41,19 +41,19 @@ export const colors = {
   
   // Gradientes principales
   gradient: {
-    primary: 'bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500',
-    primaryHover: 'bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400',
+    primary: 'bg-gradient-to-r from-blue-600 via-sky-500 to-cyan-500',
+    primaryHover: 'bg-gradient-to-r from-blue-500 via-sky-400 to-cyan-400',
     secondary: 'bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500',
     secondaryHover: 'bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-400',
-    subtle: 'bg-gradient-to-br from-violet-600/20 to-fuchsia-600/20',
-    neonGlow: 'bg-gradient-to-r from-violet-600/20 via-fuchsia-600/20 to-cyan-500/20',
+    subtle: 'bg-gradient-to-br from-blue-600/20 to-cyan-500/20',
+    neonGlow: 'bg-gradient-to-r from-blue-600/20 via-sky-500/20 to-cyan-500/20',
   },
   
   // Bordes
   border: {
     subtle: 'border-white/[0.08]',
     light: 'border-white/5',
-    focus: 'border-violet-500/50',
+    focus: 'border-blue-500/50',
     error: 'border-red-500/30',
     success: 'border-green-500/30',
   },
@@ -64,14 +64,14 @@ export const colors = {
     secondary: 'text-zinc-400',
     muted: 'text-zinc-500',
     disabled: 'text-zinc-600',
-    accent: 'text-violet-400',
+    accent: 'text-sky-400',
     error: 'text-red-400',
     success: 'text-green-400',
   },
   
   // Sombras
   shadow: {
-    glow: 'shadow-2xl shadow-violet-600/30',
+    glow: 'shadow-2xl shadow-blue-600/30',
     glowEmerald: 'shadow-2xl shadow-emerald-600/30',
     soft: 'shadow-2xl',
   },
@@ -196,7 +196,7 @@ export const glass = {
   cardWithGlow: `
     relative
     before:absolute before:-inset-1 
-    before:bg-gradient-to-r before:from-violet-600/20 before:via-fuchsia-600/20 before:to-cyan-500/20 
+    before:bg-gradient-to-r before:from-blue-600/20 before:via-cyan-500/20 before:to-cyan-500/20 
     before:rounded-[52px] before:blur-xl before:opacity-60
   `.trim().replace(/\s+/g, ' '),
   
@@ -207,8 +207,8 @@ export const glass = {
   input: `
     bg-black/40 
     border border-white/5 
-    focus:ring-2 focus:ring-violet-500/50 
-    focus:border-violet-500/50 
+    focus:ring-2 focus:ring-blue-500/50 
+    focus:border-blue-500/50 
     transition-all
   `.trim().replace(/\s+/g, ' '),
 } as const;
@@ -228,7 +228,7 @@ export const animation = {
   hover: {
     scale: 'hover:scale-[1.02] active:scale-[0.98]',
     scaleSubtle: 'hover:scale-[1.01] active:scale-[0.99]',
-    glow: 'hover:shadow-violet-600/40',
+    glow: 'hover:shadow-blue-600/40',
     brighten: 'hover:brightness-110',
   },
   
@@ -243,10 +243,10 @@ export const composites = {
   // Botón primario con gradiente
   buttonPrimary: `
     relative overflow-hidden
-    bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500
+    bg-gradient-to-r from-blue-600 via-sky-500 to-cyan-500
     text-white font-black uppercase tracking-wider
     rounded-xl
-    shadow-2xl shadow-violet-600/30
+    shadow-2xl shadow-blue-600/30
     transition-all active:scale-[0.98]
     disabled:opacity-50 disabled:cursor-not-allowed
   `.trim().replace(/\s+/g, ' '),
@@ -276,8 +276,8 @@ export const composites = {
     border border-white/5 
     rounded-xl
     text-white placeholder-zinc-600
-    focus:ring-2 focus:ring-violet-500/50 
-    focus:border-violet-500/50 
+    focus:ring-2 focus:ring-blue-500/50 
+    focus:border-blue-500/50 
     outline-none
     transition-all
   `.trim().replace(/\s+/g, ' '),

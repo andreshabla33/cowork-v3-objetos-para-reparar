@@ -152,7 +152,7 @@ export const Escritorio3D: React.FC<Escritorio3DProps> = ({
         <boxGeometry args={[2.4, 0.12, 1.2]} />
         <meshStandardMaterial
           color={colorEscritorio}
-          emissive={cercano ? (esLibre ? '#22c55e' : esPropio ? '#6366f1' : '#ef4444') : '#000000'}
+          emissive={cercano ? (esLibre ? '#22c55e' : esPropio ? '#2563eb' : '#ef4444') : '#000000'}
           emissiveIntensity={cercano ? 0.4 : 0}
           roughness={0.6}
           metalness={0.2}
@@ -193,9 +193,9 @@ export const Escritorio3D: React.FC<Escritorio3DProps> = ({
         <>
           <mesh position={[0, 0.4, 0]}>
             <boxGeometry args={[2.5, 0.2, 1.3]} />
-            <meshBasicMaterial color="#6366f1" transparent opacity={0.3} side={THREE.BackSide} />
+            <meshBasicMaterial color="#2563eb" transparent opacity={0.3} side={THREE.BackSide} />
           </mesh>
-          <pointLight color="#6366f1" intensity={3} distance={5} position={[0, 1, 0]} />
+          <pointLight color="#2563eb" intensity={3} distance={5} position={[0, 1, 0]} />
         </>
       )}
 
@@ -214,7 +214,7 @@ export const Escritorio3D: React.FC<Escritorio3DProps> = ({
       {/* Glow de proximidad (solo si no está seleccionado) */}
       {cercano && !isSelected && (
         <pointLight
-          color={esLibre ? '#22c55e' : esPropio ? '#6366f1' : '#ef4444'}
+          color={esLibre ? '#22c55e' : esPropio ? '#2563eb' : '#ef4444'}
           intensity={1.5}
           distance={4}
           position={[0, 0.8, 0]}
@@ -268,9 +268,9 @@ const EscritorioContextMenu: React.FC<EscritorioContextMenuProps> = ({ onRotate,
         <button
           onClick={(e) => { e.stopPropagation(); onRotate(e); resetTimer(); }}
           title="Rotar 90°"
-          className="group w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150 hover:bg-indigo-500/30 active:scale-90"
+          className="group w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150 hover:bg-blue-600/30 active:scale-90"
         >
-          <svg className="w-3.5 h-3.5 text-indigo-300 group-hover:text-indigo-100 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className="w-3.5 h-3.5 text-sky-600 group-hover:text-sky-400 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
         </button>

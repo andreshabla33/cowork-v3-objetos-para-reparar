@@ -39,7 +39,7 @@ export interface UISlice {
 }
 
 export const createUISlice: StateCreator<UISlice, [], [], UISlice> = (set) => ({
-  theme: 'dark',
+  theme: 'light',
   view: 'loading',
   activeSubTab: 'space',
   notifications: [],

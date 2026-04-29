@@ -160,7 +160,7 @@ export const CameraSettingsMenu: React.FC<CameraSettingsMenuProps> = ({
               value={settings.selectedCameraId}
               onChange={(e) => handleCameraChange(e.target.value)}
               disabled={isLoadingCameras}
-              className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white appearance-none cursor-pointer hover:bg-zinc-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white appearance-none cursor-pointer hover:bg-zinc-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600/50"
             >
               {cameras.length === 0 ? (
                 <option value="">Cargando cámaras...</option>
@@ -204,7 +204,7 @@ export const CameraSettingsMenu: React.FC<CameraSettingsMenuProps> = ({
           <button
             onClick={() => updateSettings({ hideSelfView: !settings.hideSelfView })}
             className={`w-11 h-6 rounded-full transition-colors relative ${
-              settings.hideSelfView ? 'bg-indigo-600' : 'bg-zinc-700'
+              settings.hideSelfView ? 'bg-blue-700' : 'bg-zinc-700'
             }`}
           >
             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
@@ -234,7 +234,7 @@ export const CameraSettingsMenu: React.FC<CameraSettingsMenuProps> = ({
               onClick={() => handleBackgroundEffectChange('none')}
               className={`aspect-video rounded-lg border-2 transition-all flex items-center justify-center ${
                 settings.backgroundEffect === 'none'
-                  ? 'border-indigo-500 bg-indigo-500/20'
+                  ? 'border-blue-600 bg-blue-600/20'
                   : 'border-white/10 bg-zinc-800 hover:border-white/20'
               }`}
             >
@@ -248,11 +248,11 @@ export const CameraSettingsMenu: React.FC<CameraSettingsMenuProps> = ({
               onClick={() => handleBackgroundEffectChange('blur')}
               className={`aspect-video rounded-lg border-2 transition-all flex items-center justify-center ${
                 settings.backgroundEffect === 'blur'
-                  ? 'border-indigo-500 bg-indigo-500/20'
+                  ? 'border-blue-600 bg-blue-600/20'
                   : 'border-white/10 bg-zinc-800 hover:border-white/20'
               }`}
             >
-              <div className="w-6 h-6 rounded bg-gradient-to-br from-indigo-400/50 to-purple-400/50 blur-sm" />
+              <div className="w-6 h-6 rounded bg-gradient-to-br from-blue-500/50 to-sky-400/50 blur-sm" />
             </button>
 
             {/* Imagen personalizada */}
@@ -260,7 +260,7 @@ export const CameraSettingsMenu: React.FC<CameraSettingsMenuProps> = ({
               onClick={() => fileInputRef.current?.click()}
               className={`aspect-video rounded-lg border-2 transition-all flex items-center justify-center ${
                 settings.backgroundEffect === 'image'
-                  ? 'border-indigo-500 bg-indigo-500/20'
+                  ? 'border-blue-600 bg-blue-600/20'
                   : 'border-white/10 bg-zinc-800 hover:border-white/20'
               }`}
             >
@@ -320,7 +320,7 @@ export const CameraSettingsMenu: React.FC<CameraSettingsMenuProps> = ({
           <button
             onClick={() => updateSettings({ mirrorVideo: !settings.mirrorVideo })}
             className={`w-11 h-6 rounded-full transition-colors relative ${
-              settings.mirrorVideo ? 'bg-indigo-600' : 'bg-zinc-700'
+              settings.mirrorVideo ? 'bg-blue-700' : 'bg-zinc-700'
             }`}
           >
             <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
