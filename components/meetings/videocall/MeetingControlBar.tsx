@@ -66,9 +66,9 @@ interface MeetingControlBarProps {
 
 // Configuración de tipos de reunión para mostrar badge
 const TIPO_REUNION_CONFIG = {
-  equipo: { label: 'Equipo', icon: '👥', color: 'from-blue-500 to-cyan-500' },
+  equipo: { label: 'Equipo', icon: '👥', color: 'from-[#4FB0FF] to-[#2E96F5]' },
   deal: { label: 'Cliente', icon: '💼', color: 'from-emerald-500 to-teal-500' },
-  entrevista: { label: 'Candidato', icon: '🎯', color: 'from-purple-500 to-pink-500' },
+  entrevista: { label: 'Candidato', icon: '🎯', color: 'from-[#4FB0FF] to-[#2E96F5]' },
 };
 
 export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
@@ -309,7 +309,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
   };
 
   const tipoConfig = TIPO_REUNION_CONFIG[tipoReunion];
-  const mobileMenuButtonClass = 'w-full flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm font-medium text-white transition-colors hover:bg-white/10';
+  const mobileMenuButtonClass = 'w-full flex items-center justify-between gap-3 rounded-2xl border border-[rgba(46,150,245,0.14)] bg-white/50 px-4 py-3 text-left text-sm font-medium text-white transition-colors hover:bg-[rgba(46,150,245,0.08)]';
   const iconButtonClass = isMobileLayout ? 'h-11 w-11 rounded-2xl touch-manipulation' : 'h-10 w-10 rounded-xl';
 
   return (
@@ -321,10 +321,10 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
             recordingDiagnostics.severity === 'error'
               ? 'border-red-400/30 bg-red-950/70 text-red-100'
               : recordingDiagnostics.severity === 'warn'
-                ? 'border-amber-400/30 bg-black/70 text-amber-200'
+                ? 'border-amber-400/30 bg-[#0B2240]/35 text-amber-200'
                 : recordingDiagnostics.severity === 'success'
                   ? 'border-emerald-400/30 bg-emerald-950/60 text-emerald-100'
-                  : 'border-indigo-400/30 bg-indigo-950/60 text-indigo-100'
+                  : 'border-[#2E96F5]/30 bg-[#0B2240]/60 text-white'
           }`}>
             <div className="font-semibold">{recordingDiagnostics.title}</div>
             <div className="mt-0.5 opacity-90">{recordingDiagnostics.message}</div>
@@ -332,13 +332,13 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
         )}
 
         {controlFeedback && (
-          <div className="max-w-[calc(100vw-2rem)] rounded-xl border border-amber-400/30 bg-black/70 px-3 py-2 text-center text-xs text-amber-200 shadow-lg backdrop-blur-xl">
+          <div className="max-w-[calc(100vw-2rem)] rounded-xl border border-amber-400/30 bg-[#0B2240]/35 px-3 py-2 text-center text-xs text-amber-200 shadow-lg backdrop-blur-xl">
             {controlFeedback}
           </div>
         )}
 
         {/* Barra Principal */}
-        <div className={`flex w-full max-w-[calc(100vw-1rem)] items-center overflow-visible rounded-2xl border border-white/10 bg-black/20 p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl transition-all duration-300 hover:bg-black/30 hover:border-white/20 md:w-auto md:max-w-[95vw] md:flex-nowrap ${isCompactLayout ? 'justify-between gap-2 rounded-3xl px-2 py-2' : 'flex-wrap justify-center gap-1.5'}`}>
+        <div className={`flex w-full max-w-[calc(100vw-1rem)] items-center overflow-visible rounded-2xl border border-[rgba(46,150,245,0.14)] bg-black/20 p-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.3)] backdrop-blur-2xl transition-all duration-300 hover:bg-black/30 hover:border-white/20 md:w-auto md:max-w-[95vw] md:flex-nowrap ${isCompactLayout ? 'justify-between gap-2 rounded-3xl px-2 py-2' : 'flex-wrap justify-center gap-1.5'}`}>
           <div className={`hidden shrink-0 items-center gap-1.5 rounded-xl bg-gradient-to-r ${tipoConfig.color} px-2.5 py-2 text-[11px] font-medium text-white shadow-lg lg:flex`}>
             <span>{tipoConfig.icon}</span>
             <span>{tipoConfig.label}</span>
@@ -373,7 +373,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
                 setShowMobileOverflowMenu(false);
                 setShowMobileSettingsMenu(true);
               }}
-              className={`shrink-0 flex items-center justify-center transition-all duration-300 ${showMobileSettingsMenu ? 'bg-white/20 text-white' : 'bg-transparent text-white/70 hover:bg-white/10 hover:text-white'} ${iconButtonClass}`}
+              className={`shrink-0 flex items-center justify-center transition-all duration-300 ${showMobileSettingsMenu ? 'bg-white/20 text-white' : 'bg-transparent text-white/70 hover:bg-[rgba(46,150,245,0.08)] hover:text-white'} ${iconButtonClass}`}
               title="Configuración de audio y cámara"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -383,14 +383,14 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
             </button>
           )}
 
-          {!isCompactLayout && <div className="w-px h-6 shrink-0 bg-white/10 mx-0.5"></div>}
+          {!isCompactLayout && <div className="w-px h-6 shrink-0 bg-[rgba(46,150,245,0.08)] mx-0.5"></div>}
 
           {/* Compartir Pantalla */}
           <div className={`${isMobileLayout ? 'hidden' : 'flex'} items-center gap-1`} data-tour-step="meeting-share-group">
             <button
               onClick={toggleScreenShare}
               className={`${iconButtonClass} shrink-0 flex items-center justify-center transition-all duration-300 ${
-                isScreenSharing ? 'bg-indigo-500 text-white' : 'bg-transparent text-white/70 hover:bg-white/10 hover:text-white'
+                isScreenSharing ? 'bg-[#2E96F5] text-white' : 'bg-transparent text-white/70 hover:bg-[rgba(46,150,245,0.08)] hover:text-white'
               }`}
               title={isScreenSharing ? "Dejar de compartir" : "Compartir pantalla"}
             >
@@ -401,7 +401,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
             <button
               onClick={() => setShareScreenWithAudio((current) => !current)}
               className={`h-10 shrink-0 rounded-xl px-2 text-[10px] font-semibold uppercase tracking-wide transition-all duration-300 ${
-                shareScreenWithAudio ? 'bg-indigo-500/20 text-indigo-100' : 'bg-transparent text-white/60 hover:bg-white/10 hover:text-white'
+                shareScreenWithAudio ? 'bg-[#2E96F5]/20 text-white' : 'bg-transparent text-white/60 hover:bg-[rgba(46,150,245,0.08)] hover:text-white'
               }`}
               title={shareScreenWithAudio ? 'Compartir con sonido del sistema' : 'Compartir sin sonido del sistema'}
             >
@@ -409,7 +409,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
             </button>
           </div>
 
-          {!isCompactLayout && <div className="w-px h-6 shrink-0 bg-white/10 mx-0.5"></div>}
+          {!isCompactLayout && <div className="w-px h-6 shrink-0 bg-[rgba(46,150,245,0.08)] mx-0.5"></div>}
 
           <div className="flex items-center gap-1" data-tour-step="meeting-collaboration-group">
             {/* Chat */}
@@ -417,7 +417,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
               <button
                 onClick={onToggleChat}
                 className={`shrink-0 flex items-center justify-center transition-all duration-300 ${iconButtonClass} ${
-                  showChat ? 'bg-blue-500 text-white' : 'bg-transparent text-white/70 hover:bg-white/10 hover:text-white'
+                  showChat ? 'bg-blue-500 text-white' : 'bg-transparent text-white/70 hover:bg-[rgba(46,150,245,0.08)] hover:text-white'
                 }`}
                 title="Chat"
               >
@@ -432,7 +432,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
               <button
                 onClick={() => setShowEmojis(!showEmojis)}
                 className={`${iconButtonClass} shrink-0 flex items-center justify-center transition-all duration-300 ${
-                  showEmojis ? 'bg-amber-500 text-white' : 'bg-transparent text-white/70 hover:bg-white/10 hover:text-white'
+                  showEmojis ? 'bg-amber-500 text-white' : 'bg-transparent text-white/70 hover:bg-[rgba(46,150,245,0.08)] hover:text-white'
                 }`}
                 title="Reacciones"
               >
@@ -448,7 +448,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
                   void onToggleRaiseHand();
                 }}
                 className={`${iconButtonClass} shrink-0 flex items-center justify-center transition-all duration-300 ${
-                  isHandRaised ? 'bg-sky-500 text-white' : 'bg-transparent text-white/70 hover:bg-white/10 hover:text-white'
+                  isHandRaised ? 'bg-sky-500 text-white' : 'bg-transparent text-white/70 hover:bg-[rgba(46,150,245,0.08)] hover:text-white'
                 }`}
                 title={isHandRaised ? 'Bajar la mano' : 'Levantar la mano'}
               >
@@ -458,7 +458,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
           </div>
 
           {/* Separador antes de grabación */}
-          {showRecordingButton && !isMobileLayout && <div className="w-px h-6 shrink-0 bg-white/10 mx-0.5"></div>}
+          {showRecordingButton && !isMobileLayout && <div className="w-px h-6 shrink-0 bg-[rgba(46,150,245,0.08)] mx-0.5"></div>}
 
           {/* Grabación */}
           {showRecordingButton && !isMobileLayout && (
@@ -494,8 +494,8 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
                 disabled={!canStartRecording}
                 className={`flex shrink-0 items-center gap-2 px-3 py-2 rounded-xl text-white transition-all duration-300 ${
                   canStartRecording
-                    ? 'bg-white/5 hover:bg-white/10'
-                    : 'bg-white/5 text-white/40 opacity-50 cursor-not-allowed'
+                    ? 'bg-white/50 hover:bg-[rgba(46,150,245,0.08)]'
+                    : 'bg-white/50 text-white/40 opacity-50 cursor-not-allowed'
                 }`}
                 title={canStartRecording ? 'Iniciar grabación' : (recordingDisabledReason || 'La grabación requiere más de 1 participante')}
               >
@@ -516,13 +516,13 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
             </div>
           )}
 
-          {!isCompactLayout && <div className="w-px h-6 shrink-0 bg-white/10 mx-0.5"></div>}
+          {!isCompactLayout && <div className="w-px h-6 shrink-0 bg-[rgba(46,150,245,0.08)] mx-0.5"></div>}
 
           {/* Botón Ir al Espacio Virtual */}
           {onGoToVirtualSpace && !isMobileLayout && (
             <button
               onClick={onGoToVirtualSpace}
-              className={`${iconButtonClass} shrink-0 bg-transparent text-white/70 hover:bg-indigo-500/20 hover:text-indigo-400 flex items-center justify-center transition-all duration-300`}
+              className={`${iconButtonClass} shrink-0 bg-transparent text-white/70 hover:bg-[#2E96F5]/20 hover:text-[#1E86E5] flex items-center justify-center transition-all duration-300`}
               title="Ir al espacio virtual"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -537,7 +537,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
                 setShowMobileSettingsMenu(false);
                 setShowMobileOverflowMenu((current) => !current);
               }}
-              className={`h-11 w-11 shrink-0 rounded-2xl touch-manipulation flex items-center justify-center transition-all duration-300 ${showMobileOverflowMenu ? 'bg-white/20 text-white' : 'bg-transparent text-white/70 hover:bg-white/10 hover:text-white'}`}
+              className={`h-11 w-11 shrink-0 rounded-2xl touch-manipulation flex items-center justify-center transition-all duration-300 ${showMobileOverflowMenu ? 'bg-white/20 text-white' : 'bg-transparent text-white/70 hover:bg-[rgba(46,150,245,0.08)] hover:text-white'}`}
               title="Más opciones"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -562,7 +562,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
       {isMobileLayout && showMobileOverflowMenu && (
         <>
           <button type="button" aria-label="Cerrar menú" onClick={() => setShowMobileOverflowMenu(false)} className="fixed inset-0 z-[230] bg-black/35 backdrop-blur-[1px] md:hidden" />
-          <div className="fixed inset-x-3 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-[240] rounded-3xl border border-white/10 bg-zinc-950/96 p-3 shadow-2xl backdrop-blur-2xl md:hidden">
+          <div className="fixed inset-x-3 bottom-[calc(6rem+env(safe-area-inset-bottom))] z-[240] rounded-3xl border border-[rgba(46,150,245,0.14)] bg-[#0B2240]/92 p-3 shadow-2xl backdrop-blur-2xl md:hidden">
             <div className="grid gap-2">
               <button onClick={() => { void toggleScreenShare(); setShowMobileOverflowMenu(false); }} className={mobileMenuButtonClass}>
                 <span>Compartir pantalla</span>
@@ -621,15 +621,15 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
           currentStream={currentStream}
           onAudioSettingsChange={handleAudioSettingChange}
           onCameraSettingsChange={handleCameraSettingChange}
-          overlayClassName={`fixed inset-0 z-[240] bg-black/45 backdrop-blur-[1px] ${isMobileLayout ? 'md:hidden' : ''}`}
-          panelClassName={`fixed z-[250] overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950/97 shadow-2xl backdrop-blur-2xl ${isMobileLayout ? 'inset-x-3 bottom-[calc(6rem+env(safe-area-inset-bottom))] top-16 md:hidden' : 'bottom-24 left-1/2 top-auto w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2'}`}
+          overlayClassName={`fixed inset-0 z-[240] bg-[#0B2240]/35 backdrop-blur-[1px] ${isMobileLayout ? 'md:hidden' : ''}`}
+          panelClassName={`fixed z-[250] overflow-hidden rounded-[2rem] border border-[rgba(46,150,245,0.14)] bg-[#0B2240]/92 shadow-2xl backdrop-blur-2xl ${isMobileLayout ? 'inset-x-3 bottom-[calc(6rem+env(safe-area-inset-bottom))] top-16 md:hidden' : 'bottom-24 left-1/2 top-auto w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2'}`}
         />
       )}
 
       {/* Emoji Picker */}
       {showEmojis && (
         <div className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] left-1/2 z-[260] -translate-x-1/2 animate-emoji-popup md:absolute md:bottom-24 md:left-1/2 md:z-[220] md:-translate-x-1/2">
-          <div className="flex gap-0.5 rounded-xl border border-white/10 bg-black/80 px-2 py-1.5 backdrop-blur-xl shadow-2xl">
+          <div className="flex gap-0.5 rounded-xl border border-[rgba(46,150,245,0.14)] bg-black/80 px-2 py-1.5 backdrop-blur-xl shadow-2xl">
             {emojis.map((emoji) => (
               <button
                 key={emoji}
@@ -637,7 +637,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
                   void sendReaction(emoji);
                   setShowEmojis(false);
                 }}
-                className="flex h-10 w-10 touch-manipulation items-center justify-center rounded-lg text-lg transition-all duration-150 hover:bg-white/20 hover:scale-110 active:scale-90"
+                className="flex h-10 w-10 touch-manipulation items-center justify-center rounded-lg text-lg transition-all duration-150 hover:bg-[rgba(46,150,245,0.14)] hover:scale-110 active:scale-90"
               >
                 {emoji}
               </button>
@@ -648,8 +648,8 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
 
       {/* Modal de confirmación si hay grabación activa */}
       {showLeaveConfirm && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[300] flex items-center justify-center p-4">
-          <div className="bg-zinc-900 rounded-2xl p-6 max-w-sm w-full border border-white/10 shadow-2xl">
+        <div className="fixed inset-0 bg-[#0B2240]/35 backdrop-blur-sm z-[300] flex items-center justify-center p-4">
+          <div className="bg-[#0B2240]/90 rounded-2xl p-6 max-w-sm w-full border border-[rgba(46,150,245,0.14)] shadow-2xl">
             <div className="text-center">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/20 flex items-center justify-center">
                 <span className="text-3xl">⚠️</span>
@@ -661,7 +661,7 @@ export const MeetingControlBar: React.FC<MeetingControlBarProps> = ({
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowLeaveConfirm(false)}
-                  className="flex-1 px-4 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-white font-medium transition-colors"
+                  className="flex-1 px-4 py-2.5 bg-[rgba(46,150,245,0.08)] hover:bg-[rgba(46,150,245,0.14)] rounded-xl text-white font-medium transition-colors"
                 >
                   Cancelar
                 </button>

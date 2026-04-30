@@ -27,6 +27,8 @@ installRetryFetch(SUPABASE_STORAGE_POLICY);
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './styles/tailwind.css';
+import './styles/aurora-glass.css';
+import './styles/login-theme.css';
 import App from './App';
 import { AppErrorBoundary } from './components/ui/AppErrorBoundary';
 import { DIProvider } from './src/core/infrastructure/di/DIProvider';
@@ -56,6 +58,14 @@ if (typeof window !== 'undefined') {
 
   window.addEventListener('pagehide', handlePageExit);
   window.addEventListener('beforeunload', handlePageExit);
+}
+
+// ─── Aurora GLASS theme bootstrap ──────────────────────────────────────────
+// Tema base. La arquitectura permite cambiar a futuros temas (ej. aurora-night)
+// modificando solo este atributo: cero refactor de componentes.
+if (typeof document !== 'undefined') {
+  document.documentElement.setAttribute('data-theme', 'aurora');
+  document.body.classList.add('ag-app-shell');
 }
 
 const rootElement = document.getElementById('root');

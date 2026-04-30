@@ -92,7 +92,7 @@ export const WorkspaceContentRouter: React.FC<WorkspaceContentRouterProps> = Rea
       {activeSubTab === 'settings' && (
         <div className="p-6 md:p-16 max-w-4xl mx-auto">
           <h2 className="text-2xl md:text-5xl font-black uppercase italic tracking-tighter mb-6 md:mb-10">{t('settings.title', currentLang)}</h2>
-          <div className={`p-4 md:p-12 rounded-2xl md:rounded-[50px] border-2 ${s.border} bg-black/10 backdrop-blur-3xl shadow-2xl`}>
+          <div className={`p-4 md:p-12 rounded-2xl md:rounded-[50px] border border-[var(--cw-glass-border)] bg-white/60 backdrop-blur-xl shadow-lg`}>
             <div className={`flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 md:pb-10 border-b-2 ${s.border}`}>
               <div>
                 <p className="text-[11px] font-black uppercase tracking-[0.3em] opacity-30">{t('workspace.inUse', currentLang)}</p>

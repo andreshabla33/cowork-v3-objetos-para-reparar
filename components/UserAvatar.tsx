@@ -81,7 +81,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
         <img
           src={profilePhoto}
           alt={name}
-          className={`${s.container} rounded-full object-cover ${s.ring} ring-white/10`}
+          className={`${s.container} rounded-full object-cover ${s.ring} ring-white`}
           onError={(e) => {
             (e.target as HTMLImageElement).style.display = 'none';
             (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
@@ -89,14 +89,14 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({
         />
       ) : null}
       <div
-        className={`${s.container} rounded-full ${bgColor} flex items-center justify-center ${s.text} font-bold text-white select-none ${s.ring} ring-white/10 ${profilePhoto ? 'hidden' : ''}`}
+        className={`${s.container} rounded-full ${bgColor} flex items-center justify-center ${s.text} font-bold text-white select-none ${s.ring} ring-white ${profilePhoto ? 'hidden' : ''}`}
       >
         {initials}
       </div>
 
       {showStatus && status && (
         <span
-          className={`absolute ${s.status} ${STATUS_COLORS[status] || 'bg-zinc-500'} rounded-full border-2 border-zinc-900`}
+          className={`absolute ${s.status} ${STATUS_COLORS[status] || 'bg-gray-400'} rounded-full border-2 border-white`}
         />
       )}
     </div>

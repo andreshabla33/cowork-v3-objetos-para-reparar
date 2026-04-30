@@ -818,13 +818,13 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
 
       {/* Modal de procesamiento */}
       {(processingState.step === 'stopping' || processingState.step === 'processing') && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[300] flex items-center justify-center">
-          <div className="bg-zinc-900 rounded-2xl p-6 max-w-md w-full mx-4 border border-white/10 shadow-2xl">
+        <div className="fixed inset-0 bg-[#0B2240]/35 backdrop-blur-sm z-[300] flex items-center justify-center">
+          <div className="bg-white/60 rounded-2xl p-6 max-w-md w-full mx-4 border border-[rgba(46,150,245,0.14)] shadow-2xl">
             <div className="text-center">
               <div className="w-16 h-16 mx-auto mb-4 relative">
-                <div className="absolute inset-0 border-4 border-indigo-500/30 rounded-full"></div>
+                <div className="absolute inset-0 border-4 border-[#2E96F5]/30 rounded-full"></div>
                 <div
-                  className="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"
+                  className="absolute inset-0 border-4 border-[#2E96F5] rounded-full border-t-transparent animate-spin"
                   style={{ animationDuration: '1s' }}
                 ></div>
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -833,15 +833,15 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
               </div>
 
               <h3 className="text-white font-bold text-lg mb-2">Procesando Análisis</h3>
-              <p className="text-white/70 text-sm mb-4">{processingState.message}</p>
+              <p className="text-[#1B3A5C] text-sm mb-4">{processingState.message}</p>
 
-              <div className="w-full bg-white/10 rounded-full h-2 mb-2">
+              <div className="w-full bg-[rgba(46,150,245,0.08)] rounded-full h-2 mb-2">
                 <div
-                  className="bg-indigo-500 h-2 rounded-full transition-all duration-500"
+                  className="bg-[#2E96F5] h-2 rounded-full transition-all duration-500"
                   style={{ width: `${processingState.progress}%` }}
                 ></div>
               </div>
-              <p className="text-white/50 text-xs">{processingState.progress}% completado</p>
+              <p className="text-[#6B83A0] text-xs">{processingState.progress}% completado</p>
             </div>
           </div>
         </div>
@@ -878,11 +878,11 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
           )}
 
           {/* Métricas en tiempo real */}
-          <div className="bg-zinc-900/90 backdrop-blur rounded-xl p-3 border border-white/10 shadow-lg space-y-2 min-w-[200px]">
+          <div className="bg-white/75 backdrop-blur rounded-xl p-3 border border-[rgba(46,150,245,0.14)] shadow-lg space-y-2 min-w-[200px]">
             <div className="flex items-center justify-between">
-              <span className="text-white/60 text-xs">Engagement</span>
+              <span className="text-[#4A6485] text-xs">Engagement</span>
               <div className="flex items-center gap-2">
-                <div className="w-20 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <div className="w-20 h-1.5 bg-[rgba(46,150,245,0.08)] rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full transition-all ${
                       resumenTiempoReal.engagementActual > 0.6 ? 'bg-green-500' :
@@ -898,7 +898,7 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-white/60 text-xs">Emoción</span>
+              <span className="text-[#4A6485] text-xs">Emoción</span>
               <span className="text-white text-sm">
                 {resumenTiempoReal.emocionActual === 'happy' && '😊'}
                 {resumenTiempoReal.emocionActual === 'sad' && '😢'}
@@ -912,22 +912,22 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-white/60 text-xs">Postura</span>
+              <span className="text-[#4A6485] text-xs">Postura</span>
               <span className="text-white text-xs capitalize">
                 {resumenTiempoReal.posturaActual.replace(/_/g, ' ')}
               </span>
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-white/60 text-xs">Microexpr.</span>
-              <span className="text-indigo-400 text-xs font-mono">
+              <span className="text-[#4A6485] text-xs">Microexpr.</span>
+              <span className="text-[#1E86E5] text-xs font-mono">
                 {resumenTiempoReal.microexpresionesCount}
               </span>
             </div>
 
             {/* Alertas */}
             {resumenTiempoReal.alertas.length > 0 && (
-              <div className="pt-2 border-t border-white/10">
+              <div className="pt-2 border-t border-[rgba(46,150,245,0.14)]">
                 {resumenTiempoReal.alertas.slice(0, 2).map((alerta, i) => (
                   <p key={i} className="text-amber-400 text-xs">{alerta}</p>
                 ))}
@@ -943,7 +943,7 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
           {stream ? (
             <button
               onClick={() => setShowTypeSelector(true)}
-              className="group relative flex items-center gap-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white px-5 py-3 rounded-2xl shadow-2xl transition-all hover:scale-105"
+              className="group relative flex items-center gap-3 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] text-white px-5 py-3 rounded-2xl shadow-2xl transition-all hover:scale-105"
             >
               <span className="w-4 h-4 bg-red-500 rounded-full animate-pulse"></span>
               <span className="font-bold text-sm">Grabar con Análisis</span>
@@ -951,14 +951,14 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
 
               {/* Tooltip */}
               <div className="absolute bottom-full mb-2 right-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                <div className="bg-black text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap">
+                <div className="bg-[#0B2240]/80 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap">
                   Grabación con análisis conductual
                 </div>
               </div>
             </button>
           ) : (
-            <div className="flex items-center gap-3 bg-zinc-800 text-zinc-400 px-5 py-3 rounded-2xl shadow-lg cursor-not-allowed">
-              <span className="w-4 h-4 bg-zinc-600 rounded-full"></span>
+            <div className="flex items-center gap-3 bg-white text-[#4A6485] px-5 py-3 rounded-2xl shadow-lg cursor-not-allowed">
+              <span className="w-4 h-4 bg-[#9CB0CA] rounded-full"></span>
               <span className="font-bold text-sm">Esperando cámara...</span>
               <span className="text-xl animate-spin">⏳</span>
             </div>

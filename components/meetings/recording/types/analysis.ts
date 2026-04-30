@@ -171,7 +171,7 @@ export const CONFIGURACIONES_GRABACION_DETALLADO: Record<TipoGrabacionDetallado,
     titulo: 'Entrevista Candidatos',
     descripcion: 'Entrevistas de selección con candidatos externos',
     icono: '�',
-    color: 'from-blue-600 to-indigo-600',
+    color: 'from-[#4FB0FF] to-[#2E96F5]',
     colorAccent: '#4f46e5',
     requiereDisclaimer: true,
     disclaimerTexto: `⚠️ AVISO LEGAL - ENTREVISTA DE SELECCIÓN
@@ -254,7 +254,7 @@ Al continuar, confirmas que:
     titulo: 'Reunión de Equipo',
     descripcion: 'Reuniones de trabajo, brainstorming, retrospectivas',
     icono: '👥',
-    color: 'from-purple-600 to-violet-600',
+    color: 'from-[#4FB0FF] to-[#2E96F5]',
     colorAccent: '#7c3aed',
     requiereDisclaimer: false,
     metricas: [

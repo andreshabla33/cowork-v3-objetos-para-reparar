@@ -183,7 +183,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
 
   if (!isAdmin) {
     return (
-      <div className="text-center py-12 text-zinc-500">
+      <div className="text-center py-12 text-[#6B83A0]">
         Solo los administradores pueden gestionar la empresa.
       </div>
     );
@@ -192,7 +192,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-5 h-5 text-violet-400 animate-spin" />
+        <RefreshCw className="w-5 h-5 text-[#1E86E5] animate-spin" />
       </div>
     );
   }
@@ -201,10 +201,10 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-xl font-bold text-white">
+          <h3 className="text-xl font-bold text-[#0B2240]">
             {empresa ? 'Información de la Empresa' : 'Vincular Empresa'}
           </h3>
-          <p className="text-sm text-zinc-400 mt-1">
+          <p className="text-sm text-[#4A6485] mt-1">
             {empresa ? 'Datos de la organización vinculada a este espacio' : 'Configura los datos de tu empresa para este espacio de trabajo'}
           </p>
         </div>
@@ -212,7 +212,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] text-white rounded-xl text-sm font-medium disabled:opacity-50 transition-all"
           >
             {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Guardar
@@ -228,10 +228,10 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
       )}
 
       {!empresa && (
-        <div className="mb-6 p-4 bg-violet-500/10 border border-violet-500/30 rounded-xl">
+        <div className="mb-6 p-4 bg-[rgba(46,150,245,0.08)] border border-[rgba(46,150,245,0.14)] rounded-xl">
           <div className="flex items-center gap-3">
-            <Building2 className="w-5 h-5 text-violet-400" />
-            <p className="text-sm text-violet-300">
+            <Building2 className="w-5 h-5 text-[#1E86E5]" />
+            <p className="text-sm text-[#1E86E5]">
               Aún no tienes una empresa vinculada. Completa los datos y se creará automáticamente.
             </p>
           </div>
@@ -240,37 +240,37 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
 
       <div className="space-y-6">
         {/* Datos principales */}
-        <div className="p-5 bg-zinc-800/50 border border-zinc-700/50 rounded-2xl">
-          <h4 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-violet-400" /> Datos principales
+        <div className="p-5 bg-white/60 backdrop-blur-sm border border-[rgba(46,150,245,0.14)] rounded-2xl">
+          <h4 className="text-sm font-bold text-[#0B2240] mb-4 flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-[#1E86E5]" /> Datos principales
           </h4>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Nombre de la empresa *</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Nombre de la empresa *</label>
               <input
                 type="text"
                 value={formData.nombre}
                 onChange={(e) => updateField('nombre', e.target.value)}
                 placeholder="Mi Empresa S.A.S."
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">NIT / RUT</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">NIT / RUT</label>
               <input
                 type="text"
                 value={formData.nit_rut}
                 onChange={(e) => updateField('nit_rut', e.target.value)}
                 placeholder="900.123.456-7"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Industria</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Industria</label>
               <select
                 value={formData.industria}
                 onChange={(e) => updateField('industria', e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               >
                 <option value="">Seleccionar...</option>
                 {INDUSTRIAS.map(i => (
@@ -279,11 +279,11 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Tamaño</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Tamaño</label>
               <select
                 value={formData.tamano}
                 onChange={(e) => updateField('tamano', e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               >
                 {TAMANOS.map(t => (
                   <option key={t.value} value={t.value}>{t.label}</option>
@@ -292,91 +292,91 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
             </div>
           </div>
           <div className="mt-4">
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Descripción</label>
+            <label className="block text-xs font-medium text-[#4A6485] mb-1">Descripción</label>
             <textarea
               value={formData.descripcion}
               onChange={(e) => updateField('descripcion', e.target.value)}
               placeholder="Breve descripción de la empresa..."
               rows={2}
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none resize-none"
+              className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none resize-none"
             />
           </div>
         </div>
 
         {/* Contacto */}
-        <div className="p-5 bg-zinc-800/50 border border-zinc-700/50 rounded-2xl">
-          <h4 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-            <Mail className="w-4 h-4 text-violet-400" /> Contacto
+        <div className="p-5 bg-white/60 backdrop-blur-sm border border-[rgba(46,150,245,0.14)] rounded-2xl">
+          <h4 className="text-sm font-bold text-[#0B2240] mb-4 flex items-center gap-2">
+            <Mail className="w-4 h-4 text-[#1E86E5]" /> Contacto
           </h4>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Sitio web</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Sitio web</label>
               <input
                 type="url"
                 value={formData.sitio_web}
                 onChange={(e) => updateField('sitio_web', e.target.value)}
                 placeholder="https://miempresa.com"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Email de contacto</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Email de contacto</label>
               <input
                 type="email"
                 value={formData.email_contacto}
                 onChange={(e) => updateField('email_contacto', e.target.value)}
                 placeholder="info@miempresa.com"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Teléfono</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Teléfono</label>
               <input
                 type="tel"
                 value={formData.telefono}
                 onChange={(e) => updateField('telefono', e.target.value)}
                 placeholder="+57 300 123 4567"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               />
             </div>
           </div>
         </div>
 
         {/* Ubicación */}
-        <div className="p-5 bg-zinc-800/50 border border-zinc-700/50 rounded-2xl">
-          <h4 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-violet-400" /> Ubicación
+        <div className="p-5 bg-white/60 backdrop-blur-sm border border-[rgba(46,150,245,0.14)] rounded-2xl">
+          <h4 className="text-sm font-bold text-[#0B2240] mb-4 flex items-center gap-2">
+            <MapPin className="w-4 h-4 text-[#1E86E5]" /> Ubicación
           </h4>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">País</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">País</label>
               <input
                 type="text"
                 value={formData.pais}
                 onChange={(e) => updateField('pais', e.target.value)}
                 placeholder="Colombia"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Ciudad</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Ciudad</label>
               <input
                 type="text"
                 value={formData.ciudad}
                 onChange={(e) => updateField('ciudad', e.target.value)}
                 placeholder="Bogotá"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               />
             </div>
           </div>
           <div className="mt-4">
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Dirección</label>
+            <label className="block text-xs font-medium text-[#4A6485] mb-1">Dirección</label>
             <input
               type="text"
               value={formData.direccion}
               onChange={(e) => updateField('direccion', e.target.value)}
               placeholder="Calle 123 #45-67, Oficina 801"
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+              className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
             />
           </div>
         </div>
@@ -388,7 +388,7 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white rounded-xl font-medium disabled:opacity-50 transition-all shadow-lg shadow-violet-600/20"
+            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] text-white rounded-xl font-medium disabled:opacity-50 transition-all shadow-[0_4px_14px_-4px_rgba(46,150,245,0.3)]"
           >
             {saving ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
             {empresa ? 'Guardar cambios' : 'Crear empresa'}

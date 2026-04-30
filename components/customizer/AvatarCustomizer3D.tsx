@@ -323,11 +323,11 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({
         )}
 
         {/* User info chip */}
-        <div className={`absolute bottom-3 right-3 flex items-center gap-2 ${glass.card} rounded-xl p-1.5 pr-3`}>
+        <div className="absolute bottom-3 right-3 flex items-center gap-2 bg-white/70 backdrop-blur-md border border-white/60 shadow-[0_4px_12px_-4px_rgba(46,100,175,0.15)] rounded-xl p-1.5 pr-3">
           <UserAvatar name={currentUser.name} profilePhoto={profile.profilePhoto || ''} size="xs" showStatus status={currentUser.status} />
           <div>
-            <p className="text-[9px] font-bold text-white/80 leading-tight">{profile.displayName || currentUser.name}</p>
-            <p className="text-[7px] text-white/30">{currentUser.cargo || 'Colaborador'}</p>
+            <p className="text-[9px] font-bold text-[#0B2240] leading-tight">{profile.displayName || currentUser.name}</p>
+            <p className="text-[7px] text-[#4A6485]">{currentUser.cargo || 'Colaborador'}</p>
           </div>
         </div>
       </div>
@@ -335,29 +335,20 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({
       {/* ====== Right panel: Customization tabs ====== */}
       <div className={`${compact ? 'flex-1 min-h-0' : 'lg:w-[380px] xl:w-[420px]'} flex flex-col gap-3 min-h-0`}>
         {/* Tab bar */}
-        <div className="flex gap-1 bg-[#0a0a0c] border border-[#1e2328] p-1 rounded-md flex-shrink-0 relative">
+        <div className="flex gap-1 bg-white/50 border border-[rgba(46,150,245,0.14)] p-1 rounded-xl flex-shrink-0 relative backdrop-blur-sm">
           {TABS.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={`
-                flex-1 py-2.5 rounded text-[9px] font-black uppercase tracking-widest transition-all duration-300 relative overflow-hidden
+                flex-1 py-2.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all duration-300 relative overflow-hidden
                 ${activeTab === tab.key
-                  ? 'bg-[#0397ab] text-white shadow-[0_0_15px_rgba(3,151,171,0.5)] border border-[#04c8e0]'
-                  : 'text-[#a09b8c] hover:text-[#f0e6d2] hover:bg-[#1e2328] border border-transparent'
+                  ? 'bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] text-white shadow-[0_4px_14px_-4px_rgba(46,150,245,0.5)] border border-[rgba(46,150,245,0.3)]'
+                  : 'text-[#4A6485] hover:text-[#1B3A5C] hover:bg-[rgba(46,150,245,0.06)] border border-transparent'
                 }
               `}
             >
-              {activeTab === tab.key && (
-                <div
-                  className="absolute inset-0 opacity-20 mix-blend-overlay"
-                  style={{
-                    backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Crect width='10' height='10' fill='%23fff' fill-opacity='0.08'/%3E%3Crect x='10' y='10' width='10' height='10' fill='%23fff' fill-opacity='0.08'/%3E%3C/svg%3E\")",
-                    backgroundSize: '20px 20px',
-                  }}
-                />
-              )}
-              <span className="relative z-10 drop-shadow-md flex items-center justify-center gap-1.5">
+              <span className="relative z-10 flex items-center justify-center gap-1.5">
                 {tab.icon} {tab.label}
               </span>
             </button>

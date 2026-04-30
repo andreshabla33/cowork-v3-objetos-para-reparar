@@ -21,7 +21,7 @@ import { getThemeStyles } from '@/lib/theme';
 import { MiniModeOverlay } from './MiniModeOverlay';
 import { NotificationToast } from './ui/NotificationToast';
 import { ProductTour } from './onboarding/ProductTour';
-import { WorkspaceSidebar, WorkspaceHeader, MobileNavOverlay, WorkspaceContentRouter } from './layout';
+import { WorkspaceSidebar, MobileNavOverlay, WorkspaceContentRouter } from './layout';
 import { getSettingsSection } from '../lib/userSettings';
 import { cargarMetricasEspacio } from '../lib/metricasAnalisis';
 import { Language, getCurrentLanguage, subscribeToLanguageChange } from '../lib/i18n';
@@ -35,7 +35,7 @@ import type { GameInvitationData, PendingGameInvitation } from '../types/workspa
 
 const VirtualSpace3D = lazy(() => import('./VirtualSpace3D'));
 const ChatPanel = lazy(() => import('./ChatPanel').then(m => ({ default: m.ChatPanel })));
-const VibenAssistant = lazy(() => import('./VibenAssistant').then(m => ({ default: m.VibenAssistant })));
+const MonicaDockInline = lazy(() => import('./MonicaDockInline'));
 const GameHub = lazy(() => import('./games').then(m => ({ default: m.GameHub })));
 const GameInvitationNotification = lazy(() => import('./games').then(m => ({ default: m.GameInvitationNotification })));
 const SettingsModal = lazy(() => import('./settings/SettingsModal'));
@@ -200,38 +200,39 @@ export const WorkspaceLayout: React.FC = () => {
         onLogout={logout}
       />
 
-      {/* Sidebar Chat Drawer (desktop: fixed, mobile: overlay) */}
+      {/* Sidebar Aurora GLASS (desktop: fixed, mobile: overlay).
+          La estética (anchura, glass, borde, sombra) vive 100% en
+          ChatSidebarContent (.ag-side*) — sin estilos por tema aquí. */}
       {!isMobile ? (
-        <aside className={`w-[260px] ${s.sidebar} flex flex-col shrink-0 border-r ${s.border} z-90 shadow-2xl relative overflow-hidden`} data-tour-step="sidebar-chat">
-          {theme === 'arcade' && <div className="absolute top-0 left-0 w-full h-1 bg-[#00ff41] animate-pulse" />}
-          <Suspense fallback={<FallbackPanel />}><ChatPanel sidebarOnly={true} showNotifications={true} /></Suspense>
-        </aside>
+        <Suspense fallback={<FallbackPanel />}>
+          <div data-tour-step="sidebar-chat" className="contents">
+            <ChatPanel sidebarOnly={true} showNotifications={true} />
+          </div>
+        </Suspense>
       ) : mobileDrawerOpen ? (
         <>
-          <div className="fixed inset-0 bg-black/60 z-[200] backdrop-blur-sm" onClick={() => setMobileDrawerOpen(false)} />
-          <aside className={`fixed inset-y-0 left-0 w-[85vw] max-w-[320px] ${s.sidebar} flex flex-col z-[201] shadow-2xl border-r ${s.border} animate-in slide-in-from-left duration-300 overflow-hidden`}>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-              <span className="text-xs font-black uppercase tracking-wider opacity-60">{activeWorkspace.name}</span>
-              <button onClick={() => setMobileDrawerOpen(false)} className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center">
-                <svg className="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              <Suspense fallback={<FallbackPanel />}><ChatPanel sidebarOnly={true} showNotifications={true} onChannelSelect={() => setMobileDrawerOpen(false)} /></Suspense>
-            </div>
+          <div
+            className="fixed inset-0 z-[200]"
+            style={{ background: 'rgba(11, 34, 64, 0.35)', backdropFilter: 'blur(8px)' }}
+            onClick={() => setMobileDrawerOpen(false)}
+          />
+          <aside
+            className="fixed inset-y-0 left-0 w-[85vw] max-w-[320px] z-[201] animate-in slide-in-from-left duration-300 overflow-hidden"
+            style={{ boxShadow: '0 24px 60px -16px rgba(11, 34, 64, 0.35)' }}
+          >
+            <Suspense fallback={<FallbackPanel />}>
+              <ChatPanel
+                sidebarOnly={true}
+                showNotifications={true}
+                onChannelSelect={() => setMobileDrawerOpen(false)}
+              />
+            </Suspense>
           </aside>
         </>
       ) : null}
 
-      {/* Main Content Area */}
+      {/* Main Content Area — sin header bar (calm design: less chrome, más espacio) */}
       <main className={`flex-1 relative h-full flex flex-col min-w-0 ${s.bg}`}>
-        <WorkspaceHeader
-          theme={theme} styles={s} activeSubTab={activeSubTab} currentLang={currentLang}
-          onThemeChange={(t) => setTheme(t as ThemeType)}
-          onOpenGameHub={() => setShowGameHub(true)}
-          onToggleViben={() => setShowViben(prev => !prev)}
-        />
-
         <div className="flex-1 relative overflow-hidden">
           {/* VirtualSpace3D always mounted (keeps WebRTC/LiveKit alive) */}
           <div
@@ -256,11 +257,69 @@ export const WorkspaceLayout: React.FC = () => {
           )}
         </div>
 
-        {/* Floating panels */}
+        {/* ── Mónica AI FAB + dock bar ────────────────────────────── */}
+        {/* FAB pill — siempre visible cuando dock cerrado */}
+        {!showViben && (
+          <button
+            type="button"
+            className="ag-monica-fab"
+            onClick={() => setShowViben(true)}
+            aria-label="Abrir Mónica AI"
+          >
+            <span className="ag-monica-fab__ring" />
+            <span className="ag-monica-fab__icon">
+              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+              </svg>
+            </span>
+            Mónica AI
+          </button>
+        )}
+
+        {/* Dock bar bottom-center — solo visible cuando FAB clicked */}
         {showViben && (
-          <div className="fixed bottom-4 right-4 z-[200] w-[calc(100vw-2rem)] sm:w-[340px] flex flex-col items-end pointer-events-none">
-            <div className="w-full pointer-events-auto animate-in slide-in-from-right-4 duration-500">
-              <Suspense fallback={<FallbackPanel />}><VibenAssistant onClose={() => setShowViben(false)} /></Suspense>
+          <div className="ag-monica-dock" aria-label="Mónica AI">
+            <div className="ag-monica-dock__bar animate-in slide-in-from-bottom-4 duration-300">
+              <button
+                type="button"
+                className="ag-monica-dock__avatar"
+                onClick={() => setShowViben(false)}
+                aria-label="Cerrar Mónica AI"
+              >
+                <span className="ag-monica-dock__avatar-ring" />
+                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+                </svg>
+              </button>
+              <Suspense fallback={
+                <input
+                  type="text"
+                  className="ag-monica-dock__input"
+                  placeholder="Cargando Mónica AI..."
+                  readOnly
+                />
+              }>
+                <MonicaDockInline onClose={() => setShowViben(false)} />
+              </Suspense>
+              <button type="button" className="ag-monica-dock__action" title="Escribir" aria-label="Escribir" onClick={() => {
+                const el = document.querySelector<HTMLInputElement>('.ag-monica-dock__input');
+                el?.focus();
+              }}>
+                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className="ag-monica-dock__close"
+                onClick={() => setShowViben(false)}
+                title="Minimizar"
+                aria-label="Minimizar Mónica AI"
+              >
+                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </button>
             </div>
           </div>
         )}

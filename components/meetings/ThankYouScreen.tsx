@@ -13,8 +13,8 @@ interface ThankYouScreenProps {
 }
 
 export const ThankYouScreen: React.FC<ThankYouScreenProps> = ({ onClose }) => (
-  <div className="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex items-center justify-center p-4">
-    <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-10 max-w-lg text-center">
+  <div className="min-h-screen bg-gradient-to-br from-white/60 via-[rgba(46,150,245,0.06)] to-white/60 flex items-center justify-center p-4">
+    <div className="bg-white/60 backdrop-blur-sm border border-[rgba(46,150,245,0.14)] rounded-3xl p-10 max-w-lg text-center">
       <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-green-500/20 to-emerald-500/20 flex items-center justify-center">
         <svg className="w-12 h-12 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
@@ -27,7 +27,7 @@ export const ThankYouScreen: React.FC<ThankYouScreenProps> = ({ onClose }) => (
       </p>
       <button
         onClick={onClose}
-        className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white font-bold transition-all"
+        className="px-6 py-3 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:opacity-90 rounded-xl text-white font-bold transition-all"
       >
         Cerrar
       </button>

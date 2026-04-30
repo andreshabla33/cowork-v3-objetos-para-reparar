@@ -169,7 +169,7 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
 
   if (!isAdmin) {
     return (
-      <div className="text-center py-12 text-zinc-500">
+      <div className="text-center py-12 text-[#6B83A0]">
         Solo los administradores pueden gestionar cargos.
       </div>
     );
@@ -181,13 +181,13 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-xl font-bold text-white">Cargos del Espacio</h3>
-          <p className="text-sm text-zinc-400 mt-1">Gestiona los roles disponibles para los miembros</p>
+          <h3 className="text-xl font-bold text-[#0B2240]">Cargos del Espacio</h3>
+          <p className="text-sm text-[#4A6485] mt-1">Gestiona los roles disponibles para los miembros</p>
         </div>
         {!showNew && (
           <button
             onClick={() => { resetForm(); setShowNew(true); }}
-            className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-sm font-medium transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] text-white rounded-xl text-sm font-medium transition-all"
           >
             <Plus className="w-4 h-4" /> Nuevo cargo
           </button>
@@ -204,27 +204,27 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
 
       {/* Formulario nuevo/editar */}
       {showNew && (
-        <div className="mb-6 p-5 bg-zinc-800/50 border border-zinc-700/50 rounded-2xl">
-          <h4 className="text-sm font-bold text-white mb-4">
+        <div className="mb-6 p-5 bg-white/60 backdrop-blur-sm border border-[rgba(46,150,245,0.14)] rounded-2xl">
+          <h4 className="text-sm font-bold text-[#0B2240] mb-4">
             {editingId ? 'Editar cargo' : 'Nuevo cargo'}
           </h4>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Nombre *</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Nombre *</label>
               <input
                 type="text"
                 value={formData.nombre}
                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                 placeholder="Ej: Director de Marketing"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Categoría</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Categoría</label>
               <select
                 value={formData.categoria}
                 onChange={(e) => setFormData({ ...formData, categoria: e.target.value })}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               >
                 {CATEGORIAS.map(c => (
                   <option key={c.value} value={c.value}>{c.label}</option>
@@ -233,18 +233,18 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
             </div>
           </div>
           <div className="mb-4">
-            <label className="block text-xs font-medium text-zinc-400 mb-1">Descripción</label>
+            <label className="block text-xs font-medium text-[#4A6485] mb-1">Descripción</label>
             <input
               type="text"
               value={formData.descripcion}
               onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
               placeholder="Descripción breve del cargo"
-              className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+              className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
             />
           </div>
           <div className="flex items-center gap-6 mb-4">
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-2">Icono</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-2">Icono</label>
               <div className="flex flex-wrap gap-1.5">
                 {ICON_OPTIONS.map(iconName => {
                   const Ic = ICON_MAP[iconName];
@@ -254,8 +254,8 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
                       onClick={() => setFormData({ ...formData, icono: iconName })}
                       className={`p-1.5 rounded-lg transition-all ${
                         formData.icono === iconName
-                          ? 'bg-violet-600 text-white'
-                          : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                          ? 'bg-[#2E96F5] text-white'
+                          : 'bg-[rgba(46,150,245,0.08)] text-[#4A6485] hover:text-[#0B2240]'
                       }`}
                       title={iconName}
                     >
@@ -270,32 +270,32 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
             <label className="flex items-center gap-2 cursor-pointer">
               <button onClick={() => setFormData({ ...formData, solo_admin: !formData.solo_admin })}>
                 {formData.solo_admin
-                  ? <ToggleRight className="w-5 h-5 text-violet-400" />
-                  : <ToggleLeft className="w-5 h-5 text-zinc-500" />
+                  ? <ToggleRight className="w-5 h-5 text-[#1E86E5]" />
+                  : <ToggleLeft className="w-5 h-5 text-[#6B83A0]" />
                 }
               </button>
-              <span className="text-sm text-zinc-300">Solo admin puede asignar</span>
+              <span className="text-sm text-[#1B3A5C]">Solo admin puede asignar</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
               <button onClick={() => setFormData({ ...formData, tiene_analisis_avanzado: !formData.tiene_analisis_avanzado })}>
                 {formData.tiene_analisis_avanzado
                   ? <ToggleRight className="w-5 h-5 text-emerald-400" />
-                  : <ToggleLeft className="w-5 h-5 text-zinc-500" />
+                  : <ToggleLeft className="w-5 h-5 text-[#6B83A0]" />
                 }
               </button>
-              <span className="text-sm text-zinc-300">Análisis avanzado</span>
+              <span className="text-sm text-[#1B3A5C]">Análisis avanzado</span>
             </label>
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-all"
             >
               {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               {editingId ? 'Actualizar' : 'Crear'}
             </button>
-            <button onClick={resetForm} className="px-4 py-2 text-zinc-400 hover:text-white text-sm transition-all">
+            <button onClick={resetForm} className="px-4 py-2 text-[#4A6485] hover:text-[#0B2240] text-sm transition-all">
               Cancelar
             </button>
           </div>
@@ -305,10 +305,10 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
       {/* Lista de cargos */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <RefreshCw className="w-5 h-5 text-violet-400 animate-spin" />
+          <RefreshCw className="w-5 h-5 text-[#1E86E5] animate-spin" />
         </div>
       ) : cargos.length === 0 ? (
-        <div className="text-center py-12 text-zinc-500">No hay cargos configurados</div>
+        <div className="text-center py-12 text-[#6B83A0]">No hay cargos configurados</div>
       ) : (
         <div className="space-y-2">
           {cargos.map((cargo) => {
@@ -319,16 +319,16 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
                 key={cargo.id}
                 className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
                   cargo.activo
-                    ? 'bg-zinc-800/30 border-zinc-700/50 hover:border-zinc-600'
-                    : 'bg-zinc-900/50 border-zinc-800/30 opacity-60'
+                    ? 'bg-white/60 backdrop-blur-sm border-[rgba(46,150,245,0.14)] hover:border-[#2E96F5]'
+                    : 'bg-white/50 border-[rgba(46,150,245,0.14)] opacity-60'
                 }`}
               >
-                <div className={`p-2 rounded-lg ${cargo.activo ? 'bg-violet-600/20 text-violet-400' : 'bg-zinc-800 text-zinc-600'}`}>
+                <div className={`p-2 rounded-lg ${cargo.activo ? 'bg-[rgba(46,150,245,0.12)] text-[#1E86E5]' : 'bg-[rgba(46,150,245,0.08)] text-[#6B83A0]'}`}>
                   <CargoIcon className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className={`font-medium text-sm ${cargo.activo ? 'text-white' : 'text-zinc-500'}`}>
+                    <span className={`font-medium text-sm ${cargo.activo ? 'text-[#0B2240]' : 'text-[#6B83A0]'}`}>
                       {cargo.nombre}
                     </span>
                     {cargo.solo_admin && (
@@ -338,31 +338,31 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
                       <Shield className="w-3.5 h-3.5 text-emerald-400" />
                     )}
                     {!cargo.activo && (
-                      <span className="px-1.5 py-0.5 bg-zinc-700 text-zinc-400 rounded text-[10px]">INACTIVO</span>
+                      <span className="px-1.5 py-0.5 bg-[rgba(46,150,245,0.08)] text-[#4A6485] rounded text-[10px]">INACTIVO</span>
                     )}
                   </div>
-                  <div className="text-xs text-zinc-500 truncate">
+                  <div className="text-xs text-[#6B83A0] truncate">
                     {catLabel} {cargo.descripcion ? `· ${cargo.descripcion}` : ''}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => handleToggleActivo(cargo)}
-                    className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-700 transition-all"
+                    className="p-1.5 rounded-lg text-[#6B83A0] hover:text-[#0B2240] hover:bg-[rgba(46,150,245,0.1)] transition-all"
                     title={cargo.activo ? 'Desactivar' : 'Activar'}
                   >
                     {cargo.activo ? <ToggleRight className="w-4 h-4 text-emerald-400" /> : <ToggleLeft className="w-4 h-4" />}
                   </button>
                   <button
                     onClick={() => handleEdit(cargo)}
-                    className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-700 transition-all"
+                    className="p-1.5 rounded-lg text-[#6B83A0] hover:text-[#0B2240] hover:bg-[rgba(46,150,245,0.1)] transition-all"
                     title="Editar"
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDelete(cargo.id)}
-                    className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                    className="p-1.5 rounded-lg text-[#6B83A0] hover:text-red-400 hover:bg-red-500/10 transition-all"
                     title="Eliminar"
                   >
                     <Trash2 className="w-4 h-4" />

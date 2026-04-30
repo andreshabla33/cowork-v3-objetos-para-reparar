@@ -80,8 +80,8 @@ export const RecordingButton: React.FC<RecordingButtonProps> = ({
               : isPaused
                 ? 'bg-yellow-500 hover:bg-yellow-600 shadow-lg shadow-yellow-500/50'
                 : isProcessing
-                  ? 'bg-indigo-500 animate-pulse cursor-wait'
-                  : 'bg-zinc-700 hover:bg-zinc-600'
+                  ? 'bg-[#2E96F5] animate-pulse cursor-wait'
+                  : 'bg-[rgba(46,150,245,0.08)] hover:bg-[rgba(46,150,245,0.14)]'
             }
             ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
           `}
@@ -126,7 +126,7 @@ export const RecordingButton: React.FC<RecordingButtonProps> = ({
         {(isRecording || isPaused) && (
           <button
             onClick={handleStop}
-            className="absolute -right-1 -bottom-1 w-5 h-5 bg-zinc-800 hover:bg-zinc-700 rounded-full flex items-center justify-center border-2 border-zinc-900 transition-colors"
+            className="absolute -right-1 -bottom-1 w-5 h-5 bg-white/70 hover:bg-white/80 rounded-full flex items-center justify-center border-2 border-[rgba(46,150,245,0.14)] transition-colors"
             title="Detener grabación"
           >
             <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -146,7 +146,7 @@ export const RecordingButton: React.FC<RecordingButtonProps> = ({
       )}
 
       {isProcessing && (
-        <span className="text-xs text-indigo-400 animate-pulse">
+        <span className="text-xs text-[#1E86E5] animate-pulse">
           {status === 'uploading' && 'Subiendo...'}
           {status === 'processing' && 'Procesando...'}
           {status === 'transcribing' && 'Transcribiendo...'}

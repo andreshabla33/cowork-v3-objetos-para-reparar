@@ -111,7 +111,7 @@ export const SettingDropdown: React.FC<SettingDropdownProps> = ({
   const dropdownContent = dropdownPosition && (
     <div 
       ref={dropdownContentRef} 
-      className="fixed backdrop-blur-xl bg-zinc-800 border border-violet-500/40 rounded-xl lg:rounded-lg shadow-2xl overflow-hidden"
+      className="fixed backdrop-blur-xl bg-white/95 border border-[var(--cw-glass-border)] rounded-xl lg:rounded-lg shadow-[var(--cw-shadow-floating)] overflow-hidden"
       style={{ 
         zIndex: 99999, 
         top: dropdownPosition.top, 
@@ -134,10 +134,10 @@ export const SettingDropdown: React.FC<SettingDropdownProps> = ({
             onChange(option.value);
             setIsOpen(false);
           }}
-          className={`w-full px-4 lg:px-3 py-3 lg:py-2 text-left text-sm lg:text-xs font-medium transition-all flex items-center gap-2 hover:bg-violet-600/20 ${
+          className={`w-full px-4 lg:px-3 py-3 lg:py-2 text-left text-sm lg:text-xs font-medium transition-all flex items-center gap-2 hover:bg-blue-50 ${
             option.value === value
-              ? 'bg-violet-600 text-white'
-              : 'text-zinc-200'
+              ? 'bg-[var(--cw-blue-500)] text-white'
+              : 'text-[var(--cw-ink-700)]'
           }`}
         >
           {option.value === value && (
@@ -152,11 +152,11 @@ export const SettingDropdown: React.FC<SettingDropdownProps> = ({
   );
 
   return (
-    <div className="flex items-center justify-between py-4 lg:py-3 border-b border-white/[0.05] last:border-b-0">
+    <div className="flex items-center justify-between py-4 lg:py-3 border-b border-[var(--cw-glass-border)] last:border-b-0">
       <div className="flex-1 pr-4 lg:pr-3">
-        <p className="text-sm lg:text-xs font-medium text-white">{label}</p>
+        <p className="text-sm lg:text-xs font-medium text-[var(--cw-ink-900)]">{label}</p>
         {description && (
-          <p className="text-xs lg:text-[11px] text-zinc-400 mt-0.5">{description}</p>
+          <p className="text-xs lg:text-[11px] text-[var(--cw-ink-400)] mt-0.5">{description}</p>
         )}
       </div>
       <div className="relative">
@@ -164,12 +164,12 @@ export const SettingDropdown: React.FC<SettingDropdownProps> = ({
           ref={buttonRef}
           onClick={handleToggle}
           disabled={disabled}
-          className={`flex items-center gap-2 px-4 lg:px-3 py-2 lg:py-1.5 rounded-xl lg:rounded-lg backdrop-blur-xl bg-violet-600/20 border border-violet-500/40 text-sm lg:text-xs font-medium text-white hover:bg-violet-600/30 hover:border-violet-500/60 transition-all min-w-[120px] lg:min-w-[100px] justify-between ${
+          className={`flex items-center gap-2 px-4 lg:px-3 py-2 lg:py-1.5 rounded-xl lg:rounded-lg bg-white/80 border border-[var(--cw-glass-border)] text-sm lg:text-xs font-medium text-[var(--cw-ink-700)] hover:bg-blue-50 hover:border-[var(--cw-blue-300)] transition-all min-w-[120px] lg:min-w-[100px] justify-between ${
             disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
-          } ${isOpen ? 'ring-2 ring-violet-500/50 border-violet-500' : ''}`}
+          } ${isOpen ? 'ring-2 ring-blue-100 border-[var(--cw-blue-400)]' : ''}`}
         >
           <span className="truncate">{selectedOption?.label || 'Seleccionar'}</span>
-          <svg className={`w-4 h-4 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-4 h-4 transition-transform flex-shrink-0 text-[var(--cw-ink-400)] ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
           </svg>
         </button>

@@ -22,7 +22,7 @@ export enum TaskStatus {
   DONE = 'DONE'
 }
 
-export type ThemeType = 'dark' | 'light' | 'space' | 'arcade';
+export type ThemeType = 'aurora' | 'dark' | 'light' | 'space' | 'arcade';
 
 export interface AvatarConfig {
   skinColor: string;

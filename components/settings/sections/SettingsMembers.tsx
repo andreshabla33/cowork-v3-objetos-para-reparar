@@ -155,8 +155,8 @@ export const SettingsMembers: React.FC<SettingsMembersProps> = ({
   const getRoleBadge = (rol: string) => {
     const colors: Record<string, string> = {
       super_admin: 'bg-gradient-to-r from-amber-500 to-orange-500 text-black',
-      admin: 'bg-violet-600 text-white',
-      member: 'bg-zinc-700 text-zinc-300'
+      admin: 'bg-[#2E96F5] text-white',
+      member: 'bg-[rgba(46,150,245,0.08)] text-[#1B3A5C]'
     };
     const labels: Record<string, Record<Language, string>> = {
       super_admin: { es: 'Super Admin', en: 'Super Admin', pt: 'Super Admin' },
@@ -173,10 +173,10 @@ export const SettingsMembers: React.FC<SettingsMembersProps> = ({
   return (
     <div>
       <div className="mb-8 lg:mb-6">
-        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-2 lg:mb-1">
+        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#0B2240] via-[#1E86E5] to-[#0B2240] mb-2 lg:mb-1">
           {currentLang === 'en' ? 'Manage Members' : currentLang === 'pt' ? 'Gerenciar Membros' : 'Gestionar Miembros'}
         </h2>
-        <p className="text-sm text-zinc-400">
+        <p className="text-sm text-[#4A6485]">
           {currentLang === 'en' ? 'Manage workspace members' : currentLang === 'pt' ? 'Gerenciar os membros do espaço de trabalho' : 'Administra los miembros del espacio de trabajo'}
         </p>
       </div>
@@ -184,28 +184,28 @@ export const SettingsMembers: React.FC<SettingsMembersProps> = ({
       <SettingSection title={`${currentLang === 'en' ? 'Members' : currentLang === 'pt' ? 'Membros' : 'Miembros'} (${members.length})`}>
         {loading ? (
           <div className="py-8 text-center">
-            <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto" />
+            <div className="w-6 h-6 border-2 border-[#2E96F5] border-t-transparent rounded-full animate-spin mx-auto" />
           </div>
         ) : (
-          <div className="divide-y divide-white/[0.05]">
+          <div className="divide-y divide-[rgba(46,150,245,0.14)]">
             {members.map((member) => (
               <div key={member.id} className="flex items-center justify-between py-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 flex items-center justify-center text-white font-bold">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#4FB0FF] to-[#2E96F5] flex items-center justify-center text-white font-bold">
                     {(member.usuario?.nombre || 'U')[0].toUpperCase()}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-white">
+                    <p className="text-sm font-medium text-[#0B2240]">
                       {member.usuario?.nombre || 'Usuario'}
                     </p>
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-xs text-[#6B83A0]">
                       {member.usuario?.email}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   {(member.cargo_ref?.nombre || member.cargo) && (
-                    <span className="text-xs text-zinc-400 bg-zinc-800 px-2 py-1 rounded-lg">
+                    <span className="text-xs text-[#4A6485] bg-[rgba(46,150,245,0.08)] px-2 py-1 rounded-lg">
                       {(member.cargo_ref as any)?.nombre || member.cargo}
                     </span>
                   )}
@@ -224,7 +224,7 @@ export const SettingsMembers: React.FC<SettingsMembersProps> = ({
       {isAdmin && invitaciones.length > 0 && (
         <div className="mt-6">
           <SettingSection title={`${currentLang === 'en' ? 'Pending Invitations' : currentLang === 'pt' ? 'Convites Pendentes' : 'Invitaciones Pendientes'} (${invitaciones.length})`}>
-            <div className="divide-y divide-white/[0.05]">
+            <div className="divide-y divide-[rgba(46,150,245,0.14)]">
               {invitaciones.map((inv) => {
                 const expirada = new Date(inv.expira_en) < new Date();
                 return (
@@ -236,10 +236,10 @@ export const SettingsMembers: React.FC<SettingsMembersProps> = ({
                         </svg>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-white">
+                        <p className="text-sm font-medium text-[#0B2240]">
                           {inv.email}
                         </p>
-                        <p className="text-xs text-zinc-500">
+                        <p className="text-xs text-[#6B83A0]">
                           {inv.email} · <span className="capitalize">{inv.rol}</span>
                         </p>
                       </div>
@@ -274,7 +274,7 @@ export const SettingsMembers: React.FC<SettingsMembersProps> = ({
         <div className="mt-6">
           <button
             onClick={() => setShowInviteModal(true)}
-            className="w-full py-4 border-2 border-dashed border-white/[0.1] rounded-2xl text-zinc-500 hover:text-violet-400 hover:border-violet-500/30 transition-all flex items-center justify-center gap-2"
+            className="w-full py-4 border-2 border-dashed border-[rgba(46,150,245,0.14)] rounded-2xl text-[#6B83A0] hover:text-[#1E86E5] hover:border-[#2E96F5]/30 transition-all flex items-center justify-center gap-2"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />

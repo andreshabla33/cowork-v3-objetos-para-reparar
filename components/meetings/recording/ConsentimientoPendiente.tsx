@@ -208,7 +208,7 @@ export const ConsentimientoPendiente: React.FC<ConsentimientoPendienteProps> = (
 
   return (
     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-300">
+      <div className="bg-white/60 border border-[rgba(46,150,245,0.14)] rounded-3xl p-6 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-300">
         {/* Header con icono grande */}
         <div className="text-center mb-6">
           <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-amber-500 to-orange-600 rounded-3xl flex items-center justify-center shadow-lg">
@@ -217,15 +217,15 @@ export const ConsentimientoPendiente: React.FC<ConsentimientoPendienteProps> = (
           <h2 className="text-2xl font-bold text-white mb-2">
             Solicitud de Grabación
           </h2>
-          <p className="text-zinc-400 text-sm">
+          <p className="text-[#4A6485] text-sm">
             Se requiere tu consentimiento para continuar
           </p>
         </div>
 
         {/* Información del solicitante */}
-        <div className="bg-zinc-800/50 rounded-2xl p-4 mb-5">
+        <div className="bg-white/500 rounded-2xl p-4 mb-5">
           <p className="text-white text-center">
-            <span className="font-bold text-indigo-400">{solicitud.creador_nombre}</span>
+            <span className="font-bold text-[#1E86E5]">{solicitud.creador_nombre}</span>
             {' '}desea grabarte en una sesión de{' '}
             <span className="font-bold text-amber-400">{tipoInfo.titulo}</span>
           </p>
@@ -272,7 +272,7 @@ export const ConsentimientoPendiente: React.FC<ConsentimientoPendienteProps> = (
           <button
             onClick={() => responderConsentimiento(false)}
             disabled={isResponding}
-            className="flex-1 px-5 py-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
+            className="flex-1 px-5 py-3 bg-white hover:bg-[rgba(46,150,245,0.08)] text-[#1B3A5C] rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
           >
             {isResponding ? '...' : '❌ Rechazar'}
           </button>
@@ -286,7 +286,7 @@ export const ConsentimientoPendiente: React.FC<ConsentimientoPendienteProps> = (
         </div>
 
         {/* Nota de privacidad */}
-        <p className="text-center text-zinc-500 text-xs mt-4">
+        <p className="text-center text-[#4A6485] text-xs mt-4">
           🔒 Tu decisión se registrará de forma segura
         </p>
       </div>

@@ -49,16 +49,14 @@ export const AvatarPanel: React.FC<AvatarPanelProps> = ({ catalog }) => {
     {catalog.selectedAvatarId && (() => {
       const sel = catalog.availableAvatars.find((a) => a.id === catalog.selectedAvatarId);
       return sel ? (
-        <div className="bg-[#0a0a0c] border border-[#1e2328] rounded-md p-2.5 relative">
-          <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#c8aa6e] opacity-50" />
-          <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#c8aa6e] opacity-50" />
+        <div className="bg-white/50 border border-[rgba(46,150,245,0.14)] rounded-xl p-2.5 backdrop-blur-sm">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <h3 className="text-xs font-black text-[#f0e6d2] uppercase tracking-wide truncate">{sel.nombre}</h3>
-              <p className="text-[9px] text-[#a09b8c] mt-0.5">{sel.descripcion || 'Avatar 3D listo para el espacio virtual.'}</p>
+              <h3 className="text-xs font-bold text-[#0B2240] uppercase tracking-wide truncate">{sel.nombre}</h3>
+              <p className="text-[9px] text-[#4A6485] mt-0.5">{sel.descripcion || 'Avatar 3D listo para el espacio virtual.'}</p>
             </div>
             {catalog.equippedAvatarId === sel.id && (
-              <span className="flex-shrink-0 rounded bg-[#c8aa6e]/90 px-2 py-0.5 text-[8px] font-black uppercase text-[#0a0a0c]">✓ Equipado</span>
+              <span className="flex-shrink-0 rounded-lg bg-[#2E96F5] px-2 py-0.5 text-[8px] font-bold uppercase text-white">✓ Equipado</span>
             )}
           </div>
         </div>
@@ -66,8 +64,8 @@ export const AvatarPanel: React.FC<AvatarPanelProps> = ({ catalog }) => {
     })()}
 
     {catalog.loadingAvatars ? (
-      <div className="flex items-center justify-center gap-2 text-zinc-500 text-xs py-8">
-        <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center justify-center gap-2 text-[#4A6485] text-xs py-8">
+        <div className="w-4 h-4 border-2 border-[#2E96F5] border-t-transparent rounded-full animate-spin" />
         Cargando modelos...
       </div>
     ) : (
@@ -88,7 +86,7 @@ export const AvatarPanel: React.FC<AvatarPanelProps> = ({ catalog }) => {
     )}
 
     {catalog.avatarSaved && (
-      <div className="rounded border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-bold text-emerald-300 text-center">
+      <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-bold text-emerald-600 text-center">
         ✓ Avatar equipado correctamente.
       </div>
     )}

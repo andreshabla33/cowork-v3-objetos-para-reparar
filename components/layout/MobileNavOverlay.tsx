@@ -71,12 +71,8 @@ export const MobileNavOverlay: React.FC<MobileNavOverlayProps> = React.memo(({
         onClick={onToggleMenu}
         className={`fixed top-3 right-3 z-[210] w-10 h-10 rounded-xl flex items-center justify-center backdrop-blur-xl border transition-all duration-300 ${
           isMenuOpen
-            ? 'bg-white/20 border-white/30 rotate-90 scale-110'
-            : theme === 'arcade'
-              ? 'bg-black/70 border-[#00ff41]/40 text-[#00ff41]'
-              : theme === 'light'
-                ? 'bg-white/80 border-zinc-300 text-zinc-600'
-                : 'bg-black/60 border-white/15 text-white/70'
+            ? 'bg-blue-50 border-[var(--cw-blue-300)] rotate-90 scale-110 text-[var(--cw-blue-600)]'
+            : 'bg-white/80 border-[var(--cw-glass-border)] text-[var(--cw-ink-500)]'
         }`}
         style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       >
@@ -95,7 +91,7 @@ export const MobileNavOverlay: React.FC<MobileNavOverlayProps> = React.memo(({
       {/* Fullscreen Overlay Grid */}
       {isMenuOpen && (
         <div className="fixed inset-0 z-[205] flex items-center justify-center animate-in fade-in duration-200" onClick={onToggleMenu}>
-          <div className={`absolute inset-0 ${theme === 'light' ? 'bg-white/80' : 'bg-black/80'} backdrop-blur-xl`} />
+          <div className="absolute inset-0 bg-white/85 backdrop-blur-xl" />
           <div className="relative grid grid-cols-3 gap-4 p-8 max-w-xs" onClick={(e) => e.stopPropagation()}>
             {MOBILE_NAV_ITEMS.map((item, i) => (
               <button
@@ -109,10 +105,10 @@ export const MobileNavOverlay: React.FC<MobileNavOverlayProps> = React.memo(({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={item.icon} />
                   </svg>
                   {item.id === 'chat' && unreadChatCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center border-2 border-black">{unreadChatCount > 9 ? '9+' : unreadChatCount}</span>
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center border-2 border-white">{unreadChatCount > 9 ? '9+' : unreadChatCount}</span>
                   )}
                 </div>
-                <span className={`text-[10px] font-bold ${theme === 'light' ? 'text-zinc-700' : 'text-white/80'}`}>{item.label}</span>
+                <span className="text-[10px] font-bold text-[var(--cw-ink-700)]">{item.label}</span>
               </button>
             ))}
           </div>

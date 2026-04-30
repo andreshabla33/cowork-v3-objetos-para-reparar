@@ -76,26 +76,23 @@ const StatCard: React.FC<{
   sparkData?: number[];
   tendencia?: number;
   theme: string;
-}> = ({ label, valor, icono, color, sparkData, tendencia, theme }) => {
-  const isArcade = theme === 'arcade';
+}> = ({ label, valor, icono, color, sparkData, tendencia }) => {
   return (
-    <div className={`p-3 lg:p-2.5 rounded-xl border transition-all ${
-      isArcade ? 'bg-black border-[#00ff41]/20 hover:border-[#00ff41]/50' : 'bg-white/5 border-white/10 hover:border-white/20'
-    }`}>
+    <div className="p-3 lg:p-2.5 rounded-xl border transition-all bg-white/60 border-[rgba(46,150,245,0.14)] hover:border-[rgba(46,150,245,0.3)] backdrop-blur-sm shadow-[0_4px_12px_-4px_rgba(46,100,175,0.08)]">
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-1.5">
           <span className="text-sm">{icono}</span>
-          <span className="text-[10px] font-bold uppercase tracking-wider opacity-50">{label}</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-[#4A6485]">{label}</span>
         </div>
         {tendencia !== undefined && tendencia !== 0 && (
           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-            tendencia > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+            tendencia > 0 ? 'bg-emerald-500/15 text-emerald-600' : 'bg-red-500/15 text-red-600'
           }`}>
             {tendencia > 0 ? '+' : ''}{tendencia}%
           </span>
         )}
       </div>
-      <p className={`text-xl lg:text-lg font-black mb-1 ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>
+      <p className="text-xl lg:text-lg font-black mb-1 text-[#0B2240]">
         {typeof valor === 'number' ? valor.toLocaleString('es') : valor}
       </p>
       {sparkData && sparkData.length > 1 && (
@@ -109,20 +106,19 @@ const StatCard: React.FC<{
 const BarraHorizontal: React.FC<{
   items: { nombre: string; valor: number; color: string }[];
   theme: string;
-}> = ({ items, theme }) => {
+}> = ({ items }) => {
   const max = Math.max(...items.map(i => i.valor), 1);
-  const isArcade = theme === 'arcade';
   return (
     <div className="space-y-2">
       {items.map((item, i) => (
         <div key={i}>
           <div className="flex items-center justify-between mb-0.5">
-            <span className="text-xs font-medium truncate max-w-[60%]">{item.nombre}</span>
-            <span className={`text-xs font-bold ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>
+            <span className="text-xs font-medium truncate max-w-[60%] text-[#1B3A5C]">{item.nombre}</span>
+            <span className="text-xs font-bold text-[#0B2240]">
               {item.valor.toLocaleString('es')}
             </span>
           </div>
-          <div className={`h-2 rounded-full overflow-hidden ${isArcade ? 'bg-[#00ff41]/10' : 'bg-white/10'}`}>
+          <div className="h-2 rounded-full overflow-hidden bg-[rgba(46,150,245,0.08)]">
             <div
               className="h-full rounded-full transition-all duration-500"
               style={{ width: `${(item.valor / max) * 100}%`, backgroundColor: item.color }}
@@ -254,33 +250,32 @@ export const MetricasEmpresaPanel: React.FC = () => {
       .sort((a, b) => b.valor - a.valor);
   }, [metricas, empresas]);
 
-  const isArcade = theme === 'arcade';
-  const accentColor = isArcade ? '#00ff41' : '#818cf8';
+  const accentColor = '#2E96F5';
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className={`w-10 h-10 border-3 ${isArcade ? 'border-[#00ff41]' : 'border-indigo-500'} border-t-transparent rounded-full animate-spin`} />
+        <div className="w-10 h-10 border-3 border-[#2E96F5] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className={`p-5 lg:p-4 ${isArcade ? 'bg-black' : 'bg-[#1a1a2e]'}`}>
+    <div className="p-5 lg:p-4 bg-transparent">
       {/* Header */}
       <div className="flex items-center justify-between mb-5 lg:mb-4">
         <div>
-          <h1 className={`text-xl lg:text-lg font-black ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>
+          <h1 className="text-xl lg:text-lg font-black text-[#0B2240]">
             Métricas por Empresa
           </h1>
-          <p className="text-[11px] opacity-50 mt-0.5">Telemetría segmentada de actividad y engagement</p>
+          <p className="text-[11px] text-[#4A6485] mt-0.5">Telemetría segmentada de actividad y engagement</p>
         </div>
         <button
           onClick={cargarDatos}
-          className={`p-2 rounded-lg transition-all ${isArcade ? 'hover:bg-[#00ff41]/20' : 'hover:bg-white/10'}`}
+          className="p-2 rounded-lg transition-all hover:bg-[rgba(46,150,245,0.08)] text-[#4A6485]"
           title="Actualizar métricas"
         >
-          <svg className="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
         </button>
@@ -289,15 +284,15 @@ export const MetricasEmpresaPanel: React.FC = () => {
       {/* Filtros */}
       <div className="flex items-center gap-2 mb-4 lg:mb-3 flex-wrap">
         {/* Periodo */}
-        <div className={`flex rounded-lg overflow-hidden border ${isArcade ? 'border-[#00ff41]/30' : 'border-white/10'}`}>
+        <div className="flex rounded-lg overflow-hidden border border-[rgba(46,150,245,0.16)]">
           {(['7d', '30d', '90d'] as Periodo[]).map(p => (
             <button
               key={p}
               onClick={() => setPeriodo(p)}
               className={`px-3 py-1.5 text-[10px] font-bold transition-all ${
                 periodo === p
-                  ? (isArcade ? 'bg-[#00ff41] text-black' : 'bg-indigo-600 text-white')
-                  : 'opacity-50 hover:opacity-100'
+                  ? 'bg-[#2E96F5] text-white'
+                  : 'text-[#4A6485] hover:bg-[rgba(46,150,245,0.06)]'
               }`}
             >
               {p === '7d' ? '7 días' : p === '30d' ? '30 días' : '90 días'}
@@ -309,14 +304,11 @@ export const MetricasEmpresaPanel: React.FC = () => {
         <select
           value={empresaSeleccionada}
           onChange={e => setEmpresaSeleccionada(e.target.value)}
-          className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border focus:outline-none ${
-            isArcade ? 'bg-black border-[#00ff41]/30 text-[#00ff41]' : 'bg-white/5 border-white/10'
-          }`}
-          style={{ colorScheme: 'dark' }}
+          className="px-3 py-1.5 rounded-lg text-[10px] font-bold border focus:outline-none bg-white/60 border-[rgba(46,150,245,0.16)] text-[#1B3A5C]"
         >
-          <option value="todas" className="bg-zinc-800">Todas las empresas</option>
+          <option value="todas">Todas las empresas</option>
           {empresas.map(e => (
-            <option key={e.id} value={e.id} className="bg-zinc-800">{e.nombre}</option>
+            <option key={e.id} value={e.id}>{e.nombre}</option>
           ))}
         </select>
       </div>
@@ -324,11 +316,11 @@ export const MetricasEmpresaPanel: React.FC = () => {
       {/* Grid de Stats */}
       {metricas.length === 0 ? (
         <div className="text-center py-12">
-          <div className={`w-16 h-16 mx-auto mb-3 rounded-2xl ${isArcade ? 'bg-[#00ff41]/10' : 'bg-indigo-500/10'} flex items-center justify-center`}>
-            <span className="text-3xl opacity-40">📊</span>
+          <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-[rgba(46,150,245,0.08)] flex items-center justify-center">
+            <span className="text-3xl opacity-60">📊</span>
           </div>
-          <p className="text-sm font-bold opacity-60 mb-1">Sin métricas aún</p>
-          <p className="text-[10px] opacity-40">Las métricas se generan automáticamente cada hora</p>
+          <p className="text-sm font-bold text-[#1B3A5C] mb-1">Sin métricas aún</p>
+          <p className="text-[10px] text-[#6B83A0]">Las métricas se generan automáticamente cada hora</p>
         </div>
       ) : (
         <>
@@ -385,17 +377,17 @@ export const MetricasEmpresaPanel: React.FC = () => {
 
           {/* Indicadores secundarios */}
           <div className="grid grid-cols-3 gap-2 mb-5 lg:mb-4">
-            <div className={`p-2.5 rounded-xl border text-center ${isArcade ? 'bg-black border-[#00ff41]/20' : 'bg-white/5 border-white/10'}`}>
-              <p className="text-[9px] font-bold uppercase opacity-40 mb-0.5">Nivel Prom.</p>
-              <p className={`text-lg font-black ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>{totales.nivel_promedio}</p>
+            <div className="p-2.5 rounded-xl border text-center bg-white/60 border-[rgba(46,150,245,0.14)] backdrop-blur-sm">
+              <p className="text-[9px] font-bold uppercase text-[#4A6485] mb-0.5">Nivel Prom.</p>
+              <p className="text-lg font-black text-[#0B2240]">{totales.nivel_promedio}</p>
             </div>
-            <div className={`p-2.5 rounded-xl border text-center ${isArcade ? 'bg-black border-[#00ff41]/20' : 'bg-white/5 border-white/10'}`}>
-              <p className="text-[9px] font-bold uppercase opacity-40 mb-0.5">Racha Prom.</p>
-              <p className={`text-lg font-black ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>{totales.racha_promedio}d</p>
+            <div className="p-2.5 rounded-xl border text-center bg-white/60 border-[rgba(46,150,245,0.14)] backdrop-blur-sm">
+              <p className="text-[9px] font-bold uppercase text-[#4A6485] mb-0.5">Racha Prom.</p>
+              <p className="text-lg font-black text-[#0B2240]">{totales.racha_promedio}d</p>
             </div>
-            <div className={`p-2.5 rounded-xl border text-center ${isArcade ? 'bg-black border-[#00ff41]/20' : 'bg-white/5 border-white/10'}`}>
-              <p className="text-[9px] font-bold uppercase opacity-40 mb-0.5">Teleports</p>
-              <p className={`text-lg font-black ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>{totales.teleports}</p>
+            <div className="p-2.5 rounded-xl border text-center bg-white/60 border-[rgba(46,150,245,0.14)] backdrop-blur-sm">
+              <p className="text-[9px] font-bold uppercase text-[#4A6485] mb-0.5">Teleports</p>
+              <p className="text-lg font-black text-[#0B2240]">{totales.teleports}</p>
             </div>
           </div>
 
@@ -403,16 +395,16 @@ export const MetricasEmpresaPanel: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-2">
             {/* Ranking XP */}
             {rankingEmpresas.length > 0 && (
-              <div className={`p-3 lg:p-2.5 rounded-xl border ${isArcade ? 'bg-black border-[#00ff41]/20' : 'bg-white/5 border-white/10'}`}>
-                <h3 className="text-[10px] font-bold uppercase tracking-wider opacity-50 mb-2.5">⚡ Ranking XP por Empresa</h3>
+              <div className="p-3 lg:p-2.5 rounded-xl border bg-white/60 border-[rgba(46,150,245,0.14)] backdrop-blur-sm">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-[#4A6485] mb-2.5">⚡ Ranking XP por Empresa</h3>
                 <BarraHorizontal items={rankingEmpresas} theme={theme} />
               </div>
             )}
 
             {/* Ranking Engagement */}
             {rankingEngagement.length > 0 && (
-              <div className={`p-3 lg:p-2.5 rounded-xl border ${isArcade ? 'bg-black border-[#00ff41]/20' : 'bg-white/5 border-white/10'}`}>
-                <h3 className="text-[10px] font-bold uppercase tracking-wider opacity-50 mb-2.5">🎭 Ranking Engagement</h3>
+              <div className="p-3 lg:p-2.5 rounded-xl border bg-white/60 border-[rgba(46,150,245,0.14)] backdrop-blur-sm">
+                <h3 className="text-[10px] font-bold uppercase tracking-wider text-[#4A6485] mb-2.5">🎭 Ranking Engagement</h3>
                 <BarraHorizontal items={rankingEngagement} theme={theme} />
               </div>
             )}
