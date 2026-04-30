@@ -77,10 +77,26 @@ export const GLOW_CYAN = 'shadow-[0_0_20px_rgba(34,211,238,0.3)]';
 
 /**
  * Complete theme styles mapping.
- * Contains all 4 theme variants with complete styling for all UI components.
- * Variants: dark (default), light, space, arcade.
+ * Contains all theme variants with complete styling for all UI components.
+ * Variants: aurora (default · Aurora GLASS), dark, light, space, arcade.
+ *
+ * NOTA: el sistema canónico Aurora GLASS vive en `styles/aurora-glass.css`
+ * (utilities `.ag-*`). Este mapa Tailwind se mantiene por compatibilidad con
+ * `WorkspaceLayout`, `WorkspaceSidebar`, etc. La variante `aurora` mapea las
+ * clases Tailwind a la paleta Aurora (azules + glass blanco).
  */
 export const THEME_STYLES: Record<ThemeType, ThemeStyleSet> = {
+  aurora: {
+    bg: 'bg-[#ECF4FF]',
+    text: 'text-[#1B3A5C]',
+    globalNav: 'bg-white/70 backdrop-blur-xl border-r border-[rgba(46,150,245,0.14)]',
+    sidebar: 'bg-white/55 backdrop-blur-xl border-[rgba(46,150,245,0.14)]',
+    border: 'border-[rgba(46,150,245,0.14)]',
+    header: 'bg-white/75 backdrop-blur-xl',
+    accent: 'bg-[#2E96F5]',
+    btn: 'bg-gradient-to-r from-[#4FB0FF] via-[#2E96F5] to-[#1E86E5] hover:opacity-95 text-white font-semibold shadow-[0_8px_24px_-8px_rgba(46,150,245,0.6)]',
+    btnSecondary: 'bg-white/75 backdrop-blur-xl border border-white/70 hover:border-[rgba(46,150,245,0.35)] text-[#1B3A5C]'
+  },
   dark: {
     bg: 'bg-[#0a0a0f]',
     text: 'text-zinc-100',
@@ -145,6 +161,7 @@ export interface ThemeOption {
  * Labels should be resolved at runtime using i18n translation function.
  */
 export const THEME_LIST: ThemeOption[] = [
+  { id: 'aurora', labelKey: 'theme.aurora', icon: '🌊' },
   { id: 'dark', labelKey: 'theme.dark', icon: '🌑' },
   { id: 'light', labelKey: 'theme.light', icon: '☀️' },
   { id: 'space', labelKey: 'theme.space', icon: '🚀' },
@@ -153,11 +170,11 @@ export const THEME_LIST: ThemeOption[] = [
 
 /**
  * Retrieves theme styles for a given theme type.
- * Defaults to dark theme if the provided theme is not found.
+ * Defaults to Aurora GLASS theme if the provided theme is not found.
  *
- * @param theme - ThemeType identifier (dark, light, space, arcade)
+ * @param theme - ThemeType identifier (aurora, dark, light, space, arcade)
  * @returns ThemeStyleSet containing all CSS classes for the theme
  */
 export function getThemeStyles(theme: ThemeType): ThemeStyleSet {
-  return THEME_STYLES[theme] ?? THEME_STYLES.dark;
+  return THEME_STYLES[theme] ?? THEME_STYLES.aurora;
 }

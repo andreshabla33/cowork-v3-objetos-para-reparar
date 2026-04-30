@@ -157,7 +157,7 @@ export const SettingsTerrenos: React.FC<SettingsTerrenosProps> = ({ workspaceId,
   };
 
   if (!isAdmin) {
-    return <div className="text-center py-12 text-zinc-500">Solo los administradores pueden gestionar terrenos.</div>;
+    return <div className="text-center py-12 text-[#6B83A0]">Solo los administradores pueden gestionar terrenos.</div>;
   }
 
   if (cargando) {
@@ -169,21 +169,21 @@ export const SettingsTerrenos: React.FC<SettingsTerrenosProps> = ({ workspaceId,
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h3 className="text-xl font-bold text-white">Marketplace de Terrenos</h3>
-          <p className="text-sm text-zinc-400 mt-1">Gestiona los terrenos virtuales disponibles para venta.</p>
+          <h3 className="text-xl font-bold text-[#0B2240]">Marketplace de Terrenos</h3>
+          <p className="text-sm text-[#4A6485] mt-1">Gestiona los terrenos virtuales disponibles para venta.</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <a
             href="/explorar"
             target="_blank"
-            className="flex items-center gap-2 px-3 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-xl text-sm font-medium transition"
+            className="flex items-center gap-2 px-3 py-2 bg-[rgba(46,150,245,0.08)] hover:bg-[rgba(46,150,245,0.12)] text-[#0B2240] rounded-xl text-sm font-medium transition"
           >
             <Eye className="w-4 h-4" /> Ver público
           </a>
           {!mostrarFormulario && (
             <button
               onClick={() => { resetFormulario(); setMostrarFormulario(true); }}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-xl text-sm font-medium transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] text-white rounded-xl text-sm font-medium transition-all"
             >
               <Plus className="w-4 h-4" /> Nuevo terreno
             </button>
@@ -205,10 +205,10 @@ export const SettingsTerrenos: React.FC<SettingsTerrenosProps> = ({ workspaceId,
 
       {/* Formulario */}
       {mostrarFormulario && (
-        <div className="p-5 bg-zinc-800/50 border border-zinc-700/50 rounded-2xl">
+        <div className="p-5 bg-white/60 backdrop-blur-sm border border-[rgba(46,150,245,0.14)] rounded-2xl">
           <div className="flex items-center justify-between mb-4">
-            <h4 className="text-sm font-bold text-white">{editandoId ? 'Editar terreno' : 'Nuevo terreno'}</h4>
-            <button onClick={resetFormulario} className="text-zinc-400 hover:text-white transition"><XCircle className="w-4 h-4" /></button>
+            <h4 className="text-sm font-bold text-[#0B2240]">{editandoId ? 'Editar terreno' : 'Nuevo terreno'}</h4>
+            <button onClick={resetFormulario} className="text-[#4A6485] hover:text-[#0B2240] transition"><XCircle className="w-4 h-4" /></button>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <InputField label="Nombre" value={formData.nombre} onChange={(v) => setFormData({ ...formData, nombre: v })} colSpan={2} placeholder="Ej: Lote Alpha" />
@@ -232,12 +232,12 @@ export const SettingsTerrenos: React.FC<SettingsTerrenosProps> = ({ workspaceId,
             <InputField label="Alto" value={formData.alto} onChange={(v) => setFormData({ ...formData, alto: v })} type="number" />
 
             <div className="col-span-2 flex items-center gap-4">
-              <label className="flex items-center gap-2 text-xs text-zinc-300">
-                <input type="checkbox" checked={formData.destacado} onChange={(e) => setFormData({ ...formData, destacado: e.target.checked })} className="rounded border-zinc-600 text-amber-500" />
+              <label className="flex items-center gap-2 text-xs text-[#1B3A5C]">
+                <input type="checkbox" checked={formData.destacado} onChange={(e) => setFormData({ ...formData, destacado: e.target.checked })} className="rounded border-[rgba(46,150,245,0.16)] text-[#2E96F5]" />
                 Destacado
               </label>
-              <label className="flex items-center gap-2 text-xs text-zinc-300">
-                <input type="checkbox" checked={formData.showroom} onChange={(e) => setFormData({ ...formData, showroom: e.target.checked })} className="rounded border-zinc-600 text-violet-500" />
+              <label className="flex items-center gap-2 text-xs text-[#1B3A5C]">
+                <input type="checkbox" checked={formData.showroom} onChange={(e) => setFormData({ ...formData, showroom: e.target.checked })} className="rounded border-[rgba(46,150,245,0.16)] text-[#2E96F5]" />
                 Showroom incluido
               </label>
               <InputField label="Color" value={formData.color_preview} onChange={(v) => setFormData({ ...formData, color_preview: v })} type="color" inline />
@@ -245,8 +245,8 @@ export const SettingsTerrenos: React.FC<SettingsTerrenosProps> = ({ workspaceId,
           </div>
 
           <div className="flex justify-end gap-2 mt-4">
-            <button onClick={resetFormulario} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition">Cancelar</button>
-            <button onClick={handleGuardar} disabled={guardando} className="px-5 py-2 bg-green-600 hover:bg-green-500 text-white rounded-xl text-sm font-medium transition disabled:opacity-50">
+            <button onClick={resetFormulario} className="px-4 py-2 text-sm text-[#4A6485] hover:text-[#0B2240] transition">Cancelar</button>
+            <button onClick={handleGuardar} disabled={guardando} className="px-5 py-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] text-white rounded-xl text-sm font-medium transition disabled:opacity-50">
               {guardando ? <><RefreshCw className="w-4 h-4 animate-spin inline mr-1" /> Guardando...</> : editandoId ? 'Actualizar' : 'Crear terreno'}
             </button>
           </div>
@@ -256,32 +256,32 @@ export const SettingsTerrenos: React.FC<SettingsTerrenosProps> = ({ workspaceId,
       {/* Lista de terrenos */}
       <div className="space-y-2">
         {terrenos.length === 0 ? (
-          <div className="text-center py-8 text-zinc-500 text-sm">No hay terrenos creados aún.</div>
+          <div className="text-center py-8 text-[#6B83A0] text-sm">No hay terrenos creados aún.</div>
         ) : (
           terrenos.map((t) => {
             const tier = TIER_CONFIG[t.tier] || TIER_CONFIG.starter;
             return (
-              <div key={t.id} className="flex items-center gap-4 p-4 bg-zinc-800/40 border border-zinc-700/30 rounded-xl hover:border-zinc-600/50 transition group">
+              <div key={t.id} className="flex items-center gap-4 p-4 bg-white/50 border border-[rgba(46,150,245,0.14)] rounded-xl hover:border-[#2E96F5] transition group">
                 <div className="w-3 h-10 rounded-full" style={{ backgroundColor: t.color_preview }} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-white truncate">{t.nombre}</span>
+                    <span className="text-sm font-bold text-[#0B2240] truncate">{t.nombre}</span>
                     {t.destacado && <Star className="w-3 h-3 text-amber-400 shrink-0" />}
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${tier.textColor} bg-white/5`}>{tier.label}</span>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${tier.textColor} bg-[rgba(46,150,245,0.06)]`}>{tier.label}</span>
                     <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                       t.estado === 'disponible' ? 'text-green-400 bg-green-500/10' :
                       t.estado === 'reservado' ? 'text-amber-400 bg-amber-500/10' :
                       t.estado === 'vendido' ? 'text-violet-400 bg-violet-500/10' :
-                      'text-zinc-400 bg-zinc-500/10'
+                      'text-[#4A6485] bg-zinc-500/10'
                     }`}>{t.estado}</span>
                   </div>
-                  <p className="text-xs text-zinc-500 mt-0.5">{t.ancho}×{t.alto} · ({t.posicion_x}, {t.posicion_y}) · ${t.precio_mensual}/mes</p>
+                  <p className="text-xs text-[#6B83A0] mt-0.5">{t.ancho}×{t.alto} · ({t.posicion_x}, {t.posicion_y}) · ${t.precio_mensual}/mes</p>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                  <button onClick={() => handleEditar(t)} className="p-1.5 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition">
+                  <button onClick={() => handleEditar(t)} className="p-1.5 rounded-lg hover:bg-[rgba(46,150,245,0.08)] text-[#4A6485] hover:text-[#0B2240] transition">
                     <Edit3 className="w-3.5 h-3.5" />
                   </button>
-                  <button onClick={() => handleEliminar(t.id)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-zinc-400 hover:text-red-400 transition">
+                  <button onClick={() => handleEliminar(t.id)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-[#4A6485] hover:text-red-400 transition">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -297,10 +297,10 @@ export const SettingsTerrenos: React.FC<SettingsTerrenosProps> = ({ workspaceId,
 // === Componentes auxiliares ===
 
 const StatCard: React.FC<{ icon: React.ReactNode; label: string; valor: number | string }> = ({ icon, label, valor }) => (
-  <div className="bg-zinc-800/40 border border-zinc-700/30 rounded-xl p-3 text-center">
+  <div className="bg-white/50 border border-[rgba(46,150,245,0.14)] rounded-xl p-3 text-center">
     <div className="flex items-center justify-center gap-1.5 mb-1">{icon}</div>
-    <p className="text-lg font-bold text-white">{valor}</p>
-    <p className="text-[10px] text-zinc-500 uppercase tracking-wider">{label}</p>
+    <p className="text-lg font-bold text-[#0B2240]">{valor}</p>
+    <p className="text-[10px] text-[#6B83A0] uppercase tracking-wider">{label}</p>
   </div>
 );
 
@@ -309,13 +309,13 @@ const InputField: React.FC<{
   colSpan?: number; placeholder?: string; type?: string; inline?: boolean;
 }> = ({ label, value, onChange, colSpan, placeholder, type = 'text', inline }) => (
   <div className={inline ? 'flex items-center gap-2' : colSpan === 2 ? 'col-span-2' : ''}>
-    <label className="block text-[10px] text-zinc-500 mb-1">{label}</label>
+    <label className="block text-[10px] text-[#6B83A0] mb-1">{label}</label>
     <input
       type={type}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className={`${type === 'color' ? 'w-8 h-6 p-0 border-0 rounded cursor-pointer' : 'w-full px-3 py-2 bg-zinc-900/60 border border-zinc-700/60 rounded-lg text-sm text-white placeholder:text-zinc-600 focus:border-green-500/50 focus:ring-1 focus:ring-green-500/20 transition'}`}
+      className={`${type === 'color' ? 'w-8 h-6 p-0 border-0 rounded cursor-pointer' : 'w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-sm text-[#0B2240] placeholder:text-[#9CB0CA] focus:border-[#2E96F5] focus:ring-1 focus:ring-[#2E96F5]/20 transition'}`}
     />
   </div>
 );
@@ -325,11 +325,11 @@ const SelectField: React.FC<{
   options: Array<{ value: string; label: string }>;
 }> = ({ label, value, onChange, options }) => (
   <div>
-    <label className="block text-[10px] text-zinc-500 mb-1">{label}</label>
+    <label className="block text-[10px] text-[#6B83A0] mb-1">{label}</label>
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full px-3 py-2 bg-zinc-900/60 border border-zinc-700/60 rounded-lg text-sm text-white focus:border-green-500/50 transition"
+      className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-sm text-[#0B2240] focus:border-[#2E96F5] transition"
     >
       {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>

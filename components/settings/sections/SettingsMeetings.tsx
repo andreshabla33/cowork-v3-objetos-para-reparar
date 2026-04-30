@@ -193,10 +193,10 @@ export const SettingsMeetings: React.FC<SettingsMeetingsProps> = ({
   return (
     <div>
       <div className="mb-8 lg:mb-6">
-        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-2 lg:mb-1">
+        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#1E86E5] via-[#4FB0FF] to-[#1E86E5] mb-2 lg:mb-1">
           {currentLang === 'en' ? 'Meetings' : currentLang === 'pt' ? 'Reuniões' : 'Reuniones'}
         </h2>
-        <p className="text-sm lg:text-xs text-zinc-400">
+        <p className="text-sm lg:text-xs text-[#4A6485]">
           {currentLang === 'en' ? 'Configure your meeting preferences and analysis metrics' : currentLang === 'pt' ? 'Configure suas preferências de reunião e métricas de análise' : 'Configura tus preferencias de reuniones y métricas de análisis'}
         </p>
       </div>
@@ -217,18 +217,18 @@ export const SettingsMeetings: React.FC<SettingsMeetingsProps> = ({
       </SettingSection>
 
       {/* Funciones automáticas */}
-      <div className="mt-6 p-4 rounded-xl bg-violet-500/5 border border-violet-500/10">
+      <div className="mt-6 p-4 rounded-xl bg-[rgba(46,150,245,0.06)] border border-[rgba(46,150,245,0.14)]">
         <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-lg bg-violet-500/10 flex items-center justify-center shrink-0 mt-0.5">
-            <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-8 h-8 rounded-lg bg-[rgba(46,150,245,0.1)] flex items-center justify-center shrink-0 mt-0.5">
+            <svg className="w-4 h-4 text-[#1E86E5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
           <div>
-            <p className="text-xs font-semibold text-violet-300 mb-1">
+            <p className="text-xs font-semibold text-[#1E86E5] mb-1">
               {currentLang === 'en' ? 'Automatic features' : currentLang === 'pt' ? 'Recursos automáticos' : 'Funciones automáticas'}
             </p>
-            <p className="text-[11px] text-zinc-400 leading-relaxed">
+            <p className="text-[11px] text-[#4A6485] leading-relaxed">
               {currentLang === 'en' 
                 ? 'Recording, transcription, AI summary, and behavioral analysis activate automatically. Screen sharing and limits are managed by the host.'
                 : currentLang === 'pt'
@@ -242,10 +242,10 @@ export const SettingsMeetings: React.FC<SettingsMeetingsProps> = ({
       {/* Métricas de análisis customizables — visible para cargos con permisos de análisis */}
       {puedeEditarAlgunTipo && (
         <div className="mt-8">
-          <h3 className="text-lg font-bold text-white mb-1">
+          <h3 className="text-lg font-bold text-[#0B2240] mb-1">
             {currentLang === 'en' ? 'Behavioral Analysis Metrics' : currentLang === 'pt' ? 'Métricas de Análise Comportamental' : 'Métricas de Análisis Conductual'}
           </h3>
-          <p className="text-xs text-zinc-400 mb-4">
+          <p className="text-xs text-[#4A6485] mb-4">
             {currentLang === 'en' 
               ? 'Customize which metrics are analyzed for each meeting type. These will be evaluated during recording.'
               : currentLang === 'pt'
@@ -256,12 +256,12 @@ export const SettingsMeetings: React.FC<SettingsMeetingsProps> = ({
           {/* Badge del cargo actual */}
           <div className="mb-4 flex items-center gap-2">
             <span className="text-sm">{INFO_CARGOS[cargoUsuario]?.icono || '👤'}</span>
-            <span className="text-xs text-zinc-400">
+            <span className="text-xs text-[#4A6485]">
               {currentLang === 'en' ? 'Your role' : currentLang === 'pt' ? 'Seu cargo' : 'Tu cargo'}:{' '}
-              <span className="text-white font-medium">{INFO_CARGOS[cargoUsuario]?.nombre || cargoUsuario}</span>
+              <span className="text-[#0B2240] font-medium">{INFO_CARGOS[cargoUsuario]?.nombre || cargoUsuario}</span>
             </span>
             {tiposEditables.length < 4 && (
-              <span className="text-[10px] text-zinc-500 ml-auto">
+              <span className="text-[10px] text-[#6B83A0] ml-auto">
                 {tiposEditables.length} {currentLang === 'en' ? 'types available' : currentLang === 'pt' ? 'tipos disponíveis' : 'tipos disponibles'}
               </span>
             )}
@@ -275,21 +275,21 @@ export const SettingsMeetings: React.FC<SettingsMeetingsProps> = ({
               const isExpanded = expandedTipo === tipo;
 
               return (
-                <div key={tipo} className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+                <div key={tipo} className="rounded-xl border border-[rgba(46,150,245,0.14)] bg-[rgba(46,150,245,0.06)] overflow-hidden">
                   {/* Header del tipo */}
                   <button
                     onClick={() => setExpandedTipo(isExpanded ? null : tipo)}
-                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/[0.03] transition-colors"
+                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-[rgba(46,150,245,0.08)] transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${config.color} flex items-center justify-center text-sm`}>
                         {config.icono}
                       </div>
                       <div className="text-left">
-                        <p className="text-sm font-semibold text-white">{config.label}</p>
-                        <p className="text-[10px] text-zinc-500">
+                        <p className="text-sm font-semibold text-[#0B2240]">{config.label}</p>
+                        <p className="text-[10px] text-[#6B83A0]">
                           {activas.length} de {metricas.length} métricas activas
-                          {saving === tipo && <span className="ml-1 text-violet-400 animate-pulse">guardando...</span>}
+                          {saving === tipo && <span className="ml-1 text-[#1E86E5] animate-pulse">guardando...</span>}
                         </p>
                       </div>
                     </div>
@@ -298,18 +298,18 @@ export const SettingsMeetings: React.FC<SettingsMeetingsProps> = ({
                         {activas.slice(0, 4).map(id => {
                           const m = metricas.find(x => x.id === id);
                           return m ? (
-                            <span key={id} className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[8px]" title={m.label}>
+                            <span key={id} className="w-5 h-5 rounded-full bg-[rgba(46,150,245,0.1)] flex items-center justify-center text-[8px]" title={m.label}>
                               {m.icono}
                             </span>
                           ) : null;
                         })}
                         {activas.length > 4 && (
-                          <span className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[8px] text-white/50">
+                          <span className="w-5 h-5 rounded-full bg-[rgba(46,150,245,0.1)] flex items-center justify-center text-[8px] text-[#4A6485]">
                             +{activas.length - 4}
                           </span>
                         )}
                       </div>
-                      <svg className={`w-4 h-4 text-white/30 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className={`w-4 h-4 text-[#6B83A0] transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                       </svg>
                     </div>
@@ -317,8 +317,8 @@ export const SettingsMeetings: React.FC<SettingsMeetingsProps> = ({
 
                   {/* Lista de métricas expandida */}
                   {isExpanded && (
-                    <div className="border-t border-white/[0.05] px-4 py-3 space-y-1">
-                      <p className="text-[10px] text-zinc-500 mb-2">{config.descripcion}</p>
+                    <div className="border-t border-[rgba(46,150,245,0.14)] px-4 py-3 space-y-1">
+                      <p className="text-[10px] text-[#6B83A0] mb-2">{config.descripcion}</p>
                       {metricas.map(metrica => {
                         const isActive = activas.includes(metrica.id);
                         return (
@@ -327,13 +327,13 @@ export const SettingsMeetings: React.FC<SettingsMeetingsProps> = ({
                             onClick={() => toggleMetrica(tipo, metrica.id)}
                             className={`w-full flex items-start gap-3 p-2.5 rounded-lg transition-all text-left ${
                               isActive 
-                                ? 'bg-violet-500/10 border border-violet-500/20' 
-                                : 'bg-white/[0.02] border border-transparent hover:bg-white/[0.04]'
+                                ? 'bg-[rgba(46,150,245,0.1)] border border-[rgba(46,150,245,0.2)]' 
+                                : 'bg-[rgba(46,150,245,0.04)] border border-transparent hover:bg-[rgba(46,150,245,0.08)]'
                             }`}
                           >
                             {/* Toggle visual */}
                             <div className={`mt-0.5 w-4 h-4 rounded flex items-center justify-center shrink-0 transition-colors ${
-                              isActive ? 'bg-violet-600' : 'bg-white/10'
+                              isActive ? 'bg-[#2E96F5]' : 'bg-[rgba(46,150,245,0.1)]'
                             }`}>
                               {isActive && (
                                 <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -344,12 +344,12 @@ export const SettingsMeetings: React.FC<SettingsMeetingsProps> = ({
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5">
                                 <span className="text-xs">{metrica.icono}</span>
-                                <span className={`text-xs font-medium ${isActive ? 'text-white' : 'text-white/60'}`}>
+                                <span className={`text-xs font-medium ${isActive ? 'text-[#0B2240]' : 'text-[#4A6485]'}`}>
                                   {metrica.label}
                                 </span>
                               </div>
-                              <p className="text-[10px] text-zinc-500 mt-0.5 leading-relaxed">{metrica.descripcion}</p>
-                              <p className="text-[9px] text-violet-400/60 mt-0.5 italic">{metrica.ejemplo}</p>
+                              <p className="text-[10px] text-[#6B83A0] mt-0.5 leading-relaxed">{metrica.descripcion}</p>
+                              <p className="text-[9px] text-[#2E96F5]/60 mt-0.5 italic">{metrica.ejemplo}</p>
                             </div>
                           </button>
                         );

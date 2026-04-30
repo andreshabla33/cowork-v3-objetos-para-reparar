@@ -24,9 +24,9 @@ import { useStore } from '../store/useStore';
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const chatStyles = {
-  chatBg: 'bg-[#0d0d15]',
-  input: 'bg-white/5 border-white/10',
-  btn: 'bg-indigo-600 hover:bg-indigo-500 text-white',
+  chatBg: 'bg-[var(--cw-page-bg)]',
+  input: 'bg-white/70 border-[var(--cw-glass-border)]',
+  btn: 'bg-[var(--cw-blue-500)] hover:bg-[var(--cw-blue-600)] text-white',
 };
 
 const emojis = ['😊', '😂', '❤️', '👍', '🎉', '🔥', '✨', '😍', '🤔', '😎', '🚀', '💯'];
@@ -92,19 +92,19 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   return (
     <div className={`h-full flex flex-col transition-all duration-500 overflow-hidden ${s.chatBg}`}>
       {/* Channel header */}
-      <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between shrink-0 shadow-sm">
+      <div className="px-6 py-4 border-b border-[var(--cw-glass-border)] flex items-center justify-between shrink-0 bg-white/60 backdrop-blur-md">
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <span className={`text-xl opacity-40 ${theme === 'arcade' ? 'text-[#00ff41]' : ''}`}>
+          <span className="text-xl opacity-60">
             {grupoActivoData?.tipo === 'directo' ? '💬' : (grupoActivoData?.tipo === 'privado' ? '🔒' : '#')}
           </span>
           <div className="min-w-0 flex-1">
-            <h3 className={`font-black text-sm uppercase tracking-widest truncate ${theme === 'arcade' ? 'text-[#00ff41] neon-text' : ''}`}>
+            <h3 className="font-bold text-sm text-[var(--cw-ink-900)] truncate">
               {grupoActivoData?.tipo === 'directo'
                 ? hook.miembrosEspacio.find((m) => grupoActivoData?.nombre.includes(m.id) && m.id !== currentUser.id)?.nombre || 'Chat Directo'
                 : (grupoActivoData?.nombre || 'General')
               }
             </h3>
-            <p className="text-[9px] font-bold opacity-30 uppercase tracking-tighter">
+            <p className="text-[10px] text-[var(--cw-ink-400)]">
               {grupoActivoData?.tipo === 'directo'
                 ? t('chat.directMessage')
                 : grupoActivoData?.tipo === 'privado'
@@ -118,7 +118,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           {grupoActivoData?.tipo !== 'directo' && (
             <button
               onClick={() => hook.setShowMembersPanel(!hook.showMembersPanel)}
-              className={`p-2.5 rounded-xl transition-all flex items-center gap-1.5 ${hook.showMembersPanel ? (theme === 'arcade' ? 'bg-[#00ff41]/20 text-[#00ff41]' : 'bg-indigo-500/20 text-indigo-400') : 'bg-white/5 hover:bg-white/10 opacity-60 hover:opacity-100'}`}
+              className={`p-2.5 rounded-xl transition-all flex items-center gap-1.5 ${hook.showMembersPanel ? 'bg-blue-50 text-[var(--cw-blue-600)]' : 'bg-white/60 hover:bg-blue-50 text-[var(--cw-ink-500)]'}`}
               title="Ver miembros"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
@@ -127,7 +127,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           )}
           <button
             onClick={() => hook.setShowAddMembers(true)}
-            className={`p-2.5 rounded-xl transition-all flex items-center gap-1.5 group ${theme === 'arcade' ? 'bg-[#00ff41] text-black font-black' : 'bg-indigo-600 text-white hover:bg-indigo-500'}`}
+            className="p-2.5 rounded-xl transition-all flex items-center gap-1.5 group bg-[var(--cw-blue-500)] text-white hover:bg-[var(--cw-blue-600)]"
             title="Agregar miembros"
           >
             <svg className="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
@@ -149,7 +149,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           const showHeader = !sameUser || timeDiff > 5;
 
           return (
-            <div key={m.id} className={`group hover:bg-white/[0.02] px-4 py-1 -mx-4 rounded-lg transition-colors ${showHeader ? 'mt-4' : 'mt-0.5'}`}>
+            <div key={m.id} className={`group hover:bg-blue-50/50 px-4 py-1 -mx-4 rounded-lg transition-colors ${showHeader ? 'mt-4' : 'mt-0.5'}`}>
               <div className="flex gap-3">
                 {showHeader ? (
                   <div className="shrink-0">
@@ -161,7 +161,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                   </div>
                 ) : (
                   <div className="w-9 shrink-0 flex items-center justify-center">
-                    <span className="text-[9px] opacity-0 group-hover:opacity-30 font-mono transition-opacity">
+                    <span className="text-[9px] opacity-0 group-hover:opacity-50 text-[var(--cw-ink-400)] font-mono transition-opacity">
                       {new Date(m.creado_en).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
@@ -169,10 +169,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                 <div className="flex-1 min-w-0">
                   {showHeader && (
                     <div className="flex items-baseline gap-2 mb-0.5">
-                      <span className={`text-[13px] font-bold ${theme === 'arcade' ? 'text-[#00ff41]' : (m.usuario_id === currentUser.id ? 'text-indigo-400' : '')}`}>
+                      <span className={`text-[13px] font-bold ${m.usuario_id === currentUser.id ? 'text-[var(--cw-blue-600)]' : 'text-[var(--cw-ink-900)]'}`}>
                         {m.usuario?.nombre}
                       </span>
-                      <span className="text-[10px] opacity-30 font-medium">
+                      <span className="text-[10px] text-[var(--cw-ink-400)]">
                         {new Date(m.creado_en).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
@@ -186,17 +186,17 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                         <div className="mt-1">
                           {isImage ? (
                             <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="block">
-                              <img src={fileUrl} alt={fileName} className="max-w-[300px] max-h-[200px] rounded-lg border border-white/10 hover:border-indigo-500/50 transition-colors cursor-pointer" />
-                              <span className="text-[11px] opacity-50 mt-1 block">{fileName}</span>
+                              <img src={fileUrl} alt={fileName} className="max-w-[300px] max-h-[200px] rounded-lg border border-[var(--cw-glass-border)] hover:border-[var(--cw-blue-400)] transition-colors cursor-pointer" />
+                              <span className="text-[11px] text-[var(--cw-ink-400)] mt-1 block">{fileName}</span>
                             </a>
                           ) : (
-                            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10 hover:border-indigo-500/50 hover:bg-white/10 transition-all group max-w-[300px]">
-                              <div className="w-10 h-10 rounded-lg bg-indigo-600/20 flex items-center justify-center shrink-0">
-                                <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                            <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-lg bg-white/70 border border-[var(--cw-glass-border)] hover:border-[var(--cw-blue-400)] hover:bg-blue-50/50 transition-all group max-w-[300px]">
+                              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                                <svg className="w-5 h-5 text-[var(--cw-blue-500)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className="text-[13px] font-medium truncate group-hover:text-indigo-400 transition-colors">{fileName}</p>
-                                <p className="text-[10px] opacity-40">Clic para descargar</p>
+                                <p className="text-[13px] font-medium text-[var(--cw-ink-700)] truncate group-hover:text-[var(--cw-blue-600)] transition-colors">{fileName}</p>
+                                <p className="text-[10px] text-[var(--cw-ink-400)]">Clic para descargar</p>
                               </div>
                             </a>
                           )}
@@ -237,17 +237,17 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         )}
 
         {hook.showMentionPicker && filteredMentionUsers.length > 0 && (
-          <div className="mb-2 p-2 rounded-xl bg-black/80 border border-indigo-500/30 backdrop-blur-xl max-h-40 overflow-y-auto">
-            <p className="text-[9px] uppercase tracking-widest opacity-40 px-2 mb-2">{t('chat.mention')}</p>
+          <div className="mb-2 p-2 rounded-xl bg-white/90 border border-[var(--cw-glass-border)] backdrop-blur-xl max-h-40 overflow-y-auto shadow-lg">
+            <p className="text-[9px] uppercase tracking-widest text-[var(--cw-ink-400)] px-2 mb-2">{t('chat.mention')}</p>
             {filteredMentionUsers.map((user) => (
               <button
                 key={user.id}
                 type="button"
                 onClick={() => hook.insertMention(user)}
-                className="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-500/20 transition-colors flex items-center gap-3"
+                className="w-full text-left px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors flex items-center gap-3"
               >
                 <UserAvatar name={user.nombre || ''} profilePhoto={user.avatar_url ?? undefined} size="xs" />
-                <span className="text-[13px] font-medium">@{user.nombre}</span>
+                <span className="text-[13px] font-medium text-[var(--cw-ink-700)]">@{user.nombre}</span>
               </button>
             ))}
           </div>
@@ -264,13 +264,13 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         )}
 
         {hook.showEmojiPicker && (
-          <div className="mb-2 p-2 rounded-xl bg-black/40 border border-white/10 flex flex-wrap gap-1">
+          <div className="mb-2 p-2 rounded-xl bg-white/90 border border-[var(--cw-glass-border)] backdrop-blur-lg flex flex-wrap gap-1 shadow-lg">
             {emojis.map((emoji) => (
               <button
                 key={emoji}
                 type="button"
                 onClick={() => { hook.setNuevoMensaje((prev) => prev + emoji); hook.setShowEmojiPicker(false); }}
-                className="w-8 h-8 hover:bg-white/10 rounded-lg transition-colors text-lg"
+                className="w-8 h-8 hover:bg-blue-50 rounded-lg transition-colors text-lg"
               >
                 {emoji}
               </button>
@@ -278,9 +278,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           </div>
         )}
 
-        <form onSubmit={hook.enviarMensaje} className={`flex items-center gap-2 p-1.5 rounded-xl border transition-all focus-within:border-indigo-500/50 ${s.input}`}>
+        <form onSubmit={hook.enviarMensaje} className={`flex items-center gap-2 p-1.5 rounded-xl border transition-all focus-within:border-[var(--cw-blue-400)] focus-within:ring-2 focus-within:ring-blue-100 ${s.input}`}>
           <input type="file" ref={hook.fileInputRef} onChange={hook.handleFileAttach} className="hidden" accept="image/*,.pdf,.doc,.docx,.txt" />
-          <button type="button" onClick={() => hook.fileInputRef.current?.click()} className="p-2 rounded-lg hover:bg-white/10 transition-colors opacity-40 hover:opacity-100" title="Adjuntar archivo">
+          <button type="button" onClick={() => hook.fileInputRef.current?.click()} className="p-2 rounded-lg hover:bg-blue-50 transition-colors text-[var(--cw-ink-400)] hover:text-[var(--cw-blue-500)]" title="Adjuntar archivo">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
           </button>
           <input
@@ -293,10 +293,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
               : (grupoActivoData?.tipo === 'directo'
                 ? `${t('chat.messageTo')} ${hook.miembrosEspacio.find((m) => grupoActivoData?.nombre.includes(m.id) && m.id !== currentUser.id)?.nombre || t('chat.user')}`
                 : `${t('chat.messageIn')} #${grupoActivoData?.nombre || t('chat.channel')}`)}
-            className="flex-1 bg-transparent border-none text-[14px] focus:outline-none py-2 placeholder:opacity-30"
+            className="flex-1 bg-transparent border-none text-[14px] text-[var(--cw-ink-700)] focus:outline-none py-2 placeholder:text-[var(--cw-ink-400)]"
           />
           <div className="flex items-center gap-1">
-            <button type="button" onClick={() => hook.setShowEmojiPicker(!hook.showEmojiPicker)} className={`p-2 rounded-lg hover:bg-white/10 transition-colors ${hook.showEmojiPicker ? 'opacity-100 bg-white/10' : 'opacity-40 hover:opacity-100'}`} title="Emojis">
+            <button type="button" onClick={() => hook.setShowEmojiPicker(!hook.showEmojiPicker)} className={`p-2 rounded-lg hover:bg-blue-50 transition-colors ${hook.showEmojiPicker ? 'text-[var(--cw-blue-500)] bg-blue-50' : 'text-[var(--cw-ink-400)]'}`} title="Emojis">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             </button>
             <button

@@ -111,14 +111,14 @@ export const RecordingTypeSelector: React.FC<RecordingTypeSelectorProps> = ({
     
     return (
       <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[400] flex items-center justify-center p-4">
-        <div className="bg-zinc-900 rounded-2xl max-w-lg w-full border border-white/10 shadow-2xl overflow-hidden">
+        <div className="bg-white/60 rounded-2xl max-w-lg w-full border border-[rgba(46,150,245,0.14)] shadow-2xl overflow-hidden">
           {/* Header */}
           <div className={`p-4 bg-gradient-to-r ${config.color}`}>
             <div className="flex items-center gap-3">
               <span className="text-3xl">{config.icono}</span>
               <div>
                 <h3 className="text-white font-bold text-lg">{config.titulo}</h3>
-                <p className="text-white/80 text-sm">Análisis conductual</p>
+                <p className="text-[#0B2240] text-sm">Análisis conductual</p>
               </div>
             </div>
           </div>
@@ -143,7 +143,7 @@ export const RecordingTypeSelector: React.FC<RecordingTypeSelectorProps> = ({
                 <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
                   disclaimerAccepted 
                     ? 'bg-blue-600 border-blue-600' 
-                    : 'border-white/30 group-hover:border-white/50'
+                    : 'border-[rgba(46,150,245,0.20)] group-hover:border-[rgba(46,150,245,0.25)]'
                 }`}>
                   {disclaimerAccepted && (
                     <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -152,17 +152,17 @@ export const RecordingTypeSelector: React.FC<RecordingTypeSelectorProps> = ({
                   )}
                 </div>
               </div>
-              <span className="text-white/80 text-sm">
+              <span className="text-[#0B2240] text-sm">
                 Confirmo que el participante ha sido informado y ha dado su consentimiento para el análisis conductual
               </span>
             </label>
           </div>
 
           {/* Botones */}
-          <div className="p-4 border-t border-white/10 flex gap-3 justify-end">
+          <div className="p-4 border-t border-[rgba(46,150,245,0.14)] flex gap-3 justify-end">
             <button
               onClick={handleDisclaimerCancel}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white text-sm transition-colors"
+              className="px-4 py-2 bg-[rgba(46,150,245,0.08)] hover:bg-[rgba(46,150,245,0.14)] rounded-lg text-[#1B3A5C] text-sm transition-colors"
             >
               Cancelar
             </button>
@@ -172,7 +172,7 @@ export const RecordingTypeSelector: React.FC<RecordingTypeSelectorProps> = ({
               className={`px-4 py-2 rounded-lg text-white text-sm transition-all flex items-center gap-2 ${
                 disclaimerAccepted
                   ? 'bg-blue-600 hover:bg-blue-500 cursor-pointer'
-                  : 'bg-white/10 cursor-not-allowed opacity-50'
+                  : 'bg-[rgba(46,150,245,0.08)] cursor-not-allowed opacity-50'
               }`}
             >
               <span className="text-lg">🔴</span>
@@ -187,16 +187,16 @@ export const RecordingTypeSelector: React.FC<RecordingTypeSelectorProps> = ({
   // Selector principal de tipo
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[400] flex items-center justify-center p-4">
-      <div className="bg-zinc-900 rounded-2xl max-w-2xl w-full border border-white/10 shadow-2xl overflow-hidden">
+      <div className="bg-white/60 rounded-2xl max-w-2xl w-full border border-[rgba(46,150,245,0.14)] shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+        <div className="p-4 border-b border-[rgba(46,150,245,0.14)] flex items-center justify-between">
           <div>
             <h3 className="text-white font-bold text-lg">¿Qué tipo de reunión vas a grabar?</h3>
-            <p className="text-white/60 text-sm">Selecciona para optimizar el análisis conductual</p>
+            <p className="text-[#4A6485] text-sm">Selecciona para optimizar el análisis conductual</p>
           </div>
           <button
             onClick={handleClose}
-            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 text-white transition-colors"
+            className="w-8 h-8 rounded-full bg-[rgba(46,150,245,0.08)] flex items-center justify-center hover:bg-[rgba(46,150,245,0.14)] text-[#4A6485] transition-colors"
           >
             ✕
           </button>
@@ -208,7 +208,7 @@ export const RecordingTypeSelector: React.FC<RecordingTypeSelectorProps> = ({
             <button
               key={config.tipo}
               onClick={() => handleTypeClick(config.tipo)}
-              className={`group relative p-5 rounded-xl border border-white/10 bg-white/5 hover:bg-gradient-to-br ${config.color} hover:border-transparent transition-all duration-300 text-left`}
+              className={`group relative p-5 rounded-xl border border-[rgba(46,150,245,0.14)] bg-white/50 hover:bg-gradient-to-br ${config.color} hover:border-transparent transition-all duration-300 text-left`}
             >
               {/* Icono */}
               <div className="text-4xl mb-3 group-hover:scale-110 transition-transform">
@@ -221,7 +221,7 @@ export const RecordingTypeSelector: React.FC<RecordingTypeSelectorProps> = ({
               </h4>
               
               {/* Descripción */}
-              <p className="text-white/60 group-hover:text-white/80 text-sm mb-3">
+              <p className="text-[#4A6485] group-hover:text-[#1B3A5C] text-sm mb-3">
                 {config.descripcion}
               </p>
 
@@ -230,13 +230,13 @@ export const RecordingTypeSelector: React.FC<RecordingTypeSelectorProps> = ({
                 {config.metricas.slice(0, 3).map((metrica, i) => (
                   <span 
                     key={i}
-                    className="px-2 py-0.5 bg-white/10 rounded text-xs text-white/50 group-hover:text-white/70"
+                    className="px-2 py-0.5 bg-[rgba(46,150,245,0.08)] rounded text-xs text-[#6B83A0] group-hover:text-[#4A6485]"
                   >
                     {metrica.replace(/_/g, ' ')}
                   </span>
                 ))}
                 {config.metricas.length > 3 && (
-                  <span className="px-2 py-0.5 bg-white/10 rounded text-xs text-white/50">
+                  <span className="px-2 py-0.5 bg-[rgba(46,150,245,0.08)] rounded text-xs text-[#6B83A0]">
                     +{config.metricas.length - 3} más
                   </span>
                 )}
@@ -261,8 +261,8 @@ export const RecordingTypeSelector: React.FC<RecordingTypeSelectorProps> = ({
         </div>
 
         {/* Footer info */}
-        <div className="p-4 border-t border-white/10 bg-white/5">
-          <div className="flex items-center gap-2 text-white/50 text-xs">
+        <div className="p-4 border-t border-[rgba(46,150,245,0.14)] bg-white/50">
+          <div className="flex items-center gap-2 text-[#6B83A0] text-xs">
             <span>🔒</span>
             <span>Todo el análisis se procesa localmente en tu navegador. No se envían datos biométricos a servidores externos.</span>
           </div>

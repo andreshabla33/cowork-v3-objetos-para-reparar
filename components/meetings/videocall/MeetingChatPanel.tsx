@@ -87,16 +87,16 @@ export const MeetingChatPanel: React.FC<MeetingChatPanelProps> = ({
       />
       <div
         aria-hidden={!isOpen}
-        className={`absolute inset-x-0 bottom-0 top-14 z-[260] flex w-full flex-col overflow-hidden rounded-t-[1.75rem] border-t border-white/10 bg-zinc-950/98 backdrop-blur-xl transition-all duration-300 md:inset-y-0 md:right-0 md:left-auto md:top-0 md:w-[22rem] md:rounded-none md:border-t-0 md:border-l md:border-white/10 ${panelStateClass}`}
+        className={`absolute inset-x-0 bottom-0 top-14 z-[260] flex w-full flex-col overflow-hidden rounded-t-[1.75rem] border-t border-[rgba(46,150,245,0.14)] bg-white/95 backdrop-blur-xl transition-all duration-300 md:inset-y-0 md:right-0 md:left-auto md:top-0 md:w-[22rem] md:rounded-none md:border-t-0 md:border-l md:border-[rgba(46,150,245,0.14)] ${panelStateClass}`}
       >
-      <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5 md:px-5">
+      <div className="flex shrink-0 items-center justify-between border-b border-[rgba(46,150,245,0.14)] px-4 py-4 pt-[max(1rem,env(safe-area-inset-top))] sm:px-5 md:px-5">
         <div>
           <h3 className="text-base font-semibold text-white">Chat de la reunión</h3>
           <p className="mt-1 text-xs text-white/45">Los mensajes se guardan como historial de la reunión.</p>
         </div>
         <button
           onClick={onClose}
-          className="flex h-11 w-11 touch-manipulation items-center justify-center rounded-2xl bg-white/10 text-white/70 transition-colors hover:bg-white/15 hover:text-white"
+          className="flex h-11 w-11 touch-manipulation items-center justify-center rounded-2xl bg-[rgba(46,150,245,0.08)] text-[#1B3A5C] transition-colors hover:bg-white/15 hover:text-white"
           type="button"
           aria-label="Cerrar chat"
         >
@@ -117,7 +117,7 @@ export const MeetingChatPanel: React.FC<MeetingChatPanelProps> = ({
             >
               <div className={`flex w-full max-w-full items-center gap-2 text-[11px] ${message.isOwn ? 'justify-end' : 'justify-between'}`}>
                 {!message.isOwn && (
-                  <span className="truncate rounded-full bg-indigo-500/10 px-2.5 py-1 font-semibold text-indigo-300">
+                  <span className="truncate rounded-full bg-[#2E96F5]/10 px-2.5 py-1 font-semibold text-[#1E86E5]">
                     {message.senderName}
                   </span>
                 )}
@@ -126,8 +126,8 @@ export const MeetingChatPanel: React.FC<MeetingChatPanelProps> = ({
               <div
                 className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-6 shadow-sm sm:max-w-[84%] ${
                   message.isOwn
-                    ? 'bg-indigo-500 text-white rounded-br-md'
-                    : 'bg-white/10 text-white/92 rounded-bl-md'
+                    ? 'bg-[#2E96F5] text-white rounded-br-md'
+                    : 'bg-[rgba(46,150,245,0.08)] text-white/92 rounded-bl-md'
                 }`}
               >
                 {message.text}
@@ -137,17 +137,17 @@ export const MeetingChatPanel: React.FC<MeetingChatPanelProps> = ({
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="flex shrink-0 items-end gap-3 border-t border-white/10 bg-zinc-950/95 px-4 py-4 pb-[max(1rem,calc(1rem+env(safe-area-inset-bottom)))] sm:px-5 md:px-4">
+      <form onSubmit={handleSubmit} className="flex shrink-0 items-end gap-3 border-t border-[rgba(46,150,245,0.14)] bg-white/90 px-4 py-4 pb-[max(1rem,calc(1rem+env(safe-area-inset-bottom)))] sm:px-5 md:px-4">
         <input
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder="Escribe un mensaje..."
-          className="h-12 flex-1 rounded-2xl border border-white/10 bg-white/10 px-4 text-sm text-white outline-none transition-colors placeholder:text-white/35 focus:border-indigo-400/60 focus:bg-white/12"
+          className="h-12 flex-1 rounded-2xl border border-[rgba(46,150,245,0.14)] bg-[rgba(46,150,245,0.08)] px-4 text-sm text-white outline-none transition-colors placeholder:text-[#6B83A0] focus:border-[#2E96F5]/60 focus:bg-white/12"
         />
         <button
           type="submit"
           disabled={isSending || draft.trim().length === 0}
-          className="flex h-12 w-12 shrink-0 touch-manipulation items-center justify-center rounded-2xl bg-indigo-500 text-white transition-all hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-45"
+          className="flex h-12 w-12 shrink-0 touch-manipulation items-center justify-center rounded-2xl bg-[#2E96F5] text-white transition-all hover:bg-[#4FB0FF] disabled:cursor-not-allowed disabled:opacity-45"
           aria-label="Enviar mensaje"
         >
           <Send className="h-4.5 w-4.5" />

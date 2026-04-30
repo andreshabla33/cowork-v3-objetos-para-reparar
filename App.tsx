@@ -179,9 +179,10 @@ const App: React.FC = () => {
       return <LoginScreen />;
 
     default:
-      // Authenticated app shell
+      // Authenticated app shell — Aurora GLASS (tema base claro).
+      // El fondo atmosférico vive en `aurora-glass.css` (.ag-app-shell aplicado al body).
       return (
-        <div className="min-h-screen bg-[#09090b] text-zinc-100 font-inter selection:bg-indigo-500/30">
+        <div className="min-h-screen font-inter" style={{ color: 'var(--cw-ink-700)' }}>
           {route === 'app_loading' && <LoadingWorkspace />}
 
           {route === 'dashboard' && (

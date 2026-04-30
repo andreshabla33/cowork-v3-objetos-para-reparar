@@ -68,7 +68,7 @@ export const LobbyVideoPreview: React.FC<LobbyVideoPreviewProps> = ({
   const initial = nombreInicial ? nombreInicial.charAt(0).toUpperCase() : '?';
 
   return (
-    <div className="relative flex h-full w-full flex-col overflow-hidden bg-black">
+    <div className="relative flex h-full w-full flex-col overflow-hidden bg-white/60">
       {/* ── Video con efectos de fondo ───────────────────────────────
            Los props `backgroundImage`/`blurAmount` ya no existen en el
            contrato (el processor se aplica en el bridge, no en el
@@ -103,7 +103,7 @@ export const LobbyVideoPreview: React.FC<LobbyVideoPreviewProps> = ({
       {/* ── Avatar (cámara desactivada) ───────────────────────────── */}
       {showAvatar && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-violet-600 via-fuchsia-600 to-cyan-500 shadow-2xl shadow-violet-600/30 sm:h-28 sm:w-28 lg:h-32 lg:w-32 2xl:h-36 2xl:w-36">
+          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-[#4FB0FF] to-[#2E96F5] shadow-2xl shadow-[#2E96F5]/30 sm:h-28 sm:w-28 lg:h-32 lg:w-32 2xl:h-36 2xl:w-36">
             <span className="text-3xl font-black text-white sm:text-4xl lg:text-5xl 2xl:text-6xl">
               {initial}
             </span>
@@ -113,10 +113,10 @@ export const LobbyVideoPreview: React.FC<LobbyVideoPreviewProps> = ({
 
       {/* ── Overlay de "Conectando..." ────────────────────────────── */}
       {joining && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#0B2240]/35 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-3">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-violet-500/30 border-t-violet-400" />
-            <span className="text-sm font-bold text-zinc-400">Conectando...</span>
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#2E96F5]/30 border-t-[#4FB0FF]" />
+            <span className="text-sm font-bold text-[#4A6485]">Conectando...</span>
           </div>
         </div>
       )}

@@ -1,0 +1,975 @@
+/**
+ * Cowork Login Theme — Estilos del flujo de autenticación.
+ *
+ * NOTA IMPORTANTE: Las variables --cw-* (paleta, glass, sombras, fuentes)
+ * viven en `styles/aurora-glass.css`, que es el único punto de verdad del
+ * sistema de diseño Aurora GLASS. Este archivo SOLO define los componentes
+ * `.cw-*` específicos del LoginScreen / ForgotPasswordScreen.
+ *
+ * Para cambiar la paleta global, edita `aurora-glass.css` (o cambia
+ * `data-theme` en <html>). Login y resto de la web heredan los tokens.
+ */
+
+/* ========================================================================
+   SHELL DEL OVERLAY
+   ======================================================================== */
+.cw-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  min-height: 100vh;
+  overflow: hidden;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: var(--cw-ink-700);
+  background:
+    radial-gradient(ellipse at 20% 10%, var(--cw-bg-radial-1) 0%, transparent 55%),
+    radial-gradient(ellipse at 90% 90%, var(--cw-bg-radial-2) 0%, transparent 50%),
+    linear-gradient(180deg, var(--cw-bg-grad-from) 0%, var(--cw-bg-grad-to) 100%);
+  -webkit-font-smoothing: antialiased;
+}
+
+.cw-shell *,
+.cw-shell *::before,
+.cw-shell *::after {
+  box-sizing: border-box;
+}
+
+/* Stage centra la card */
+.cw-stage {
+  position: relative;
+  z-index: 5;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px 16px;
+  overflow-y: auto;
+}
+
+/* ========================================================================
+   FONDO ANIMADO — grid + orbes + partículas + conectores
+   ======================================================================== */
+.cw-grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(46, 150, 245, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(46, 150, 245, 0.08) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, #000 30%, transparent 100%);
+          mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, #000 30%, transparent 100%);
+  animation: cwGridDrift 30s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes cwGridDrift {
+  from { background-position: 0 0, 0 0; }
+  to   { background-position: 56px 56px, 56px 56px; }
+}
+
+/* Celdas destacadas del grid */
+.cw-cell {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, rgba(46, 150, 245, 0.18), rgba(46, 150, 245, 0.04));
+  border: 1px solid rgba(46, 150, 245, 0.18);
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 0;
+  animation: cwCellPulse 4s ease-in-out infinite;
+}
+.cw-cell--alt {
+  background: linear-gradient(135deg, rgba(75, 203, 255, 0.22), rgba(75, 203, 255, 0.04));
+}
+.cw-cell--c1 { top: 18%; left: 14%;  animation-delay: 0s; }
+.cw-cell--c2 { top: 28%; left: 22%;  animation-delay: 1.2s; }
+.cw-cell--c3 { top: 70%; left: 18%;  animation-delay: 0.6s; }
+.cw-cell--c4 { top: 22%; right: 14%; animation-delay: 2s; }
+.cw-cell--c5 { top: 60%; right: 10%; animation-delay: 1.6s; }
+.cw-cell--c6 { top: 78%; right: 22%; animation-delay: 0.3s; }
+.cw-cell--c7 { top: 38%; left: 8%;   animation-delay: 2.4s; }
+.cw-cell--c8 { top: 12%; left: 46%;  animation-delay: 1.9s; }
+.cw-cell--c9 { top: 84%; left: 50%;  animation-delay: 0.9s; }
+
+@keyframes cwCellPulse {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.05); }
+}
+
+/* Orbes blur flotantes */
+.cw-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.7;
+}
+.cw-orb--1 {
+  width: 420px; height: 420px;
+  background: radial-gradient(circle, var(--cw-blue-light) 0%, transparent 70%);
+  top: -120px; left: -120px;
+  animation: cwOrbDrift1 18s ease-in-out infinite;
+}
+.cw-orb--2 {
+  width: 380px; height: 380px;
+  background: radial-gradient(circle, var(--cw-blue-200) 0%, transparent 70%);
+  bottom: -120px; right: -100px;
+  animation: cwOrbDrift2 22s ease-in-out infinite;
+}
+.cw-orb--3 {
+  width: 280px; height: 280px;
+  background: radial-gradient(circle, var(--cw-blue-400) 0%, transparent 70%);
+  top: 40%; left: 60%;
+  opacity: 0.35;
+  animation: cwOrbDrift3 26s ease-in-out infinite;
+}
+@keyframes cwOrbDrift1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(60px, 80px) scale(1.1); }
+}
+@keyframes cwOrbDrift2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(-80px, -60px) scale(1.15); }
+}
+@keyframes cwOrbDrift3 {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(-100px, 40px); }
+}
+
+/* Partículas */
+.cw-particle {
+  position: absolute;
+  width: 6px; height: 6px;
+  background: var(--cw-blue-500);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+  box-shadow: 0 0 12px rgba(46, 150, 245, 0.6);
+}
+.cw-particle--p1 { top: 20%; left: 30%; animation: cwFloatParticle 8s ease-in-out infinite; }
+.cw-particle--p2 { top: 70%; left: 80%; width: 4px; height: 4px; animation: cwFloatParticle 11s ease-in-out infinite reverse; }
+.cw-particle--p3 { top: 40%; left: 12%; width: 8px; height: 8px; animation: cwFloatParticle 9s  ease-in-out infinite; animation-delay: 2s; }
+.cw-particle--p4 { top: 85%; left: 35%; width: 5px; height: 5px; animation: cwFloatParticle 13s ease-in-out infinite; animation-delay: 1s; }
+.cw-particle--p5 { top: 15%; left: 78%; width: 7px; height: 7px; animation: cwFloatParticle 10s ease-in-out infinite reverse; animation-delay: 3s; }
+.cw-particle--p6 { top: 55%; left: 88%; width: 4px; height: 4px; animation: cwFloatParticle 14s ease-in-out infinite; }
+
+@keyframes cwFloatParticle {
+  0%, 100% { transform: translate(0, 0);    opacity: 0.4; }
+  50%      { transform: translate(40px, -60px); opacity: 1; }
+}
+
+/* Conectores SVG */
+.cw-connector {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.5;
+}
+.cw-connector path {
+  fill: none;
+  stroke: rgba(46, 150, 245, 0.3);
+  stroke-width: 1;
+  stroke-dasharray: 4 6;
+  animation: cwDashFlow 20s linear infinite;
+}
+@keyframes cwDashFlow {
+  to { stroke-dashoffset: -200; }
+}
+
+/* ========================================================================
+   CARD GLASSMORPHISM
+   ======================================================================== */
+.cw-card {
+  position: relative;
+  width: 420px;
+  max-width: 100%;
+  padding: 40px 36px 32px;
+  border-radius: 24px;
+  background: var(--cw-glass-bg);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid var(--cw-glass-border);
+  box-shadow: var(--cw-shadow-card);
+  animation: cwCardIn 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes cwCardIn {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+/* Anillo decorativo del card */
+.cw-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 24px;
+  padding: 1px;
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, 0.9),
+    rgba(46, 150, 245, 0.2) 50%,
+    rgba(255, 255, 255, 0.4));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ========================================================================
+   BRAND / LOGO
+   ======================================================================== */
+.cw-brand {
+  text-align: center;
+  margin-bottom: 24px;
+  animation: cwFadeUp 0.7s 0.15s ease-out both;
+}
+.cw-logo {
+  width: 64px; height: 64px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, var(--cw-blue-light), var(--cw-blue-500) 60%, var(--cw-blue-600));
+  display: grid;
+  place-items: center;
+  color: white;
+  font-weight: 800;
+  font-size: 28px;
+  letter-spacing: -0.02em;
+  box-shadow:
+    0 0 0 6px rgba(46, 150, 245, 0.12),
+    0 0 0 12px rgba(46, 150, 245, 0.06),
+    0 12px 32px -8px rgba(46, 150, 245, 0.55);
+  position: relative;
+  animation: cwLogoFloat 4s ease-in-out infinite;
+}
+@keyframes cwLogoFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+.cw-logo::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(46, 150, 245, 0.35);
+  animation: cwSpin 18s linear infinite;
+}
+@keyframes cwSpin {
+  to { transform: rotate(360deg); }
+}
+.cw-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--cw-ink-900);
+}
+.cw-tag {
+  margin-top: 6px;
+  font-family: var(--cw-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  color: var(--cw-ink-400);
+  text-transform: uppercase;
+}
+
+/* ========================================================================
+   GOOGLE BUTTON
+   ======================================================================== */
+.cw-google-btn {
+  width: 100%;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(46, 150, 245, 0.18);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--cw-ink-900);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+  animation: cwFadeUp 0.7s 0.25s ease-out both;
+}
+.cw-google-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 1);
+  border-color: rgba(46, 150, 245, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -10px rgba(46, 100, 175, 0.3);
+}
+.cw-google-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.cw-google-btn .cw-g-icon { width: 20px; height: 20px; flex-shrink: 0; }
+.cw-google-btn .cw-g-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
+}
+.cw-google-btn .cw-g-sub {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  color: var(--cw-ink-400);
+  margin-top: 3px;
+  text-transform: uppercase;
+}
+.cw-google-btn .cw-spinner { color: var(--cw-blue-500); }
+
+/* ========================================================================
+   DIVIDER
+   ======================================================================== */
+.cw-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 24px 0 18px;
+  animation: cwFadeUp 0.7s 0.3s ease-out both;
+}
+.cw-divider::before,
+.cw-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(to right, transparent, var(--cw-line-strong), transparent);
+}
+.cw-divider span {
+  font-family: var(--cw-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--cw-ink-400);
+  text-transform: uppercase;
+}
+
+/* ========================================================================
+   INPUTS
+   ======================================================================== */
+.cw-form { display: flex; flex-direction: column; }
+
+.cw-field {
+  position: relative;
+  margin-bottom: 12px;
+  animation: cwFadeUp 0.7s 0.35s ease-out both;
+}
+.cw-field + .cw-field { animation-delay: 0.4s; }
+
+.cw-field input {
+  width: 100%;
+  padding: 14px 16px 14px 44px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(46, 150, 245, 0.16);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--cw-ink-900);
+  transition: all 0.25s ease;
+  outline: none;
+}
+.cw-field input::placeholder { color: var(--cw-ink-300); }
+.cw-field input:focus {
+  border-color: var(--cw-blue-500);
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 0 0 4px rgba(46, 150, 245, 0.12),
+    0 6px 20px -6px rgba(46, 100, 175, 0.2);
+}
+.cw-field input:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.cw-field .cw-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px; height: 18px;
+  color: var(--cw-ink-300);
+  transition: color 0.25s ease;
+  pointer-events: none;
+}
+.cw-field:focus-within .cw-icon { color: var(--cw-blue-500); }
+
+/* Botón mostrar/ocultar contraseña */
+.cw-toggle-pwd {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 6px;
+  cursor: pointer;
+  color: var(--cw-ink-300);
+  border-radius: 6px;
+  display: flex;
+  transition: color 0.2s, background 0.2s;
+}
+.cw-toggle-pwd:hover {
+  color: var(--cw-blue-500);
+  background: rgba(46, 150, 245, 0.08);
+}
+
+/* ========================================================================
+   FORGOT LINK
+   ======================================================================== */
+.cw-forgot {
+  text-align: right;
+  margin: 4px 0 18px;
+  animation: cwFadeUp 0.7s 0.45s ease-out both;
+}
+.cw-forgot a,
+.cw-forgot button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--cw-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--cw-ink-400);
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.cw-forgot a:hover,
+.cw-forgot button:hover { color: var(--cw-blue-600); }
+
+/* ========================================================================
+   PRIMARY BUTTON
+   ======================================================================== */
+.cw-primary {
+  width: 100%;
+  padding: 15px 18px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, var(--cw-blue-400) 0%, var(--cw-blue-500) 50%, var(--cw-blue-600) 100%);
+  color: white;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: var(--cw-shadow-primary);
+  animation: cwFadeUp 0.7s 0.5s ease-out both;
+}
+.cw-primary::before {
+  content: "";
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.4) 50%, transparent 70%);
+  transition: left 0.6s ease;
+}
+.cw-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--cw-shadow-primary-hover);
+}
+.cw-primary:hover:not(:disabled)::before { left: 100%; }
+.cw-primary:active:not(:disabled) { transform: translateY(0); }
+.cw-primary:disabled { opacity: 0.7; cursor: not-allowed; }
+
+.cw-primary .cw-arrow { transition: transform 0.25s ease; }
+.cw-primary:hover:not(:disabled) .cw-arrow { transform: translateX(4px); }
+
+.cw-primary--success {
+  background: linear-gradient(135deg, var(--cw-success), var(--cw-success-dark));
+}
+
+/* ========================================================================
+   FOOTER (guest + signup)
+   ======================================================================== */
+.cw-footer {
+  margin-top: 22px;
+  text-align: center;
+  animation: cwFadeUp 0.7s 0.6s ease-out both;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.cw-guest {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-family: var(--cw-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--cw-ink-500);
+  text-transform: uppercase;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(46, 150, 245, 0.12);
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.2s;
+}
+.cw-guest:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--cw-blue-600);
+}
+.cw-guest:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.cw-signup {
+  font-size: 12px;
+  color: var(--cw-ink-400);
+  letter-spacing: 0.02em;
+}
+.cw-signup-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  color: var(--cw-blue-600);
+  font-weight: 600;
+  font-size: inherit;
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(46, 150, 245, 0.4);
+  padding-bottom: 1px;
+  margin-left: 4px;
+  transition: all 0.2s;
+}
+.cw-signup-link:hover {
+  color: var(--cw-blue-500);
+  border-bottom-color: var(--cw-blue-500);
+}
+
+/* ========================================================================
+   FLOATING BADGES (status)
+   ======================================================================== */
+.cw-float-badge {
+  position: absolute;
+  z-index: 4;
+  padding: 10px 16px;
+  background: var(--cw-glass-bg);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--cw-glass-border);
+  border-radius: 12px;
+  box-shadow: var(--cw-shadow-soft);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--cw-ink-700);
+  font-weight: 500;
+  animation: cwBadgeFloat 6s ease-in-out infinite;
+}
+.cw-float-badge b { color: var(--cw-ink-900); }
+
+.cw-float-badge .cw-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--cw-success);
+  box-shadow: 0 0 8px rgba(43, 210, 122, 0.6);
+  animation: cwDotPulse 2s ease-in-out infinite;
+}
+.cw-float-badge .cw-dot--blue {
+  background: var(--cw-blue-500);
+  box-shadow: 0 0 8px rgba(46, 150, 245, 0.6);
+}
+@keyframes cwDotPulse {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%      { opacity: 0.6; transform: scale(1.2); }
+}
+
+.cw-float-badge--1 { top: 18%;    left: 8%;  animation-delay: 0s; }
+.cw-float-badge--2 { bottom: 22%; right: 7%; animation-delay: 2s; }
+.cw-float-badge--3 { top: 70%;    left: 6%;  animation-delay: 1s; }
+
+@keyframes cwBadgeFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+
+/* Avatar stack */
+.cw-avatar-stack { display: flex; }
+.cw-avatar-stack > div {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 2px solid white;
+  margin-left: -8px;
+  background: linear-gradient(135deg, var(--cw-blue-400), var(--cw-blue-600));
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+.cw-avatar-stack > div:first-child { margin-left: 0; }
+.cw-avatar-stack > div:nth-child(2) { background: linear-gradient(135deg, var(--cw-blue-light), var(--cw-blue-500)); }
+.cw-avatar-stack > div:nth-child(3) {
+  background: linear-gradient(135deg, var(--cw-blue-200), var(--cw-blue-400));
+  color: var(--cw-ink-700);
+}
+
+/* ========================================================================
+   CORNER LABELS
+   ======================================================================== */
+.cw-corner-label {
+  position: absolute;
+  top: 24px;
+  left: 28px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--cw-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--cw-ink-400);
+  text-transform: uppercase;
+  animation: cwFadeUp 0.7s 0.1s both;
+}
+.cw-corner-label .cw-square {
+  width: 10px; height: 10px;
+  background: var(--cw-blue-500);
+  border-radius: 2px;
+  box-shadow: 0 0 0 3px rgba(46, 150, 245, 0.18);
+}
+
+.cw-corner-meta {
+  position: absolute;
+  bottom: 24px;
+  right: 28px;
+  z-index: 4;
+  font-family: var(--cw-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--cw-ink-400);
+  text-transform: uppercase;
+  animation: cwFadeUp 0.7s 0.1s both;
+}
+
+/* ========================================================================
+   ALERTS — banner de invitación, error y éxito
+   ======================================================================== */
+.cw-alert {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  animation: cwSlideDown 0.35s ease-out both;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.cw-alert b { color: var(--cw-ink-900); }
+.cw-alert-icon {
+  width: 22px; height: 22px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 12px;
+}
+.cw-alert-body { flex: 1; }
+.cw-alert-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: 18px;
+  line-height: 1;
+  color: currentColor;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+.cw-alert-close:hover { opacity: 1; }
+
+.cw-alert-error {
+  background: rgba(224, 70, 74, 0.08);
+  border: 1px solid rgba(224, 70, 74, 0.25);
+  color: #B11E22;
+}
+.cw-alert-error .cw-alert-icon {
+  background: rgba(224, 70, 74, 0.18);
+  color: #B11E22;
+}
+
+.cw-alert-success {
+  background: rgba(43, 210, 122, 0.1);
+  border: 1px solid rgba(43, 210, 122, 0.3);
+  color: #137A45;
+}
+.cw-alert-success .cw-alert-icon {
+  background: rgba(43, 210, 122, 0.2);
+  color: #137A45;
+}
+
+.cw-alert-info {
+  background: rgba(46, 150, 245, 0.08);
+  border: 1px solid rgba(46, 150, 245, 0.25);
+  color: var(--cw-blue-600);
+}
+.cw-alert-info .cw-alert-icon {
+  background: rgba(46, 150, 245, 0.18);
+  color: var(--cw-blue-600);
+}
+
+.cw-alert-warning {
+  background: rgba(229, 162, 58, 0.1);
+  border: 1px solid rgba(229, 162, 58, 0.3);
+  color: #8A5800;
+}
+.cw-alert-warning .cw-alert-icon {
+  background: rgba(229, 162, 58, 0.2);
+  color: #8A5800;
+}
+
+.cw-help-toggle {
+  margin-top: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--cw-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: currentColor;
+  text-transform: uppercase;
+  text-decoration: underline;
+  font-weight: 700;
+  opacity: 0.85;
+}
+.cw-help-toggle:hover { opacity: 1; }
+
+.cw-help-box {
+  margin: -2px 0 14px;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(46, 150, 245, 0.06);
+  border: 1px solid rgba(46, 150, 245, 0.18);
+  color: var(--cw-ink-500);
+  font-size: 11px;
+  line-height: 1.5;
+  animation: cwSlideDown 0.35s ease-out both;
+}
+.cw-help-box strong { color: var(--cw-ink-900); }
+.cw-help-box ul { margin: 6px 0 0; padding-left: 18px; }
+.cw-help-box li { margin-bottom: 2px; }
+.cw-help-title {
+  font-family: var(--cw-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--cw-blue-600);
+  text-transform: uppercase;
+  margin: 0 0 8px;
+  font-weight: 700;
+}
+
+/* ========================================================================
+   FORGOT PASSWORD — variantes específicas
+   ======================================================================== */
+.cw-forgot-shell .cw-card { width: 440px; }
+
+.cw-back-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(46, 150, 245, 0.18);
+  border-radius: 12px;
+  font-family: var(--cw-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--cw-ink-500);
+  text-transform: uppercase;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.cw-back-btn:hover {
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--cw-blue-600);
+  border-color: rgba(46, 150, 245, 0.35);
+}
+
+.cw-success-card {
+  padding: 20px;
+  border-radius: 16px;
+  background: rgba(43, 210, 122, 0.08);
+  border: 1px solid rgba(43, 210, 122, 0.3);
+  text-align: center;
+  margin-bottom: 14px;
+}
+.cw-success-card .cw-success-circle {
+  width: 48px; height: 48px;
+  margin: 0 auto 10px;
+  border-radius: 50%;
+  background: rgba(43, 210, 122, 0.18);
+  display: grid;
+  place-items: center;
+  color: var(--cw-success-dark);
+}
+.cw-success-card h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--cw-success-dark);
+}
+.cw-success-card p {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--cw-ink-500);
+  line-height: 1.5;
+}
+.cw-success-card b { color: var(--cw-ink-900); }
+
+.cw-instructions {
+  font-size: 12px;
+  color: var(--cw-ink-500);
+  text-align: center;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.cw-countdown-ring {
+  position: relative;
+  width: 40px; height: 40px;
+  flex-shrink: 0;
+}
+.cw-countdown-ring svg { transform: rotate(-90deg); }
+.cw-countdown-ring span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--cw-font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  color: #8A5800;
+}
+
+/* ========================================================================
+   SHARED ANIMATIONS
+   ======================================================================== */
+@keyframes cwFadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cwSlideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cwSpinner {
+  to { transform: rotate(360deg); }
+}
+
+.cw-spinner {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  display: inline-block;
+  animation: cwSpinner 0.8s linear infinite;
+}
+
+/* Honra prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .cw-shell *,
+  .cw-shell *::before,
+  .cw-shell *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ========================================================================
+   RESPONSIVE
+   ======================================================================== */
+@media (max-width: 720px) {
+  .cw-float-badge,
+  .cw-corner-label,
+  .cw-corner-meta {
+    display: none;
+  }
+  .cw-card {
+    padding: 32px 24px 24px;
+    border-radius: 20px;
+  }
+  .cw-stage {
+    padding: 16px 12px;
+  }
+  .cw-logo {
+    width: 52px; height: 52px;
+    font-size: 22px;
+  }
+  .cw-title { font-size: 18px; }
+  .cw-google-btn {
+    padding: 12px 14px;
+    gap: 10px;
+    font-size: 12px;
+  }
+  .cw-google-btn .cw-g-icon { width: 18px; height: 18px; }
+  .cw-google-btn .cw-g-sub { font-size: 8px; }
+  .cw-field input {
+    padding: 12px 14px 12px 40px;
+    font-size: 13px;
+  }
+  .cw-primary {
+    padding: 13px 16px;
+    font-size: 12px;
+  }
+  .cw-divider { margin: 18px 0 14px; }
+}
+
+@media (max-width: 400px) {
+  .cw-card {
+    padding: 24px 18px 20px;
+    border-radius: 16px;
+    width: 100%;
+  }
+  .cw-stage { padding: 12px 8px; }
+  .cw-brand { margin-bottom: 18px; }
+  .cw-logo {
+    width: 44px; height: 44px;
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+  .cw-title { font-size: 16px; }
+  .cw-tag { font-size: 9px; letter-spacing: 0.24em; }
+  .cw-google-btn {
+    padding: 11px 12px;
+    font-size: 11px;
+    border-radius: 12px;
+  }
+  .cw-field input {
+    padding: 11px 12px 11px 38px;
+    font-size: 13px;
+    border-radius: 10px;
+  }
+  .cw-primary {
+    padding: 12px 14px;
+    font-size: 11px;
+    border-radius: 12px;
+  }
+  .cw-footer { margin-top: 16px; gap: 8px; }
+  .cw-guest { padding: 7px 12px; font-size: 9px; }
+  .cw-signup { font-size: 11px; }
+}

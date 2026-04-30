@@ -53,10 +53,10 @@ export const SettingsMiniMode: React.FC<SettingsMiniModeProps> = ({
   return (
     <div>
       <div className="mb-8 lg:mb-6">
-        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-2 lg:mb-1">
+        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#0B2240] via-[#1E86E5] to-[#0B2240] mb-2 lg:mb-1">
           {currentLang === 'en' ? 'Mini Mode' : currentLang === 'pt' ? 'Modo Mini' : 'Mini Mode'}
         </h2>
-        <p className="text-sm text-zinc-400">
+        <p className="text-sm text-[#4A6485]">
           {currentLang === 'en' ? 'Configure compact mode for when working in other applications' : currentLang === 'pt' ? 'Configure o modo compacto para quando trabalhar em outras aplicações' : 'Configura el modo compacto para cuando trabajas en otras aplicaciones'}
         </p>
       </div>

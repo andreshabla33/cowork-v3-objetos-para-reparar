@@ -24,15 +24,15 @@ export const SettingSlider: React.FC<SettingSliderProps> = ({
   disabled = false
 }) => {
   return (
-    <div className="py-4 lg:py-3 border-b border-white/[0.05] last:border-b-0">
+    <div className="py-4 lg:py-3 border-b border-[rgba(46,150,245,0.14)] last:border-b-0">
       <div className="flex items-center justify-between mb-3 lg:mb-2">
         <div>
-          <p className="text-sm lg:text-xs font-medium text-white">{label}</p>
+          <p className="text-sm lg:text-xs font-medium text-[#0B2240]">{label}</p>
           {description && (
-            <p className="text-xs lg:text-[11px] text-zinc-400 mt-0.5">{description}</p>
+            <p className="text-xs lg:text-[11px] text-[#4A6485] mt-0.5">{description}</p>
           )}
         </div>
-        <span className="px-3 lg:px-2 py-1 rounded-lg bg-violet-600/20 border border-violet-500/40 text-sm lg:text-xs font-bold text-violet-300">
+        <span className="px-3 lg:px-2 py-1 rounded-lg bg-[rgba(46,150,245,0.12)] border border-[rgba(46,150,245,0.3)] text-sm lg:text-xs font-bold text-[#1E86E5]">
           {value}{unit}
         </span>
       </div>
@@ -49,7 +49,7 @@ export const SettingSlider: React.FC<SettingSliderProps> = ({
             disabled ? 'opacity-50 cursor-not-allowed' : ''
           }`}
           style={{
-            background: `linear-gradient(to right, #8b5cf6 0%, #d946ef ${((value - min) / (max - min)) * 100}%, #3f3f46 ${((value - min) / (max - min)) * 100}%, #3f3f46 100%)`
+            background: `linear-gradient(to right, #2E96F5 0%, #4FB0FF ${((value - min) / (max - min)) * 100}%, #E0F0FF ${((value - min) / (max - min)) * 100}%, #E0F0FF 100%)`
           }}
         />
       </div>

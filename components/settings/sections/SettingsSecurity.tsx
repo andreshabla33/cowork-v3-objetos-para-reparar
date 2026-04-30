@@ -64,10 +64,10 @@ export const SettingsSecurity: React.FC<SettingsSecurityProps> = ({
   return (
     <div>
       <div className="mb-8 lg:mb-6">
-        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-2 lg:mb-1">
+        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#1E86E5] via-[#4FB0FF] to-[#1E86E5] mb-2 lg:mb-1">
           {currentLang === 'en' ? 'Security' : currentLang === 'pt' ? 'Segurança' : 'Seguridad'}
         </h2>
-        <p className="text-sm text-zinc-400">
+        <p className="text-sm text-[#4A6485]">
           {currentLang === 'en' ? 'Configure space security policies' : currentLang === 'pt' ? 'Configure as políticas de segurança do espaço' : 'Configura las políticas de seguridad del espacio'}
         </p>
       </div>
@@ -86,21 +86,21 @@ export const SettingsSecurity: React.FC<SettingsSecurityProps> = ({
           onChange={(v) => updateSetting('passwordProtection', v)}
         />
         {settings.passwordProtection && (
-          <div className="py-4 border-b border-white/[0.05]">
+          <div className="py-4 border-b border-[rgba(46,150,245,0.14)]">
             <div className="flex-1">
-              <p className="text-sm font-medium text-white mb-2">{currentLang === 'en' ? 'Space password' : currentLang === 'pt' ? 'Senha do espaço' : 'Contraseña del espacio'}</p>
+              <p className="text-sm font-medium text-[#0B2240] mb-2">{currentLang === 'en' ? 'Space password' : currentLang === 'pt' ? 'Senha do espaço' : 'Contraseña del espacio'}</p>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={settings.spacePassword}
                     onChange={(e) => updateSetting('spacePassword', e.target.value)}
-                    className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-violet-500/50"
+                    className="w-full bg-[rgba(46,150,245,0.06)] border border-[rgba(46,150,245,0.14)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#2E96F5]"
                     placeholder={currentLang === 'en' ? 'Enter password' : currentLang === 'pt' ? 'Digite a senha' : 'Ingresa la contraseña'}
                   />
                   <button
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4A6485] hover:text-[#0B2240]"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       {showPassword ? (
@@ -118,22 +118,22 @@ export const SettingsSecurity: React.FC<SettingsSecurityProps> = ({
       </SettingSection>
 
       <SettingSection title={currentLang === 'en' ? 'Domain Restriction' : currentLang === 'pt' ? 'Restrição por Domínio' : 'Restricción por Dominio'}>
-        <div className="py-4 border-b border-white/[0.05]">
-          <p className="text-sm font-medium text-white mb-1">{currentLang === 'en' ? 'Allowed domains' : currentLang === 'pt' ? 'Domínios permitidos' : 'Dominios permitidos'}</p>
-          <p className="text-xs text-zinc-400 mb-3">{currentLang === 'en' ? 'Only users with these email domains can access' : currentLang === 'pt' ? 'Apenas usuários com esses domínios de email podem acessar' : 'Solo usuarios con estos dominios de email pueden acceder'}</p>
+        <div className="py-4 border-b border-[rgba(46,150,245,0.14)]">
+          <p className="text-sm font-medium text-[#0B2240] mb-1">{currentLang === 'en' ? 'Allowed domains' : currentLang === 'pt' ? 'Domínios permitidos' : 'Dominios permitidos'}</p>
+          <p className="text-xs text-[#4A6485] mb-3">{currentLang === 'en' ? 'Only users with these email domains can access' : currentLang === 'pt' ? 'Apenas usuários com esses domínios de email podem acessar' : 'Solo usuarios con estos dominios de email pueden acceder'}</p>
           
           <div className="flex gap-2 mb-3">
             <input
               type="text"
               value={newDomain}
               onChange={(e) => setNewDomain(e.target.value)}
-              className="flex-1 bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-violet-500/50"
+              className="flex-1 bg-[rgba(46,150,245,0.06)] border border-[rgba(46,150,245,0.14)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#2E96F5]"
               placeholder={currentLang === 'en' ? 'example.com' : currentLang === 'pt' ? 'exemplo.com' : 'ejemplo.com'}
               onKeyDown={(e) => e.key === 'Enter' && addDomain()}
             />
             <button
               onClick={addDomain}
-              className="px-4 py-2.5 bg-violet-600 hover:bg-violet-500 rounded-xl text-sm font-medium transition-all"
+              className="px-4 py-2.5 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] rounded-xl text-sm font-medium text-white transition-all"
             >
               {currentLang === 'en' ? 'Add' : currentLang === 'pt' ? 'Adicionar' : 'Agregar'}
             </button>
@@ -144,7 +144,7 @@ export const SettingsSecurity: React.FC<SettingsSecurityProps> = ({
               {settings.allowedDomains.map((domain) => (
                 <span
                   key={domain}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-500/20 text-violet-300 rounded-lg text-xs font-medium"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[rgba(46,150,245,0.12)] text-[#1E86E5] rounded-lg text-xs font-medium"
                 >
                   @{domain}
                   <button
@@ -159,7 +159,7 @@ export const SettingsSecurity: React.FC<SettingsSecurityProps> = ({
               ))}
             </div>
           ) : (
-            <p className="text-xs text-zinc-500 italic">{currentLang === 'en' ? 'No domain restriction' : currentLang === 'pt' ? 'Sem restrição de domínio' : 'Sin restricción de dominio'}</p>
+            <p className="text-xs text-[#6B83A0] italic">{currentLang === 'en' ? 'No domain restriction' : currentLang === 'pt' ? 'Sem restrição de domínio' : 'Sin restricción de dominio'}</p>
           )}
         </div>
       </SettingSection>
@@ -193,7 +193,7 @@ export const SettingsSecurity: React.FC<SettingsSecurityProps> = ({
           </svg>
           <div>
             <p className="text-sm font-medium text-red-400">{currentLang === 'en' ? 'Danger zone' : currentLang === 'pt' ? 'Zona de perigo' : 'Zona de peligro'}</p>
-            <p className="text-xs text-zinc-400 mt-1 mb-3">
+            <p className="text-xs text-[#4A6485] mt-1 mb-3">
               {currentLang === 'en' ? 'Irreversible actions that affect the entire space.' : currentLang === 'pt' ? 'Ações irreversíveis que afetam todo o espaço.' : 'Acciones irreversibles que afectan a todo el espacio.'}
             </p>
             <button className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-xs font-medium transition-all border border-red-500/30">

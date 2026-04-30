@@ -58,7 +58,7 @@ export const ViewModeSelector: React.FC<ViewModeSelectorProps> = ({
   if (availableModes.length <= 1) return null;
 
   return (
-    <div data-tour-step="meeting-layout-switcher" className="flex items-center gap-1.5 rounded-2xl bg-black/55 p-1 shadow-xl backdrop-blur-md md:gap-2 md:rounded-lg md:bg-black/40 md:p-1.5">
+    <div data-tour-step="meeting-layout-switcher" className="flex items-center gap-1.5 rounded-2xl bg-black/55 p-1 shadow-xl backdrop-blur-md md:gap-2 md:rounded-lg md:bg-[rgba(46,150,245,0.08)] md:p-1.5">
       <div className="flex items-center gap-1">
         {availableModes.map((mode) => (
           <button
@@ -69,7 +69,7 @@ export const ViewModeSelector: React.FC<ViewModeSelectorProps> = ({
               transition-all duration-200
               ${currentMode === mode.id
                 ? 'bg-white/20 text-white'
-                : 'text-white/60 hover:text-white hover:bg-white/10'
+                : 'text-white/60 hover:text-white hover:bg-[rgba(46,150,245,0.08)]'
               }
             `}
             title={mode.description}
@@ -80,7 +80,7 @@ export const ViewModeSelector: React.FC<ViewModeSelectorProps> = ({
         ))}
       </div>
 
-      <div className="hidden md:flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white/70">
+      <div className="hidden md:flex items-center rounded-full border border-[rgba(46,150,245,0.14)] bg-white/50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white/70">
         {participantCount} conectados
       </div>
     </div>

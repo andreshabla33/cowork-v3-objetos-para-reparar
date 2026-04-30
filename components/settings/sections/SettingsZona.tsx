@@ -589,7 +589,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
 
   if (!isAdmin) {
     return (
-      <div className="text-center py-12 text-zinc-500">
+      <div className="text-center py-12 text-[#6B83A0]">
         Solo los administradores pueden gestionar zonas y autorizaciones.
       </div>
     );
@@ -598,7 +598,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
   if (cargando) {
     return (
       <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-5 h-5 text-violet-400 animate-spin" />
+        <RefreshCw className="w-5 h-5 text-[#2E96F5] animate-spin" />
       </div>
     );
   }
@@ -610,43 +610,43 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
           Persistido en espacios_trabajo.configuracion.perimeter (JSONB).
           Admin edita, todos los usuarios reciben via Supabase Realtime.
           ═══════════════════════════════════════════════════════════════════ */}
-      <div className="p-5 bg-gradient-to-br from-zinc-800/80 to-zinc-900/80 border border-emerald-500/20 rounded-2xl shadow-xl">
+      <div className="p-5 bg-white/60 backdrop-blur-sm border border-[rgba(46,150,245,0.14)] rounded-2xl shadow-xl">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#4FB0FF] to-[#2E96F5] flex items-center justify-center">
             <LayoutGrid className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h4 className="text-sm font-bold text-white">Cerramiento Perimetral</h4>
-            <p className="text-xs text-zinc-400">Paredes automáticas alrededor del espacio — evita ver el vacío del horizonte. Configuración compartida con todos los usuarios.</p>
+            <h4 className="text-sm font-bold text-[#0B2240]">Cerramiento Perimetral</h4>
+            <p className="text-xs text-[#4A6485]">Paredes automáticas alrededor del espacio — evita ver el vacío del horizonte. Configuración compartida con todos los usuarios.</p>
           </div>
         </div>
 
         {perimeterLoading || !perimeterDraft ? (
-          <div className="flex items-center justify-center py-6 text-zinc-500 text-sm gap-2">
+          <div className="flex items-center justify-center py-6 text-[#6B83A0] text-sm gap-2">
             <RefreshCw className="w-4 h-4 animate-spin" /> Cargando configuración...
           </div>
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="flex items-center gap-3 bg-zinc-900/60 border border-zinc-700/60 rounded-xl px-3 py-2.5">
+              <div className="flex items-center gap-3 bg-[rgba(46,150,245,0.08)] border border-[rgba(46,150,245,0.14)] rounded-xl px-3 py-2.5">
                 <input
                   id="perimeter-enabled"
                   type="checkbox"
                   checked={perimeterDraft.enabled}
                   onChange={(e) => setPerimeterDraft({ ...perimeterDraft, enabled: e.target.checked })}
-                  className="h-4 w-4 rounded border-zinc-600 text-emerald-500"
+                  className="h-4 w-4 rounded border-zinc-600 text-[#2E96F5]"
                 />
-                <label htmlFor="perimeter-enabled" className="text-xs font-medium text-zinc-300">
+                <label htmlFor="perimeter-enabled" className="text-xs font-medium text-[#1B3A5C]">
                   Cerrar perímetro automáticamente
                 </label>
               </div>
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1">Estilo de pared</label>
+                <label className="block text-xs font-medium text-[#4A6485] mb-1">Estilo de pared</label>
                 <select
                   value={perimeterDraft.style}
                   onChange={(e) => setPerimeterDraft({ ...perimeterDraft, style: e.target.value as PerimeterWallStyle })}
                   disabled={!perimeterDraft.enabled}
-                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-emerald-500 outline-none disabled:opacity-50"
+                  className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none disabled:opacity-50"
                 >
                   {perimeterStyleOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -654,7 +654,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1">Altura ({perimeterDraft.height.toFixed(1)} m)</label>
+                <label className="block text-xs font-medium text-[#4A6485] mb-1">Altura ({perimeterDraft.height.toFixed(1)} m)</label>
                 <input
                   type="range"
                   min={0.5}
@@ -663,11 +663,11 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                   value={perimeterDraft.height}
                   onChange={(e) => setPerimeterDraft({ ...perimeterDraft, height: Number(e.target.value) })}
                   disabled={!perimeterDraft.enabled}
-                  className="w-full accent-emerald-500 disabled:opacity-50"
+                  className="w-full accent-[#2E96F5] disabled:opacity-50"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-zinc-400 mb-1">Margen del borde ({perimeterDraft.margin.toFixed(1)} m)</label>
+                <label className="block text-xs font-medium text-[#4A6485] mb-1">Margen del borde ({perimeterDraft.margin.toFixed(1)} m)</label>
                 <input
                   type="range"
                   min={0}
@@ -676,27 +676,27 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                   value={perimeterDraft.margin}
                   onChange={(e) => setPerimeterDraft({ ...perimeterDraft, margin: Number(e.target.value) })}
                   disabled={!perimeterDraft.enabled}
-                  className="w-full accent-emerald-500 disabled:opacity-50"
+                  className="w-full accent-[#2E96F5] disabled:opacity-50"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
-              <p className="text-[11px] text-zinc-500">
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-[rgba(46,150,245,0.14)]">
+              <p className="text-[11px] text-[#6B83A0]">
                 Los cambios se aplican a todos los usuarios del espacio al instante (Realtime).
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setPerimeterDraft(perimeterPolicy)}
                   disabled={!perimeterDirty || perimeterSaving}
-                  className="px-4 py-2 rounded-lg text-sm text-zinc-400 hover:text-white transition disabled:opacity-40"
+                  className="px-4 py-2 rounded-lg text-sm text-[#4A6485] hover:text-[#0B2240] transition disabled:opacity-40"
                 >
                   Descartar
                 </button>
                 <button
                   onClick={handleGuardarPerimeter}
                   disabled={!perimeterDirty || perimeterSaving}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white rounded-lg text-sm font-medium transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] text-white rounded-lg text-sm font-medium transition-all shadow-[0_4px_14px_-4px_rgba(46,150,245,0.3)] disabled:opacity-50"
                 >
                   {perimeterSaving ? (
                     <><RefreshCw className="w-4 h-4 animate-spin" /> Guardando...</>
@@ -712,8 +712,8 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h3 className="text-xl font-bold text-white">Zonas de Empresa</h3>
-          <p className="text-sm text-zinc-400 mt-1">
+          <h3 className="text-xl font-bold text-[#0B2240]">Zonas de Empresa</h3>
+          <p className="text-sm text-[#4A6485] mt-1">
             Define los espacios privados y controla quién puede ver a tu equipo.
           </p>
         </div>
@@ -721,13 +721,13 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 shrink-0">
             <button
               onClick={() => setMostrarGeneradorCompleto(true)}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-400 hover:to-indigo-400 text-white rounded-xl text-sm font-medium transition-all shadow-lg shadow-indigo-500/20"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] text-white rounded-xl text-sm font-medium transition-all shadow-[0_4px_14px_-4px_rgba(46,150,245,0.3)]"
             >
               <Sparkles className="w-4 h-4" /> Plantilla Completa
             </button>
             <button
               onClick={() => setMostrarGenerador(true)}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl text-sm font-medium transition-all shadow-lg shadow-orange-500/20"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] text-white rounded-xl text-sm font-medium transition-all shadow-[0_4px_14px_-4px_rgba(46,150,245,0.3)]"
             >
               <Sparkles className="w-4 h-4" /> Auto-generar
             </button>
@@ -736,7 +736,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 if (onCloseModal) onCloseModal();
                 useStore.getState().setIsDrawingZone(true);
               }}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-medium transition-all"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] text-white rounded-xl text-sm font-medium transition-all"
             >
               <LayoutGrid className="w-4 h-4" /> Dibujar 3D
             </button>
@@ -745,7 +745,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 resetFormulario();
                 setMostrarFormulario(true);
               }}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-sm font-medium transition-all"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] text-white rounded-xl text-sm font-medium transition-all"
             >
               <Plus className="w-4 h-4" /> Nueva zona
             </button>
@@ -766,18 +766,18 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
 
       {/* ========== GENERADOR DE PLANTILLA COMPLETA ========== */}
       {mostrarGeneradorCompleto && (
-        <div className="p-5 bg-gradient-to-br from-zinc-800/80 to-zinc-900/80 border border-violet-500/20 rounded-2xl shadow-xl">
+        <div className="p-5 bg-white/60 backdrop-blur-sm border border-[rgba(46,150,245,0.14)] rounded-2xl shadow-xl">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#4FB0FF] to-[#2E96F5] flex items-center justify-center">
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-white">Generar Espacio Completo</h4>
-                <p className="text-xs text-zinc-400">Reemplaza todo el espacio con un diseño pre-configurado</p>
+                <h4 className="text-sm font-bold text-[#0B2240]">Generar Espacio Completo</h4>
+                <p className="text-xs text-[#4A6485]">Reemplaza todo el espacio con un diseño pre-configurado</p>
               </div>
             </div>
-            <button onClick={() => { setMostrarGeneradorCompleto(false); setPlantillaCompletaSeleccionada(''); }} className="text-zinc-400 hover:text-white transition">
+            <button onClick={() => { setMostrarGeneradorCompleto(false); setPlantillaCompletaSeleccionada(''); }} className="text-[#4A6485] hover:text-[#0B2240] transition">
               <XCircle className="w-5 h-5" />
             </button>
           </div>
@@ -789,16 +789,16 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 onClick={() => setPlantillaCompletaSeleccionada(plantilla.id)}
                 className={`text-left p-4 rounded-xl border transition-all ${
                   plantillaCompletaSeleccionada === plantilla.id
-                    ? 'bg-violet-500/20 border-violet-500/50'
-                    : 'bg-zinc-900/60 border-zinc-700/50 hover:border-zinc-500'
+                    ? 'bg-[rgba(46,150,245,0.12)] border-[#2E96F5]'
+                    : 'bg-[rgba(46,150,245,0.08)] border-[rgba(46,150,245,0.14)] hover:border-[#2E96F5]'
                 }`}
               >
-                <h5 className="font-bold text-white mb-1">{plantilla.nombre}</h5>
-                <p className="text-xs text-zinc-400 mb-3">{plantilla.descripcion}</p>
-                <div className="flex flex-wrap gap-2 text-[10px] text-zinc-500">
-                  <span className="px-2 py-1 bg-black/30 rounded-md">{plantilla.zonas.length} zonas</span>
-                  <span className="px-2 py-1 bg-black/30 rounded-md">Capacidad: {plantilla.capacidadRecomendada}</span>
-                  <span className="px-2 py-1 bg-black/30 rounded-md">{plantilla.ancho_total_metros}x{plantilla.alto_total_metros}m</span>
+                <h5 className="font-bold text-[#0B2240] mb-1">{plantilla.nombre}</h5>
+                <p className="text-xs text-[#4A6485] mb-3">{plantilla.descripcion}</p>
+                <div className="flex flex-wrap gap-2 text-[10px] text-[#6B83A0]">
+                  <span className="px-2 py-1 bg-[rgba(46,150,245,0.06)] rounded-md">{plantilla.zonas.length} zonas</span>
+                  <span className="px-2 py-1 bg-[rgba(46,150,245,0.06)] rounded-md">Capacidad: {plantilla.capacidadRecomendada}</span>
+                  <span className="px-2 py-1 bg-[rgba(46,150,245,0.06)] rounded-md">{plantilla.ancho_total_metros}x{plantilla.alto_total_metros}m</span>
                 </div>
               </button>
             ))}
@@ -818,7 +818,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
             <div className="flex items-center gap-2">
               <button
                 onClick={() => { setMostrarGeneradorCompleto(false); setPlantillaCompletaSeleccionada(''); setConfirmarPlantilla(false); }}
-                className="px-4 py-2 rounded-lg text-sm text-zinc-400 hover:text-white transition"
+                className="px-4 py-2 rounded-lg text-sm text-[#4A6485] hover:text-[#0B2240] transition"
                 disabled={aplicandoPlantillaCompleta}
               >
                 Cancelar
@@ -827,7 +827,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 <button
                   onClick={() => setConfirmarPlantilla(true)}
                   disabled={!plantillaCompletaSeleccionada || aplicandoPlantillaCompleta}
-                  className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-violet-500 to-indigo-500 hover:from-violet-400 hover:to-indigo-400 text-white rounded-lg text-sm font-medium transition-all shadow-lg shadow-indigo-500/20 disabled:opacity-50"
+                  className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] text-white rounded-lg text-sm font-medium transition-all shadow-[0_4px_14px_-4px_rgba(46,150,245,0.3)] disabled:opacity-50"
                 >
                   <Sparkles className="w-4 h-4" /> Aplicar Plantilla
                 </button>
@@ -851,18 +851,18 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
 
       {/* ========== GENERADOR DINÁMICO DE LAYOUT ========== */}
       {mostrarGenerador && (
-        <div className="p-5 bg-gradient-to-br from-zinc-800/80 to-zinc-900/80 border border-amber-500/20 rounded-2xl shadow-xl">
+        <div className="p-5 bg-white/60 backdrop-blur-sm border border-[rgba(46,150,245,0.14)] rounded-2xl shadow-xl">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#4FB0FF] to-[#2E96F5] flex items-center justify-center">
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-white">Generador Dinámico de Layout</h4>
-                <p className="text-xs text-zinc-400">{empresas.length} empresas · Tamaño proporcional a miembros</p>
+                <h4 className="text-sm font-bold text-[#0B2240]">Generador Dinámico de Layout</h4>
+                <p className="text-xs text-[#4A6485]">{empresas.length} empresas · Tamaño proporcional a miembros</p>
               </div>
             </div>
-            <button onClick={() => { setMostrarGenerador(false); setPreviewZonas([]); }} className="text-zinc-400 hover:text-white transition">
+            <button onClick={() => { setMostrarGenerador(false); setPreviewZonas([]); }} className="text-[#4A6485] hover:text-[#0B2240] transition">
               <XCircle className="w-5 h-5" />
             </button>
           </div>
@@ -871,7 +871,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
           <div className="grid grid-cols-3 gap-4 mb-5">
             {/* Algoritmo */}
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-2">Algoritmo</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-2">Algoritmo</label>
               <div className="flex flex-col gap-1.5">
                 {([
                   { id: 'radial' as const, label: 'Radial', desc: 'Anillo alrededor del centro', icon: <Circle className="w-3.5 h-3.5" /> },
@@ -883,14 +883,14 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                     onClick={() => setAlgoritmoSeleccionado(algo.id)}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs transition-all ${
                       algoritmoSeleccionado === algo.id
-                        ? 'bg-amber-500/20 border border-amber-500/40 text-amber-200'
-                        : 'bg-zinc-900/60 border border-zinc-700/40 text-zinc-400 hover:border-zinc-600'
+                        ? 'bg-[rgba(46,150,245,0.12)] border border-[#2E96F5] text-[#1E86E5]'
+                        : 'bg-[rgba(46,150,245,0.08)] border border-[rgba(46,150,245,0.14)] text-[#4A6485] hover:border-[#2E96F5]'
                     }`}
                   >
                     {algo.icon}
                     <div className="text-left">
                       <span className="font-medium">{algo.label}</span>
-                      <span className="text-[10px] text-zinc-500 ml-1">— {algo.desc}</span>
+                      <span className="text-[10px] text-[#6B83A0] ml-1">— {algo.desc}</span>
                     </div>
                   </button>
                 ))}
@@ -899,19 +899,19 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
 
             {/* Opciones */}
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-2">Opciones</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-2">Opciones</label>
               <div className="space-y-3">
-                <div className="flex items-center gap-2 bg-zinc-900/60 border border-zinc-700/40 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2 bg-[rgba(46,150,245,0.08)] border border-[rgba(46,150,245,0.14)] rounded-lg px-3 py-2">
                   <input
                     type="checkbox"
                     checked={incluirZonaComun}
                     onChange={(e) => setIncluirZonaComun(e.target.checked)}
-                    className="h-3.5 w-3.5 rounded border-zinc-600 text-amber-500"
+                    className="h-3.5 w-3.5 rounded border-zinc-600 text-[#2E96F5]"
                   />
-                  <span className="text-xs text-zinc-300">Zona común central</span>
+                  <span className="text-xs text-[#1B3A5C]">Zona común central</span>
                 </div>
                 <div>
-                  <label className="block text-[10px] text-zinc-500 mb-1">Tamaño del mundo (px)</label>
+                  <label className="block text-[10px] text-[#6B83A0] mb-1">Tamaño del mundo (px)</label>
                   <input
                     type="range"
                     min={400}
@@ -919,25 +919,25 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                     step={100}
                     value={worldSize}
                     onChange={(e) => setWorldSize(Number(e.target.value))}
-                    className="w-full accent-amber-500"
+                    className="w-full accent-[#2E96F5]"
                   />
-                  <span className="text-xs text-zinc-400">{worldSize}px</span>
+                  <span className="text-xs text-[#4A6485]">{worldSize}px</span>
                 </div>
               </div>
             </div>
 
             {/* Info del preview */}
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-2">Resultado</label>
-              <div className="bg-zinc-900/60 border border-zinc-700/40 rounded-lg p-3 space-y-1.5">
-                <p className="text-xs text-zinc-300">
-                  <span className="text-white font-medium">{previewZonas.length}</span> zonas generadas
+              <label className="block text-xs font-medium text-[#4A6485] mb-2">Resultado</label>
+              <div className="bg-[rgba(46,150,245,0.08)] border border-[rgba(46,150,245,0.14)] rounded-lg p-3 space-y-1.5">
+                <p className="text-xs text-[#1B3A5C]">
+                  <span className="text-[#0B2240] font-medium">{previewZonas.length}</span> zonas generadas
                 </p>
-                <p className="text-xs text-zinc-300">
-                  Algoritmo: <span className="text-amber-300 font-medium">{previewAlgoritmo || '—'}</span>
+                <p className="text-xs text-[#1B3A5C]">
+                  Algoritmo: <span className="text-[#1E86E5] font-medium">{previewAlgoritmo || '—'}</span>
                 </p>
-                <p className="text-xs text-zinc-300">
-                  Empresas: <span className="text-white font-medium">{previewZonas.filter((z) => !z.es_comun).length}</span>
+                <p className="text-xs text-[#1B3A5C]">
+                  Empresas: <span className="text-[#0B2240] font-medium">{previewZonas.filter((z) => !z.es_comun).length}</span>
                 </p>
                 {overlapsDetectados.length > 0 && (
                   <p className="text-xs text-amber-400">
@@ -951,12 +951,12 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
           {/* Preview 2D Canvas */}
           {previewZonas.length > 0 && (
             <div className="mb-5">
-              <label className="block text-xs font-medium text-zinc-400 mb-2 flex items-center gap-1.5">
+              <label className="block text-xs font-medium text-[#4A6485] mb-2 flex items-center gap-1.5">
                 <Eye className="w-3.5 h-3.5" /> Vista previa del layout
               </label>
-              <div className="bg-zinc-950 border border-zinc-700/50 rounded-xl p-3 overflow-hidden">
+              <div className="bg-[#ECF4FF] border border-[rgba(46,150,245,0.14)] rounded-xl p-3 overflow-hidden">
                 <div className="relative mx-auto" style={{ width: '100%', maxWidth: 420, aspectRatio: '1/1' }}>
-                  <svg viewBox={`0 0 ${worldSize} ${worldSize}`} className="w-full h-full" style={{ background: '#0f172a' }}>
+                  <svg viewBox={`0 0 ${worldSize} ${worldSize}`} className="w-full h-full" style={{ background: '#ECF4FF' }}>
                     {/* Grid de fondo */}
                     <defs>
                       <pattern id="grid-pattern" width={worldSize / 10} height={worldSize / 10} patternUnits="userSpaceOnUse">
@@ -1019,7 +1019,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
             <div className="flex items-center gap-2">
               <button
                 onClick={generarPreview}
-                className="flex items-center gap-2 px-3 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg text-xs font-medium transition"
+                className="flex items-center gap-2 px-3 py-2 bg-[rgba(46,150,245,0.08)] hover:bg-[rgba(46,150,245,0.1)] text-[#0B2240] rounded-lg text-xs font-medium transition"
               >
                 <RefreshCw className="w-3.5 h-3.5" /> Regenerar
               </button>
@@ -1032,14 +1032,14 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
             <div className="flex items-center gap-2">
               <button
                 onClick={() => { setMostrarGenerador(false); setPreviewZonas([]); }}
-                className="px-4 py-2 rounded-lg text-sm text-zinc-400 hover:text-white transition"
+                className="px-4 py-2 rounded-lg text-sm text-[#4A6485] hover:text-[#0B2240] transition"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleAplicarLayout}
                 disabled={aplicandoLayout || previewZonas.length === 0}
-                className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-lg text-sm font-medium transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50"
+                className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] text-white rounded-lg text-sm font-medium transition-all shadow-[0_4px_14px_-4px_rgba(46,150,245,0.3)] disabled:opacity-50"
               >
                 {aplicandoLayout ? (
                   <><RefreshCw className="w-4 h-4 animate-spin" /> Aplicando...</>
@@ -1053,20 +1053,20 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
       )}
 
       {mostrarFormulario && (
-        <div className="p-5 bg-zinc-800/50 border border-zinc-700/50 rounded-2xl">
+        <div className="p-5 bg-white/60 backdrop-blur-sm border border-[rgba(46,150,245,0.14)] rounded-2xl">
           <div className="flex items-center justify-between mb-4">
-            <h4 className="text-sm font-bold text-white">
+            <h4 className="text-sm font-bold text-[#0B2240]">
               {editandoId ? 'Editar zona' : 'Nueva zona'}
             </h4>
             <button
               onClick={resetFormulario}
-              className="text-zinc-400 hover:text-white transition"
+              className="text-[#4A6485] hover:text-[#0B2240] transition"
             >
               <XCircle className="w-4 h-4" />
             </button>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2 flex items-center gap-3 bg-zinc-900/60 border border-zinc-700/60 rounded-xl px-3 py-2">
+            <div className="col-span-2 flex items-center gap-3 bg-[rgba(46,150,245,0.08)] border border-[rgba(46,150,245,0.14)] rounded-xl px-3 py-2">
               <input
                 id="zona-comun"
                 type="checkbox"
@@ -1078,19 +1078,19 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                     empresa_id: e.target.checked ? '' : prev.empresa_id,
                   }))
                 }
-                className="h-4 w-4 rounded border-zinc-600 text-violet-500"
+                className="h-4 w-4 rounded border-zinc-600 text-[#2E96F5]"
               />
-              <label htmlFor="zona-comun" className="text-xs font-medium text-zinc-300">
+              <label htmlFor="zona-comun" className="text-xs font-medium text-[#1B3A5C]">
                 Zona común (sin empresa asignada)
               </label>
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Empresa *</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Empresa *</label>
               <select
                 value={formData.empresa_id}
                 onChange={(e) => setFormData((prev) => ({ ...prev, empresa_id: e.target.value }))}
                 disabled={formData.es_comun}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               >
                 <option value="">Selecciona empresa</option>
                 {empresas.map((empresa) => (
@@ -1101,73 +1101,73 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Nombre zona</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Nombre zona</label>
               <input
                 type="text"
                 value={formData.nombre_zona}
                 onChange={(e) => setFormData((prev) => ({ ...prev, nombre_zona: e.target.value }))}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
                 placeholder="Ej: Zona Diseño"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Posición X</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Posición X</label>
               <input
                 type="number"
                 value={formData.posicion_x}
                 onChange={(e) => setFormData((prev) => ({ ...prev, posicion_x: e.target.value }))}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Posición Y</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Posición Y</label>
               <input
                 type="number"
                 value={formData.posicion_y}
                 onChange={(e) => setFormData((prev) => ({ ...prev, posicion_y: e.target.value }))}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Ancho</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Ancho</label>
               <input
                 type="number"
                 value={formData.ancho}
                 onChange={(e) => setFormData((prev) => ({ ...prev, ancho: e.target.value }))}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Alto</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Alto</label>
               <input
                 type="number"
                 value={formData.alto}
                 onChange={(e) => setFormData((prev) => ({ ...prev, alto: e.target.value }))}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Color</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Color</label>
               <input
                 type="color"
                 value={formData.color}
                 onChange={(e) => setFormData((prev) => ({ ...prev, color: e.target.value }))}
-                className="w-full h-10 bg-zinc-900 border border-zinc-700 rounded-lg"
+                className="w-full h-10 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Estado</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Estado</label>
               <select
                 value={formData.estado}
                 onChange={(e) => setFormData((prev) => ({ ...prev, estado: e.target.value }))}
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               >
                 <option value="activa">Activa</option>
                 <option value="inactiva">Inactiva</option>
               </select>
             </div>
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Tipo de suelo</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Tipo de suelo</label>
               <select
                 value={formData.tipo_suelo}
                 onChange={(e) =>
@@ -1176,7 +1176,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                     tipo_suelo: normalizarTipoSuelo(e.target.value),
                   }))
                 }
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               >
                 {Object.entries(FLOOR_TYPE_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
@@ -1189,14 +1189,14 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
           <div className="flex justify-end gap-3 mt-4">
             <button
               onClick={resetFormulario}
-              className="px-4 py-2 rounded-lg text-sm text-zinc-400 hover:text-white transition"
+              className="px-4 py-2 rounded-lg text-sm text-[#4A6485] hover:text-[#0B2240] transition"
             >
               Cancelar
             </button>
             <button
               onClick={handleGuardarZona}
               disabled={guardando}
-              className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium transition disabled:opacity-60"
+              className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] text-white text-sm font-medium transition disabled:opacity-60"
             >
               {guardando ? 'Guardando...' : 'Guardar'}
             </button>
@@ -1206,32 +1206,32 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {zonas.map((zona) => (
-          <div key={zona.id} className="p-4 bg-zinc-900/60 border border-white/5 rounded-2xl">
+          <div key={zona.id} className="p-4 bg-[rgba(46,150,245,0.08)] border border-[rgba(46,150,245,0.14)] rounded-2xl">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: zona.color || '#64748b' }}>
                   <MapPin className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-white">{zona.nombre_zona || 'Zona sin nombre'}</p>
-                  <p className="text-xs text-zinc-400 flex items-center gap-1">
+                  <p className="text-sm font-semibold text-[#0B2240]">{zona.nombre_zona || 'Zona sin nombre'}</p>
+                  <p className="text-xs text-[#4A6485] flex items-center gap-1">
                     <Building2 className="w-3 h-3" /> {zona.es_comun ? 'Zona común' : (zona.empresa?.nombre || obtenerNombreEmpresa(zona.empresa_id))}
                   </p>
                   {obtenerPlantillaAplicadaZona(zona) && (
-                    <p className="text-[11px] text-violet-300 mt-1">Plantilla: {obtenerPlantillaAplicadaZona(zona)?.nombre}</p>
+                    <p className="text-[11px] text-[#1E86E5] mt-1">Plantilla: {obtenerPlantillaAplicadaZona(zona)?.nombre}</p>
                   )}
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleAbrirPlantillasZona(zona)}
-                  className="text-xs px-2 py-1 rounded-lg bg-sky-500/15 text-sky-200 hover:bg-sky-500/25 transition"
+                  className="text-xs px-2 py-1 rounded-lg bg-[rgba(46,150,245,0.1)] text-[#1E86E5] hover:bg-[rgba(46,150,245,0.18)] transition"
                 >
                   Plantilla
                 </button>
                 <button
                   onClick={() => handleEditarZona(zona)}
-                  className="text-xs text-violet-300 hover:text-white transition"
+                  className="text-xs text-[#1E86E5] hover:text-[#0B2240] transition"
                 >
                   Editar
                 </button>
@@ -1247,7 +1247,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 </button>
               </div>
             </div>
-            <div className="mt-3 text-xs text-zinc-500 grid grid-cols-2 gap-2">
+            <div className="mt-3 text-xs text-[#6B83A0] grid grid-cols-2 gap-2">
               <span>Posición: {zona.posicion_x}, {zona.posicion_y}</span>
               <span>Tamaño: {zona.ancho} × {zona.alto}</span>
               <span>Estado: {zona.estado}</span>
@@ -1257,11 +1257,11 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
         ))}
       </div>
 
-      <div className="border-t border-white/5 pt-8">
+      <div className="border-t border-[rgba(46,150,245,0.14)] pt-8">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h4 className="text-lg font-bold text-white">Autorizaciones entre empresas</h4>
-            <p className="text-xs text-zinc-400 mt-1">Gestiona permisos para ver equipos y colaborar.</p>
+            <h4 className="text-lg font-bold text-[#0B2240]">Autorizaciones entre empresas</h4>
+            <p className="text-xs text-[#4A6485] mt-1">Gestiona permisos para ver equipos y colaborar.</p>
           </div>
         </div>
 
@@ -1273,13 +1273,13 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
 
         {empresaUsuarioId && (
           <div className="space-y-6">
-            <div className="p-4 bg-zinc-900/60 border border-white/5 rounded-2xl">
-              <h5 className="text-sm font-semibold text-white mb-3">Nueva solicitud</h5>
+            <div className="p-4 bg-[rgba(46,150,245,0.08)] border border-[rgba(46,150,245,0.14)] rounded-2xl">
+              <h5 className="text-sm font-semibold text-[#0B2240] mb-3">Nueva solicitud</h5>
               <div className="flex flex-wrap gap-3 items-center">
                 <select
                   value={empresaDestinoId}
                   onChange={(e) => setEmpresaDestinoId(e.target.value)}
-                  className="px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                  className="px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
                 >
                   <option value="">Selecciona empresa</option>
                   {empresasDisponibles.map((empresa) => (
@@ -1291,7 +1291,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 <button
                   onClick={handleSolicitarAcceso}
                   disabled={guardando || !empresaDestinoId}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium transition disabled:opacity-60"
+                  className="px-4 py-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] text-white rounded-lg text-sm font-medium transition disabled:opacity-60"
                 >
                   <span className="flex items-center gap-2">
                     <Send className="w-4 h-4" /> Solicitar acceso
@@ -1301,14 +1301,14 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-zinc-900/60 border border-white/5 rounded-2xl">
-                <h5 className="text-sm font-semibold text-white mb-3">Solicitudes recibidas</h5>
+              <div className="p-4 bg-[rgba(46,150,245,0.08)] border border-[rgba(46,150,245,0.14)] rounded-2xl">
+                <h5 className="text-sm font-semibold text-[#0B2240] mb-3">Solicitudes recibidas</h5>
                 {solicitudesRecibidas.length === 0 ? (
-                  <p className="text-xs text-zinc-500">No hay solicitudes pendientes.</p>
+                  <p className="text-xs text-[#6B83A0]">No hay solicitudes pendientes.</p>
                 ) : (
                   <div className="space-y-3">
                     {solicitudesRecibidas.map((solicitud) => (
-                      <div key={solicitud.id} className="flex items-center justify-between text-xs text-zinc-300">
+                      <div key={solicitud.id} className="flex items-center justify-between text-xs text-[#1B3A5C]">
                         <span>{obtenerNombreEmpresa(solicitud.empresa_origen_id)}</span>
                         <div className="flex gap-2">
                           <button
@@ -1330,12 +1330,12 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                 )}
               </div>
 
-              <div className="p-4 bg-zinc-900/60 border border-white/5 rounded-2xl">
-                <h5 className="text-sm font-semibold text-white mb-3">Solicitudes enviadas</h5>
+              <div className="p-4 bg-[rgba(46,150,245,0.08)] border border-[rgba(46,150,245,0.14)] rounded-2xl">
+                <h5 className="text-sm font-semibold text-[#0B2240] mb-3">Solicitudes enviadas</h5>
                 {solicitudesEnviadas.length === 0 ? (
-                  <p className="text-xs text-zinc-500">No has enviado solicitudes.</p>
+                  <p className="text-xs text-[#6B83A0]">No has enviado solicitudes.</p>
                 ) : (
-                  <ul className="space-y-2 text-xs text-zinc-400">
+                  <ul className="space-y-2 text-xs text-[#4A6485]">
                     {solicitudesEnviadas.map((solicitud) => (
                       <li key={solicitud.id}>
                         {obtenerNombreEmpresa(solicitud.empresa_destino_id)} · pendiente
@@ -1346,12 +1346,12 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
               </div>
             </div>
 
-            <div className="p-4 bg-zinc-900/60 border border-white/5 rounded-2xl">
-              <h5 className="text-sm font-semibold text-white mb-3">Autorizaciones activas</h5>
+            <div className="p-4 bg-[rgba(46,150,245,0.08)] border border-[rgba(46,150,245,0.14)] rounded-2xl">
+              <h5 className="text-sm font-semibold text-[#0B2240] mb-3">Autorizaciones activas</h5>
               {autorizacionesActivas.length === 0 ? (
-                <p className="text-xs text-zinc-500">No hay autorizaciones activas.</p>
+                <p className="text-xs text-[#6B83A0]">No hay autorizaciones activas.</p>
               ) : (
-                <div className="space-y-3 text-xs text-zinc-300">
+                <div className="space-y-3 text-xs text-[#1B3A5C]">
                   {autorizacionesActivas.map((autorizacion) => {
                     const otraEmpresa =
                       autorizacion.empresa_origen_id === empresaUsuarioId
@@ -1362,7 +1362,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                         <div>
                           <p>{obtenerNombreEmpresa(otraEmpresa)}</p>
                           {autorizacion.expira_en && (
-                            <p className="text-[10px] text-zinc-500">Expira: {new Date(autorizacion.expira_en).toLocaleDateString()}</p>
+                            <p className="text-[10px] text-[#6B83A0]">Expira: {new Date(autorizacion.expira_en).toLocaleDateString()}</p>
                           )}
                         </div>
                         <div className="flex items-center gap-2">
@@ -1372,7 +1372,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                                 setActiveChatGroupId(autorizacion.canal_compartido_id || null);
                                 setActiveSubTab('chat');
                               }}
-                              className="px-2 py-1 rounded bg-sky-500/20 text-sky-200"
+                              className="px-2 py-1 rounded bg-[rgba(46,150,245,0.12)] text-[#1E86E5]"
                             >
                               Abrir canal
                             </button>
@@ -1395,22 +1395,22 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
       </div>
 
       {zonaPlantillaActiva && plantillaZonaSeleccionadaData && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[240] bg-black/70 backdrop-blur-sm flex items-start sm:items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
-          <div className="w-full max-w-[1100px] max-h-[92vh] bg-zinc-950 border border-white/10 rounded-[28px] shadow-2xl overflow-hidden flex flex-col">
-            <div className="flex items-start sm:items-center justify-between gap-4 px-4 sm:px-6 py-4 sm:py-5 border-b border-white/5">
+        <div className="fixed inset-0 z-[240] bg-[#0B2240]/35 backdrop-blur-[10px] flex items-start sm:items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto">
+          <div className="w-full max-w-[1100px] max-h-[92vh] bg-white/95 backdrop-blur-xl border border-[rgba(46,150,245,0.14)] rounded-[28px] shadow-2xl overflow-hidden flex flex-col">
+            <div className="flex items-start sm:items-center justify-between gap-4 px-4 sm:px-6 py-4 sm:py-5 border-b border-[rgba(46,150,245,0.14)]">
               <div className="min-w-0">
-                <h4 className="text-base sm:text-lg font-bold text-white">Plantillas predeterminadas por zona</h4>
-                <p className="text-[11px] sm:text-xs text-zinc-400 mt-1">Aplica una plantilla sobre <span className="text-white">{zonaPlantillaActiva.nombre_zona || 'Zona sin nombre'}</span> sin crear un sistema paralelo de layouts.</p>
+                <h4 className="text-base sm:text-lg font-bold text-[#0B2240]">Plantillas predeterminadas por zona</h4>
+                <p className="text-[11px] sm:text-xs text-[#4A6485] mt-1">Aplica una plantilla sobre <span className="text-[#0B2240]">{zonaPlantillaActiva.nombre_zona || 'Zona sin nombre'}</span> sin crear un sistema paralelo de layouts.</p>
               </div>
               <button
                 onClick={() => setZonaPlantillaActiva(null)}
-                className="text-zinc-400 hover:text-white transition shrink-0"
+                className="text-[#4A6485] hover:text-[#0B2240] transition shrink-0"
               >
                 <XCircle className="w-5 h-5" />
               </button>
             </div>
             <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.95fr)] min-h-0 overflow-hidden">
-              <div className="p-4 sm:p-6 border-b xl:border-b-0 xl:border-r border-white/5 min-h-0 overflow-y-auto">
+              <div className="p-4 sm:p-6 border-b xl:border-b-0 xl:border-r border-[rgba(46,150,245,0.14)] min-h-0 overflow-y-auto">
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   {PLANTILLAS_ZONA_OFICINA.map((plantilla) => {
                     const activa = plantillaZonaSeleccionada === plantilla.id;
@@ -1418,16 +1418,16 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                       <button
                         key={plantilla.id}
                         onClick={() => setPlantillaZonaSeleccionada(plantilla.id)}
-                        className={`text-left rounded-2xl border p-4 transition-all min-w-0 ${activa ? 'border-violet-400 bg-violet-500/10 shadow-lg shadow-violet-500/10' : 'border-white/8 bg-zinc-900/70 hover:border-white/20 hover:bg-zinc-900'}`}
+                        className={`text-left rounded-2xl border p-4 transition-all min-w-0 ${activa ? 'border-[#2E96F5] bg-[rgba(46,150,245,0.1)] shadow-[0_4px_14px_-4px_rgba(46,150,245,0.15)]' : 'border-[rgba(46,150,245,0.14)] bg-white/50 hover:border-[#2E96F5] hover:bg-white/70'}`}
                       >
                         <div className="flex items-center justify-between gap-3 mb-3">
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold text-white">{plantilla.nombre}</p>
-                            <p className="text-[11px] text-zinc-400 mt-1">{plantilla.descripcion}</p>
+                            <p className="text-sm font-semibold text-[#0B2240]">{plantilla.nombre}</p>
+                            <p className="text-[11px] text-[#4A6485] mt-1">{plantilla.descripcion}</p>
                           </div>
-                          {activa && <Sparkles className="w-4 h-4 text-violet-300 shrink-0" />}
+                          {activa && <Sparkles className="w-4 h-4 text-[#1E86E5] shrink-0" />}
                         </div>
-                        <div className="rounded-xl border border-white/5 bg-black/30 p-2 mb-3">
+                        <div className="rounded-xl border border-[rgba(46,150,245,0.14)] bg-[rgba(46,150,245,0.06)] p-2 mb-3">
                           <svg viewBox="0 0 100 100" className="w-full aspect-square rounded-lg overflow-hidden">
                             <rect width="100" height="100" fill="rgba(15,23,42,0.95)" />
                             {plantilla.preview.bloques.map((bloque, indice) => (
@@ -1445,7 +1445,7 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                         </div>
                         <div className="space-y-1">
                           {plantilla.resumen.map((item) => (
-                            <p key={`${plantilla.id}-${item}`} className="text-[11px] text-zinc-300">{item}</p>
+                            <p key={`${plantilla.id}-${item}`} className="text-[11px] text-[#1B3A5C]">{item}</p>
                           ))}
                         </div>
                       </button>
@@ -1453,49 +1453,49 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
                   })}
                 </div>
               </div>
-              <div className="p-4 sm:p-6 bg-zinc-950/80 min-h-0 overflow-y-auto">
-                <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-[11px] sm:text-xs text-amber-200">
+              <div className="p-4 sm:p-6 bg-white/70 min-h-0 overflow-y-auto">
+                <div className="rounded-2xl border border-[rgba(46,150,245,0.14)] bg-[rgba(46,150,245,0.06)] p-4 text-[11px] sm:text-xs text-[#1E86E5]">
                   Reaplicar la plantilla reemplaza los objetos y subsuelos decorativos generados previamente para esta zona, pero conserva la zona base y su identidad.
                 </div>
-                <div className="rounded-2xl border border-white/8 bg-zinc-900/70 p-4 space-y-4 mt-4">
+                <div className="rounded-2xl border border-[rgba(46,150,245,0.14)] bg-white/50 p-4 space-y-4 mt-4">
                   <div>
-                    <p className="text-xs uppercase tracking-widest text-zinc-500 font-semibold">Zona destino</p>
-                    <p className="text-sm text-white mt-2">{zonaPlantillaActiva.nombre_zona || 'Zona sin nombre'}</p>
-                    <p className="text-xs text-zinc-400 mt-1">{zonaPlantillaActiva.ancho} × {zonaPlantillaActiva.alto} px · {zonaPlantillaActiva.estado}</p>
+                    <p className="text-xs uppercase tracking-widest text-[#6B83A0] font-semibold">Zona destino</p>
+                    <p className="text-sm text-[#0B2240] mt-2">{zonaPlantillaActiva.nombre_zona || 'Zona sin nombre'}</p>
+                    <p className="text-xs text-[#4A6485] mt-1">{zonaPlantillaActiva.ancho} × {zonaPlantillaActiva.alto} px · {zonaPlantillaActiva.estado}</p>
                   </div>
                   <div>
-                    <p className="text-xs uppercase tracking-widest text-zinc-500 font-semibold">Plantilla seleccionada</p>
-                    <p className="text-base font-semibold text-white mt-2">{plantillaZonaSeleccionadaData.nombre}</p>
-                    <p className="text-xs text-zinc-400 mt-1">{plantillaZonaSeleccionadaData.descripcion}</p>
+                    <p className="text-xs uppercase tracking-widest text-[#6B83A0] font-semibold">Plantilla seleccionada</p>
+                    <p className="text-base font-semibold text-[#0B2240] mt-2">{plantillaZonaSeleccionadaData.nombre}</p>
+                    <p className="text-xs text-[#4A6485] mt-1">{plantillaZonaSeleccionadaData.descripcion}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="rounded-xl bg-black/20 border border-white/5 p-3">
-                      <p className="text-zinc-500">Subzonas</p>
-                      <p className="text-white font-semibold mt-1">{plantillaZonaSeleccionadaData.subzonas.length}</p>
+                    <div className="rounded-xl bg-[rgba(46,150,245,0.04)] border border-[rgba(46,150,245,0.14)] p-3">
+                      <p className="text-[#6B83A0]">Subzonas</p>
+                      <p className="text-[#0B2240] font-semibold mt-1">{plantillaZonaSeleccionadaData.subzonas.length}</p>
                     </div>
-                    <div className="rounded-xl bg-black/20 border border-white/5 p-3">
-                      <p className="text-zinc-500">Objetos</p>
-                      <p className="text-white font-semibold mt-1">{plantillaZonaSeleccionadaData.objetos.length}</p>
+                    <div className="rounded-xl bg-[rgba(46,150,245,0.04)] border border-[rgba(46,150,245,0.14)] p-3">
+                      <p className="text-[#6B83A0]">Objetos</p>
+                      <p className="text-[#0B2240] font-semibold mt-1">{plantillaZonaSeleccionadaData.objetos.length}</p>
                     </div>
-                    <div className="rounded-xl bg-black/20 border border-white/5 p-3">
-                      <p className="text-zinc-500">Miembro editable</p>
-                      <p className="text-white font-semibold mt-1">{plantillaZonaSeleccionadaData.reglas.editable_por_miembro ? 'Sí' : 'No'}</p>
+                    <div className="rounded-xl bg-[rgba(46,150,245,0.04)] border border-[rgba(46,150,245,0.14)] p-3">
+                      <p className="text-[#6B83A0]">Miembro editable</p>
+                      <p className="text-[#0B2240] font-semibold mt-1">{plantillaZonaSeleccionadaData.reglas.editable_por_miembro ? 'Sí' : 'No'}</p>
                     </div>
-                    <div className="rounded-xl bg-black/20 border border-white/5 p-3">
-                      <p className="text-zinc-500">Objetos movibles</p>
-                      <p className="text-white font-semibold mt-1">{plantillaZonaSeleccionadaData.reglas.permite_mover_objetos ? 'Sí' : 'No'}</p>
+                    <div className="rounded-xl bg-[rgba(46,150,245,0.04)] border border-[rgba(46,150,245,0.14)] p-3">
+                      <p className="text-[#6B83A0]">Objetos movibles</p>
+                      <p className="text-[#0B2240] font-semibold mt-1">{plantillaZonaSeleccionadaData.reglas.permite_mover_objetos ? 'Sí' : 'No'}</p>
                     </div>
                   </div>
                   <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
                     <button
                       onClick={() => setZonaPlantillaActiva(null)}
-                      className="px-4 py-2 rounded-xl text-sm text-zinc-400 hover:text-white transition"
+                      className="px-4 py-2 rounded-xl text-sm text-[#4A6485] hover:text-[#0B2240] transition"
                     >
                       Cancelar
                     </button>
                     <button
                       onClick={() => zonaPlantillaActiva && handleIniciarColocacionPlantillaZona(zonaPlantillaActiva, plantillaZonaSeleccionada)}
-                      className="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-sm font-semibold transition"
+                      className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] text-white text-sm font-semibold transition"
                     >
                       Arrastrar en espacio
                     </button>

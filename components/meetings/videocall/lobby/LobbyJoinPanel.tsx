@@ -41,7 +41,7 @@ const STATUS_STYLES: Record<JoinStatusIndicator['tone'], { dot: string; text: st
   ready: { dot: 'bg-emerald-400', text: 'text-green-400' },
   warning: { dot: 'bg-amber-400', text: 'text-amber-300' },
   error: { dot: 'bg-red-400', text: 'text-red-400' },
-  preparing: { dot: 'bg-zinc-400 animate-pulse', text: 'text-zinc-500' },
+  preparing: { dot: 'bg-[#9CB0CA] animate-pulse', text: 'text-[#4A6485]' },
 };
 
 // ── Componente ────────────────────────────────────────────────────────────────
@@ -66,14 +66,14 @@ export const LobbyJoinPanel: React.FC<LobbyJoinPanelProps> = ({
 
       {/* ── Encabezado de la reunión ─────────────────────────────────── */}
       <div className="mb-6 sm:mb-8 2xl:mb-10">
-        <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-zinc-500">
+        <p className="mb-1.5 text-[10px] font-black uppercase tracking-widest text-[#4A6485]">
           Reunión programada
         </p>
         <h1 className="mb-2 text-2xl font-bold tracking-tight text-white lg:text-3xl xl:text-[2rem] 2xl:text-4xl">
           {salaInfo?.nombre ?? 'Cargando...'}
         </h1>
         {salaInfo?.organizador && (
-          <p className="text-sm text-zinc-400 lg:text-base">
+          <p className="text-sm text-[#4A6485] lg:text-base">
             Organizado por{' '}
             <span className="font-black text-white">{salaInfo.organizador}</span>
           </p>
@@ -92,7 +92,7 @@ export const LobbyJoinPanel: React.FC<LobbyJoinPanelProps> = ({
         <div>
           <label
             htmlFor="lobby-nombre"
-            className="mb-2 block text-[10px] font-black uppercase tracking-widest text-zinc-500"
+            className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#4A6485]"
           >
             Tu nombre
           </label>
@@ -105,9 +105,9 @@ export const LobbyJoinPanel: React.FC<LobbyJoinPanelProps> = ({
             autoComplete="name"
             maxLength={80}
             disabled={joining}
-            className="w-full rounded-xl border border-white/5 bg-black/40 px-4 py-3.5 text-sm text-white placeholder:text-zinc-600 transition-all focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/50 disabled:opacity-50 2xl:px-5 2xl:py-4 2xl:text-base"
+            className="w-full rounded-xl border border-[rgba(46,150,245,0.14)] bg-[rgba(46,150,245,0.08)] px-4 py-3.5 text-sm text-white placeholder:text-[#6B83A0] transition-all focus:border-[#2E96F5]/50 focus:outline-none focus:ring-2 focus:ring-[#2E96F5]/50 disabled:opacity-50 2xl:px-5 2xl:py-4 2xl:text-base"
           />
-          <p className="mt-2 text-xs text-zinc-500">
+          <p className="mt-2 text-xs text-[#4A6485]">
             Este nombre será visible para los demás participantes.
           </p>
         </div>
@@ -117,10 +117,10 @@ export const LobbyJoinPanel: React.FC<LobbyJoinPanelProps> = ({
           <div>
             <label
               htmlFor="lobby-email"
-              className="mb-2 block text-[10px] font-black uppercase tracking-widest text-zinc-500"
+              className="mb-2 block text-[10px] font-black uppercase tracking-widest text-[#4A6485]"
             >
               Email{' '}
-              <span className="normal-case tracking-normal font-normal text-zinc-600">
+              <span className="normal-case tracking-normal font-normal text-[#6B83A0]">
                 (opcional)
               </span>
             </label>
@@ -132,7 +132,7 @@ export const LobbyJoinPanel: React.FC<LobbyJoinPanelProps> = ({
               placeholder="tu@email.com"
               autoComplete="email"
               disabled={joining}
-              className="w-full rounded-xl border border-white/5 bg-black/40 px-4 py-3.5 text-sm text-white placeholder:text-zinc-600 transition-all focus:border-violet-500/50 focus:outline-none focus:ring-2 focus:ring-violet-500/50 disabled:opacity-50 2xl:px-5 2xl:py-4 2xl:text-base"
+              className="w-full rounded-xl border border-[rgba(46,150,245,0.14)] bg-[rgba(46,150,245,0.08)] px-4 py-3.5 text-sm text-white placeholder:text-[#6B83A0] transition-all focus:border-[#2E96F5]/50 focus:outline-none focus:ring-2 focus:ring-[#2E96F5]/50 disabled:opacity-50 2xl:px-5 2xl:py-4 2xl:text-base"
             />
           </div>
         )}
@@ -144,13 +144,13 @@ export const LobbyJoinPanel: React.FC<LobbyJoinPanelProps> = ({
         <button
           type="submit"
           disabled={joining || !nombre.trim()}
-          className="relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500 px-5 py-4 text-xs font-black uppercase tracking-wider text-white shadow-2xl shadow-violet-600/30 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 2xl:py-5 2xl:text-sm"
+          className="relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] px-5 py-4 text-xs font-black uppercase tracking-wider text-white shadow-2xl shadow-[#2E96F5]/30 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 2xl:py-5 2xl:text-sm"
         >
           {/* Hover overlay */}
-          <span className="absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400 opacity-0 transition-opacity duration-300 hover:opacity-100" />
+          <span className="absolute inset-0 bg-gradient-to-r from-[#4FB0FF] via-[#2E96F5] to-[#1E86E5] opacity-0 transition-opacity duration-300 hover:opacity-100" />
           {joining ? (
             <span className="relative flex items-center gap-2">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/50 border-t-white" />
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-white" />
               Conectando...
             </span>
           ) : (
@@ -173,7 +173,7 @@ export const LobbyJoinPanel: React.FC<LobbyJoinPanelProps> = ({
       </div>
 
       {/* ── Footer ───────────────────────────────────────────────────── */}
-      <p className="mt-auto pt-8 text-center text-xs font-bold leading-relaxed text-zinc-500 sm:mt-8 2xl:text-sm">
+      <p className="mt-auto pt-8 text-center text-xs font-bold leading-relaxed text-[#4A6485] sm:mt-8 2xl:text-sm">
         Al unirte aceptas compartir tu audio y video con los participantes
       </p>
     </div>

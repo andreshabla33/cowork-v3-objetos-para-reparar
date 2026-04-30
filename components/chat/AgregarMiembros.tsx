@@ -24,20 +24,17 @@ export const AgregarMiembros: React.FC<Props> = ({ grupoId, espacioId, onClose }
 
   useEffect(() => {
     const cargar = async () => {
-      // Obtener IDs de usuarios del espacio
       const { data: miembrosEspacio } = await supabase
         .from('miembros_espacio')
         .select('usuario_id')
         .eq('espacio_id', espacioId)
         .eq('aceptado', true);
         
-      // Miembros actuales del grupo
       const { data: miembrosGrupo } = await supabase
         .from('miembros_grupo')
         .select('usuario_id')
         .eq('grupo_id', grupoId);
 
-      // Obtener datos de usuarios
       if (miembrosEspacio && miembrosEspacio.length > 0) {
         const ids = miembrosEspacio.map((m: any) => m.usuario_id);
         const { data: usuarios } = await supabase
@@ -54,7 +51,6 @@ export const AgregarMiembros: React.FC<Props> = ({ grupoId, espacioId, onClose }
 
   const agregarMiembros = async () => {
     const nuevos = seleccionados.filter(id => !miembrosActuales.includes(id));
-    
     if (nuevos.length === 0) return;
     
     const { error } = await supabase.from('miembros_grupo').insert(
@@ -70,9 +66,7 @@ export const AgregarMiembros: React.FC<Props> = ({ grupoId, espacioId, onClose }
 
   const toggleSeleccion = (id: string) => {
     setSeleccionados(prev => 
-      prev.includes(id) 
-        ? prev.filter(x => x !== id)
-        : [...prev, id]
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     );
   };
 
@@ -82,16 +76,16 @@ export const AgregarMiembros: React.FC<Props> = ({ grupoId, espacioId, onClose }
   );
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[1000] p-6">
-      <div className="bg-[#0d0d0f] border border-white/10 rounded-[48px] p-12 w-full max-w-md shadow-[0_50px_100px_rgba(0,0,0,0.8)] animate-in zoom-in duration-300">
-        <h2 className="text-3xl font-black uppercase italic tracking-tighter mb-8 text-white">{t('chat.addToChannel', currentLang)}</h2>
+    <div className="fixed inset-0 bg-[var(--cw-ink-900)]/30 backdrop-blur-sm flex items-center justify-center z-[1000] p-6">
+      <div className="bg-white/95 backdrop-blur-xl border border-[var(--cw-glass-border)] rounded-2xl p-8 w-full max-w-md shadow-[var(--cw-shadow-floating)] animate-in zoom-in duration-300">
+        <h2 className="text-xl font-bold text-[var(--cw-ink-900)] mb-6">{t('chat.addToChannel', currentLang)}</h2>
         
         <input 
           type="text"
           placeholder={t('chat.searchMembers', currentLang)}
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
-          className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 mb-6 text-sm focus:ring-2 focus:ring-indigo-600 outline-none text-white placeholder:text-zinc-800"
+          className="w-full bg-white/80 border border-[var(--cw-glass-border)] rounded-xl px-5 py-3 mb-5 text-sm text-[var(--cw-ink-700)] focus:ring-2 focus:ring-blue-100 focus:border-[var(--cw-blue-400)] outline-none placeholder:text-[var(--cw-ink-400)]"
         />
 
         <div className="max-h-64 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
@@ -103,43 +97,43 @@ export const AgregarMiembros: React.FC<Props> = ({ grupoId, espacioId, onClose }
               <div
                 key={user.id}
                 onClick={() => !esMiembro && toggleSeleccion(user.id)}
-                className={`flex items-center gap-4 p-4 rounded-2xl transition-all cursor-pointer border-2 ${
+                className={`flex items-center gap-4 p-3.5 rounded-xl transition-all cursor-pointer border-2 ${
                   esMiembro 
-                    ? 'bg-zinc-900 border-zinc-800 opacity-40 cursor-not-allowed' 
+                    ? 'bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed' 
                     : estaSeleccionado
-                      ? 'bg-indigo-600 border-indigo-500'
-                      : 'bg-black/20 border-white/5 hover:border-white/10'
+                      ? 'bg-blue-50 border-[var(--cw-blue-500)]'
+                      : 'bg-white/60 border-[var(--cw-glass-border)] hover:border-[var(--cw-blue-300)] hover:bg-blue-50/50'
                 }`}
               >
-                <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-white font-black uppercase">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${estaSeleccionado ? 'bg-[var(--cw-blue-500)] text-white' : 'bg-blue-100 text-[var(--cw-blue-600)]'}`}>
                   {user.nombre?.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-black uppercase tracking-widest text-white truncate">{user.nombre}</p>
-                  <p className="text-[9px] text-zinc-600 font-bold uppercase truncate">{user.email}</p>
+                  <p className="text-sm font-semibold text-[var(--cw-ink-900)] truncate">{user.nombre}</p>
+                  <p className="text-[10px] text-[var(--cw-ink-400)] truncate">{user.email}</p>
                 </div>
                 {esMiembro && (
-                  <span className="text-[8px] font-black uppercase tracking-widest text-zinc-500">{t('chat.member', currentLang)}</span>
+                  <span className="text-[9px] font-semibold text-[var(--cw-ink-400)]">{t('chat.member', currentLang)}</span>
                 )}
                 {!esMiembro && estaSeleccionado && (
-                  <span className="text-indigo-200">✓</span>
+                  <span className="text-[var(--cw-blue-500)] text-lg">✓</span>
                 )}
               </div>
             );
           })}
         </div>
 
-        <div className="flex gap-4 pt-8">
+        <div className="flex gap-4 pt-6">
           <button
             onClick={onClose}
-            className="flex-1 py-4 font-black uppercase tracking-widest text-[10px] text-zinc-500 hover:text-white transition-colors"
+            className="flex-1 py-3 font-semibold text-[11px] text-[var(--cw-ink-400)] hover:text-[var(--cw-ink-700)] transition-colors"
           >
             {t('button.cancel', currentLang)}
           </button>
           <button
             onClick={agregarMiembros}
             disabled={seleccionados.length === 0}
-            className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-5 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl disabled:opacity-50"
+            className="flex-1 bg-[var(--cw-blue-500)] hover:bg-[var(--cw-blue-600)] text-white py-3.5 rounded-xl font-semibold text-[11px] shadow-md disabled:opacity-40 transition-all"
           >
             {t('action.add', currentLang)} ({seleccionados.length})
           </button>

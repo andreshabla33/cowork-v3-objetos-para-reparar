@@ -141,7 +141,7 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
 
   if (!isAdmin) {
     return (
-      <div className="text-center py-12 text-zinc-500">
+      <div className="text-center py-12 text-[#6B83A0]">
         Solo los administradores pueden gestionar departamentos.
       </div>
     );
@@ -151,13 +151,13 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-xl font-bold text-white">Departamentos</h3>
-          <p className="text-sm text-zinc-400 mt-1">Organiza tu equipo en áreas de trabajo</p>
+          <h3 className="text-xl font-bold text-[#0B2240]">Departamentos</h3>
+          <p className="text-sm text-[#4A6485] mt-1">Organiza tu equipo en áreas de trabajo</p>
         </div>
         {!showNew && (
           <button
             onClick={() => { resetForm(); setShowNew(true); }}
-            className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-xl text-sm font-medium transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] text-white rounded-xl text-sm font-medium transition-all"
           >
             <Plus className="w-4 h-4" /> Nuevo departamento
           </button>
@@ -173,42 +173,42 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
 
       {/* Formulario nuevo/editar */}
       {showNew && (
-        <div className="mb-6 p-5 bg-zinc-800/50 border border-zinc-700/50 rounded-2xl">
-          <h4 className="text-sm font-bold text-white mb-4">
+        <div className="mb-6 p-5 bg-white/60 backdrop-blur-sm border border-[rgba(46,150,245,0.14)] rounded-2xl">
+          <h4 className="text-sm font-bold text-[#0B2240] mb-4">
             {editingId ? 'Editar departamento' : 'Nuevo departamento'}
           </h4>
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Nombre *</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Nombre *</label>
               <input
                 type="text"
                 value={formData.nombre}
                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                 placeholder="Ej: Marketing"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1">Descripción</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-1">Descripción</label>
               <input
                 type="text"
                 value={formData.descripcion}
                 onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                 placeholder="Descripción breve"
-                className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-white text-sm focus:border-violet-500 outline-none"
+                className="w-full px-3 py-2 bg-white/70 border border-[rgba(46,150,245,0.16)] rounded-lg text-[#0B2240] text-sm focus:border-[#2E96F5] outline-none"
               />
             </div>
           </div>
           <div className="flex items-center gap-8 mb-4">
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-2">Color</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-2">Color</label>
               <div className="flex gap-1.5">
                 {COLORES_PRESET.map(color => (
                   <button
                     key={color}
                     onClick={() => setFormData({ ...formData, color })}
                     className={`w-7 h-7 rounded-lg transition-all ${
-                      formData.color === color ? 'ring-2 ring-white ring-offset-2 ring-offset-zinc-900 scale-110' : 'hover:scale-105'
+                      formData.color === color ? 'ring-2 ring-white ring-offset-2 ring-offset-white scale-110' : 'hover:scale-105'
                     }`}
                     style={{ backgroundColor: color }}
                   />
@@ -216,7 +216,7 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-2">Icono</label>
+              <label className="block text-xs font-medium text-[#4A6485] mb-2">Icono</label>
               <div className="flex gap-1.5">
                 {ICONOS_DEPT.map(iconName => {
                   const Ic = ICON_MAP_DEPT[iconName] || HelpCircle;
@@ -226,8 +226,8 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
                       onClick={() => setFormData({ ...formData, icono: iconName })}
                       className={`p-1.5 rounded-lg transition-all ${
                         formData.icono === iconName
-                          ? 'bg-violet-600 text-white'
-                          : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                          ? 'bg-[#2E96F5] text-white'
+                          : 'bg-[rgba(46,150,245,0.08)] text-[#4A6485] hover:text-[#0B2240]'
                       }`}
                       title={iconName}
                     >
@@ -242,12 +242,12 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] hover:from-[#4FB0FF] hover:to-[#1E86E5] text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-all"
             >
               {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               {editingId ? 'Actualizar' : 'Crear'}
             </button>
-            <button onClick={resetForm} className="px-4 py-2 text-zinc-400 hover:text-white text-sm transition-all">
+            <button onClick={resetForm} className="px-4 py-2 text-[#4A6485] hover:text-[#0B2240] text-sm transition-all">
               Cancelar
             </button>
           </div>
@@ -260,7 +260,7 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
           <RefreshCw className="w-5 h-5 text-violet-400 animate-spin" />
         </div>
       ) : departamentos.length === 0 ? (
-        <div className="text-center py-12 text-zinc-500">No hay departamentos configurados</div>
+        <div className="text-center py-12 text-[#6B83A0]">No hay departamentos configurados</div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {departamentos.map((dept) => {
@@ -268,7 +268,7 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
             return (
               <div
                 key={dept.id}
-                className="flex items-center gap-3 p-4 rounded-xl border border-zinc-700/50 bg-zinc-800/30 hover:border-zinc-600 transition-all group"
+                className="flex items-center gap-3 p-4 rounded-xl border border-[rgba(46,150,245,0.14)] bg-white/50 hover:border-[#2E96F5] transition-all group"
               >
                 <div
                   className="p-2.5 rounded-xl"
@@ -277,22 +277,22 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
                   <DeptIcon className="w-5 h-5" style={{ color: dept.color }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-sm text-white">{dept.nombre}</div>
+                  <div className="font-medium text-sm text-[#0B2240]">{dept.nombre}</div>
                   {dept.descripcion && (
-                    <div className="text-xs text-zinc-500 truncate">{dept.descripcion}</div>
+                    <div className="text-xs text-[#6B83A0] truncate">{dept.descripcion}</div>
                   )}
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => handleEdit(dept)}
-                    className="p-1.5 rounded-lg text-zinc-500 hover:text-white hover:bg-zinc-700 transition-all"
+                    className="p-1.5 rounded-lg text-[#6B83A0] hover:text-[#0B2240] hover:bg-[rgba(46,150,245,0.1)] transition-all"
                     title="Editar"
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDelete(dept.id)}
-                    className="p-1.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                    className="p-1.5 rounded-lg text-[#6B83A0] hover:text-red-400 hover:bg-red-500/10 transition-all"
                     title="Eliminar"
                   >
                     <Trash2 className="w-4 h-4" />

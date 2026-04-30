@@ -1,37 +1,81 @@
 /**
  * @module components/chat/ChatSidebarContent
- * @description Sidebar channel/DM list for the chat panel.
- * Pure presentational — receives all data and callbacks via props.
+ * @description Sidebar — listado de canales, DMs y meetings. Aurora GLASS.
  *
- * Clean Architecture: Presentation layer component.
- * F5 refactor: extracted from ChatPanel monolith.
+ * Diseño calm:
+ *   - Workspace header (avatar + nombre + presencia + chevron)
+ *   - Búsqueda con shortcut ⌘K
+ *   - Secciones MEETINGS · CANALES · MENSAJES DIRECTOS
+ *   - Item activo con indicador azul a la izquierda + badge unread rojo
+ *   - Status dots calm (active/paused/busy/offline)
+ *
+ * Estilos 100% en `aurora-glass.css` (.ag-side*). Sin colores hardcoded.
+ * Toda la lógica vive en `useChatPanel` — este componente es presentacional.
  */
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '@/store/useStore';
 import { ModalCrearGrupo } from './ModalCrearGrupo';
 import { ChatToast } from '../ChatToast';
-import { MeetingRooms } from '../MeetingRooms';
-import { UserAvatar } from '../UserAvatar';
 import { PresenceStatus } from '@/types';
 import type { ChatGroup } from '@/types';
 import type { MiembroChatData } from '@/src/core/domain/ports/IChatRepository';
 import type { ToastNotification } from '@/components/ChatToast';
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────────────────
+   Helpers
+   ──────────────────────────────────────────────────────────────────────── */
 
-const getStatusColor = (status?: PresenceStatus) => {
+type StatusVariant = 'active' | 'paused' | 'busy' | 'offline';
+
+const presenceToVariant = (status?: PresenceStatus, isOnline = false): StatusVariant => {
+  if (!isOnline) return 'offline';
   switch (status) {
-    case PresenceStatus.AVAILABLE: return 'bg-green-500';
-    case PresenceStatus.BUSY: return 'bg-red-500';
-    case PresenceStatus.AWAY: return 'bg-yellow-500';
-    case PresenceStatus.DND: return 'bg-purple-500';
-    default: return 'bg-zinc-500';
+    case PresenceStatus.AVAILABLE: return 'active';
+    case PresenceStatus.AWAY:      return 'paused';
+    case PresenceStatus.BUSY:
+    case PresenceStatus.DND:       return 'busy';
+    default:                       return 'active';
   }
 };
 
-// ─── Props ───────────────────────────────────────────────────────────────────
+const initial = (name?: string | null) => (name?.trim().charAt(0) || '?').toLowerCase();
+
+const AVATAR_COLORS = [
+  '#4f46e5', '#7c3aed', '#c026d3', '#db2777',
+  '#e11d48', '#dc2626', '#ea580c', '#d97706',
+  '#059669', '#0d9488', '#0891b2', '#0284c7',
+];
+
+function getAvatarColor(name?: string | null): string {
+  if (!name) return AVATAR_COLORS[0];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+   Iconos calm (line, 1.6 stroke)
+   ──────────────────────────────────────────────────────────────────────── */
+
+const Icon: React.FC<{ d: string; size?: number }> = ({ d, size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+    <path d={d} />
+  </svg>
+);
+
+const IconSearch    = () => <Icon size={14} d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />;
+const IconCalendar  = () => <Icon d="M8 2v4M16 2v4M3 10h18M5 6h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z" />;
+const IconCamera    = () => <Icon d="M23 7l-7 5 7 5V7zM14 5H3a2 2 0 00-2 2v10a2 2 0 002 2h11a2 2 0 002-2V7a2 2 0 00-2-2z" />;
+const IconChevron   = () => <Icon size={14} d="M6 9l6 6 6-6" />;
+const IconPlus      = () => <Icon size={14} d="M12 5v14M5 12h14" />;
+
+/* ────────────────────────────────────────────────────────────────────────
+   Props
+   ──────────────────────────────────────────────────────────────────────── */
 
 export interface ChatSidebarContentProps {
   grupos: ChatGroup[];
@@ -53,7 +97,9 @@ export interface ChatSidebarContentProps {
   dismissToast: (id: string) => void;
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
+/* ────────────────────────────────────────────────────────────────────────
+   Component
+   ──────────────────────────────────────────────────────────────────────── */
 
 export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
   grupos,
@@ -61,11 +107,9 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
   unreadByChannel,
   grupoActivo,
   showCreateModal,
-  showMeetingRooms,
   toastNotifications,
   showNotifications,
   setShowCreateModal,
-  setShowMeetingRooms,
   handleChannelSelect,
   handleDeleteChannel,
   canDeleteChannel,
@@ -74,174 +118,279 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
   dismissToast,
 }) => {
   const { t } = useTranslation();
-  const { activeWorkspace, currentUser, setActiveSubTab, theme, onlineUsers, userRoleInActiveWorkspace } = useStore();
+  const {
+    activeWorkspace,
+    currentUser,
+    setActiveSubTab,
+    theme,
+    onlineUsers,
+    userRoleInActiveWorkspace,
+  } = useStore();
 
-  const s = { activeItem: 'bg-indigo-500/20 text-indigo-400 opacity-100', sidebarBg: 'bg-[#0d0d15]' };
+  const [searchQuery, setSearchQuery] = useState('');
 
+  // ── Datos derivados ──────────────────────────────────────────────────
+  const onlineCount = onlineUsers.length;
+  const workspaceInitial = (activeWorkspace?.name?.trim().charAt(0) || 'W').toUpperCase();
+
+  const canales = useMemo(
+    () => grupos.filter(g => g.tipo !== 'directo'),
+    [grupos],
+  );
+
+  const directos = useMemo(
+    () => grupos.filter(g => g.tipo === 'directo' && g.nombre.includes(currentUser.id)),
+    [grupos, currentUser.id],
+  );
+
+  const filteredCanales = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return canales;
+    return canales.filter(g => g.nombre.toLowerCase().includes(q));
+  }, [canales, searchQuery]);
+
+  const filteredDirectos = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return directos;
+    return directos.filter(g => {
+      const otherId = g.nombre.split('|').find(id => id !== currentUser.id);
+      const other = miembrosEspacio.find(m => m.id === otherId);
+      return other?.nombre?.toLowerCase().includes(q);
+    });
+  }, [directos, searchQuery, miembrosEspacio, currentUser.id]);
+
+  // ── Render ───────────────────────────────────────────────────────────
   return (
-    <div className={`h-full flex flex-col overflow-hidden transition-all duration-500 ${s.sidebarBg}`}>
-      {/* Workspace Header */}
-      <div className="p-5 border-b border-white/5 flex items-center justify-between hover:bg-white/5 cursor-pointer transition-colors group">
-        <h2 className={`font-black text-xs uppercase tracking-tight truncate ${theme === 'arcade' ? 'text-[#00ff41]' : ''}`}>{activeWorkspace?.name || 'Workspace'}</h2>
-        <svg className="w-4 h-4 opacity-50 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+    <div className="ag-side h-full">
+      {/* Workspace header */}
+      <button
+        type="button"
+        className="ag-side__head"
+        onClick={() => setActiveSubTab('settings')}
+        aria-label={`Espacio ${activeWorkspace?.name ?? 'Workspace'}`}
+      >
+        <span className="ag-side__head-avatar" aria-hidden="true">{workspaceInitial}</span>
+        <span className="ag-side__head-meta">
+          <span className="ag-side__head-title">{activeWorkspace?.name || 'Workspace'}</span>
+          <span className="ag-side__head-sub">
+            <span className="ag-pill__dot" aria-hidden="true" />
+            Spatial World · {onlineCount} {onlineCount === 1 ? 'activo' : 'activos'}
+          </span>
+        </span>
+        <span className="ag-side__head-chevron" aria-hidden="true">
+          <IconChevron />
+        </span>
+      </button>
+
+      {/* Búsqueda calm */}
+      <div className="ag-side__search">
+        <span className="ag-side__search-icon" aria-hidden="true"><IconSearch /></span>
+        <input
+          type="search"
+          className="ag-side__search-input"
+          placeholder="Buscar personas, canales..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          aria-label="Buscar"
+        />
+        <span className="ag-side__search-shortcut" aria-hidden="true">⌘K</span>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {/* Navigation: Meetings, Calendar */}
-        <div className="px-2 py-4 space-y-0.5">
+      {/* Body scrollable */}
+      <div className="ag-side__body">
+        {/* MEETINGS */}
+        <div className="ag-side__section">
+          <h3 className="ag-side__section-title">Meetings</h3>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('calendar')}
+          className="ag-side__item"
+        >
+          <span className="ag-side__item-icon" aria-hidden="true"><IconCalendar /></span>
+          <span className="ag-side__item-label">Calendar</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('grabaciones')}
+          className="ag-side__item"
+        >
+          <span className="ag-side__item-icon" aria-hidden="true"><IconCamera /></span>
+          <span className="ag-side__item-label">Juntas</span>
+          <span className="ag-side__item-meta">
+            <span>3 hoy</span>
+            <IconChevron />
+          </span>
+        </button>
+
+        {/* CANALES */}
+        <div className="ag-side__section">
+          <h3 className="ag-side__section-title">Canales</h3>
           <button
-            onClick={() => setShowMeetingRooms(!showMeetingRooms)}
-            className={`w-full text-left px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-3 ${showMeetingRooms ? s.activeItem : 'hover:bg-white/5'}`}
+            type="button"
+            className="ag-side__section-add"
+            onClick={(e) => { e.stopPropagation(); setShowCreateModal(true); }}
+            title="Crear canal"
+            aria-label="Crear canal"
           >
-            <span className="w-4 text-center opacity-60">🎧</span>
-            <span className="truncate">{t('sidebar.meetings')}</span>
-            <svg className={`w-3 h-3 ml-auto opacity-50 transition-transform ${showMeetingRooms ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          {showMeetingRooms && <MeetingRooms />}
-          <button
-            onClick={() => setActiveSubTab('calendar')}
-            className={`w-full text-left px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-3 ${true ? s.activeItem : 'hover:bg-white/5'}`}
-          >
-            <span className="w-4 text-center opacity-60">📅</span>
-            <span className="truncate">{t('sidebar.calendar')}</span>
-            <svg className="w-3 h-3 ml-auto opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-            </svg>
+            <IconPlus />
           </button>
         </div>
 
-        <div className="h-px bg-white/5 mx-4 my-2" />
-
-        {/* Channels */}
-        <div className="px-2 py-4">
-          <div className="px-3 mb-2 group flex items-center justify-between">
-            <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] opacity-40 ${theme === 'arcade' ? 'text-[#00ff41]' : ''}`}>{t('sidebar.channels')}</h3>
-            <button
-              onClick={(e) => { e.stopPropagation(); setShowCreateModal(true); }}
-              className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${theme === 'arcade' ? 'bg-[#00ff41] text-black shadow-[0_0_10px_#00ff41]' : 'bg-white/10 hover:bg-white/20 text-white'}`}
-              title="Crear Canal"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4"/></svg>
-            </button>
-          </div>
-          <div className="space-y-0.5">
-            {grupos.filter(g => g.tipo !== 'directo').map(g => {
-              const unreadCount = unreadByChannel[g.id] || 0;
-              return (
-              <div key={g.id} className="group/channel relative flex items-center">
+        {filteredCanales.length === 0 ? (
+          <p className="ag-side__empty">Sin canales</p>
+        ) : (
+          filteredCanales.map(g => {
+            const unread = unreadByChannel[g.id] || 0;
+            const active = grupoActivo === g.id;
+            const muted = !active && unread === 0;
+            return (
+              <div key={g.id} className="group/channel relative">
                 <button
+                  type="button"
                   onClick={() => handleChannelSelect(g.id)}
-                  className={`w-full text-left px-4 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${grupoActivo === g.id ? s.activeItem : (unreadCount > 0 ? 'opacity-100 bg-white/5' : 'opacity-50 hover:opacity-100 hover:bg-white/5')}`}
+                  className={`ag-side__item${active ? ' is-active' : ''}${muted ? ' is-muted' : ''}`}
                 >
-                  <span className="opacity-40">{g.tipo === 'privado' ? '🔒' : '#'}</span>
-                  <span className="truncate flex-1">{g.nombre}</span>
-                  {unreadCount > 0 && (
-                    <span className="w-5 h-5 bg-red-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center animate-pulse">
-                      {unreadCount > 9 ? '9+' : unreadCount}
+                  <span className="ag-side__hash" aria-hidden="true">
+                    {g.tipo === 'privado' ? '🔒' : '#'}
+                  </span>
+                  <span className="ag-side__item-label">{g.nombre}</span>
+                  {unread > 0 && (
+                    <span className="ag-side__badge" aria-label={`${unread} sin leer`}>
+                      {unread > 99 ? '99+' : unread}
                     </span>
                   )}
                 </button>
                 {canDeleteChannel(g) && (
                   <button
+                    type="button"
                     onClick={(e) => { e.stopPropagation(); handleDeleteChannel(g.id, g.nombre); }}
-                    className="absolute right-2 opacity-0 group-hover/channel:opacity-60 hover:!opacity-100 p-1 rounded-lg hover:bg-red-500/20 text-red-400 transition-all"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover/channel:opacity-70 hover:opacity-100 transition-opacity"
+                    style={{ color: 'var(--cw-error)' }}
                     title="Eliminar canal"
+                    aria-label="Eliminar canal"
                   >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    <Icon size={13} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </button>
                 )}
               </div>
-            );})}
-          </div>
+            );
+          })
+        )}
+
+        {/* MENSAJES DIRECTOS */}
+        <div className="ag-side__section">
+          <h3 className="ag-side__section-title">Mensajes directos</h3>
         </div>
 
-        <div className="h-px bg-white/5 mx-4 my-2" />
+        {filteredDirectos.length === 0 && filteredCanales.length === 0 ? null : null}
 
-        {/* Direct Messages */}
-        <div className="px-2 py-4">
-          <div className="px-3 mb-2">
-            <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] opacity-40 ${theme === 'arcade' ? 'text-[#00ff41]' : ''}`}>{t('sidebar.directMessages')}</h3>
-          </div>
-          <div className="space-y-0.5">
-            {grupos.filter(g => g.tipo === 'directo' && g.nombre.includes(currentUser.id)).map(g => {
-              const unreadCount = unreadByChannel[g.id] || 0;
-              const otherUserId = g.nombre.split('|').find((id: string) => id !== currentUser.id);
-              const otherUser = miembrosEspacio.find((m) => m.id === otherUserId);
-              const isOnline = onlineUsers.some(ou => ou.id === otherUserId);
-              return (
-              <button
-                key={g.id}
-                onClick={() => handleChannelSelect(g.id)}
-                className={`w-full text-left px-4 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-3 ${grupoActivo === g.id ? s.activeItem : (unreadCount > 0 ? 'opacity-100 bg-white/5' : 'opacity-50 hover:opacity-100 hover:bg-white/5')}`}
+        {/* Existing direct chats */}
+        {filteredDirectos.map(g => {
+          const unread = unreadByChannel[g.id] || 0;
+          const otherId = g.nombre.split('|').find(id => id !== currentUser.id);
+          const other = miembrosEspacio.find(m => m.id === otherId);
+          const presence = onlineUsers.find(ou => ou.id === otherId);
+          const isOnline = !!presence;
+          const variant = presenceToVariant(presence?.status, isOnline);
+          const active = grupoActivo === g.id;
+          return (
+            <button
+              key={g.id}
+              type="button"
+              onClick={() => handleChannelSelect(g.id)}
+              className={`ag-side__item${active ? ' is-active' : ''}${unread === 0 && !active ? ' is-muted' : ''}`}
+            >
+              <span
+                className="ag-side__dm"
+                aria-hidden="true"
+                style={!other?.avatar_url ? { background: getAvatarColor(other?.nombre) } : undefined}
               >
-                <div className="relative">
-                  <div className="w-5 h-5 rounded-full bg-indigo-500/20 flex items-center justify-center text-[8px] font-black">{otherUser?.nombre?.charAt(0) || '?'}</div>
-                  <div className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-[#19171d] ${isOnline ? getStatusColor(onlineUsers.find(ou => ou.id === otherUserId)?.status) : 'bg-zinc-500'}`} />
-                </div>
-                <span className="truncate flex-1">{otherUser?.nombre || 'Usuario'}</span>
-                {unreadCount > 0 && (
-                  <span className="w-5 h-5 bg-red-500 rounded-full text-[9px] font-bold text-white flex items-center justify-center animate-pulse">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
+                {other?.avatar_url ? (
+                  <img src={other.avatar_url} alt="" className="ag-side__dm-img" />
+                ) : (
+                  initial(other?.nombre)
                 )}
-              </button>
-            );})}
-            {grupos.filter(g => g.tipo === 'directo' && g.nombre.includes(currentUser.id)).length === 0 && (
-              <p className="px-4 py-2 text-[9px] opacity-30 italic font-bold">Sin mensajes directos</p>
-            )}
-          </div>
-        </div>
+                <span className={`ag-side__dm-status is-${variant}`} />
+              </span>
+              <span className="ag-side__item-label">{other?.nombre || 'Usuario'}</span>
+              {unread > 0 && (
+                <span className="ag-side__badge" aria-label={`${unread} sin leer`}>
+                  {unread > 99 ? '99+' : unread}
+                </span>
+              )}
+            </button>
+          );
+        })}
 
-        <div className="h-px bg-white/5 mx-4 my-2" />
-
-        {/* Online Members */}
-        <div className="px-2 py-4">
-          <div className="px-3 mb-2">
-            <h3 className={`text-[10px] font-black uppercase tracking-[0.2em] opacity-40 ${theme === 'arcade' ? 'text-[#00ff41]' : ''}`}>CONECTADOS ({onlineUsers.length})</h3>
-          </div>
-          <div className="space-y-0.5">
-            {miembrosEspacio.filter((u) => u.id !== currentUser.id).length > 0 ? miembrosEspacio.filter((u) => u.id !== currentUser.id).map((u) => {
-              const isOnline = onlineUsers.some(ou => ou.id === u.id);
-              return (
+        {/* Otros miembros disponibles para iniciar DM */}
+        {miembrosEspacio
+          .filter(u => u.id !== currentUser.id)
+          .filter(u => {
+            const q = searchQuery.trim().toLowerCase();
+            if (!q) return true;
+            return u.nombre?.toLowerCase().includes(q);
+          })
+          .filter(u => !filteredDirectos.some(g => g.nombre.includes(u.id)))
+          .map(u => {
+            const presence = onlineUsers.find(ou => ou.id === u.id);
+            const isOnline = !!presence;
+            const variant = presenceToVariant(presence?.status, isOnline);
+            return (
               <button
                 key={u.id}
-                onClick={() => { openDirectChat(u); }}
-                className="w-full text-left px-4 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-white/5 transition-all flex items-center gap-3 cursor-pointer opacity-50 hover:opacity-100"
+                type="button"
+                onClick={() => openDirectChat(u)}
+                className="ag-side__item is-muted"
               >
-                <UserAvatar
-                  name={u.nombre || ''}
-                  profilePhoto={u.avatar_url ?? undefined}
-                  size="xs"
-                  showStatus
-                  status={isOnline ? onlineUsers.find(ou => ou.id === u.id)?.status : undefined}
-                />
-                <span className="truncate flex-1">{u.nombre}</span>
+                <span
+                  className="ag-side__dm"
+                  aria-hidden="true"
+                  style={!u.avatar_url ? { background: getAvatarColor(u.nombre) } : undefined}
+                >
+                  {u.avatar_url ? (
+                    <img src={u.avatar_url} alt="" className="ag-side__dm-img" />
+                  ) : (
+                    initial(u.nombre)
+                  )}
+                  <span className={`ag-side__dm-status is-${variant}`} />
+                </span>
+                <span className="ag-side__item-label">{u.nombre}</span>
               </button>
-            );}) : (
-               <p className="px-4 py-2 text-[9px] opacity-30 italic font-bold">No hay otros miembros</p>
-            )}
-            {userRoleInActiveWorkspace && !['member', 'miembro'].includes(userRoleInActiveWorkspace) && (
-              <button
-                onClick={() => setActiveSubTab('miembros')}
-                className="w-full text-left px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] text-indigo-400 hover:bg-indigo-500/10 transition-all flex items-center gap-3 mt-2"
-              >
-                <span className="w-5 h-5 flex items-center justify-center bg-indigo-500/20 rounded-lg text-lg">+</span>
-                {t('sidebar.invitePeople')}
-              </button>
-            )}
-          </div>
-        </div>
+            );
+          })}
+
+        {filteredDirectos.length === 0 &&
+          miembrosEspacio.filter(u => u.id !== currentUser.id).length === 0 && (
+            <p className="ag-side__empty">No hay miembros disponibles</p>
+          )}
+
+        {/* Acción admin: invitar */}
+        {userRoleInActiveWorkspace && !['member', 'miembro'].includes(userRoleInActiveWorkspace) && (
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('miembros')}
+            className="ag-side__item"
+            style={{ color: 'var(--cw-blue-600)', marginTop: 8 }}
+          >
+            <span className="ag-side__item-icon" aria-hidden="true"><IconPlus /></span>
+            <span className="ag-side__item-label">{t('sidebar.invitePeople')}</span>
+          </button>
+        )}
       </div>
 
-      {showCreateModal && <ModalCrearGrupo
-        onClose={() => setShowCreateModal(false)}
-        onCreate={async () => {
-          await refetchGrupos();
-          setShowCreateModal(false);
-        }}
-      />}
+      {/* Modales / toasts */}
+      {showCreateModal && (
+        <ModalCrearGrupo
+          onClose={() => setShowCreateModal(false)}
+          onCreate={async () => {
+            await refetchGrupos();
+            setShowCreateModal(false);
+          }}
+        />
+      )}
 
       {showNotifications && (
         <ChatToast

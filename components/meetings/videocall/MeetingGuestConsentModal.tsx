@@ -17,8 +17,8 @@ export const MeetingGuestConsentModal: React.FC<MeetingGuestConsentModalProps> =
   }
 
   return (
-    <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="mx-4 max-w-md rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl">
+    <div className="fixed inset-0 z-[500] flex items-center justify-center bg-[#0B2240]/35 backdrop-blur-sm">
+      <div className="mx-4 max-w-md rounded-2xl border border-zinc-700 bg-white/60 p-6 shadow-2xl">
         <div className="mb-4 text-center">
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/20">
             <svg className="h-7 w-7 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -26,11 +26,11 @@ export const MeetingGuestConsentModal: React.FC<MeetingGuestConsentModalProps> =
             </svg>
           </div>
           <h3 className="mb-1 text-lg font-bold text-white">Solicitud de grabación</h3>
-          <p className="text-sm text-zinc-400">
-            <span className="font-semibold text-indigo-400">{request.by}</span> desea grabar esta reunión con análisis conductual.
+          <p className="text-sm text-[#4A6485]">
+            <span className="font-semibold text-[#1E86E5]">{request.by}</span> desea grabar esta reunión con análisis conductual.
           </p>
         </div>
-        <div className="mb-5 space-y-2 rounded-xl border border-zinc-700/50 bg-zinc-800/50 p-4 text-xs text-zinc-400">
+        <div className="mb-5 space-y-2 rounded-xl border border-[rgba(46,150,245,0.14)] bg-white/500 p-4 text-xs text-[#4A6485]">
           <p>• Se analizarán expresiones faciales, tono de voz y lenguaje corporal</p>
           <p>• Los datos se usan exclusivamente para evaluación profesional</p>
           <p>• Puedes rechazar sin afectar tu participación en la reunión</p>
@@ -38,7 +38,7 @@ export const MeetingGuestConsentModal: React.FC<MeetingGuestConsentModalProps> =
         <div className="flex gap-3">
           <button
             onClick={() => onRespond(false)}
-            className="flex-1 rounded-xl bg-zinc-800 px-4 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:bg-zinc-700"
+            className="flex-1 rounded-xl bg-white px-4 py-2.5 text-sm font-medium text-[#1B3A5C] transition-colors hover:bg-[rgba(46,150,245,0.08)]"
           >
             Rechazar
           </button>

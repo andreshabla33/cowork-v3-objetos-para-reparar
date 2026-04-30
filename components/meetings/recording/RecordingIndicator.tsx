@@ -42,7 +42,7 @@ export const RecordingIndicator: React.FC<RecordingIndicatorProps> = ({
           <span className="text-red-400 text-xs font-bold uppercase tracking-wider">
             REC
           </span>
-          <span className="text-white/60 text-xs">•</span>
+          <span className="text-[#4A6485] text-xs">•</span>
           <span className="text-white font-mono text-sm">
             {formatDuration(duration)}
           </span>
@@ -50,21 +50,21 @@ export const RecordingIndicator: React.FC<RecordingIndicatorProps> = ({
 
         {recordedBy && (
           <>
-            <span className="text-white/30 text-xs">|</span>
-            <span className="text-white/60 text-xs">
-              por <span className="text-white/80">{recordedBy}</span>
+            <span className="text-[#9CB0CA] text-xs">|</span>
+            <span className="text-[#4A6485] text-xs">
+              por <span className="text-[#0B2240]">{recordedBy}</span>
             </span>
           </>
         )}
 
         {participantCount && participantCount > 0 && (
           <>
-            <span className="text-white/30 text-xs">|</span>
+            <span className="text-[#9CB0CA] text-xs">|</span>
             <div className="flex items-center gap-1">
-              <svg className="w-3 h-3 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3 text-[#4A6485]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
-              <span className="text-white/60 text-xs">{participantCount}</span>
+              <span className="text-[#4A6485] text-xs">{participantCount}</span>
             </div>
           </>
         )}

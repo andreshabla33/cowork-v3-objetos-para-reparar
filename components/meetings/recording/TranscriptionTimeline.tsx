@@ -64,24 +64,24 @@ export const TranscriptionTimeline: React.FC<TranscriptionTimelineProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-zinc-900/50 rounded-xl border border-zinc-800">
-      <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
+    <div className="flex flex-col h-full bg-white/500 rounded-xl border border-[rgba(46,150,245,0.14)]">
+      <div className="p-3 border-b border-[rgba(46,150,245,0.14)] flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 text-[#1E86E5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <span className="text-sm font-medium text-white">Transcripción</span>
+          <span className="text-sm font-medium text-[#0B2240]">Transcripción</span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <div className="flex items-center gap-2 text-xs text-[#4A6485]">
           <span>{segments.length} segmentos</span>
           <span>•</span>
           <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
         </div>
       </div>
 
-      <div className="h-1 bg-zinc-800">
+      <div className="h-1 bg-white">
         <div 
-          className="h-full bg-indigo-500 transition-all duration-300"
+          className="h-full bg-[#2E96F5] transition-all duration-300"
           style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
         />
       </div>
@@ -92,11 +92,11 @@ export const TranscriptionTimeline: React.FC<TranscriptionTimelineProps> = ({
       >
         {segments.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-8">
-            <svg className="w-10 h-10 text-zinc-700 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-10 h-10 text-[#6B83A0] mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
             </svg>
-            <p className="text-sm text-zinc-500">Esperando transcripción...</p>
-            <p className="text-xs text-zinc-600 mt-1">Habla para generar texto</p>
+            <p className="text-sm text-[#4A6485]">Esperando transcripción...</p>
+            <p className="text-xs text-[#6B83A0] mt-1">Habla para generar texto</p>
           </div>
         ) : (
           segments.map((segment, index) => {
@@ -111,8 +111,8 @@ export const TranscriptionTimeline: React.FC<TranscriptionTimelineProps> = ({
                 className={`
                   group p-3 rounded-lg cursor-pointer transition-all
                   ${isRecent 
-                    ? 'bg-indigo-500/10 border border-indigo-500/20' 
-                    : 'bg-zinc-800/30 hover:bg-zinc-800/50 border border-transparent'
+                    ? 'bg-[#2E96F5]/10 border border-[#2E96F5]/20' 
+                    : 'bg-white/50 hover:bg-[rgba(46,150,245,0.08)] border border-transparent'
                   }
                 `}
               >
@@ -121,7 +121,7 @@ export const TranscriptionTimeline: React.FC<TranscriptionTimelineProps> = ({
                     <div className="flex-shrink-0 flex flex-col items-center gap-1">
                       <span className="text-lg">{emotionEmojis[emotion]}</span>
                       <div 
-                        className="w-1.5 h-8 rounded-full bg-zinc-700 overflow-hidden"
+                        className="w-1.5 h-8 rounded-full bg-[rgba(46,150,245,0.14)] overflow-hidden"
                         title={`Engagement: ${Math.round(engagement * 100)}%`}
                       >
                         <div 
@@ -137,16 +137,16 @@ export const TranscriptionTimeline: React.FC<TranscriptionTimelineProps> = ({
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-mono text-zinc-500">
+                      <span className="text-[10px] font-mono text-[#4A6485]">
                         {formatTime(segment.inicio_segundos)}
                       </span>
                       {segment.speaker_nombre && (
-                        <span className="text-xs font-medium text-indigo-400">
+                        <span className="text-xs font-medium text-[#1E86E5]">
                           {segment.speaker_nombre}
                         </span>
                       )}
                     </div>
-                    <p className={`text-sm leading-relaxed ${isRecent ? 'text-white' : 'text-zinc-300'}`}>
+                    <p className={`text-sm leading-relaxed ${isRecent ? 'text-white' : 'text-[#1B3A5C]'}`}>
                       {segment.texto}
                     </p>
                   </div>

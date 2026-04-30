@@ -39,25 +39,25 @@ const ESTADO_CONFIG: Record<string, { color: string; icon: string; label: string
   grabando: { color: 'bg-red-500', icon: '🔴', label: 'Grabando' },
   procesando: { color: 'bg-yellow-500', icon: '⏳', label: 'Procesando' },
   transcribiendo: { color: 'bg-blue-500', icon: '📝', label: 'Transcribiendo' },
-  analizando: { color: 'bg-purple-500', icon: '🧠', label: 'Analizando' },
+  analizando: { color: 'bg-[#2E96F5]', icon: '🧠', label: 'Analizando' },
   completado: { color: 'bg-green-500', icon: '✅', label: 'Completado' },
   error: { color: 'bg-red-600', icon: '❌', label: 'Error' },
 };
 
 const TIPO_CONFIG: Record<string, { color: string; icon: string; label: string }> = {
-  rrhh: { color: 'from-violet-600/80 to-violet-800/80', icon: '👥', label: 'RRHH' },
+  rrhh: { color: 'from-[#4FB0FF]/80 to-[#1E86E5]/80', icon: '👥', label: 'RRHH' },
   rrhh_entrevista: {
-    color: 'from-violet-600/80 to-violet-800/80',
+    color: 'from-[#4FB0FF]/80 to-[#1E86E5]/80',
     icon: '🎯',
     label: 'Entrevista',
   },
   rrhh_one_to_one: {
-    color: 'from-violet-600/80 to-violet-800/80',
+    color: 'from-[#4FB0FF]/80 to-[#1E86E5]/80',
     icon: '🤝',
     label: 'One-to-One',
   },
   deals: { color: 'from-emerald-600/80 to-emerald-800/80', icon: '💼', label: 'Negociación' },
-  equipo: { color: 'from-indigo-600/80 to-indigo-800/80', icon: '🚀', label: 'Equipo' },
+  equipo: { color: 'from-[#2E96F5]/80 to-[#1E86E5]/80', icon: '🚀', label: 'Equipo' },
   reunion: { color: 'from-zinc-600/80 to-zinc-800/80', icon: '📹', label: 'Reunión' },
 };
 
@@ -104,8 +104,8 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
         onClick={() => setIsOpen(!isOpen)}
         className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all min-w-[160px] justify-between ${
           isArcade
-            ? 'bg-black border-2 border-[#00ff41]/50 text-[#00ff41] hover:border-[#00ff41]'
-            : 'bg-zinc-800 border border-white/10 text-white hover:border-white/30'
+            ? 'bg-white/60 border-2 border-[#00ff41]/50 text-[#00ff41] hover:border-[#00ff41]'
+            : 'bg-white/50 border border-[rgba(46,150,245,0.14)] text-[#1B3A5C] hover:border-[rgba(46,150,245,0.25)]'
         }`}
       >
         <span className="flex items-center gap-2">
@@ -125,7 +125,7 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
       {isOpen && (
         <div
           className={`absolute top-full left-0 mt-2 w-full rounded-xl overflow-hidden shadow-2xl z-50 border ${
-            isArcade ? 'bg-black border-[#00ff41]/50' : 'bg-zinc-800 border-white/10'
+            isArcade ? 'bg-white/60 border-[#00ff41]/50' : 'bg-white border-[rgba(46,150,245,0.14)]'
           }`}
         >
           {options.map((option) => (
@@ -139,10 +139,10 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
                 value === option.value
                   ? isArcade
                     ? 'bg-[#00ff41]/20 text-[#00ff41]'
-                    : 'bg-indigo-600/30 text-indigo-300'
+                    : 'bg-[#2E96F5]/30 text-[#1E86E5]'
                   : isArcade
                     ? 'text-[#00ff41]/80 hover:bg-[#00ff41]/10'
-                    : 'text-zinc-300 hover:bg-white/5'
+                    : 'text-[#1B3A5C] hover:bg-[rgba(46,150,245,0.08)]'
               }`}
             >
               <span>{option.icon}</span>
@@ -545,7 +545,7 @@ export const GrabacionesHistorial: React.FC = () => {
         <div className="flex items-center justify-between mb-8">
           <div>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-violet-600/20">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#4FB0FF] to-[#2E96F5] flex items-center justify-center shadow-lg shadow-[#2E96F5]/20">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
@@ -559,7 +559,7 @@ export const GrabacionesHistorial: React.FC = () => {
                 <h1 className={`text-2xl font-bold tracking-tight ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>
                   Grabaciones
                 </h1>
-                <p className={`text-xs ${isArcade ? 'text-[#00ff41]/60' : 'text-zinc-500'}`}>
+                <p className={`text-xs ${isArcade ? 'text-[#00ff41]/60' : 'text-[#4A6485]'}`}>
                   Transcripciones y análisis conductual
                 </p>
               </div>
@@ -570,7 +570,7 @@ export const GrabacionesHistorial: React.FC = () => {
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
               isArcade
                 ? 'bg-[#00ff41] text-black hover:bg-white'
-                : 'bg-white/5 border border-white/10 text-zinc-300 hover:bg-white/10 hover:text-white'
+                : 'bg-white/50 border border-[rgba(46,150,245,0.14)] text-[#1B3A5C] hover:bg-[rgba(46,150,245,0.08)] hover:text-[#0B2240]'
             }`}
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -586,7 +586,7 @@ export const GrabacionesHistorial: React.FC = () => {
         </div>
 
         {/* Filtros */}
-        <div className={`p-4 rounded-2xl mb-6 border ${isArcade ? 'bg-black border-[#00ff41]/30' : 'bg-zinc-800/50 border-white/10'}`}>
+        <div className={`p-4 rounded-2xl mb-6 border ${isArcade ? 'bg-white/60 border-[#00ff41]/30' : 'bg-white/500 border-[rgba(46,150,245,0.14)]'}`}>
           <div className="flex flex-wrap gap-4 items-center">
             {/* Búsqueda */}
             <div className="flex-1 min-w-[200px]">
@@ -597,8 +597,8 @@ export const GrabacionesHistorial: React.FC = () => {
                 onChange={(e) => setBusqueda(e.target.value)}
                 className={`w-full px-4 py-2.5 rounded-xl text-sm transition-all outline-none ${
                   isArcade
-                    ? 'bg-black border-2 border-[#00ff41]/50 text-[#00ff41] placeholder-[#00ff41]/40 focus:border-[#00ff41]'
-                    : 'bg-zinc-800 border border-white/10 text-white placeholder-zinc-500 focus:border-indigo-500'
+                    ? 'bg-white/60 border-2 border-[#00ff41]/50 text-[#00ff41] placeholder-[#00ff41]/40 focus:border-[#00ff41]'
+                    : 'bg-white/70 border border-[rgba(46,150,245,0.16)] text-[#0B2240] placeholder-[#6B83A0] focus:border-[#2E96F5]'
                 }`}
               />
             </div>
@@ -622,8 +622,8 @@ export const GrabacionesHistorial: React.FC = () => {
 
           {/* Indicador de cargo y rol */}
           {(cargoUsuario || rolSistema) && (
-            <div className={`mt-3 pt-3 border-t ${isArcade ? 'border-[#00ff41]/20' : 'border-white/5'}`}>
-              <p className={`text-xs ${isArcade ? 'text-[#00ff41]/40' : 'text-zinc-500'}`}>
+            <div className={`mt-3 pt-3 border-t ${isArcade ? 'border-[#00ff41]/20' : 'border-[rgba(46,150,245,0.14)]'}`}>
+              <p className={`text-xs ${isArcade ? 'text-[#00ff41]/40' : 'text-[#4A6485]'}`}>
                 👤 Rol: <span className="font-semibold">{rolSistema || 'No definido'}</span>
                 {cargoUsuario && (
                   <>
@@ -641,10 +641,10 @@ export const GrabacionesHistorial: React.FC = () => {
           <div className="flex flex-col items-center justify-center py-20">
             <div
               className={`w-12 h-12 border-4 rounded-full animate-spin ${
-                isArcade ? 'border-[#00ff41]/20 border-t-[#00ff41]' : 'border-indigo-500/20 border-t-indigo-500'
+                isArcade ? 'border-[#00ff41]/20 border-t-[#00ff41]' : 'border-[#2E96F5]/20 border-t-[#2E96F5]'
               }`}
             />
-            <p className={`mt-4 text-sm ${isArcade ? 'text-[#00ff41]/60' : 'text-zinc-400'}`}>
+            <p className={`mt-4 text-sm ${isArcade ? 'text-[#00ff41]/60' : 'text-[#4A6485]'}`}>
               Cargando grabaciones...
             </p>
           </div>
@@ -667,14 +667,14 @@ export const GrabacionesHistorial: React.FC = () => {
         {!isLoading && !error && grabacionesFiltradas.length === 0 && (
           <div
             className={`text-center py-20 rounded-2xl border-2 border-dashed ${
-              isArcade ? 'border-[#00ff41]/30' : 'border-white/10'
+              isArcade ? 'border-[#00ff41]/30' : 'border-[rgba(46,150,245,0.14)]'
             }`}
           >
             <span className="text-6xl mb-4 block">📭</span>
             <h3 className={`text-xl font-bold mb-2 ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>
               No hay transcripciones
             </h3>
-            <p className={`text-sm ${isArcade ? 'text-[#00ff41]/60' : 'text-zinc-400'}`}>
+            <p className={`text-sm ${isArcade ? 'text-[#00ff41]/60' : 'text-[#4A6485]'}`}>
               {grabaciones.length === 0
                 ? 'Inicia una reunión para generar transcripciones y análisis'
                 : 'No hay transcripciones que coincidan con los filtros'}
@@ -698,8 +698,8 @@ export const GrabacionesHistorial: React.FC = () => {
                   key={grabacion.id}
                   className={`group p-5 rounded-2xl border transition-all duration-300 hover:scale-[1.01] ${
                     isArcade
-                      ? 'bg-black border-[#00ff41]/30 hover:border-[#00ff41] hover:shadow-[0_0_30px_rgba(0,255,65,0.2)]'
-                      : 'bg-zinc-800/50 border-white/10 hover:border-white/20 hover:bg-zinc-800'
+                      ? 'bg-white/60 border-[#00ff41]/30 hover:border-[#00ff41] hover:shadow-[0_0_30px_rgba(0,255,65,0.2)]'
+                      : 'bg-white/500 border-[rgba(46,150,245,0.14)] hover:border-[rgba(46,150,245,0.16)] hover:bg-white'
                   }`}
                 >
                   <div className="flex items-start gap-4">
@@ -720,7 +720,7 @@ export const GrabacionesHistorial: React.FC = () => {
                             month: 'short',
                           })}
                         </h3>
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-white/10 text-zinc-300">
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-[rgba(46,150,245,0.08)] text-[#1B3A5C]">
                           {tipoConfig.label}
                         </span>
                         {grabacion.estado === 'completado' && (
@@ -733,7 +733,7 @@ export const GrabacionesHistorial: React.FC = () => {
 
                       <div
                         className={`flex items-center gap-4 text-sm ${
-                          isArcade ? 'text-[#00ff41]/60' : 'text-zinc-400'
+                          isArcade ? 'text-[#00ff41]/60' : 'text-[#4A6485]'
                         }`}
                       >
                         <span>📅 {formatFecha(grabacion.creado_en)}</span>
@@ -749,7 +749,7 @@ export const GrabacionesHistorial: React.FC = () => {
                       {tieneTranscripcion && (
                         <p
                           className={`mt-2 text-sm line-clamp-2 ${
-                            isArcade ? 'text-[#00ff41]/40' : 'text-zinc-500'
+                            isArcade ? 'text-[#00ff41]/40' : 'text-[#4A6485]'
                           }`}
                         >
                           "{grabacion.transcripciones![0].texto.substring(0, 150)}..."
@@ -759,18 +759,18 @@ export const GrabacionesHistorial: React.FC = () => {
                       {/* Tags minimalistas */}
                       <div className="flex items-center gap-1.5 mt-2">
                         {grabacion.esCreador && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-violet-500/15 text-violet-400">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[rgba(46,150,245,0.08)] text-[#1E86E5]">
                             Creador
                           </span>
                         )}
                         {tieneTranscripcion && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-white/5 text-zinc-400">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-white/50 text-[#4A6485]">
                             {grabacion.transcripciones!.length} segmento
                             {grabacion.transcripciones!.length > 1 ? 's' : ''}
                           </span>
                         )}
                         {tieneAnalisis && grabacion.esCreador && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-500/15 text-indigo-400">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[#2E96F5]/15 text-[#1E86E5]">
                             Análisis
                           </span>
                         )}
@@ -785,7 +785,7 @@ export const GrabacionesHistorial: React.FC = () => {
                           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                             isArcade
                               ? 'bg-[#00ff41] text-black hover:bg-white'
-                              : 'bg-violet-600 text-white hover:bg-violet-500'
+                              : 'bg-[#2E96F5] text-white hover:bg-[#4FB0FF]'
                           }`}
                         >
                           Ver Análisis
@@ -800,7 +800,7 @@ export const GrabacionesHistorial: React.FC = () => {
                           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                             isArcade
                               ? 'border border-[#00ff41] text-[#00ff41] hover:bg-[#00ff41]/10'
-                              : 'border border-white/20 text-zinc-300 hover:bg-white/5 hover:text-white'
+                              : 'border border-[rgba(46,150,245,0.14)] text-[#1B3A5C] hover:bg-[rgba(46,150,245,0.08)] hover:text-[#0B2240]'
                           }`}
                         >
                           Transcripción
@@ -818,48 +818,48 @@ export const GrabacionesHistorial: React.FC = () => {
         {!isLoading && grabaciones.length > 0 && (
           <div
             className={`mt-8 p-6 rounded-2xl border ${
-              isArcade ? 'bg-black border-[#00ff41]/30' : 'bg-zinc-800/30 border-white/10'
+              isArcade ? 'bg-white/60 border-[#00ff41]/30' : 'bg-white/50 border-[rgba(46,150,245,0.14)]'
             }`}
           >
             <h3
               className={`text-sm font-bold uppercase tracking-wider mb-4 ${
-                isArcade ? 'text-[#00ff41]' : 'text-zinc-400'
+                isArcade ? 'text-[#00ff41]' : 'text-[#4A6485]'
               }`}
             >
               📊 Resumen
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className={`p-4 rounded-xl ${isArcade ? 'bg-[#00ff41]/10' : 'bg-white/5'}`}>
+              <div className={`p-4 rounded-xl ${isArcade ? 'bg-[#00ff41]/10' : 'bg-white/50'}`}>
                 <div className={`text-3xl font-black ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>
                   {grabaciones.length}
                 </div>
-                <div className={`text-xs ${isArcade ? 'text-[#00ff41]/60' : 'text-zinc-500'}`}>
+                <div className={`text-xs ${isArcade ? 'text-[#00ff41]/60' : 'text-[#4A6485]'}`}>
                   Total grabaciones
                 </div>
               </div>
-              <div className={`p-4 rounded-xl ${isArcade ? 'bg-[#00ff41]/10' : 'bg-white/5'}`}>
+              <div className={`p-4 rounded-xl ${isArcade ? 'bg-[#00ff41]/10' : 'bg-white/50'}`}>
                 <div className={`text-3xl font-black ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>
                   {grabaciones.filter((g) => g.estado === 'completado').length}
                 </div>
-                <div className={`text-xs ${isArcade ? 'text-[#00ff41]/60' : 'text-zinc-500'}`}>
+                <div className={`text-xs ${isArcade ? 'text-[#00ff41]/60' : 'text-[#4A6485]'}`}>
                   Completadas
                 </div>
               </div>
-              <div className={`p-4 rounded-xl ${isArcade ? 'bg-[#00ff41]/10' : 'bg-white/5'}`}>
+              <div className={`p-4 rounded-xl ${isArcade ? 'bg-[#00ff41]/10' : 'bg-white/50'}`}>
                 <div className={`text-3xl font-black ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>
                   {grabaciones.filter(
                     (g) => g.analisis_comportamiento && g.analisis_comportamiento.length > 0
                   ).length}
                 </div>
-                <div className={`text-xs ${isArcade ? 'text-[#00ff41]/60' : 'text-zinc-500'}`}>
+                <div className={`text-xs ${isArcade ? 'text-[#00ff41]/60' : 'text-[#4A6485]'}`}>
                   Con análisis
                 </div>
               </div>
-              <div className={`p-4 rounded-xl ${isArcade ? 'bg-[#00ff41]/10' : 'bg-white/5'}`}>
+              <div className={`p-4 rounded-xl ${isArcade ? 'bg-[#00ff41]/10' : 'bg-white/50'}`}>
                 <div className={`text-3xl font-black ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>
                   {formatDuracion(grabaciones.reduce((sum, g) => sum + (g.duracion_segundos || 0), 0))}
                 </div>
-                <div className={`text-xs ${isArcade ? 'text-[#00ff41]/60' : 'text-zinc-500'}`}>
+                <div className={`text-xs ${isArcade ? 'text-[#00ff41]/60' : 'text-[#4A6485]'}`}>
                   Tiempo total
                 </div>
               </div>
@@ -897,13 +897,13 @@ export const GrabacionesHistorial: React.FC = () => {
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[500] flex items-center justify-center p-4 overflow-y-auto">
           <div
             className={`max-w-3xl w-full rounded-2xl border shadow-2xl my-8 ${
-              isArcade ? 'bg-black border-[#00ff41]/50' : 'bg-zinc-900 border-white/10'
+              isArcade ? 'bg-white/60 border-[#00ff41]/50' : 'bg-white/60 border-[rgba(46,150,245,0.14)]'
             }`}
           >
             {/* Header */}
             <div
               className={`p-5 rounded-t-2xl border-b ${
-                isArcade ? 'bg-[#00ff41]/10 border-[#00ff41]/30' : 'bg-zinc-800 border-white/10'
+                isArcade ? 'bg-[#00ff41]/10 border-[#00ff41]/30' : 'bg-white border-[rgba(46,150,245,0.14)]'
               }`}
             >
               <div className="flex items-center justify-between">
@@ -913,7 +913,7 @@ export const GrabacionesHistorial: React.FC = () => {
                     <h2 className={`font-bold text-xl ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>
                       Transcripción
                     </h2>
-                    <p className={`text-sm ${isArcade ? 'text-[#00ff41]/60' : 'text-zinc-400'}`}>
+                    <p className={`text-sm ${isArcade ? 'text-[#00ff41]/60' : 'text-[#4A6485]'}`}>
                       {grabacionSeleccionada.archivo_nombre || 'Reunión'} •{' '}
                       {formatFecha(grabacionSeleccionada.creado_en)}
                     </p>
@@ -927,7 +927,7 @@ export const GrabacionesHistorial: React.FC = () => {
                   className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
                     isArcade
                       ? 'bg-[#00ff41]/20 text-[#00ff41] hover:bg-[#00ff41]/30'
-                      : 'bg-white/10 text-white hover:bg-white/20'
+                      : 'bg-[rgba(46,150,245,0.08)] text-[#1B3A5C] hover:bg-[rgba(46,150,245,0.14)]'
                   }`}
                 >
                   ✕
@@ -946,13 +946,13 @@ export const GrabacionesHistorial: React.FC = () => {
                       className={`p-4 rounded-xl ${
                         isArcade
                           ? 'bg-[#00ff41]/5 border border-[#00ff41]/20'
-                          : 'bg-zinc-800/50'
+                          : 'bg-white/500'
                       }`}
                     >
                       <div className="flex items-center gap-2 mb-2">
                         <span
                           className={`text-xs font-mono ${
-                            isArcade ? 'text-[#00ff41]/60' : 'text-zinc-500'
+                            isArcade ? 'text-[#00ff41]/60' : 'text-[#4A6485]'
                           }`}
                         >
                           ⏱️ {formatDuracion(t.inicio_segundos)} -{' '}
@@ -963,7 +963,7 @@ export const GrabacionesHistorial: React.FC = () => {
                             className={`text-xs px-2 py-0.5 rounded-full ${
                               isArcade
                                 ? 'bg-[#00ff41]/20 text-[#00ff41]'
-                                : 'bg-indigo-500/20 text-indigo-400'
+                                : 'bg-[#2E96F5]/20 text-[#1E86E5]'
                             }`}
                           >
                             👤 {t.speaker_nombre}
@@ -972,7 +972,7 @@ export const GrabacionesHistorial: React.FC = () => {
                       </div>
                       <p
                         className={`text-sm leading-relaxed ${
-                          isArcade ? 'text-[#00ff41]/90' : 'text-zinc-300'
+                          isArcade ? 'text-[#00ff41]/90' : 'text-[#1B3A5C]'
                         }`}
                       >
                         {t.texto}
@@ -983,7 +983,7 @@ export const GrabacionesHistorial: React.FC = () => {
               ) : (
                 <div className="text-center py-10">
                   <span className="text-4xl mb-4 block">📭</span>
-                  <p className={isArcade ? 'text-[#00ff41]/60' : 'text-zinc-400'}>
+                  <p className={isArcade ? 'text-[#00ff41]/60' : 'text-[#4A6485]'}>
                     No hay transcripción disponible
                   </p>
                 </div>
@@ -993,7 +993,7 @@ export const GrabacionesHistorial: React.FC = () => {
             {/* Footer */}
             <div
               className={`p-4 rounded-b-2xl border-t ${
-                isArcade ? 'border-[#00ff41]/30' : 'border-white/10'
+                isArcade ? 'border-[#00ff41]/30' : 'border-[rgba(46,150,245,0.14)]'
               }`}
             >
               <div className="flex justify-end gap-3">
@@ -1012,7 +1012,7 @@ export const GrabacionesHistorial: React.FC = () => {
                   className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
                     isArcade
                       ? 'border-2 border-[#00ff41] text-[#00ff41] hover:bg-[#00ff41] hover:text-black'
-                      : 'border border-white/20 text-white hover:bg-white/10'
+                      : 'border border-[rgba(46,150,245,0.14)] text-[#1B3A5C] hover:bg-[rgba(46,150,245,0.08)]'
                   }`}
                 >
                   📋 Copiar
@@ -1025,7 +1025,7 @@ export const GrabacionesHistorial: React.FC = () => {
                   className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
                     isArcade
                       ? 'bg-[#00ff41] text-black hover:bg-white'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-500'
+                      : 'bg-[#2E96F5] text-white hover:bg-[#2E96F5]'
                   }`}
                 >
                   Cerrar

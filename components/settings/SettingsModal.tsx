@@ -150,18 +150,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     <div className="fixed inset-0 z-[200] flex items-center justify-center">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-[var(--cw-ink-900)]/30 backdrop-blur-sm"
         onClick={onClose}
       />
       
       {/* Modal */}
-      <div className="relative w-full max-w-4xl lg:max-w-3xl md:max-w-2xl h-[85vh] max-h-[700px] lg:max-h-[600px] backdrop-blur-xl bg-zinc-900/95 border border-white/[0.1] rounded-3xl lg:rounded-2xl shadow-2xl overflow-hidden flex animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-4xl lg:max-w-3xl md:max-w-2xl h-[85vh] max-h-[700px] lg:max-h-[600px] backdrop-blur-xl bg-white/95 border border-[var(--cw-glass-border)] rounded-3xl lg:rounded-2xl shadow-[var(--cw-shadow-floating)] overflow-hidden flex animate-in fade-in zoom-in-95 duration-200">
         
         {/* Sidebar */}
-        <div className="w-56 lg:w-48 bg-black/40 border-r border-white/[0.05] flex flex-col">
+        <div className="w-56 lg:w-48 bg-[var(--cw-page-bg)] border-r border-[var(--cw-glass-border)] flex flex-col">
           {/* Header */}
-          <div className="p-5 lg:p-4 border-b border-white/[0.05]">
-            <h2 className="text-lg lg:text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white">
+          <div className="p-5 lg:p-4 border-b border-[var(--cw-glass-border)]">
+            <h2 className="text-lg lg:text-base font-bold text-[var(--cw-ink-900)]">
               {t('settings.title', currentLang)}
             </h2>
           </div>
@@ -170,7 +170,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <nav className="flex-1 px-2 lg:px-1.5 py-3 lg:py-2 overflow-y-auto">
             {categories.map(category => (
               <div key={category} className="mb-4">
-                <p className="text-[9px] lg:text-[8px] font-black uppercase tracking-widest text-zinc-600 px-2 mb-2">
+                <p className="text-[9px] lg:text-[8px] font-semibold uppercase tracking-widest text-[var(--cw-ink-400)] px-2 mb-2">
                   {category}
                 </p>
                 {filteredTabs
@@ -181,15 +181,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       onClick={() => setActiveTab(tab.id as SettingsTab)}
                       className={`group w-full flex items-center gap-2.5 lg:gap-2 px-2.5 lg:px-2 py-2 lg:py-1.5 rounded-lg text-sm lg:text-xs font-medium transition-all duration-200 ${
                         activeTab === tab.id
-                          ? 'bg-violet-600/20 text-white'
-                          : 'text-zinc-400 hover:text-white hover:bg-white/[0.05]'
+                          ? 'bg-blue-50 text-[var(--cw-blue-600)]'
+                          : 'text-[var(--cw-ink-500)] hover:text-[var(--cw-ink-900)] hover:bg-blue-50/50'
                       }`}
                     >
                       <tab.Icon 
                         className={`w-[18px] h-[18px] lg:w-4 lg:h-4 stroke-[1.5] transition-all duration-200 ${
                           activeTab === tab.id 
-                            ? 'text-violet-400' 
-                            : 'text-zinc-500 group-hover:text-zinc-300'
+                            ? 'text-[var(--cw-blue-500)]' 
+                            : 'text-[var(--cw-ink-400)] group-hover:text-[var(--cw-ink-600)]'
                         }`} 
                       />
                       {tab.label}
@@ -206,7 +206,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="absolute top-4 right-4">
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-zinc-500 hover:text-white hover:bg-white/[0.05] transition-all"
+              className="p-2 rounded-xl text-[var(--cw-ink-400)] hover:text-[var(--cw-ink-700)] hover:bg-blue-50 transition-all"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />

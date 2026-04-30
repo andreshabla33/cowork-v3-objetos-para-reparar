@@ -524,6 +524,15 @@ export function usePresenceChannels({
     //      The discovery channel fills the same role for Supabase Presence.
     const globalChannelName = `workspace:${activeWorkspaceId}:global:empresa:${empresaId}`;
     if (!globalChannelRef.current) {
+      // Guard: remove any stale channel with same name from Supabase's internal
+      // list (can happen after React StrictMode double-mount or HMR). Without
+      // this, supabase.channel() may return an already-subscribed instance and
+      // calling .on() after .subscribe() throws the "cannot add callbacks" error.
+      const existingGlobal = supabase.getChannels().find(ch => ch.topic === `realtime:${globalChannelName}`);
+      if (existingGlobal) {
+        supabase.removeChannel(existingGlobal);
+      }
+
       const channel = supabase.channel(globalChannelName, {
         config: { presence: { key: userId } },
       });
@@ -604,6 +613,12 @@ export function usePresenceChannels({
     canalesDeseados.forEach(
       (nivelDetalle: 'publico' | 'empresa', canalNombre: string) => {
         if (presenceChannelsRef.current.has(canalNombre)) return;
+
+        // Guard: purge stale channel from Supabase's internal registry
+        const existingCh = supabase.getChannels().find(ch => ch.topic === `realtime:${canalNombre}`);
+        if (existingCh) {
+          supabase.removeChannel(existingCh);
+        }
 
         const channel = supabase.channel(canalNombre, {
           config: { presence: { key: userId } },
