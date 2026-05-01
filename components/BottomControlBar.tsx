@@ -133,7 +133,7 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
         : 'bottom-6 left-1/2 -translate-x-1/2 flex items-end gap-2'
     }`} onClick={(e) => e.stopPropagation()}>
       {/* Barra Principal Glassmorphism 2026 - Adaptativa: horizontal (normal) / vertical (juego) */}
-      <div className={`${isGameActive ? 'flex flex-col' : 'flex'} items-center gap-1.5 p-1.5 rounded-2xl bg-white/12 backdrop-blur-2xl border border-white/25 shadow-[0_1px_0_rgba(255,255,255,0.4)_inset,0_8px_32px_-8px_rgba(11,34,64,0.35)] transition-all duration-500 hover:bg-white/18 hover:border-white/35 hover:shadow-[0_1px_0_rgba(255,255,255,0.5)_inset,0_12px_40px_-8px_rgba(11,34,64,0.4)]`}>
+      <div className={`${isGameActive ? 'flex flex-col' : 'flex'} items-center gap-1.5 p-1.5 rounded-2xl border border-[rgba(46,150,245,0.18)] bg-[rgba(11,34,64,0.24)] backdrop-blur-2xl shadow-[0_1px_0_rgba(255,255,255,0.2)_inset,0_8px_32px_-8px_rgba(11,34,64,0.35)] transition-all duration-500 hover:bg-[rgba(11,34,64,0.32)] hover:border-[rgba(46,150,245,0.34)] hover:shadow-[0_1px_0_rgba(255,255,255,0.28)_inset,0_12px_40px_-8px_rgba(11,34,64,0.42)]`}>
         
         {/* Foto de usuario con indicador de estado */}
         <div className="relative">

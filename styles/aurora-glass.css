@@ -880,6 +880,68 @@ body.ag-app-shell {
   color: var(--cw-ink-400);
   transition: transform var(--cw-dur-fast) var(--cw-ease-soft);
 }
+.ag-side__head.is-static {
+  cursor: default;
+}
+.ag-side__head.is-static:hover { background: transparent; }
+
+/* — Sidebar head (lite): sin avatar; cinta + órbita decorativa — */
+.ag-side__head--lite {
+  position: relative;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 16px 14px 14px;
+  overflow: hidden;
+}
+.ag-side__head-ribbon {
+  display: block;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--cw-blue-500) 0%,
+    var(--cw-blue-light) 42%,
+    rgba(46, 150, 245, 0.15) 88%
+  );
+  box-shadow: 0 0 14px rgba(46, 150, 245, 0.35);
+}
+.ag-side__head--lite .ag-side__head-meta {
+  position: relative;
+  z-index: 1;
+}
+.ag-side__head--lite .ag-side__head-title {
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.2;
+  background: linear-gradient(
+    117deg,
+    var(--cw-ink-900) 0%,
+    var(--cw-ink-900) 55%,
+    var(--cw-blue-600) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.ag-side__head-orbit {
+  position: absolute;
+  right: -18px;
+  top: -22px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 1px solid rgba(46, 150, 245, 0.14);
+  pointer-events: none;
+  z-index: 0;
+}
+.ag-side__head-orbit::after {
+  content: '';
+  position: absolute;
+  inset: 11px;
+  border-radius: 50%;
+  border: 1px solid rgba(46, 150, 245, 0.08);
+}
 
 /* — Search field inside sidebar — */
 .ag-side__search {
@@ -1057,13 +1119,16 @@ body.ag-app-shell {
   flex-shrink: 0;
   letter-spacing: -0.02em;
   text-transform: lowercase;
-  overflow: hidden;
+  overflow: visible;
 }
 .ag-side__dm-img {
-  width: 100%; height: 100%;
-  border-radius: 50%;
+  width: 24px; height: 24px;
+  min-width: 24px; min-height: 24px;
+  border-radius: 999px;
+  clip-path: circle(50%);
   object-fit: cover;
   display: block;
+  line-height: 0;
 }
 .ag-side__dm-status {
   position: absolute;
@@ -1126,13 +1191,12 @@ body.ag-app-shell {
 
 .ag-monica-dock {
   position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 100px;
+  right: 24px;
   z-index: 1500;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
   gap: 12px;
   pointer-events: none;
 }
@@ -1146,30 +1210,40 @@ body.ag-app-shell {
   z-index: 1500;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 16px 10px 12px;
-  border-radius: var(--cw-radius-pill);
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
   border: none;
   cursor: pointer;
-  background: linear-gradient(135deg, var(--cw-blue-400) 0%, var(--cw-blue-500) 40%, #6366f1 100%);
+  background: linear-gradient(135deg, #4c1d95 0%, #312e81 58%, #1d4ed8 100%);
   color: #fff;
   font-family: var(--cw-font-sans);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
   box-shadow:
-    0 4px 20px -4px rgba(46, 150, 245, 0.45),
-    0 0 0 2px rgba(255, 255, 255, 0.6);
+    0 10px 30px -10px rgba(29, 78, 216, 0.65),
+    0 0 0 2px rgba(255, 255, 255, 0.5);
   transition:
     transform var(--cw-dur-base) var(--cw-ease-spring),
     box-shadow var(--cw-dur-base) var(--cw-ease-soft);
-  animation: ag-fab-in 0.4s var(--cw-ease-spring) both;
+  animation: ag-fab-in 0.4s var(--cw-ease-spring) both, ag-fab-breathe 2.8s ease-in-out infinite;
+}
+.ag-monica-fab::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid rgba(125, 211, 252, 0.45);
+  animation: ag-fab-pulse-ring 2.2s ease-out infinite;
+  pointer-events: none;
 }
 .ag-monica-fab:hover {
-  transform: scale(1.05) translateY(-2px);
+  transform: scale(1.08) translateY(-2px);
   box-shadow:
-    0 8px 32px -4px rgba(46, 150, 245, 0.55),
-    0 0 0 3px rgba(255, 255, 255, 0.8);
+    0 14px 40px -10px rgba(29, 78, 216, 0.72),
+    0 0 0 3px rgba(255, 255, 255, 0.72);
 }
 .ag-monica-fab:active { transform: scale(0.97); }
 .ag-monica-fab__icon {
@@ -1195,6 +1269,15 @@ body.ag-app-shell {
 @keyframes ag-fab-pulse {
   0%, 100% { opacity: 0.6; transform: scale(1); }
   50% { opacity: 0.2; transform: scale(1.06); }
+}
+@keyframes ag-fab-breathe {
+  0%, 100% { filter: saturate(1) brightness(1); }
+  50% { filter: saturate(1.08) brightness(1.06); }
+}
+@keyframes ag-fab-pulse-ring {
+  0% { opacity: 0.75; transform: scale(0.95); }
+  70% { opacity: 0; transform: scale(1.16); }
+  100% { opacity: 0; transform: scale(1.16); }
 }
 
 /* ── Respuesta efímera (encima del dock bar) ─────────────── */
@@ -1262,9 +1345,7 @@ body.ag-app-shell {
 
 /* Bar pill — la que se ve siempre */
 .ag-monica-dock__bar {
-  position: absolute;
-  left: -10px;
-  top: -122px;
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1288,22 +1369,18 @@ body.ag-app-shell {
     0 20px 56px -12px rgba(11, 34, 64, 0.32);
 }
 
-/* Avatar multicolor (icono de micrófono) */
+/* Avatar Mónica */
 .ag-monica-dock__avatar {
   position: relative;
   display: grid;
   place-items: center;
   width: 36px; height: 36px;
   border-radius: 50%;
-  background: conic-gradient(
-    from 180deg,
-    #F59E0B 0deg,
-    #EF4444 90deg,
-    #8B5CF6 180deg,
-    #3B82F6 270deg,
-    #F59E0B 360deg
-  );
+  background: linear-gradient(135deg, #4c1d95 0%, #312e81 62%, #1d4ed8 100%);
   color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
   border: none;
   cursor: pointer;
   flex-shrink: 0;
@@ -1366,9 +1443,13 @@ body.ag-app-shell {
   .ag-monica-fab {
     bottom: 80px;
     right: 16px;
-    padding: 8px 14px 8px 10px;
-    font-size: 12px;
-    gap: 6px;
+    width: 50px;
+    height: 50px;
+    font-size: 16px;
+  }
+  .ag-monica-dock {
+    bottom: 80px;
+    right: 16px;
   }
   .ag-monica-fab__icon {
     width: 24px; height: 24px;
@@ -1382,8 +1463,13 @@ body.ag-app-shell {
   .ag-monica-fab {
     bottom: 72px;
     right: 12px;
-    padding: 8px 12px 8px 8px;
-    font-size: 11px;
+    width: 46px;
+    height: 46px;
+    font-size: 15px;
+  }
+  .ag-monica-dock {
+    bottom: 72px;
+    right: 12px;
   }
   .ag-monica-fab__icon {
     width: 22px; height: 22px;

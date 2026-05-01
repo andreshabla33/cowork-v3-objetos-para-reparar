@@ -40,7 +40,7 @@ const selectionIcon = (
  */
 const MediaBtnTooltip = ({ text }: { text: string }) => (
  <span className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 opacity-0 group-hover/mmg:opacity-100 transition-opacity pointer-events-none z-50">
- <span className="block bg-[#0B2240]/35 backdrop-blur-[10px] backdrop-blur-md text-[#0B2240] text-[10px] font-medium px-2 py-1 rounded-lg border border-[rgba(46,150,245,0.14)] whitespace-nowrap shadow-xl">
+ <span className="block bg-[#0B2240]/70 backdrop-blur-[10px] backdrop-blur-md text-white text-[10px] font-medium px-2 py-1 rounded-lg border border-[rgba(46,150,245,0.24)] whitespace-nowrap shadow-xl">
  {text}
  </span>
  </span>
@@ -465,7 +465,7 @@ export const SharedAudioDeviceControl: React.FC<AudioDeviceControlProps> = ({
  <button
  onClick={handleToggle}
  className={`w-9 h-9 rounded-l-xl flex items-center justify-center transition-all duration-300 ${
- optimisticEnabled ? 'bg-white/50 text-[#0B2240]' : 'bg-red-500/90 text-[#0B2240] animate-pulse-slow'
+ optimisticEnabled ? 'bg-white/50 text-[#0B2240] hover:bg-[rgba(46,150,245,0.12)] hover:text-[#0B2240]' : 'bg-red-500/90 text-white hover:bg-red-600/95 hover:text-white'
  }`}
  >
  <IconMic on={optimisticEnabled} />
@@ -476,7 +476,7 @@ export const SharedAudioDeviceControl: React.FC<AudioDeviceControlProps> = ({
  <button
  onClick={() => setIsOpen((current) => !current)}
  className={`w-5 h-9 rounded-r-xl flex items-center justify-center transition-all duration-300 border-l border-[rgba(46,150,245,0.14)] ${
- optimisticEnabled ? 'bg-white/50 text-[#0B2240] hover:bg-[#9CB0CA]' : 'bg-red-500/90 text-[#0B2240] hover:bg-red-600'
+ optimisticEnabled ? 'bg-white/50 text-[#0B2240] hover:bg-[rgba(46,150,245,0.12)] hover:text-[#0B2240]' : 'bg-red-500/90 text-white hover:bg-red-600/95 hover:text-white'
  }`}
  >
  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -491,7 +491,7 @@ export const SharedAudioDeviceControl: React.FC<AudioDeviceControlProps> = ({
  <button
  onClick={handleToggle}
  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 ${
- optimisticEnabled ? 'bg-white/50 text-[#0B2240]' : 'bg-red-500/90 text-[#0B2240] animate-pulse-slow'
+ optimisticEnabled ? 'bg-white/50 text-[#0B2240] hover:bg-[rgba(46,150,245,0.12)] hover:text-[#0B2240]' : 'bg-red-500/90 text-white hover:bg-red-600/95 hover:text-white'
  }`}
  >
  <IconMic on={optimisticEnabled} />
@@ -686,7 +686,7 @@ export const SharedCameraDeviceControl: React.FC<CameraDeviceControlProps> = ({
  <button
  onClick={handleToggle}
  className={`w-9 h-9 rounded-l-xl flex items-center justify-center transition-all duration-300 ${
- optimisticEnabled ? 'bg-white/50 text-[#0B2240]' : 'bg-red-500/90 text-[#0B2240] animate-pulse-slow'
+ optimisticEnabled ? 'bg-white/50 text-[#0B2240] hover:bg-[rgba(46,150,245,0.12)] hover:text-[#0B2240]' : 'bg-red-500/90 text-white hover:bg-red-600/95 hover:text-white'
  }`}
  >
  <IconCam on={optimisticEnabled} />
@@ -697,7 +697,7 @@ export const SharedCameraDeviceControl: React.FC<CameraDeviceControlProps> = ({
  <button
  onClick={() => setIsOpen((current) => !current)}
  className={`w-5 h-9 rounded-r-xl flex items-center justify-center transition-all duration-300 border-l border-[rgba(46,150,245,0.14)] ${
- optimisticEnabled ? 'bg-white/50 text-[#0B2240] hover:bg-[#9CB0CA]' : 'bg-red-500/90 text-[#0B2240] hover:bg-red-600'
+ optimisticEnabled ? 'bg-white/50 text-[#0B2240] hover:bg-[rgba(46,150,245,0.12)] hover:text-[#0B2240]' : 'bg-red-500/90 text-white hover:bg-red-600/95 hover:text-white'
  }`}
  >
  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -712,7 +712,7 @@ export const SharedCameraDeviceControl: React.FC<CameraDeviceControlProps> = ({
  <button
  onClick={handleToggle}
  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300 ${
- optimisticEnabled ? 'bg-white/50 text-[#0B2240]' : 'bg-red-500/90 text-[#0B2240] animate-pulse-slow'
+ optimisticEnabled ? 'bg-white/50 text-[#0B2240] hover:bg-[rgba(46,150,245,0.12)] hover:text-[#0B2240]' : 'bg-red-500/90 text-white hover:bg-red-600/95 hover:text-white'
  }`}
  >
  <IconCam on={optimisticEnabled} />

@@ -3,7 +3,7 @@
  * @description Sidebar — listado de canales, DMs y meetings. Aurora GLASS.
  *
  * Diseño calm:
- *   - Workspace header (avatar + nombre + presencia + chevron)
+ *   - Cabecera de espacio (cinta aurora + nombre del espacio)
  *   - Búsqueda con shortcut ⌘K
  *   - Secciones MEETINGS · CANALES · MENSAJES DIRECTOS
  *   - Item activo con indicador azul a la izquierda + badge unread rojo
@@ -119,8 +119,8 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 }) => {
   const { t } = useTranslation();
   const {
-    activeWorkspace,
     currentUser,
+    activeWorkspace,
     setActiveSubTab,
     theme,
     onlineUsers,
@@ -130,9 +130,6 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
 
   // ── Datos derivados ──────────────────────────────────────────────────
-  const onlineCount = onlineUsers.length;
-  const workspaceInitial = (activeWorkspace?.name?.trim().charAt(0) || 'W').toUpperCase();
-
   const canales = useMemo(
     () => grupos.filter(g => g.tipo !== 'directo'),
     [grupos],
@@ -160,27 +157,22 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
   }, [directos, searchQuery, miembrosEspacio, currentUser.id]);
 
   // ── Render ───────────────────────────────────────────────────────────
+  const workspaceTitle =
+    activeWorkspace?.name?.trim() || t('settings.category.workspace');
+
   return (
     <div className="ag-side h-full">
-      {/* Workspace header */}
-      <button
-        type="button"
-        className="ag-side__head"
-        onClick={() => setActiveSubTab('settings')}
-        aria-label={`Espacio ${activeWorkspace?.name ?? 'Workspace'}`}
+      <div
+        className="ag-side__head ag-side__head--lite is-static"
+        role="banner"
+        aria-label={workspaceTitle}
       >
-        <span className="ag-side__head-avatar" aria-hidden="true">{workspaceInitial}</span>
-        <span className="ag-side__head-meta">
-          <span className="ag-side__head-title">{activeWorkspace?.name || 'Workspace'}</span>
-          <span className="ag-side__head-sub">
-            <span className="ag-pill__dot" aria-hidden="true" />
-            Spatial World · {onlineCount} {onlineCount === 1 ? 'activo' : 'activos'}
-          </span>
-        </span>
-        <span className="ag-side__head-chevron" aria-hidden="true">
-          <IconChevron />
-        </span>
-      </button>
+        <span className="ag-side__head-orbit" aria-hidden="true" />
+        <div className="ag-side__head-ribbon" aria-hidden="true" />
+        <div className="ag-side__head-meta">
+          <div className="ag-side__head-title">{workspaceTitle}</div>
+        </div>
+      </div>
 
       {/* Búsqueda calm */}
       <div className="ag-side__search">
