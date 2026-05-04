@@ -261,7 +261,10 @@ export class SpaceManager {
     newMesh.instanceMatrix.needsUpdate = true;
 
     parentFloor.remove(oldMesh);
-    // No dispose geometry/material — el nuevo mesh los reutiliza
+    // No dispose geometry/material — el nuevo mesh los reutiliza.
+    // SÍ disponemos el oldMesh para liberar `instanceMatrix` y otros
+    // buffers internos del InstancedMesh viejo (la nueva matriz vive en newMesh).
+    oldMesh.dispose();
     parentFloor.add(newMesh);
 
     const expanded: InstancedFloorGroup = {

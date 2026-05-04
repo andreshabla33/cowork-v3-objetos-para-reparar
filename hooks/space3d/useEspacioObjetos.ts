@@ -7,8 +7,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { logger } from '@/lib/logger';
 import type { CatalogoObjeto3D } from '@/types/objetos3d';
-import { obtenerPlantillaZona } from '@/src/core/domain/entities/plantillasEspacio';
-import { ResolverModeloUrlObjetoUseCase } from '@/src/core/application/usecases/ResolverModeloUrlObjetoUseCase';
 import { useDI } from '@/src/core/infrastructure/di/DIProvider';
 import type {
   CrearObjetoInput,
@@ -16,8 +14,12 @@ import type {
   TransformacionObjetoPatch,
   UpsertObjetoPayload,
   SpawnPersonal as SpawnPersonalPort,
-  CatalogoObjeto3DRuntime,
 } from '@/src/core/domain/ports/IEspacioObjetosRepository';
+import {
+  crearIndiceCatalogo,
+  enriquecerObjetoEspacio,
+  type IndiceCatalogo,
+} from '@/src/core/domain/entities/espacio3d/enriquecimientoCatalogo';
 import { useObjetosRealtime } from './useObjetosRealtime';
 
 // ─── Tipo canónico desde dominio ──────────────────────────────────────────────
@@ -61,143 +63,8 @@ export interface UseEspacioObjetosReturn {
   guardarSpawnPersonal: (x: number, z: number) => Promise<boolean>;
 }
 
-const crearClaveModelo = (valor?: string | null) => {
-  return (valor || '').trim().toLowerCase();
-};
-
-const crearIndiceCatalogo = (catalogo: CatalogoObjeto3DRuntime[]) => {
-  const porId = new Map<string, CatalogoObjeto3DRuntime>();
-  const porSlug = new Map<string, CatalogoObjeto3DRuntime>();
-  const porModelo = new Map<string, CatalogoObjeto3DRuntime>();
-  const porTipo = new Map<string, CatalogoObjeto3DRuntime>();
-
-  catalogo.forEach((item) => {
-    if (item.id && !porId.has(item.id)) {
-      porId.set(item.id, item);
-    }
-
-    const claveModelo = crearClaveModelo(item.modelo_url);
-    if (claveModelo && !porModelo.has(claveModelo)) {
-      porModelo.set(claveModelo, item);
-    }
-
-    const claveSlug = typeof item.slug === 'string' ? item.slug.trim().toLowerCase() : '';
-    if (claveSlug && !porSlug.has(claveSlug)) {
-      porSlug.set(claveSlug, item);
-    }
-
-    const claveTipo = (item.tipo || '').trim().toLowerCase();
-    if (claveTipo && !porTipo.has(claveTipo)) {
-      porTipo.set(claveTipo, item);
-    }
-  });
-
-  return { porId, porSlug, porModelo, porTipo };
-};
-
-const resolverSlugCatalogoPlantilla = (objeto: EspacioObjeto) => {
-  const configGeometria = objeto.configuracion_geometria as Record<string, unknown> | null;
-  const metaPlantilla = configGeometria?.meta_plantilla_zona as { slug_catalogo?: string; plantilla_id?: string; clave_instancia?: string } | undefined;
-  const slugDirecto = typeof metaPlantilla?.slug_catalogo === 'string' ? metaPlantilla.slug_catalogo.trim().toLowerCase() : '';
-  if (slugDirecto) {
-    return slugDirecto;
-  }
-
-  const plantillaId = typeof metaPlantilla?.plantilla_id === 'string' ? metaPlantilla.plantilla_id : null;
-  const claveInstancia = typeof metaPlantilla?.clave_instancia === 'string' ? metaPlantilla.clave_instancia : null;
-  if (!plantillaId || !claveInstancia) {
-    return '';
-  }
-
-  const plantilla = obtenerPlantillaZona(plantillaId);
-  const definicionObjeto = plantilla?.objetos.find((item) => item.clave === claveInstancia);
-  return (definicionObjeto?.slug_catalogo || '').trim().toLowerCase();
-};
-
-const enriquecerObjetoEspacio = (
-  objeto: EspacioObjeto,
-  indiceCatalogo: ReturnType<typeof crearIndiceCatalogo>
-): EspacioObjeto => {
-  const metadataPorId = objeto.catalogo_id ? indiceCatalogo.porId.get(objeto.catalogo_id) : undefined;
-  const claveModelo = crearClaveModelo(objeto.modelo_url);
-  const claveSlugPlantilla = resolverSlugCatalogoPlantilla(objeto);
-  const claveTipo = (objeto.tipo || '').trim().toLowerCase();
-  const metadata =
-    metadataPorId ||
-    (claveModelo ? indiceCatalogo.porModelo.get(claveModelo) : undefined) ||
-    (claveSlugPlantilla ? indiceCatalogo.porSlug.get(claveSlugPlantilla) : undefined) ||
-    (claveTipo ? indiceCatalogo.porTipo.get(claveTipo) : undefined);
-
-  // DEBT-001 (2026-04-10) — la resolución de modelo_url es regla de negocio
-  // y vive en la capa Application. El use case prioriza el catálogo sobre
-  // la instancia cuando hay catalogo_id válido, evitando drift tras un
-  // swap del asset (p. ej. el premerge de Keyboard.merged.glb).
-  const resolucionUrl = ResolverModeloUrlObjetoUseCase.resolver(
-    { modelo_url: objeto.modelo_url, catalogo_id: objeto.catalogo_id ?? null },
-    metadata
-      ? {
-          id: metadata.id,
-          modelo_url: metadata.modelo_url,
-          built_in_geometry: metadata.built_in_geometry,
-          built_in_color: metadata.built_in_color,
-        }
-      : null,
-  );
-
-  if (!metadata) {
-    // Sin metadata aplicamos al menos la URL resuelta (puede haber cambiado
-    // si el use case sintetizó un builtin fallback).
-    return resolucionUrl.modeloUrl !== objeto.modelo_url
-      ? { ...objeto, modelo_url: resolucionUrl.modeloUrl }
-      : objeto;
-  }
-
-  const escalaNormalizacionInstancia = Number(objeto.escala_normalizacion);
-  const escalaNormalizacionMetadata = Number(metadata.escala_normalizacion ?? 1);
-  const usarEscalaMetadata = Number.isFinite(escalaNormalizacionMetadata)
-    && escalaNormalizacionMetadata > 0
-    && (
-      !Number.isFinite(escalaNormalizacionInstancia)
-      || escalaNormalizacionInstancia <= 0
-    );
-
-  return {
-    ...objeto,
-    modelo_url: resolucionUrl.modeloUrl,
-    built_in_geometry: metadata.built_in_geometry,
-    built_in_color: metadata.built_in_color,
-    ancho: metadata.ancho,
-    alto: metadata.alto,
-    profundidad: metadata.profundidad,
-    es_sentable: metadata.es_sentable,
-    sit_offset_x: metadata.sit_offset_x,
-    sit_offset_y: metadata.sit_offset_y,
-    sit_offset_z: metadata.sit_offset_z,
-    sit_rotation_y: metadata.sit_rotation_y,
-    interactuable: objeto.interactuable ?? metadata.es_interactuable,
-    es_interactuable: objeto.interactuable ?? metadata.es_interactuable,
-    interaccion_tipo: metadata.interaccion_tipo,
-    interaccion_radio: metadata.interaccion_radio,
-    interaccion_emoji: metadata.interaccion_emoji,
-    interaccion_label: metadata.interaccion_label,
-    interaccion_config: metadata.interaccion_config,
-    configuracion_geometria: objeto.configuracion_geometria ?? metadata.configuracion_geometria ?? null,
-    es_reclamable: metadata.es_reclamable,
-    premium: metadata.premium,
-    escala_normalizacion: usarEscalaMetadata
-      ? escalaNormalizacionMetadata
-      : (Number.isFinite(escalaNormalizacionInstancia) && escalaNormalizacionInstancia > 0
-        ? escalaNormalizacionInstancia
-        : (metadata.escala_normalizacion ?? 1)),
-    catalogo: {
-      ancho: Number(metadata.ancho) || 1,
-      alto: Number(metadata.alto) || 1,
-      profundidad: Number(metadata.profundidad) || 1,
-      escala_normalizacion: metadata.escala_normalizacion ?? 1,
-      es_superficie: Boolean(metadata.es_superficie),
-    },
-  };
-};
+// La lógica de enriquecimiento del catálogo vive en el dominio.
+// Ver: src/core/domain/entities/espacio3d/enriquecimientoCatalogo.ts
 
 export function useEspacioObjetos(
   espacioId: string | null,
@@ -209,7 +76,7 @@ export function useEspacioObjetos(
   const [objetos, setObjetos] = useState<EspacioObjeto[]>([]);
   const [loading, setLoading] = useState(true);
   const [spawnPersonal, setSpawnPersonal] = useState<SpawnPersonal>({ spawn_x: null, spawn_z: null });
-  const catalogoIndiceRef = useRef<ReturnType<typeof crearIndiceCatalogo>>(crearIndiceCatalogo([]));
+  const catalogoIndiceRef = useRef<IndiceCatalogo>(crearIndiceCatalogo([]));
   const objetosRef = useRef<EspacioObjeto[]>(objetos);
   objetosRef.current = objetos;
 
