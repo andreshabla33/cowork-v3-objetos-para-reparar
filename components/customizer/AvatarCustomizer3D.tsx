@@ -305,6 +305,20 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({
         >
           <AvatarPreviewScene avatarConfig={catalog.previewConfig || avatarConfig} />
         </PreviewCanvas>
+        {/* Overlay de loading durante el primer fetch de avatar.
+            Sin esto, GLTFAvatar resolvería a DEFAULT_MODEL_URL cuando ambos
+            configs son null, mostrando un avatar incorrecto por ~1-2s antes
+            del real (regresión visual reportada 2026-05-04). */}
+        {!catalog.previewConfig && !avatarConfig && (
+          <div className="absolute inset-0 flex items-center justify-center bg-[#0B2240]/30 backdrop-blur-sm pointer-events-none">
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-8 h-8 border-2 border-[#4FB0FF] border-t-transparent rounded-full animate-spin" />
+              <span className="text-[10px] text-white/60 font-medium uppercase tracking-wider">
+                Cargando avatar
+              </span>
+            </div>
+          </div>
+        )}
         <div className="absolute bottom-3 left-3 text-[9px] text-white/30 pointer-events-none">
           Arrastra para rotar · Scroll para zoom
         </div>
