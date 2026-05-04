@@ -361,26 +361,13 @@ function computeTransform(
   const uniformScale = factors.length > 0 ? Math.min(...factors) : 1;
   const offsetY = -_box.min.y * uniformScale - h / 2;
 
-  // Diagnóstico temporal v2 — log SIEMPRE en cada compute (no cacheado),
-  // se ejecuta solo cuando se registra/re-registra el modelo. console.log
-  // directo (no via logger) para que el usuario vea el objeto crudo expandible.
-  console.log('[DIAG-BATCHER v2] computeTransform', {
-    objetoId: obj.id,
-    tipo: obj.tipo,
-    modeloUrl: obj.modelo_url,
-    dimsCatalogo: { w, h, d },
-    bboxGltfScene: { x: _size.x, y: _size.y, z: _size.z },
-    factors,
-    uniformScale,
-    catalogoSnapshot: {
-      ancho: obj.catalogo?.ancho,
-      alto: obj.catalogo?.alto,
-      profundidad: obj.catalogo?.profundidad,
-      escala_normalizacion: obj.catalogo?.escala_normalizacion,
-    },
-    escala: { x: obj.escala_x, y: obj.escala_y, z: obj.escala_z },
-    escalaNormalizacion: obj.escala_normalizacion,
-  });
+  // Diagnóstico temporal v3 — formato plano para visibilidad inline.
+  const fix = (n: number | null | undefined) =>
+    typeof n === 'number' && Number.isFinite(n) ? n.toFixed(4) : String(n);
+  const slug = (obj.modelo_url || '').split('/').pop() || '?';
+  console.log(
+    `[DIAG v3] ${obj.tipo}/${slug} | dimsCat=(${fix(w)},${fix(h)},${fix(d)}) | bboxGLB=(${fix(_size.x)},${fix(_size.y)},${fix(_size.z)}) | factors=[${factors.map(fix).join(',')}] | uniformScale=${fix(uniformScale)} | catSnap=(${fix(obj.catalogo?.ancho)},${fix(obj.catalogo?.alto)},${fix(obj.catalogo?.profundidad)},norm=${fix(obj.catalogo?.escala_normalizacion)}) | escalaObj=(${fix(obj.escala_x)},${fix(obj.escala_y)},${fix(obj.escala_z)},norm=${fix(obj.escala_normalizacion)})`,
+  );
 
   _pos.set(obj.posicion_x, obj.posicion_y + offsetY, obj.posicion_z);
   _euler.set(obj.rotacion_x ?? 0, obj.rotacion_y ?? 0, obj.rotacion_z ?? 0);
