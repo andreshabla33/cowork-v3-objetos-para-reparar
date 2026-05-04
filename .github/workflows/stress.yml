@@ -1,0 +1,211 @@
+name: stress-test
+
+# Estrategia de testing escalonada (Test Pyramid):
+#   - PR:           smoke (5 bots × 30s)          — sanity check rápido
+#   - Push a main:  load  (50 bots × 5min)        — validación full
+#   - Cron nightly: soak  (50 bots × 2h)          — leak detection largo
+#   - Manual:       stress/spike/load-laptop      — via workflow_dispatch
+#
+# Cada job:
+#   1. Levanta dev server
+#   2. Crea cuenta de stress temporal (via Supabase service role) + un workspace
+#   3. Corre stress:fase1 con profile apropiado
+#   4. Sube runs/*.json + *.html como artefactos
+#   5. Compara vs baseline committed — falla si regresión > threshold
+#
+# Ref oficial:
+#   GitHub Actions: https://docs.github.com/en/actions
+#   Test Pyramid: https://martinfowler.com/articles/practical-test-pyramid.html
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+  schedule:
+    # Nightly a las 04:00 UTC (23:00 hora Argentina).
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'Load profile a ejecutar'
+        required: true
+        default: 'load'
+        type: choice
+        options:
+          - smoke
+          - load
+          - soak
+          - stress
+          - spike
+      laptop_slos:
+        description: 'Aplicar SLOs laptop (más tolerantes)'
+        required: false
+        default: false
+        type: boolean
+      network_profile:
+        description: 'Throttling de red (opcional)'
+        required: false
+        default: 'none'
+        type: choice
+        options:
+          - none
+          - fast-3g
+          - slow-3g
+      chaos_mode:
+        description: 'Inyección de fallas (opcional)'
+        required: false
+        default: 'none'
+        type: choice
+        options:
+          - none
+          - network_blackout
+          - tab_freeze
+
+jobs:
+  # ─── Job 1: selecciona profile según trigger ──────────────────────────
+  configure:
+    runs-on: ubuntu-latest
+    outputs:
+      profile: ${{ steps.pick.outputs.profile }}
+      laptop_arg: ${{ steps.pick.outputs.laptop_arg }}
+      network_arg: ${{ steps.pick.outputs.network_arg }}
+      chaos_arg: ${{ steps.pick.outputs.chaos_arg }}
+      timeout_min: ${{ steps.pick.outputs.timeout_min }}
+    steps:
+      - id: pick
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "profile=smoke" >> "$GITHUB_OUTPUT"
+            echo "timeout_min=5" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "profile=load" >> "$GITHUB_OUTPUT"
+            echo "timeout_min=15" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "profile=soak" >> "$GITHUB_OUTPUT"
+            echo "timeout_min=180" >> "$GITHUB_OUTPUT"
+          else
+            echo "profile=${{ github.event.inputs.profile }}" >> "$GITHUB_OUTPUT"
+            echo "timeout_min=60" >> "$GITHUB_OUTPUT"
+          fi
+
+          LAPTOP=""
+          if [[ "${{ github.event.inputs.laptop_slos }}" == "true" ]]; then
+            LAPTOP="--laptop"
+          fi
+          echo "laptop_arg=$LAPTOP" >> "$GITHUB_OUTPUT"
+
+          NET=""
+          if [[ "${{ github.event.inputs.network_profile }}" != "none" && "${{ github.event.inputs.network_profile }}" != "" ]]; then
+            NET="--network=${{ github.event.inputs.network_profile }}"
+          fi
+          echo "network_arg=$NET" >> "$GITHUB_OUTPUT"
+
+          CHAOS=""
+          if [[ "${{ github.event.inputs.chaos_mode }}" != "none" && "${{ github.event.inputs.chaos_mode }}" != "" ]]; then
+            CHAOS="--chaos=${{ github.event.inputs.chaos_mode }}"
+          fi
+          echo "chaos_arg=$CHAOS" >> "$GITHUB_OUTPUT"
+
+  # ─── Job 2: corre Fase 1 con el profile seleccionado ──────────────────
+  stress-fase1:
+    needs: configure
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ fromJSON(needs.configure.outputs.timeout_min) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Start dev server (background)
+        run: |
+          npm run dev &
+          # Espera a que el server responda antes de seguir.
+          npx wait-on http://localhost:5173 -t 90000
+        env:
+          # Variables mínimas para que el dev server booteé contra Supabase.
+          # Los secrets reales se proveen via GitHub Secrets (scope: repo).
+          VITE_SUPABASE_URL: ${{ secrets.STRESS_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.STRESS_SUPABASE_ANON_KEY }}
+
+      - name: Run stress fase1 — profile=${{ needs.configure.outputs.profile }}
+        env:
+          FASE1_BASE_URL: http://localhost:5173
+          FASE1_LOGIN_EMAIL: ${{ secrets.STRESS_LOGIN_EMAIL }}
+          FASE1_LOGIN_PASSWORD: ${{ secrets.STRESS_LOGIN_PASSWORD }}
+          FASE1_HEADLESS: 'true'
+        run: |
+          npm run stress:fase1 -- \
+            --profile=${{ needs.configure.outputs.profile }} \
+            ${{ needs.configure.outputs.laptop_arg }} \
+            ${{ needs.configure.outputs.network_arg }} \
+            ${{ needs.configure.outputs.chaos_arg }}
+
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stress-fase1-${{ needs.configure.outputs.profile }}-${{ github.run_id }}
+          path: |
+            tests/stress/fase1-local/runs/*.json
+            tests/stress/fase1-local/runs/*.html
+            tests/stress/fase1-local/runs/*.png
+          retention-days: 30
+
+      - name: Comment PR with report summary
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const runsDir = 'tests/stress/fase1-local/runs';
+            if (!fs.existsSync(runsDir)) return;
+            const files = fs.readdirSync(runsDir).filter(f => f.endsWith('.json')).sort();
+            if (!files.length) return;
+            const latest = JSON.parse(fs.readFileSync(path.join(runsDir, files[files.length - 1]), 'utf8'));
+            const v = latest.verdict;
+            const cmp = latest.baselineComparison;
+            const body = [
+              `### Stress Fase 1 — profile \`${latest.profile}\` ${v.pass ? '✅' : '❌'}`,
+              '',
+              `**Metrics:** FPS P99=${v.metrics.fpsP99} | P95=${v.metrics.fpsP95} | heap Δ=${v.metrics.heapGrowthMb}MB`,
+              '',
+              v.reasons.length ? `**SLO reasons:** \`${v.reasons.join(', ')}\`` : '',
+              '',
+              cmp ? (cmp.passed ? '✓ No regression vs baseline' : `⚠️ **${cmp.regressions.length} regression(s):** ${cmp.regressions.map(r => `${r.metric} ${r.deltaPct >= 0 ? '+' : ''}${r.deltaPct}%`).join(', ')}`) : '_No baseline committed yet._',
+              '',
+              `_Artifacts: \`stress-fase1-${latest.profile}-${context.runId}\`_`,
+            ].join('\n');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });
+
+  # ─── Job 3: notifica Slack si es cron y falla ─────────────────────────
+  notify-failure:
+    needs: stress-fase1
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Slack notify
+        if: env.SLACK_WEBHOOK_URL != ''
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_STRESS_WEBHOOK }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data "{\"text\":\"❌ Stress nightly soak falló. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            "$SLACK_WEBHOOK_URL"

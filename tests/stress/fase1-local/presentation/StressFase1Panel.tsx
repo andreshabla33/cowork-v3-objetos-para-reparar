@@ -28,11 +28,15 @@ import { useFrame, useThree } from '@react-three/fiber';
 import type * as THREE from 'three';
 
 import { BotSpawnerUseCase } from '../application/BotSpawnerUseCase';
+import type { DynamicResizeConfig } from '../application/BotSpawnerUseCase';
 import { MemoryLeakDetector } from '../application/MemoryLeakDetector';
+import { LoadProfileExecutor } from '../application/LoadProfileExecutor';
 import { FakeBotAvatarsAdapter } from '../infrastructure/FakeBotAvatarsAdapter';
 import { ThreeRendererMetricsProbe } from '../infrastructure/ThreeRendererMetricsProbe';
 import type { LeakVerdict, StressRunResult } from '../domain/LeakDetectionCriteria';
 import { SLOS_DESKTOP, SLOS_LAPTOP_MID } from '../domain/LeakDetectionCriteria';
+import type { LoadProfileKind } from '../domain/LoadProfiles';
+import { PROFILES, toLaptopProfile } from '../domain/LoadProfiles';
 
 const DEFAULT_BOT_COUNT = 50;
 const DEFAULT_BOUNDS = { minX: 10, maxX: 90, minZ: 10, maxZ: 90 } as const;
@@ -163,7 +167,92 @@ const StressFase1PanelInner: React.FC = () => {
 
     console.log('[stress-fase1] handles listos — usa:',
       '__stressSpawn()', '__stressStart()', '__stressStop()',
-      '__stressDespawn()', '__stressDownload()');
+      '__stressDespawn()', '__stressDownload()',
+      '__stressRunProfile(name)');
+
+    // Auto-run profile-aware — ejecuta un LoadProfile completo (static/ramp/spike).
+    // Publica `window.__stressResult` con {result, verdict, profile} serializable
+    // y `window.__stressDone=true` para polling externo (Playwright).
+    const runProfile = async (profileKind: LoadProfileKind, opts?: { laptop?: boolean; warmup?: number }) => {
+      if ((w as Record<string, unknown>).__stressAutoRunning) {
+        console.warn('[stress-fase1] auto ya en ejecución — ignorando');
+        return;
+      }
+      let profile = PROFILES[profileKind];
+      if (opts?.laptop) profile = toLaptopProfile(profile);
+      const warmup = opts?.warmup ?? 5;
+
+      console.log(`[stress-fase1] AUTO-RUN profile "${profile.kind}" — ${profile.description}`);
+      (w as Record<string, unknown>).__stressAutoRunning = true;
+      (w as Record<string, unknown>).__stressDone = false;
+
+      await new Promise((r) => setTimeout(r, warmup * 1000));
+
+      const resizeConfig: DynamicResizeConfig = {
+        bounds: DEFAULT_BOUNDS,
+        avatarModelUrls: AVATAR_URLS,
+        withFakeVideoBubbleRatio: 0.3,
+      };
+
+      const useCase = useCaseRef.current!;
+      const detector = detectorRef.current!;
+      const executor = new LoadProfileExecutor(useCase, detector);
+
+      try {
+        const result = await executor.execute(profile, resizeConfig, (ev) => {
+          // Throttle progreso a cada 5s para evitar flood de logs.
+          if (ev.elapsedSec % 5 === 0) {
+            console.log(
+              `[stress-fase1] ${ev.phase} — ${ev.elapsedSec}/${ev.totalSec}s · bots: ${ev.currentBots}/${ev.peakBots}`,
+            );
+          }
+        });
+        lastResultRef.current = result;
+        const verdict = detector.evaluate(result, profile.slos);
+        lastVerdictRef.current = verdict;
+        useCase.despawnAll();
+
+        (w as Record<string, unknown>).__stressResult = JSON.parse(JSON.stringify({
+          result,
+          verdict,
+          profile: profile.kind,
+          baselineName: profile.baselineName,
+          capturedAt: new Date().toISOString(),
+        }));
+        console.log('[stress-fase1] AUTO-RUN COMPLETE', {
+          profile: profile.kind, pass: verdict.pass, reasons: verdict.reasons, metrics: verdict.metrics,
+        });
+      } catch (err) {
+        console.error('[stress-fase1] AUTO-RUN FAILED', err);
+        (w as Record<string, unknown>).__stressResult = null;
+      } finally {
+        (w as Record<string, unknown>).__stressDone = true;
+        (w as Record<string, unknown>).__stressAutoRunning = false;
+      }
+    };
+
+    (w as Record<string, unknown>).__stressRunProfile = (profileKind: LoadProfileKind, opts?: { laptop?: boolean; warmup?: number }) => {
+      void runProfile(profileKind, opts);
+    };
+
+    // Legacy — mantiene API simple para uso interactivo en DevTools.
+    (w as Record<string, unknown>).__stressStartAuto = (opts?: Partial<{ duration: number; warmup: number; profile: LoadProfileKind }>) => {
+      const profile = opts?.profile ?? 'load';
+      void runProfile(profile, { warmup: opts?.warmup });
+    };
+
+    // Activación automática por query param `?stress=fase1&profile=load&laptop=1`.
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('stress') === 'fase1') {
+      const profileParam = (urlParams.get('profile') ?? 'load') as LoadProfileKind;
+      const laptop = urlParams.get('laptop') === '1';
+      const warmup = parseInt(urlParams.get('warmup') ?? '5', 10);
+      if (PROFILES[profileParam]) {
+        void runProfile(profileParam, { laptop, warmup });
+      } else {
+        console.error(`[stress-fase1] profile inválido en URL: "${profileParam}"`);
+      }
+    }
 
     return () => {
       delete w.__stressSpawn;
@@ -171,6 +260,8 @@ const StressFase1PanelInner: React.FC = () => {
       delete w.__stressStart;
       delete w.__stressStop;
       delete w.__stressDownload;
+      delete w.__stressStartAuto;
+      delete w.__stressRunProfile;
     };
   }, [ensureRefs, gl]);
 

@@ -119,12 +119,13 @@ export class PlaywrightJourneyExecutor implements IClientJourneyExecutor {
         break;
       }
       case 'toggle_camera': {
-        await page.click('[data-tour-step="camera-btn"]', { timeout: 5000 });
+        // Selector real (verificado en components/onboarding/ProductTour.tsx).
+        await page.click('[data-tour-step="cam-btn"]', { timeout: 8000 });
         await page.waitForTimeout(1000);
         break;
       }
       case 'toggle_mic': {
-        await page.click('[data-tour-step="mic-btn"]', { timeout: 5000 });
+        await page.click('[data-tour-step="mic-btn"]', { timeout: 8000 });
         await page.waitForTimeout(500);
         break;
       }

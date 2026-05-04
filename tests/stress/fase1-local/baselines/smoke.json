@@ -1,0 +1,17 @@
+{
+  "profile": "smoke",
+  "capturedAt": "2026-04-24T20:52:47.551Z",
+  "gitCommit": "765c864572e62a1fbdf21da252d3adfffdccc53b",
+  "verdict": {
+    "pass": true,
+    "reasons": [],
+    "metrics": {
+      "heapGrowthMb": 0,
+      "fpsP99": 60,
+      "fpsP95": 60,
+      "fpsMedian": 60,
+      "monotonicGrowthDetected": false,
+      "p99FallbackApplied": true
+    }
+  }
+}

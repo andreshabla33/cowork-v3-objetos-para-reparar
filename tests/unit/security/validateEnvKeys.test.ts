@@ -288,6 +288,8 @@ describe('runStartupSecurityChecks', () => {
     Object.defineProperty(import.meta.env, 'PROD', {
       value: true,
       configurable: true,
+      writable: true,
+      enumerable: true,
     });
 
     expect(() => {
@@ -298,6 +300,8 @@ describe('runStartupSecurityChecks', () => {
     Object.defineProperty(import.meta.env, 'PROD', {
       value: originalProd,
       configurable: true,
+      writable: true,
+      enumerable: true,
     });
   });
 

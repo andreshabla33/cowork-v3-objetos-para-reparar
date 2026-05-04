@@ -23,8 +23,16 @@ export class MemoryLeakDetector {
 
   constructor(
     private readonly probe: IMetricsProbe,
-    private readonly sampleIntervalMs: number = 5000,
+    private sampleIntervalMs: number = 1000,
   ) {}
+
+  /** Permite cambiar el intervalo antes de start (no aplica en caliente). */
+  setSamplingInterval(ms: number): void {
+    if (this.intervalHandle !== null) {
+      throw new Error('No se puede cambiar sampling interval mientras corre');
+    }
+    this.sampleIntervalMs = ms;
+  }
 
   /** Comienza muestreo cada N ms. No-op si ya está corriendo. */
   start(): void {

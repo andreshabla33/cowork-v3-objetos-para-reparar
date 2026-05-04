@@ -1,0 +1,17 @@
+{
+  "profile": "spike",
+  "capturedAt": "2026-04-24T21:59:01.219Z",
+  "gitCommit": "2ed2f2bdca51ace779cac12a5fe4040596c3ef16",
+  "verdict": {
+    "pass": true,
+    "reasons": [],
+    "metrics": {
+      "heapGrowthMb": 0,
+      "fpsP99": 60,
+      "fpsP95": 60,
+      "fpsMedian": 60,
+      "monotonicGrowthDetected": false,
+      "p99FallbackApplied": false
+    }
+  }
+}

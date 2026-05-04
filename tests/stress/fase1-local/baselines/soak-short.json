@@ -1,0 +1,17 @@
+{
+  "profile": "soak-short",
+  "capturedAt": "2026-04-24T22:33:39.116Z",
+  "gitCommit": "80b2e01f2322793589c498b8369790d15fe813d1",
+  "verdict": {
+    "pass": true,
+    "reasons": [],
+    "metrics": {
+      "heapGrowthMb": 0,
+      "fpsP99": 60,
+      "fpsP95": 60,
+      "fpsMedian": 60,
+      "monotonicGrowthDetected": false,
+      "p99FallbackApplied": false
+    }
+  }
+}
