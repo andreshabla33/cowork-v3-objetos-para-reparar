@@ -20,22 +20,22 @@ describe('Environment Configuration Module', () => {
       expect(typeof CONFIG_PUBLICA_APP.claveAnonSupabase).toBe('string');
     });
 
-    it('should throw if VITE_SUPABASE_URL is missing', () => {
-      expect(() => {
-        vi.stubEnv('VITE_SUPABASE_URL', '');
-        vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'valid-key');
-        // Re-import to trigger config initialization
-        require('../../../lib/env');
-      }).toThrow('Falta la variable de entorno VITE_SUPABASE_URL');
+    it('should throw if VITE_SUPABASE_URL is missing', async () => {
+      vi.stubEnv('VITE_SUPABASE_URL', '');
+      vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'valid-key');
+      vi.resetModules();
+      await expect(import('../../../lib/env')).rejects.toThrow(
+        'Falta la variable de entorno VITE_SUPABASE_URL'
+      );
     });
 
-    it('should throw if VITE_SUPABASE_ANON_KEY is missing', () => {
-      expect(() => {
-        vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co');
-        vi.stubEnv('VITE_SUPABASE_ANON_KEY', '');
-        // Re-import to trigger config initialization
-        require('../../../lib/env');
-      }).toThrow('Falta la variable de entorno VITE_SUPABASE_ANON_KEY');
+    it('should throw if VITE_SUPABASE_ANON_KEY is missing', async () => {
+      vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co');
+      vi.stubEnv('VITE_SUPABASE_ANON_KEY', '');
+      vi.resetModules();
+      await expect(import('../../../lib/env')).rejects.toThrow(
+        'Falta la variable de entorno VITE_SUPABASE_ANON_KEY'
+      );
     });
   });
 
