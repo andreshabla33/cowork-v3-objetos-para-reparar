@@ -339,6 +339,7 @@ const _quat = new THREE.Quaternion();
 const _euler = new THREE.Euler();
 const _scale = new THREE.Vector3();
 const _matrix = new THREE.Matrix4();
+const _meshLocal = new THREE.Matrix4();
 
 function computeTransform(
   gltfScene: THREE.Object3D,
@@ -360,6 +361,30 @@ function computeTransform(
   const uniformScale = factors.length > 0 ? Math.min(...factors) : 1;
   const offsetY = -_box.min.y * uniformScale - h / 2;
 
+  // Diagnóstico temporal — root cause de mesa microscópica.
+  // Solo loguear UNA vez por objeto (evitar log infinito en useFrame loops).
+  const diagKey = `${obj.id}::${obj.modelo_url}`;
+  if (!_diagLoggedObjects.has(diagKey)) {
+    _diagLoggedObjects.add(diagKey);
+    log.info('computeTransform diag', {
+      objetoId: obj.id,
+      tipo: obj.tipo,
+      modeloUrl: obj.modelo_url,
+      dimsCatalogo: { w, h, d },
+      bboxGltfScene: { x: _size.x, y: _size.y, z: _size.z },
+      factors,
+      uniformScale,
+      catalogoSnapshot: {
+        ancho: obj.catalogo?.ancho,
+        alto: obj.catalogo?.alto,
+        profundidad: obj.catalogo?.profundidad,
+        escala_normalizacion: obj.catalogo?.escala_normalizacion,
+      },
+      escala: { x: obj.escala_x, y: obj.escala_y, z: obj.escala_z },
+      escalaNormalizacion: obj.escala_normalizacion,
+    });
+  }
+
   _pos.set(obj.posicion_x, obj.posicion_y + offsetY, obj.posicion_z);
   _euler.set(obj.rotacion_x ?? 0, obj.rotacion_y ?? 0, obj.rotacion_z ?? 0);
   _quat.setFromEuler(_euler);
@@ -367,6 +392,9 @@ function computeTransform(
 
   return _matrix.compose(_pos, _quat, _scale).clone();
 }
+
+// Set para limitar el log diag a una vez por objeto (no por frame).
+const _diagLoggedObjects = new Set<string>();
 
 // ─── BatchedGroupLoader — processes one GLTF model's objects ────────────────
 
@@ -464,17 +492,6 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
           try {
             const normalizedGeo = ensureConsistentAttributes(mesh.geometry);
 
-            // FIX 2026-05-04: bake mesh.matrixWorld en los vértices de la
-            // geometry. Sin esto, el GLB con scaling en la jerarquía padre
-            // se renderiza microscópico porque computeTransform ya considera
-            // el bbox completo (incluyendo matrixWorld) y multiplicar la
-            // matriz por mesh.matrixWorld al instanciar produce DOBLE escala.
-            // Con la transform bakeada en la geometry, la matriz de instancia
-            // solo necesita pos/rot/uniformScale del objeto.
-            // Ref Three.js BufferGeometry.applyMatrix4:
-            //   https://threejs.org/docs/#api/en/core/BufferGeometry.applyMatrix4
-            normalizedGeo.applyMatrix4(mesh.matrixWorld);
-
             // ─── Fase 4B: Remap UVs for atlas ───────────────────────
             if (
               mat instanceof THREE.MeshStandardMaterial &&
@@ -515,10 +532,9 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
 
         for (const obj of objetos) {
           try {
-            // mesh.matrixWorld ya fue bakeado en la geometry (ver fix arriba),
-            // así que la matriz de instancia es solo la transform del objeto
-            // en el espacio (pos + rot + uniformScale). Sin doble multiplicación.
             const worldMatrix = computeTransform(gltfScene, obj);
+            _meshLocal.copy(mesh.matrixWorld);
+            worldMatrix.multiply(_meshLocal);
 
             const flatMatrix = new Float32Array(16);
             worldMatrix.toArray(flatMatrix);
