@@ -55,10 +55,10 @@ export const SettingsPrivacy: React.FC<SettingsPrivacyProps> = ({
   return (
     <div>
       <div className="mb-8 lg:mb-6">
-        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-2 lg:mb-1">
+        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#0B2240] via-[#1E86E5] to-[#0B2240] mb-2 lg:mb-1">
           {currentLang === 'en' ? 'Privacy & Activity' : currentLang === 'pt' ? 'Privacidade e Atividade' : 'Privacidad y Actividad'}
         </h2>
-        <p className="text-sm text-zinc-400">
+        <p className="text-sm text-[#4A6485]">
           {currentLang === 'en' ? 'Control your visibility and activity data' : currentLang === 'pt' ? 'Controle sua visibilidade e dados de atividade' : 'Controla tu visibilidad y datos de actividad'}
         </p>
       </div>
@@ -118,7 +118,7 @@ export const SettingsPrivacy: React.FC<SettingsPrivacyProps> = ({
           </svg>
           <div>
             <p className="text-sm font-medium text-amber-400">{currentLang === 'en' ? 'Privacy note' : currentLang === 'pt' ? 'Nota de privacidade' : 'Nota de privacidad'}</p>
-            <p className="text-xs text-zinc-400 mt-1">
+            <p className="text-xs text-[#4A6485] mt-1">
               {currentLang === 'en' 
                 ? 'Space administrators may have access to certain activity data for team management and security purposes.' 
                 : currentLang === 'pt' 

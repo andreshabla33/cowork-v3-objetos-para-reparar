@@ -1,7 +1,10 @@
 /**
  * @module components/LoginScreen
- * @description Login/Register screen — pure presentation component.
- * All auth logic delegated to useLoginAuth hook (Clean Architecture).
+ * @description Pantalla de inicio de sesión — diseño "Cowork Glassmorphism Blue"
+ *
+ * Toda la estética (paleta, glassmorphism, animaciones del fondo, badges,
+ * etc.) vive en `styles/login-theme.css` para que sea fácil iterar sin tocar
+ * componentes. Acá solo hay markup + cableado al hook de autenticación.
  *
  * Architecture:
  * - Zero direct Supabase imports
@@ -9,7 +12,7 @@
  * - Rate limiting and anti-enumeration handled in hook layer
  */
 
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ForgotPasswordScreen } from './ForgotPasswordScreen';
 import { useLoginAuth } from '../hooks/auth/useLoginAuth';
 
@@ -30,248 +33,390 @@ export const LoginScreen: React.FC = () => {
     handleEmailAuth,
   } = useLoginAuth();
 
-  // Mostrar pantalla de recuperación de contraseña
+  const [showPassword, setShowPassword] = useState(false);
+  const parallaxRootRef = useRef<HTMLDivElement | null>(null);
+
+  // Parallax sutil del fondo siguiendo el mouse.
+  useEffect(() => {
+    const root = parallaxRootRef.current;
+    if (!root) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const layers = Array.from(
+      root.querySelectorAll<HTMLElement>('.cw-orb, .cw-cell, .cw-particle')
+    );
+    let mx = 0;
+    let my = 0;
+    let tx = 0;
+    let ty = 0;
+    let raf = 0;
+
+    const onMove = (e: MouseEvent) => {
+      mx = e.clientX / window.innerWidth - 0.5;
+      my = e.clientY / window.innerHeight - 0.5;
+    };
+    const tick = () => {
+      tx += (mx - tx) * 0.04;
+      ty += (my - ty) * 0.04;
+      layers.forEach((el, i) => {
+        const depth = ((i % 4) + 1) * 6;
+        el.style.translate = `${tx * depth}px ${ty * depth}px`;
+      });
+      raf = requestAnimationFrame(tick);
+    };
+
+    document.addEventListener('mousemove', onMove);
+    raf = requestAnimationFrame(tick);
+
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+
   if (showForgot) {
     return <ForgotPasswordScreen onBack={() => setShowForgot(false)} />;
   }
 
   return (
-    <div className="fixed inset-0 z-[500] flex items-center justify-center bg-[#050508] p-4 lg:p-3 overflow-y-auto">
-      {/* Fondo con gradientes neon animados */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-30%] left-[-20%] w-[70%] h-[70%] rounded-full bg-violet-600/15 blur-[180px] animate-pulse" />
-        <div className="absolute bottom-[-30%] right-[-20%] w-[70%] h-[70%] rounded-full bg-cyan-500/10 blur-[180px] animate-pulse" style={{ animationDelay: '1.5s' }} />
-        <div className="absolute top-[40%] left-[50%] w-[40%] h-[40%] rounded-full bg-fuchsia-600/10 blur-[120px] animate-pulse" style={{ animationDelay: '3s' }} />
-        {/* Grid pattern sutil */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
+    <div className="cw-shell" ref={parallaxRootRef}>
+      {/* ── Fondo animado ─────────────────────────────────────────────── */}
+      <div className="cw-grid-bg" aria-hidden="true" />
+
+      <svg
+        className="cw-connector"
+        preserveAspectRatio="none"
+        viewBox="0 0 1440 900"
+        aria-hidden="true"
+      >
+        <path d="M 100 200 Q 400 100, 700 300 T 1340 250" />
+        <path d="M 80 700 Q 300 600, 600 750 T 1360 680" />
+        <path d="M 1200 100 Q 1100 400, 1300 600" />
+      </svg>
+
+      <div className="cw-orb cw-orb--1" aria-hidden="true" />
+      <div className="cw-orb cw-orb--2" aria-hidden="true" />
+      <div className="cw-orb cw-orb--3" aria-hidden="true" />
+
+      {(['c1','c2','c3','c4','c5','c6','c7','c8','c9'] as const).map((c, i) => (
+        <div
+          key={c}
+          className={`cw-cell cw-cell--${c}${i % 3 === 1 ? ' cw-cell--alt' : ''}`}
+          aria-hidden="true"
+        />
+      ))}
+
+      {(['p1','p2','p3','p4','p5','p6'] as const).map(p => (
+        <div key={p} className={`cw-particle cw-particle--${p}`} aria-hidden="true" />
+      ))}
+
+      {/* ── Esquinas decorativas ───────────────────────────────────────── */}
+      <div className="cw-corner-label">
+        <span className="cw-square" />
+        <span>COWORK · v2.4</span>
+      </div>
+      <div className="cw-corner-meta">SECURE · ENCRYPTED CHANNEL</div>
+
+      {/* ── Badges flotantes ──────────────────────────────────────────── */}
+      <div className="cw-float-badge cw-float-badge--1">
+        <span className="cw-dot" />
+        <span><b>2,418</b> personas conectadas</span>
+      </div>
+      <div className="cw-float-badge cw-float-badge--2">
+        <div className="cw-avatar-stack">
+          <div>MR</div><div>JL</div><div>+9</div>
+        </div>
+        <span>Tu equipo te espera</span>
+      </div>
+      <div className="cw-float-badge cw-float-badge--3">
+        <span className="cw-dot cw-dot--blue" />
+        <span>Última conexión <b>hace 2 días</b></span>
       </div>
 
-      {/* Card principal con glassmorphism 2026 - Optimizado */}
-      <div className="w-full max-w-md lg:max-w-sm md:max-w-xs my-auto relative z-10">
-        {/* Glow exterior */}
-        <div className="absolute -inset-1 bg-gradient-to-r from-violet-600/20 via-fuchsia-600/20 to-cyan-500/20 rounded-[40px] lg:rounded-[32px] blur-xl opacity-60" />
+      {/* ── Card principal ─────────────────────────────────────────────── */}
+      <div className="cw-stage">
+        <div className="cw-card">
 
-        <div className="relative backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-[36px] lg:rounded-[28px] p-6 lg:p-5 md:p-4 shadow-2xl">
-          {/* Header con logo gaming style - Compacto */}
-          <div className="flex flex-col items-center mb-6 lg:mb-5">
-            {/* Logo con glow neon */}
-            <div className="relative group mb-4 lg:mb-3">
-              <div className="absolute -inset-2 bg-gradient-to-r from-violet-600 to-cyan-500 rounded-2xl blur-lg opacity-40 group-hover:opacity-60 transition-opacity duration-500" />
-              <div className="relative w-14 h-14 lg:w-12 lg:h-12 bg-gradient-to-br from-violet-600 via-fuchsia-600 to-cyan-500 rounded-2xl flex items-center justify-center font-black text-3xl lg:text-2xl text-white shadow-2xl transform rotate-3 group-hover:rotate-0 group-hover:scale-105 transition-all duration-500">
-                C
-              </div>
-            </div>
-            {/* Título con efecto gradient */}
-            <h1 className="text-3xl lg:text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-1">
-              COWORK
-            </h1>
-            <p className="text-zinc-500 text-[9px] lg:text-[8px] font-bold uppercase tracking-[0.4em]">Virtual Collaboration Hub</p>
+          {/* Brand */}
+          <div className="cw-brand">
+            <div className="cw-logo">C</div>
+            <h1 className="cw-title">COWORK</h1>
+            <div className="cw-tag">Virtual Collaboration Hub</div>
           </div>
 
-        {invitacionBanner && (
-          <div className="mb-4 lg:mb-3 p-3 lg:p-2.5 bg-violet-500/10 border border-violet-500/30 rounded-xl animate-in slide-in-from-top-2">
-            <div className="flex items-start gap-2">
-              <span className="text-lg">🎉</span>
-              <div className="flex-1">
-                <p className="text-violet-300 text-[10px] lg:text-[9px] font-black leading-tight">
-                  {invitacionBanner.invitadorNombre ? `${invitacionBanner.invitadorNombre} te invitó` : 'Te invitaron'} a <span className="text-white">{invitacionBanner.espacioNombre}</span>
+          {/* Banner de invitación */}
+          {invitacionBanner && (
+            <div className="cw-alert cw-alert-info bg-violet-500/10">
+              <span className="cw-alert-icon" aria-hidden="true">★</span>
+              <div className="cw-alert-body">
+                <p style={{ margin: 0 }}>
+                  {invitacionBanner.invitadorNombre
+                    ? `${invitacionBanner.invitadorNombre} te invitó`
+                    : 'Te invitaron'} a <b>{invitacionBanner.espacioNombre}</b>
                 </p>
-                <p className="text-zinc-500 text-[9px] lg:text-[8px] font-bold mt-0.5">
-                  Crea tu cuenta con <span className="text-violet-400">{invitacionBanner.email}</span> usando Google o el formulario de abajo
+                <p style={{ margin: '4px 0 0', opacity: 0.85, fontSize: 11 }}>
+                  Crea tu cuenta con <b>{invitacionBanner.email}</b> usando Google o el formulario de abajo.
                 </p>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {authFeedback && (
-          <div className={`mb-4 lg:mb-3 p-3 lg:p-2.5 rounded-xl animate-in slide-in-from-top-2 flex items-start gap-2 ${
-            authFeedback.type === 'error'
-              ? 'bg-red-500/10 border border-red-500/30 text-red-400'
-              : 'bg-green-500/10 border border-green-500/30 text-green-400'
-          }`}>
-            <div className={`shrink-0 w-5 h-5 lg:w-4 lg:h-4 rounded-full flex items-center justify-center font-bold text-[10px] lg:text-[9px] ${
-              authFeedback.type === 'error' ? 'bg-red-500/20' : 'bg-green-500/20'
-            }`}>{authFeedback.type === 'error' ? '!' : '✓'}</div>
-            <p className="text-[10px] lg:text-[9px] font-bold leading-tight flex-1">{authFeedback.message}</p>
-            <button onClick={() => setAuthFeedback(null)} className="opacity-50 hover:opacity-100 text-sm">×</button>
-          </div>
-        )}
+          {/* Feedback genérico (success/error) */}
+          {authFeedback && (
+            <div
+              className={`cw-alert ${
+                authFeedback.type === 'error'
+                  ? 'cw-alert-error bg-red-500/10'
+                  : 'cw-alert-success bg-green-500/10'
+              }`}
+            >
+              <span className="cw-alert-icon" aria-hidden="true">
+                {authFeedback.type === 'error' ? '!' : '✓'}
+              </span>
+              <p className="cw-alert-body" style={{ margin: 0 }}>{authFeedback.message}</p>
+              <button
+                type="button"
+                className="cw-alert-close"
+                aria-label="Cerrar"
+                onClick={() => setAuthFeedback(null)}
+              >×</button>
+            </div>
+          )}
 
-        {error && (
-          <div className="mb-4 lg:mb-3 p-3 lg:p-2.5 bg-red-500/10 border border-red-500/30 rounded-xl animate-in slide-in-from-top-2">
-            <div className="flex gap-2">
-              <div className="shrink-0 w-6 h-6 lg:w-5 lg:h-5 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 font-bold text-xs lg:text-[10px]">!</div>
-              <div className="flex-1">
-                <p className="text-red-400 text-[10px] lg:text-[9px] font-bold leading-tight">{error}</p>
-                <button onClick={() => setShowHelp(!showHelp)} className="mt-1.5 text-[9px] lg:text-[8px] text-red-500 underline font-black uppercase tracking-widest hover:text-red-300">
-                  {showHelp ? 'Ocultar Ayuda' : '¿Problemas para entrar?'}
+          {/* Error de autenticación */}
+          {error && (
+            <div className="cw-alert cw-alert-error bg-red-500/10">
+              <span className="cw-alert-icon" aria-hidden="true">!</span>
+              <div className="cw-alert-body">
+                <p style={{ margin: 0 }}>{error}</p>
+                <button
+                  type="button"
+                  className="cw-help-toggle"
+                  onClick={() => setShowHelp(!showHelp)}
+                >
+                  {showHelp ? 'Ocultar ayuda' : '¿Problemas para entrar?'}
                 </button>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {showHelp && (
-          <div className="mb-5 lg:mb-4 p-4 lg:p-3 bg-zinc-950 border border-indigo-500/30 rounded-2xl text-[9px] lg:text-[8px] text-zinc-400 space-y-3 lg:space-y-2 animate-in fade-in duration-300">
-            <p className="text-indigo-400 font-black uppercase tracking-[0.2em]">⚠️ Guía de Registro:</p>
-            <p>Para usar una cuenta de correo real, debes usar el modo <strong>"Crea una aquí"</strong> en la parte inferior.</p>
-            <div className="space-y-1.5">
-              <p className="font-bold text-white italic">Requisitos:</p>
-              <ul className="list-disc pl-4 space-y-0.5 opacity-80">
+          {showHelp && (
+            <div className="cw-help-box">
+              <p className="cw-help-title">Guía de registro</p>
+              <p style={{ margin: '0 0 6px' }}>
+                Para usar una cuenta de correo real debes usar el modo
+                <strong> "Crea una aquí"</strong> en la parte inferior.
+              </p>
+              <strong>Requisitos:</strong>
+              <ul>
                 <li>Correo electrónico válido.</li>
                 <li>Contraseña de al menos 8 caracteres.</li>
                 <li>Confirmar el email si el sistema lo solicita.</li>
               </ul>
             </div>
-          </div>
-        )}
-
-        {/* ── LOGIN-UX-REDESIGN (2026-04-14) ─────────────────────────────
-            Jerarquía visual: Google = primario (arriba, glassmorphism con
-            colores Google), email+password = secundario (abajo, estilo más
-            discreto), invitado = terciario (link). Mejores prácticas B2B
-            SaaS — Linear/Notion/Figma — reducen fricción sin excluir a
-            usuarios sin cuenta Google. Toda la lógica del hook intacta. */}
-
-        {/* ── PRIMARIO: Continuar con Google ─────────────────────────── */}
-        <button
-          onClick={handleGoogleLogin}
-          disabled={loading}
-          className="group relative w-full flex items-center justify-center gap-3 lg:gap-2.5 overflow-hidden backdrop-blur-xl bg-white/[0.08] hover:bg-white/[0.12] border border-white/20 hover:border-white/30 text-white py-4 lg:py-3.5 px-5 rounded-2xl font-black text-sm lg:text-xs transition-all active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-black/30"
-        >
-          {/* Glow interior al hover */}
-          <span className="absolute inset-0 bg-gradient-to-r from-violet-500/0 via-fuchsia-500/10 to-cyan-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          {/* Google G multicolor oficial */}
-          <svg className="relative w-5 h-5 lg:w-[18px] lg:h-[18px] shrink-0" viewBox="0 0 48 48">
-            <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
-            <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
-            <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
-            <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
-          </svg>
-          <div className="relative flex flex-col items-start">
-            <span className="uppercase tracking-[0.15em]">
-              {loading ? 'Conectando…' : 'Continuar con Google'}
-            </span>
-            <span className="text-[8px] lg:text-[7px] font-bold normal-case tracking-wider text-zinc-400 group-hover:text-violet-300 transition-colors">
-              Recomendado · 1 paso, sin confirmación por correo
-            </span>
-          </div>
-          {loading && (
-            <div className="relative w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           )}
-        </button>
 
-        {/* ── Divider ─────────────────────────────────────────────────── */}
-        <div className="my-5 lg:my-4 flex items-center gap-3">
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-          <span className="text-[9px] lg:text-[8px] font-black text-zinc-500 uppercase tracking-[0.25em]">
-            {isRegister ? 'o regístrate con email' : 'o entra con email'}
-          </span>
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-        </div>
+          {/* ── Botón Google (primario) ─────────────────────────────── */}
+          <button
+            type="button"
+            className="cw-google-btn"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+          >
+            <svg
+              className="cw-g-icon"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
+            >
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/>
+            </svg>
+            <div className="cw-g-text">
+              <span>{loading ? 'CONECTANDO…' : 'CONTINUAR CON GOOGLE'}</span>
+              <span className="cw-g-sub">RECOMENDADO · 1 PASO, SIN CONFIRMACIÓN</span>
+            </div>
+            {loading && <span className="cw-spinner" aria-hidden="true" />}
+          </button>
 
-        {/* ── SECUNDARIO: Email + contraseña ──────────────────────────── */}
-        <form onSubmit={handleEmailAuth} className="space-y-2.5 lg:space-y-2">
-          {isRegister && (
-            <div className="relative group animate-in slide-in-from-top-2 duration-300">
-              <div className="absolute inset-y-0 left-4 lg:left-3 flex items-center pointer-events-none opacity-30 group-focus-within:opacity-100 transition-opacity">
-                 <svg className="w-4 h-4 lg:w-3.5 lg:h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+          {/* Divider */}
+          <div className="cw-divider">
+            <span>{isRegister ? 'O regístrate con email' : 'O entra con email'}</span>
+          </div>
+
+          {/* ── Formulario email ────────────────────────────────────── */}
+          <form className="cw-form" onSubmit={handleEmailAuth}>
+            {isRegister && (
+              <div className="cw-field">
+                <input
+                  type="text"
+                  name="name"
+                  placeholder="Nombre completo"
+                  required={isRegister}
+                  value={fullName}
+                  onChange={e => setFullName(e.target.value)}
+                  autoComplete="name"
+                />
+                <svg
+                  className="cw-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
               </div>
+            )}
+
+            <div className="cw-field">
               <input
-                type="text"
-                name="name"
-                placeholder="Nombre Completo"
-                required={isRegister}
-                value={fullName}
-                onChange={e => setFullName(e.target.value)}
-                autoComplete="name"
-                className="w-full bg-black/30 backdrop-blur-sm border border-white/[0.06] rounded-xl pl-11 lg:pl-9 pr-4 lg:pr-3 py-3 lg:py-2.5 text-xs lg:text-[11px] focus:outline-none focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500/40 transition-all placeholder:text-zinc-600 text-white"
+                type="email"
+                name="email"
+                placeholder="Correo electrónico"
+                required
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                autoComplete="email"
               />
-            </div>
-          )}
-
-          <div className="relative group">
-            <div className="absolute inset-y-0 left-4 lg:left-3 flex items-center pointer-events-none opacity-30 group-focus-within:opacity-100 transition-opacity">
-               <svg className="w-4 h-4 lg:w-3.5 lg:h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-            </div>
-            <input
-              type="email"
-              name="email"
-              placeholder="Correo electrónico"
-              required
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              autoComplete="email"
-              className="w-full bg-black/30 backdrop-blur-sm border border-white/[0.06] rounded-xl pl-11 lg:pl-9 pr-4 lg:pr-3 py-3 lg:py-2.5 text-xs lg:text-[11px] focus:outline-none focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500/40 transition-all placeholder:text-zinc-600 text-white"
-            />
-          </div>
-
-          <div className="relative group">
-            <div className="absolute inset-y-0 left-4 lg:left-3 flex items-center pointer-events-none opacity-30 group-focus-within:opacity-100 transition-opacity">
-               <svg className="w-4 h-4 lg:w-3.5 lg:h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-            </div>
-            <input
-              type="password"
-              name="password"
-              placeholder="Contraseña"
-              required
-              minLength={8}
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              autoComplete={isRegister ? "new-password" : "current-password"}
-              className="w-full bg-black/30 backdrop-blur-sm border border-white/[0.06] rounded-xl pl-11 lg:pl-9 pr-4 lg:pr-3 py-3 lg:py-2.5 text-xs lg:text-[11px] focus:outline-none focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500/40 transition-all placeholder:text-zinc-600 text-white"
-            />
-          </div>
-
-          {/* Enlace ¿Olvidaste tu contraseña? — solo en modo login */}
-          {!isRegister && (
-            <div className="flex justify-end pt-0.5">
-              <button
-                id="forgot-password-link"
-                type="button"
-                onClick={() => setShowForgot(true)}
-                className="text-[9px] lg:text-[8px] text-zinc-500 hover:text-violet-400 font-bold uppercase tracking-widest transition-colors"
+              <svg
+                className="cw-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
               >
-                ¿Olvidaste tu contraseña?
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <path d="m3 7 9 6 9-6" />
+              </svg>
+            </div>
+
+            <div className="cw-field">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                placeholder="Contraseña"
+                required
+                minLength={8}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                autoComplete={isRegister ? 'new-password' : 'current-password'}
+              />
+              <svg
+                className="cw-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <rect x="4" y="11" width="16" height="10" rx="2" />
+                <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+              </svg>
+              <button
+                type="button"
+                className="cw-toggle-pwd"
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                onClick={() => setShowPassword(p => !p)}
+              >
+                {showPassword ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                    <line x1="2" y1="2" x2="22" y2="22" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
               </button>
             </div>
-          )}
 
-          {/* CTA de email — secundario (menos peso visual que Google) */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 hover:border-violet-500/40 text-zinc-200 hover:text-white px-5 py-2.5 lg:py-2 rounded-xl font-black text-[10px] lg:text-[9px] uppercase tracking-[0.15em] transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <div className="w-3.5 h-3.5 lg:w-3 lg:h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              <>
-                <span>{isRegister ? 'Crear cuenta con email' : 'Entrar con email'}</span>
-                <svg className="w-3 h-3 lg:w-2.5 lg:h-2.5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-              </>
+            {!isRegister && (
+              <div className="cw-forgot">
+                <button
+                  id="forgot-password-link"
+                  type="button"
+                  onClick={() => {
+                    setError(null);
+                    setShowForgot(true);
+                  }}
+                >
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
             )}
-          </button>
-        </form>
 
-        {/* ── TERCIARIO: invitado + toggle login/register ─────────────── */}
-        <div className="mt-6 lg:mt-5 pt-4 lg:pt-3 border-t border-white/[0.04] flex flex-col items-center gap-2.5 lg:gap-2">
-          <button
-            onClick={handleGuestLogin}
-            disabled={loading}
-            className="flex items-center gap-1.5 text-[9px] lg:text-[8px] text-zinc-500 hover:text-zinc-300 font-bold uppercase tracking-widest transition-colors disabled:opacity-50"
-          >
-            <svg className="w-3 h-3 lg:w-2.5 lg:h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-            Explorar como invitado
-          </button>
-          <p className="text-center text-[9px] lg:text-[8px] text-zinc-600 font-bold uppercase tracking-widest">
-            {isRegister ? '¿Ya tienes cuenta?' : '¿Nuevo por aquí?'}
-            <button onClick={() => setIsRegister(!isRegister)} className="ml-2 text-violet-400 font-black hover:text-violet-300 transition-colors underline decoration-2 underline-offset-4">
-              {isRegister ? 'Inicia Sesión' : 'Crea una aquí'}
+            <button
+              type="submit"
+              className="cw-primary"
+              id="submitBtn"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <span className="cw-spinner" aria-hidden="true" />
+                  <span>{isRegister ? 'CREANDO CUENTA…' : 'AUTENTICANDO…'}</span>
+                </>
+              ) : (
+                <>
+                  <span>{isRegister ? 'CREAR CUENTA CON EMAIL' : 'ENTRAR CON EMAIL'}</span>
+                  <svg
+                    className="cw-arrow"
+                    width="16" height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M5 12h14M13 5l7 7-7 7" />
+                  </svg>
+                </>
+              )}
             </button>
-          </p>
-        </div>
+          </form>
+
+          {/* ── Footer (invitado + signup toggle) ───────────────────── */}
+          <div className="cw-footer">
+            <button
+              type="button"
+              className="cw-guest"
+              onClick={handleGuestLogin}
+              disabled={loading}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
+              </svg>
+              Explorar como invitado
+            </button>
+            <div className="cw-signup">
+              {isRegister ? '¿Ya tienes cuenta?' : '¿Nuevo por aquí?'}
+              <button
+                type="button"
+                className="cw-signup-link"
+                onClick={() => setIsRegister(!isRegister)}
+              >
+                {isRegister ? 'Inicia Sesión' : 'Crea una aquí'}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

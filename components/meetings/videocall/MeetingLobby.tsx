@@ -86,10 +86,10 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
       {/* Container de dos columnas (Google Meet style).
           max-h limita la altura total para que nunca desborde el viewport. */}
       <div className="relative w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl">
-        <div className="grid max-h-[calc(100svh-2rem)] grid-cols-1 overflow-hidden rounded-2xl border border-white/[0.08] shadow-2xl backdrop-blur-xl sm:max-h-[calc(100svh-3rem)] lg:grid-cols-[1fr_380px] lg:max-h-[calc(100svh-4rem)] xl:grid-cols-[1fr_420px] 2xl:grid-cols-[1fr_480px]">
+        <div className="grid max-h-[calc(100svh-2rem)] grid-cols-1 overflow-hidden rounded-2xl border border-[rgba(46,150,245,0.14)] shadow-2xl backdrop-blur-xl sm:max-h-[calc(100svh-3rem)] lg:grid-cols-[1fr_380px] lg:max-h-[calc(100svh-4rem)] xl:grid-cols-[1fr_420px] 2xl:grid-cols-[1fr_480px]">
 
           {/* ── Columna izquierda: video preview ─────────────────────── */}
-          <div className="relative min-h-[240px] bg-zinc-950 lg:min-h-0">
+          <div className="relative min-h-[240px] bg-white/60 lg:min-h-0">
             <LobbyVideoPreview
               stream={stream}
               cameraEnabled={cameraEnabled}
@@ -114,7 +114,7 @@ export const MeetingLobby: React.FC<MeetingLobbyProps> = ({
           </div>
 
           {/* ── Columna derecha: formulario de ingreso ────────────────── */}
-          <div className="border-t border-white/5 bg-[#181825] overflow-y-auto lg:border-l lg:border-t-0">
+          <div className="border-t border-[rgba(46,150,245,0.14)] bg-white/60 overflow-y-auto lg:border-l lg:border-t-0">
             <LobbyJoinPanel
               salaInfo={salaInfo}
               nombre={nombre}

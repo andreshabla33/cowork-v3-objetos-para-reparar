@@ -155,10 +155,10 @@ export const SettingsGuests: React.FC<SettingsGuestsProps> = ({
   return (
     <div>
       <div className="mb-8 lg:mb-6">
-        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-2 lg:mb-1">
+        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#1E86E5] via-[#4FB0FF] to-[#1E86E5] mb-2 lg:mb-1">
           {currentLang === 'en' ? 'Guest Management' : currentLang === 'pt' ? 'Gestão de Convidados' : 'Gestión de Invitados'}
         </h2>
-        <p className="text-sm text-zinc-400">
+        <p className="text-sm text-[#4A6485]">
           {currentLang === 'en' ? 'Control external guest access to the space' : currentLang === 'pt' ? 'Controle o acesso de convidados externos ao espaço' : 'Controla el acceso de invitados externos al espacio'}
         </p>
       </div>
@@ -203,19 +203,19 @@ export const SettingsGuests: React.FC<SettingsGuestsProps> = ({
       <SettingSection title={`${currentLang === 'en' ? 'Pending Invitations' : currentLang === 'pt' ? 'Convites Pendentes' : 'Invitaciones Pendientes'} (${guests.length})`}>
         {loading ? (
           <div className="py-8 text-center">
-            <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto" />
+            <div className="w-6 h-6 border-2 border-[#2E96F5] border-t-transparent rounded-full animate-spin mx-auto" />
           </div>
         ) : guests.length === 0 ? (
-          <div className="py-6 text-center text-zinc-500 text-sm">
+          <div className="py-6 text-center text-[#6B83A0] text-sm">
             {currentLang === 'en' ? 'No pending invitations' : currentLang === 'pt' ? 'Nenhum convite pendente' : 'No hay invitaciones pendientes'}
           </div>
         ) : (
-          <div className="divide-y divide-white/[0.05]">
+          <div className="divide-y divide-[rgba(46,150,245,0.14)]">
             {guests.map((guest) => (
               <div key={guest.id} className="flex items-center justify-between py-4">
                 <div>
-                  <p className="text-sm font-medium text-white">{guest.email}</p>
-                  <p className="text-xs text-zinc-500">
+                  <p className="text-sm font-medium text-[#0B2240]">{guest.email}</p>
+                  <p className="text-xs text-[#6B83A0]">
                     {currentLang === 'en' ? 'Expires: ' : currentLang === 'pt' ? 'Expira: ' : 'Expira: '} {formatDate(guest.acceso_hasta)}
                     {isExpired(guest.acceso_hasta) && (
                       <span className="ml-2 text-red-400">({currentLang === 'en' ? 'Expired' : currentLang === 'pt' ? 'Expirado' : 'Expirado'})</span>

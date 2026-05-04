@@ -262,7 +262,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
   }, [isConnectedPopoverOpen]);
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-zinc-950">
+    <div className="relative h-full w-full overflow-hidden bg-[#0B2240]/90">
       <style>{`
         .lk-grid-layout {
           height: 100% !important;
@@ -303,7 +303,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
       {showRecoveryBanner && (
         <div className="absolute inset-x-0 top-0 z-[120] flex flex-col gap-2 p-3 pointer-events-none">
           {showRecoveryBanner && recoveryState && (
-            <div className={`pointer-events-auto flex items-center justify-between rounded-xl border px-4 py-3 text-sm backdrop-blur-md ${recoveryState.phase === 'error' ? 'border-red-500/40 bg-red-500/15 text-red-100' : recoveryState.phase === 'degraded' ? 'border-amber-500/40 bg-amber-500/15 text-amber-50' : 'border-indigo-500/40 bg-indigo-500/15 text-indigo-50'}`}>
+            <div className={`pointer-events-auto flex items-center justify-between rounded-xl border px-4 py-3 text-sm backdrop-blur-md ${recoveryState.phase === 'error' ? 'border-red-500/40 bg-red-500/15 text-red-100' : recoveryState.phase === 'degraded' ? 'border-amber-500/40 bg-amber-500/15 text-amber-50' : 'border-[#2E96F5]/40 bg-[#2E96F5]/15 text-white'}`}>
               <div>
                 <div className="font-semibold">
                   {recoveryState.phase === 'reconnecting' ? `Reconectando (${recoveryState.reconnectAttempt}/${recoveryState.maxReconnectAttempts})` : recoveryState.phase === 'degraded' ? 'Conexión inestable' : recoveryState.phase === 'error' ? 'Recuperación detenida' : 'Conectando'}
@@ -316,7 +316,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
                 <button
                   type="button"
                   onClick={onRetryConnection}
-                  className="ml-4 rounded-lg border border-white/20 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10"
+                  className="ml-4 rounded-lg border border-white/20 px-3 py-1.5 text-xs font-semibold text-white hover:bg-[rgba(46,150,245,0.08)]"
                 >
                   Reintentar ahora
                 </button>
@@ -336,9 +336,9 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
       </div>
 
       {effectiveViewMode === 'speaker' && !screenShareTrack && speakerBubbleParticipant && speakerBubbleParticipant.identity !== speakerIdentity && (
-        <div className="pointer-events-none absolute right-2 top-16 z-[110] w-32 rounded-[1.2rem] border border-white/10 bg-zinc-950/76 p-2 text-white shadow-2xl backdrop-blur-xl md:right-4 md:top-4 md:w-40 md:rounded-[1.4rem] md:p-2.5">
+        <div className="pointer-events-none absolute right-2 top-16 z-[110] w-32 rounded-[1.2rem] border border-[rgba(46,150,245,0.14)] bg-[#0B2240]/76 p-2 text-white shadow-2xl backdrop-blur-xl md:right-4 md:top-4 md:w-40 md:rounded-[1.4rem] md:p-2.5">
           <div className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Intervención breve</div>
-          <div className="overflow-hidden rounded-[1.1rem] border border-white/10 bg-zinc-900">
+          <div className="overflow-hidden rounded-[1.1rem] border border-[rgba(46,150,245,0.14)] bg-[#0B2240]/90">
             <div className="aspect-[5/4]">
               {speakerBubbleTrack ? (
                 <CustomParticipantTile
@@ -363,23 +363,23 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
             data-tour-step="meeting-connected-badge"
             type="button"
             onClick={() => setIsConnectedPopoverOpen((current) => !current)}
-            className="flex h-9 min-w-[2.25rem] items-center justify-center rounded-full border border-white/10 bg-zinc-950/78 px-3 text-sm font-semibold text-white shadow-2xl backdrop-blur-xl transition-colors hover:bg-zinc-900/88 md:h-10 md:min-w-[2.5rem]"
+            className="flex h-9 min-w-[2.25rem] items-center justify-center rounded-full border border-[rgba(46,150,245,0.14)] bg-[#0B2240]/80 px-3 text-sm font-semibold text-white shadow-2xl backdrop-blur-xl transition-colors hover:bg-[#0B2240]/90 md:h-10 md:min-w-[2.5rem]"
             title="Ver conectados"
           >
             {connectedParticipants.length}
           </button>
 
           {isConnectedPopoverOpen && (
-            <div className="absolute right-0 mt-2 w-60 max-w-[calc(100vw-2rem)] rounded-2xl border border-white/10 bg-zinc-950/90 p-3 text-white shadow-2xl backdrop-blur-xl">
+            <div className="absolute right-0 mt-2 w-60 max-w-[calc(100vw-2rem)] rounded-2xl border border-[rgba(46,150,245,0.14)] bg-[#0B2240]/85 p-3 text-white shadow-2xl backdrop-blur-xl">
               <div className="flex items-center justify-between gap-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-indigo-300">Conectados</div>
-                <div className="rounded-full bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/70">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#1E86E5]">Conectados</div>
+                <div className="rounded-full bg-white/50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/70">
                   {connectedParticipants.length}
                 </div>
               </div>
               <div className="mt-3 max-h-44 space-y-1 overflow-y-auto pr-1 text-sm text-white/82">
                 {connectedParticipants.map((participantName) => (
-                  <div key={participantName} className="truncate rounded-xl border border-white/5 bg-white/5 px-3 py-2">
+                  <div key={participantName} className="truncate rounded-xl border border-[rgba(46,150,245,0.14)] bg-white/50 px-3 py-2">
                     {participantName}
                   </div>
                 ))}
@@ -392,7 +392,7 @@ export const MeetingRoomContent: React.FC<MeetingRoomContentProps> = ({
       <div data-tour-step="meeting-stage" className={`relative h-full w-full pt-14 pb-24 transition-all duration-300 md:pt-16 md:pb-20 ${showChat ? 'pr-0 md:pr-80' : ''}`}>
         {shouldShowLocalSelfViewStage && (
           <div className="pointer-events-none absolute inset-0 z-[5] px-2 py-2 md:px-2 md:py-2">
-            <div className="relative h-full w-full overflow-hidden rounded-xl bg-zinc-900 md:rounded-2xl">
+            <div className="relative h-full w-full overflow-hidden rounded-xl bg-[#0B2240]/90 md:rounded-2xl">
               <MeetingMediaStreamPreview
                 stream={localPreviewStream ?? null}
                 muted={true}

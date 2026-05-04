@@ -194,7 +194,7 @@ export const CustomParticipantTile: React.FC<CustomParticipantTileProps> = React
       <TrackRefContextIfNeeded trackRef={trackReference}>
         <div
           className={`
-            group relative h-full w-full bg-zinc-900 overflow-hidden
+            group relative h-full w-full bg-[#0B2240]/90 overflow-hidden
             ${onParticipantClick ? 'cursor-pointer' : ''}
             ${className}
           `}
@@ -282,7 +282,7 @@ export const CustomParticipantTile: React.FC<CustomParticipantTileProps> = React
           {/* Overlay con nombre y estados */}
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/88 via-black/48 to-transparent p-3">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex min-w-0 items-center gap-2 rounded-2xl border border-white/10 bg-black/62 px-2.5 py-1.5 shadow-lg backdrop-blur-md">
+              <div className="flex min-w-0 items-center gap-2 rounded-2xl border border-[rgba(46,150,245,0.14)] bg-black/62 px-2.5 py-1.5 shadow-lg backdrop-blur-md">
                 <div className={`
                   h-6 w-6 shrink-0 rounded-full flex items-center justify-center
                   ${isAudioEnabled ? 'bg-white/20' : 'bg-red-500/80'}
@@ -317,7 +317,7 @@ export const CustomParticipantTile: React.FC<CustomParticipantTileProps> = React
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-sky-100">Cargando video</span>
                 </div>
               ) : !isVideoEnabled && (
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/55 backdrop-blur-md">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[rgba(46,150,245,0.14)] bg-black/55 backdrop-blur-md">
                   <svg className="w-3.5 h-3.5 text-white/70" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M21 6.5l-4 4V7c0-.55-.45-1-1-1H9.82L21 17.18V6.5zM3.27 2L2 3.27 4.73 6H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.21 0 .39-.08.54-.18L19.73 21 21 19.73 3.27 2z"/>
                   </svg>

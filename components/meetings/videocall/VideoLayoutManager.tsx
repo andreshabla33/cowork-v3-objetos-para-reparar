@@ -44,7 +44,7 @@ export const VideoLayoutManager: React.FC<VideoLayoutManagerProps> = ({
             {layoutModel.stripTracks.map((track, index) => (
               <div
                 key={`${track.participant?.identity ?? 'unknown'}-${track.source ?? index}`}
-                className="h-full aspect-[4/3] snap-start rounded-xl overflow-hidden bg-zinc-900 shrink-0 md:min-h-[8rem] md:h-auto"
+                className="h-full aspect-[4/3] snap-start rounded-xl overflow-hidden bg-[#0B2240]/90 shrink-0 md:min-h-[8rem] md:h-auto"
               >
                 {renderParticipant(track, index)}
               </div>
@@ -52,7 +52,7 @@ export const VideoLayoutManager: React.FC<VideoLayoutManagerProps> = ({
           </div>
           
           {optimizacion?.mostrarPaginacion && (
-            <div className="shrink-0 pt-2 border-t border-white/10 flex justify-center">
+            <div className="shrink-0 pt-2 border-t border-[rgba(46,150,245,0.14)] flex justify-center">
               <VideoPagination
                 paginaActual={optimizacion.paginaActual}
                 totalPaginas={optimizacion.totalPaginas}
@@ -85,7 +85,7 @@ export const VideoLayoutManager: React.FC<VideoLayoutManagerProps> = ({
             {layoutModel.stripTracks.map((track, index) => (
               <div
                 key={`${track.participant?.identity ?? 'unknown'}-${track.source ?? index}`}
-                className="aspect-[4/3] h-full snap-start rounded-xl overflow-hidden bg-zinc-900 shrink-0"
+                className="aspect-[4/3] h-full snap-start rounded-xl overflow-hidden bg-[#0B2240]/90 shrink-0"
               >
                 {renderParticipant(track, index)}
               </div>
@@ -113,7 +113,7 @@ export const VideoLayoutManager: React.FC<VideoLayoutManagerProps> = ({
         <div className="flex min-h-full w-full flex-col gap-2 md:h-full">
           {/* Speaker principal */}
           <div className="shrink-0 md:flex-1 md:min-h-0 flex items-center justify-center">
-            <div className="w-full max-h-[48svh] aspect-[4/3] rounded-xl overflow-hidden bg-zinc-900 md:h-full md:w-auto md:max-h-none md:max-w-full md:aspect-[5/4]">
+            <div className="w-full max-h-[48svh] aspect-[4/3] rounded-xl overflow-hidden bg-[#0B2240]/90 md:h-full md:w-auto md:max-h-none md:max-w-full md:aspect-[5/4]">
               {renderParticipant(layoutModel.featuredTrack, 0)}
             </div>
           </div>
@@ -123,7 +123,7 @@ export const VideoLayoutManager: React.FC<VideoLayoutManagerProps> = ({
             {layoutModel.stripTracks.map((track, index) => (
               <div
                 key={`${track.participant?.identity ?? 'unknown'}-${track.source ?? index}`}
-                className="w-full aspect-[4/3] rounded-xl overflow-hidden bg-zinc-900 md:h-full md:w-auto md:shrink-0"
+                className="w-full aspect-[4/3] rounded-xl overflow-hidden bg-[#0B2240]/90 md:h-full md:w-auto md:shrink-0"
               >
                 {renderParticipant(track, index + 1)}
               </div>
@@ -151,7 +151,7 @@ export const VideoLayoutManager: React.FC<VideoLayoutManagerProps> = ({
         {layoutModel.galleryTracks.map((track, index) => (
           <div
             key={`${track.participant?.identity ?? 'unknown'}-${track.source ?? index}`}
-            className={layoutModel.gallery?.getTileClassName(index) ?? 'rounded-2xl overflow-hidden bg-zinc-900 min-h-0 h-full w-full'}
+            className={layoutModel.gallery?.getTileClassName(index) ?? 'rounded-2xl overflow-hidden bg-[#0B2240]/90 min-h-0 h-full w-full'}
           >
             {renderParticipant(track, index)}
           </div>

@@ -34,7 +34,7 @@ const Hint: React.FC<{
   const styles = {
     error: 'border-red-500/30 bg-red-500/10 text-red-400',
     warning: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
-    info: 'border-white/[0.08] bg-white/[0.03] text-zinc-400',
+    info: 'border-[rgba(46,150,245,0.14)] bg-[rgba(46,150,245,0.06)] text-[#4A6485]',
   } as const;
 
   const icons = {

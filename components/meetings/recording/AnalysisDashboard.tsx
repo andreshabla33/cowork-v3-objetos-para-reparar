@@ -37,7 +37,7 @@ const EMOTION_COLORS: Record<EmotionType, string> = {
   sad: 'bg-blue-500',
   angry: 'bg-red-500',
   surprised: 'bg-yellow-500',
-  fearful: 'bg-purple-500',
+  fearful: 'bg-[#2E96F5]',
   disgusted: 'bg-orange-500',
   contempt: 'bg-pink-500',
   neutral: 'bg-gray-500',
@@ -50,7 +50,7 @@ const CONFIG_DEFAULT: typeof CONFIGURACIONES_GRABACION['equipo'] = {
   titulo: 'Reunión',
   descripcion: 'Análisis de reunión',
   icono: '📊',
-  color: 'from-indigo-600 to-purple-600',
+  color: 'from-[#4FB0FF] to-[#2E96F5]',
   colorAccent: '#6366f1',
   requiereDisclaimer: false,
   metricas: [],
@@ -102,7 +102,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[500] flex items-center justify-center p-2 sm:p-4">
-      <div className="bg-zinc-900 rounded-2xl max-w-3xl w-full border border-white/10 shadow-2xl max-h-[95vh] flex flex-col">
+      <div className="bg-white/60 rounded-2xl max-w-3xl w-full border border-[rgba(46,150,245,0.14)] shadow-2xl max-h-[95vh] flex flex-col">
         {/* Header - Compacto */}
         <div className={`p-4 bg-gradient-to-r ${config.color} rounded-t-2xl flex-shrink-0`}>
           <div className="flex items-center justify-between">
@@ -110,14 +110,14 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
               <span className="text-3xl">{config.icono}</span>
               <div>
                 <h2 className="text-white font-bold text-lg">Análisis de {config.titulo}</h2>
-                <p className="text-white/80 text-xs">
+                <p className="text-[#0B2240] text-xs">
                   Duración: {formatDuration(resultado.duracion_segundos)} | Confianza: {formatPercent(resultado.confianza_general)}
                 </p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 text-white text-lg transition-colors"
+              className="w-8 h-8 rounded-full bg-[rgba(46,150,245,0.08)] flex items-center justify-center hover:bg-[rgba(46,150,245,0.14)] text-[#4A6485] text-lg transition-colors"
             >
               ✕
             </button>
@@ -128,7 +128,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         <div className="flex-1 overflow-y-auto">
           {/* Estadísticas generales - Compactas */}
           {stats && (
-            <div className="p-4 border-b border-white/10">
+            <div className="p-4 border-b border-[rgba(46,150,245,0.14)]">
               <div className="grid grid-cols-4 gap-2">
                 <StatCardCompact
                   icon="📊"
@@ -161,12 +161,12 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
             <div className="px-4 pt-3">
               <div className="flex flex-wrap gap-1">
                 {config.metricas.slice(0, 8).map(m => (
-                  <span key={m} className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[9px] text-zinc-400">
+                  <span key={m} className="px-2 py-0.5 rounded-full bg-white/50 border border-[rgba(46,150,245,0.14)] text-[9px] text-[#4A6485]">
                     {m.replace(/_/g, ' ')}
                   </span>
                 ))}
                 {config.metricas.length > 8 && (
-                  <span className="px-2 py-0.5 rounded-full bg-white/5 text-[9px] text-zinc-500">
+                  <span className="px-2 py-0.5 rounded-full bg-white/50 text-[9px] text-[#4A6485]">
                     +{config.metricas.length - 8} más
                   </span>
                 )}
@@ -176,17 +176,17 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
           {/* Cohesión y Participación - visible si engagement_grupal o dinamica_grupal activas */}
           {stats && (metricasActivas.has('engagement_grupal') || metricasActivas.has('dinamica_grupal') || metricasActivas.has('engagement_por_tema') || metricasActivas.has('engagement_por_pregunta')) && (
-            <div className="p-4 border-b border-white/10">
-              <div className="bg-gradient-to-r from-purple-600/20 to-violet-600/20 rounded-xl p-4">
+            <div className="p-4 border-b border-[rgba(46,150,245,0.14)]">
+              <div className="bg-gradient-to-r from-[#2E96F5]/20 to-[#2E96F5]/20 rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-white/60 text-xs mb-1">Cohesión del Equipo</p>
-                    <p className="text-2xl font-bold text-white">
+                    <p className="text-[#4A6485] text-xs mb-1">Cohesión del Equipo</p>
+                    <p className="text-2xl font-bold text-[#0B2240]">
                       {Math.round(stats.avgEngagement * 100)}%
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-white/60 text-xs mb-1">Participación</p>
+                    <p className="text-[#4A6485] text-xs mb-1">Participación</p>
                     <p className={`text-lg font-semibold ${stats.avgEngagement > 0.5 ? 'text-green-400' : 'text-yellow-400'}`}>
                       {stats.avgEngagement > 0.5 ? 'Equilibrada' : 'Variable'}
                     </p>
@@ -198,7 +198,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
           {/* Predicciones - visible si alguna métrica de predicción está activa */}
           {stats && (metricasActivas.has('prediccion_adopcion_ideas') || metricasActivas.has('prediccion_fit_cultural') || metricasActivas.has('prediccion_probabilidad_cierre')) && (
-            <div className="p-4 border-b border-white/10">
+            <div className="p-4 border-b border-[rgba(46,150,245,0.14)]">
               <h4 className="text-white font-semibold mb-3 flex items-center gap-2 text-sm">
                 <span>🎯</span> Predicciones
               </h4>
@@ -234,21 +234,21 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
 
           {/* Participación por usuario - visible si participacion_por_persona activa */}
           {metricasActivas.has('participacion_por_persona') && resultado.analisis && (resultado.analisis as AnalisisEquipo).participacion?.length > 0 && (
-            <div className="p-4 border-b border-white/10">
+            <div className="p-4 border-b border-[rgba(46,150,245,0.14)]">
               <h4 className="text-white font-semibold mb-3 flex items-center gap-2 text-sm">
                 <span>👥</span> Participación
               </h4>
               <div className="space-y-2">
                 {(resultado.analisis as AnalisisEquipo).participacion.slice(0, 3).map((p, i) => (
-                  <div key={i} className="flex items-center gap-3 bg-white/5 rounded-lg p-2">
+                  <div key={i} className="flex items-center gap-3 bg-white/50 rounded-lg p-2">
                     <span className="text-white text-xs font-medium w-24 truncate">{p.usuario_nombre}</span>
-                    <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <div className="flex-1 h-1.5 bg-[rgba(46,150,245,0.08)] rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-indigo-500 rounded-full"
+                        className="h-full bg-[#2E96F5] rounded-full"
                         style={{ width: `${p.engagement_promedio * 100}%` }}
                       />
                     </div>
-                    <span className="text-white/60 text-xs w-10 text-right">
+                    <span className="text-[#4A6485] text-xs w-10 text-right">
                       {Math.round(p.engagement_promedio * 100)}%
                     </span>
                     <div className="flex gap-1 text-[10px]">
@@ -271,22 +271,22 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({
         </div>
 
         {/* Footer - Compacto */}
-        <div className="p-3 border-t border-white/10 flex justify-between items-center flex-shrink-0">
-          <p className="text-white/40 text-[10px]">
+        <div className="p-3 border-t border-[rgba(46,150,245,0.14)] flex justify-between items-center flex-shrink-0">
+          <p className="text-[#9CB0CA] text-[10px]">
             {new Date(resultado.procesado_en).toLocaleString()} | v{resultado.modelo_version}
           </p>
           <div className="flex gap-2">
             {onExport && (
               <button
                 onClick={onExport}
-                className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-white text-xs transition-colors flex items-center gap-1"
+                className="px-3 py-1.5 bg-[rgba(46,150,245,0.08)] hover:bg-[rgba(46,150,245,0.14)] rounded-lg text-[#1B3A5C] text-xs transition-colors flex items-center gap-1"
               >
                 <span>📥</span> Exportar
               </button>
             )}
             <button
               onClick={onClose}
-              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white text-xs transition-colors"
+              className="px-3 py-1.5 bg-[#2E96F5] hover:bg-[#2E96F5] rounded-lg text-white text-xs transition-colors"
             >
               Cerrar
             </button>
@@ -313,15 +313,15 @@ const StatCard: React.FC<{
   };
 
   return (
-    <div className="bg-white/5 rounded-xl p-4">
+    <div className="bg-white/50 rounded-xl p-4">
       <div className="flex items-center gap-2 mb-2">
         <span className="text-xl">{icon}</span>
-        <span className="text-white/60 text-sm">{label}</span>
+        <span className="text-[#4A6485] text-sm">{label}</span>
       </div>
       <p className={`text-2xl font-bold ${color ? colorClasses[color] : 'text-white'}`}>
         {value}
       </p>
-      {subvalue && <p className="text-white/50 text-xs mt-1">{subvalue}</p>}
+      {subvalue && <p className="text-[#6B83A0] text-xs mt-1">{subvalue}</p>}
     </div>
   );
 };
@@ -340,15 +340,15 @@ const StatCardCompact: React.FC<{
   };
 
   return (
-    <div className="bg-white/5 rounded-lg p-2 text-center">
+    <div className="bg-white/50 rounded-lg p-2 text-center">
       <div className="flex items-center justify-center gap-1 mb-1">
         <span className="text-sm">{icon}</span>
-        <span className="text-white/50 text-[10px]">{label}</span>
+        <span className="text-[#6B83A0] text-[10px]">{label}</span>
       </div>
       <p className={`text-lg font-bold ${color ? colorClasses[color] : 'text-white'}`}>
         {value}
       </p>
-      {subvalue && <p className="text-white/40 text-[10px]">{subvalue}</p>}
+      {subvalue && <p className="text-[#9CB0CA] text-[10px]">{subvalue}</p>}
     </div>
   );
 };
@@ -378,12 +378,12 @@ const PredictionCardCompact: React.FC<{
 
   return (
     <div className={`bg-gradient-to-br ${colorClasses[color]} border rounded-lg p-2`}>
-      <p className="text-white/60 text-[10px] mb-0.5 truncate">{title}</p>
+      <p className="text-[#4A6485] text-[10px] mb-0.5 truncate">{title}</p>
       <p className={`text-xl font-bold ${textColors[color]}`}>
         {Math.round(probability * 100)}%
       </p>
-      <p className="text-white/40 text-[9px]">Confianza: {Math.round(confidence * 100)}%</p>
-      <p className="text-white/50 text-[9px] mt-1 truncate">• {factor}</p>
+      <p className="text-[#9CB0CA] text-[9px]">Confianza: {Math.round(confidence * 100)}%</p>
+      <p className="text-[#6B83A0] text-[9px] mt-1 truncate">• {factor}</p>
     </div>
   );
 };
@@ -392,7 +392,7 @@ const EmotionTimeline: React.FC<{
   frames: { timestamp_segundos: number; emocion_dominante: EmotionType; engagement_score: number }[];
   duration: number;
 }> = ({ frames, duration }) => {
-  if (frames.length === 0) return <p className="text-white/50 text-sm">Sin datos de timeline</p>;
+  if (frames.length === 0) return <p className="text-[#6B83A0] text-sm">Sin datos de timeline</p>;
 
   // Usar segmentos más pequeños: 1-2 segundos dependiendo de la duración
   const numSegments = Math.min(30, Math.max(10, Math.ceil(duration)));
@@ -429,7 +429,7 @@ const EmotionTimeline: React.FC<{
   }
 
   return (
-    <div className="flex gap-0.5 h-14 bg-white/5 rounded-lg p-1">
+    <div className="flex gap-0.5 h-14 bg-white/50 rounded-lg p-1">
       {segments.map((seg, i) => (
         <div
           key={i}
@@ -491,7 +491,7 @@ const RRHHAnalysisContent: React.FC<{ analisis: AnalisisRRHH }> = ({ analisis })
           <h5 className="text-green-400 font-semibold mb-2">✅ Fortalezas Observadas</h5>
           <ul className="space-y-1">
             {analisis.resumen.fortalezas_observadas.map((f, i) => (
-              <li key={i} className="text-white/80 text-sm flex items-start gap-2">
+              <li key={i} className="text-[#0B2240] text-sm flex items-start gap-2">
                 <span className="text-green-400">•</span> {f}
               </li>
             ))}
@@ -502,19 +502,19 @@ const RRHHAnalysisContent: React.FC<{ analisis: AnalisisRRHH }> = ({ analisis })
           <ul className="space-y-1">
             {analisis.resumen.areas_atencion.length > 0 ? (
               analisis.resumen.areas_atencion.map((a, i) => (
-                <li key={i} className="text-white/80 text-sm flex items-start gap-2">
+                <li key={i} className="text-[#0B2240] text-sm flex items-start gap-2">
                   <span className="text-amber-400">•</span> {a}
                 </li>
               ))
             ) : (
-              <li className="text-white/60 text-sm">Sin áreas de atención destacadas</li>
+              <li className="text-[#4A6485] text-sm">Sin áreas de atención destacadas</li>
             )}
           </ul>
         </div>
       </div>
       <div className="mt-4 bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
         <h5 className="text-blue-400 font-semibold mb-2">💡 Recomendación</h5>
-        <p className="text-white/80 text-sm">{analisis.resumen.recomendacion_seguimiento}</p>
+        <p className="text-[#0B2240] text-sm">{analisis.resumen.recomendacion_seguimiento}</p>
       </div>
     </Section>
   </div>
@@ -524,7 +524,7 @@ const DealsAnalysisContent: React.FC<{ analisis: AnalisisDeals }> = ({ analisis 
   <div className="space-y-6">
     {/* Probabilidad de cierre destacada */}
     <div className="bg-gradient-to-r from-green-600/20 to-emerald-600/20 rounded-xl p-6 text-center">
-      <p className="text-white/60 text-sm mb-2">Probabilidad Estimada de Cierre</p>
+      <p className="text-[#4A6485] text-sm mb-2">Probabilidad Estimada de Cierre</p>
       <p className={`text-5xl font-bold ${
         analisis.resumen.probabilidad_cierre_estimada > 0.6 ? 'text-green-400' :
         analisis.resumen.probabilidad_cierre_estimada > 0.4 ? 'text-yellow-400' : 'text-red-400'
@@ -564,7 +564,7 @@ const DealsAnalysisContent: React.FC<{ analisis: AnalisisDeals }> = ({ analisis 
           <h5 className="text-green-400 font-semibold mb-2">📈 Momentos de Interés ({analisis.momentos_interes.length})</h5>
           <ul className="space-y-1 max-h-32 overflow-y-auto">
             {analisis.momentos_interes.slice(0, 5).map((m, i) => (
-              <li key={i} className="text-white/80 text-sm flex items-center gap-2">
+              <li key={i} className="text-[#0B2240] text-sm flex items-center gap-2">
                 <span className="text-green-400 font-mono text-xs">{Math.floor(m.timestamp / 60)}:{String(Math.floor(m.timestamp % 60)).padStart(2, '0')}</span>
                 <span>Engagement: {Math.round(m.score * 100)}%</span>
               </li>
@@ -575,13 +575,13 @@ const DealsAnalysisContent: React.FC<{ analisis: AnalisisDeals }> = ({ analisis 
           <h5 className="text-red-400 font-semibold mb-2">⚠️ Señales de Objeción ({analisis.señales_objecion.length})</h5>
           <ul className="space-y-1 max-h-32 overflow-y-auto">
             {analisis.señales_objecion.slice(0, 5).map((s, i) => (
-              <li key={i} className="text-white/80 text-sm flex items-center gap-2">
+              <li key={i} className="text-[#0B2240] text-sm flex items-center gap-2">
                 <span className="text-red-400 font-mono text-xs">{Math.floor(s.timestamp / 60)}:{String(Math.floor(s.timestamp % 60)).padStart(2, '0')}</span>
                 <span>{s.indicadores.join(', ')}</span>
               </li>
             ))}
             {analisis.señales_objecion.length === 0 && (
-              <li className="text-white/60 text-sm">Sin objeciones claras detectadas</li>
+              <li className="text-[#4A6485] text-sm">Sin objeciones claras detectadas</li>
             )}
           </ul>
         </div>
@@ -592,8 +592,8 @@ const DealsAnalysisContent: React.FC<{ analisis: AnalisisDeals }> = ({ analisis 
     <Section title="💡 Recomendaciones de Seguimiento">
       <ul className="space-y-2">
         {analisis.resumen.recomendaciones_seguimiento.map((r, i) => (
-          <li key={i} className="text-white/80 text-sm flex items-start gap-2 bg-white/5 rounded-lg p-3">
-            <span className="text-indigo-400">→</span> {r}
+          <li key={i} className="text-[#0B2240] text-sm flex items-start gap-2 bg-white/50 rounded-lg p-3">
+            <span className="text-[#1E86E5]">→</span> {r}
           </li>
         ))}
       </ul>
@@ -604,16 +604,16 @@ const DealsAnalysisContent: React.FC<{ analisis: AnalisisDeals }> = ({ analisis 
 const EquipoAnalysisContent: React.FC<{ analisis: AnalisisEquipo }> = ({ analisis }) => (
   <div className="space-y-6">
     {/* Dinámica grupal */}
-    <div className="bg-gradient-to-r from-purple-600/20 to-violet-600/20 rounded-xl p-6">
+    <div className="bg-gradient-to-r from-[#2E96F5]/20 to-[#2E96F5]/20 rounded-xl p-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-white/60 text-sm mb-1">Cohesión del Equipo</p>
-          <p className="text-3xl font-bold text-white">
+          <p className="text-[#4A6485] text-sm mb-1">Cohesión del Equipo</p>
+          <p className="text-3xl font-bold text-[#0B2240]">
             {Math.round(analisis.dinamica_grupal.cohesion_score * 100)}%
           </p>
         </div>
         <div className="text-right">
-          <p className="text-white/60 text-sm mb-1">Participación</p>
+          <p className="text-[#4A6485] text-sm mb-1">Participación</p>
           <p className={`text-xl font-semibold ${analisis.dinamica_grupal.participacion_equilibrada ? 'text-green-400' : 'text-yellow-400'}`}>
             {analisis.dinamica_grupal.participacion_equilibrada ? 'Equilibrada' : 'Desbalanceada'}
           </p>
@@ -651,17 +651,17 @@ const EquipoAnalysisContent: React.FC<{ analisis: AnalisisEquipo }> = ({ analisi
       <Section title="👥 Participación">
         <div className="space-y-2">
           {analisis.participacion.map((p, i) => (
-            <div key={i} className="flex items-center gap-4 bg-white/5 rounded-lg p-3">
+            <div key={i} className="flex items-center gap-4 bg-white/50 rounded-lg p-3">
               <span className="text-white font-medium w-32 truncate">{p.usuario_nombre}</span>
               <div className="flex-1">
-                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                <div className="h-2 bg-[rgba(46,150,245,0.08)] rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-indigo-500 rounded-full"
+                    className="h-full bg-[#2E96F5] rounded-full"
                     style={{ width: `${p.engagement_promedio * 100}%` }}
                   />
                 </div>
               </div>
-              <span className="text-white/60 text-sm w-16 text-right">
+              <span className="text-[#4A6485] text-sm w-16 text-right">
                 {Math.round(p.engagement_promedio * 100)}%
               </span>
               <div className="flex gap-1">
@@ -679,8 +679,8 @@ const EquipoAnalysisContent: React.FC<{ analisis: AnalisisEquipo }> = ({ analisi
       <Section title="😴 Momentos de Desconexión ({analisis.momentos_desconexion.length})">
         <ul className="space-y-2">
           {analisis.momentos_desconexion.slice(0, 5).map((m, i) => (
-            <li key={i} className="text-white/80 text-sm flex items-center gap-2 bg-white/5 rounded-lg p-2">
-              <span className="text-white/50 font-mono text-xs">
+            <li key={i} className="text-[#0B2240] text-sm flex items-center gap-2 bg-white/50 rounded-lg p-2">
+              <span className="text-[#6B83A0] font-mono text-xs">
                 {Math.floor(m.timestamp / 60)}:{String(Math.floor(m.timestamp % 60)).padStart(2, '0')}
               </span>
               <span>{m.posible_causa}</span>
@@ -694,8 +694,8 @@ const EquipoAnalysisContent: React.FC<{ analisis: AnalisisEquipo }> = ({ analisi
     <Section title="💡 Recomendaciones">
       <ul className="space-y-2">
         {analisis.resumen.recomendaciones.map((r, i) => (
-          <li key={i} className="text-white/80 text-sm flex items-start gap-2 bg-white/5 rounded-lg p-3">
-            <span className="text-purple-400">→</span> {r}
+          <li key={i} className="text-[#0B2240] text-sm flex items-start gap-2 bg-white/50 rounded-lg p-3">
+            <span className="text-[#1E86E5]">→</span> {r}
           </li>
         ))}
       </ul>
@@ -737,14 +737,14 @@ const PredictionCard: React.FC<{
 
   return (
     <div className={`bg-gradient-to-br ${colorClasses[color]} border rounded-xl p-4`}>
-      <p className="text-white/60 text-xs mb-1">{title}</p>
+      <p className="text-[#4A6485] text-xs mb-1">{title}</p>
       <p className={`text-2xl font-bold ${textColors[color]}`}>
         {Math.round(probability * 100)}%
       </p>
-      <p className="text-white/40 text-xs mb-2">Confianza: {Math.round(confidence * 100)}%</p>
-      <div className="border-t border-white/10 pt-2 mt-2">
+      <p className="text-[#9CB0CA] text-xs mb-2">Confianza: {Math.round(confidence * 100)}%</p>
+      <div className="border-t border-[rgba(46,150,245,0.14)] pt-2 mt-2">
         {factors.slice(0, 2).map((f, i) => (
-          <p key={i} className="text-white/60 text-xs">• {f}</p>
+          <p key={i} className="text-[#4A6485] text-xs">• {f}</p>
         ))}
       </div>
     </div>
@@ -764,10 +764,10 @@ const MetricBar: React.FC<{
   return (
     <div>
       <div className="flex justify-between text-sm mb-1">
-        <span className="text-white/60">{label}</span>
+        <span className="text-[#4A6485]">{label}</span>
         <span className="text-white font-medium">{Math.round(normalizedValue * 100)}%</span>
       </div>
-      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+      <div className="h-2 bg-[rgba(46,150,245,0.08)] rounded-full overflow-hidden">
         <div 
           className={`h-full ${color} rounded-full transition-all`}
           style={{ width: `${normalizedValue * 100}%` }}

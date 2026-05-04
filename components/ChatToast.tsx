@@ -76,7 +76,7 @@ const ToastItem: React.FC<{
         ${isExiting ? 'opacity-0 translate-x-full' : 'opacity-100 translate-x-0 animate-slide-in'}
         ${isArcade 
           ? 'bg-black/80 border-[#00ff41]/50 shadow-[0_0_30px_rgba(0,255,65,0.2)]' 
-          : 'bg-zinc-900/80 border-white/10 shadow-black/50'
+          : 'bg-white/95 border-[var(--cw-glass-border)] shadow-[var(--cw-shadow-floating)]'
         }
       `}
     >
@@ -84,7 +84,7 @@ const ToastItem: React.FC<{
         {/* Avatar */}
         <div className={`
           w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0
-          ${isArcade ? 'bg-[#00ff41]/20 text-[#00ff41]' : 'bg-indigo-600/30 text-indigo-400'}
+          ${isArcade ? 'bg-[#00ff41]/20 text-[#00ff41]' : 'bg-blue-100 text-[var(--cw-blue-600)]'}
         `}>
           {notification.userInitial}
         </div>
@@ -92,7 +92,7 @@ const ToastItem: React.FC<{
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className={`text-[13px] font-bold truncate ${isArcade ? 'text-[#00ff41]' : 'text-white'}`}>
+            <span className={`text-[13px] font-bold truncate ${isArcade ? 'text-[#00ff41]' : 'text-[var(--cw-ink-900)]'}`}>
               {notification.userName}
             </span>
             {notification.channelName && !notification.isDirect && (
@@ -101,12 +101,12 @@ const ToastItem: React.FC<{
               </span>
             )}
             {notification.isDirect && (
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${isArcade ? 'bg-[#00ff41]/20 text-[#00ff41]' : 'bg-indigo-600/30 text-indigo-400'}`}>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${isArcade ? 'bg-[#00ff41]/20 text-[#00ff41]' : 'bg-violet-100 text-violet-600'}`}>
                 DM
               </span>
             )}
           </div>
-          <p className={`text-[13px] leading-relaxed ${isArcade ? 'text-[#00ff41]/70' : 'text-zinc-300'}`}>
+          <p className={`text-[13px] leading-relaxed ${isArcade ? 'text-[#00ff41]/70' : 'text-[var(--cw-ink-500)]'}`}>
             {truncateMessage(notification.message)}
           </p>
         </div>
@@ -123,9 +123,9 @@ const ToastItem: React.FC<{
       </div>
       
       {/* Progress bar */}
-      <div className="mt-3 h-0.5 bg-white/10 rounded-full overflow-hidden">
+      <div className="mt-3 h-0.5 bg-[var(--cw-glass-border)] rounded-full overflow-hidden">
         <div 
-          className={`h-full ${isArcade ? 'bg-[#00ff41]' : 'bg-indigo-500'} animate-shrink`}
+          className={`h-full ${isArcade ? 'bg-[#00ff41]' : 'bg-[var(--cw-blue-500)]'} animate-shrink`}
           style={{ animationDuration: '5s' }}
         />
       </div>

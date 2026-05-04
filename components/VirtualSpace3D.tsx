@@ -1335,12 +1335,14 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
 
       {/* Botón XP / Gamificación — esquina superior izquierda */}
       <button
-        className="absolute top-4 left-4 z-[60] flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/50 backdrop-blur-sm border border-indigo-500/30 hover:border-indigo-500/60 transition-colors cursor-pointer"
+        className="absolute top-4 left-4 z-[60] flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[rgba(11,34,64,0.55)] backdrop-blur-md border border-[rgba(46,150,245,0.3)] text-white shadow-[0_8px_24px_-12px_rgba(11,34,64,0.55)] hover:bg-[rgba(11,34,64,0.68)] hover:border-[rgba(46,150,245,0.55)] transition-all duration-200 cursor-pointer"
         onClick={() => setShowGamificacion(true)}
         title="Gamificación"
       >
-        <span className="text-sm">⭐</span>
-        <span className="text-[10px] font-bold text-indigo-400">XP</span>
+        <svg className="h-3.5 w-3.5 text-[#7DD3FC]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.9} d="M12 3l2.7 5.47 6.04.88-4.37 4.26 1.03 6.02L12 16.8l-5.4 2.84 1.03-6.02L3.26 9.35l6.04-.88L12 3z" />
+        </svg>
+        <span className="text-[11px] font-semibold tracking-wide text-[#BAE6FD]">XP</span>
       </button>
 
       {/* Panel de Gamificación */}

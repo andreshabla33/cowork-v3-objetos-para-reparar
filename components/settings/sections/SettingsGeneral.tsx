@@ -86,10 +86,10 @@ export const SettingsGeneral: React.FC<SettingsGeneralProps> = ({
   return (
     <div>
       <div className="mb-8 lg:mb-6">
-        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-2 lg:mb-1">
+        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#0B2240] via-[#1E86E5] to-[#0B2240] mb-2 lg:mb-1">
           {t('settings.general.title')}
         </h2>
-        <p className="text-sm lg:text-xs text-zinc-400">
+        <p className="text-sm lg:text-xs text-[#4A6485]">
           {t('settings.general.description')}
         </p>
       </div>
@@ -109,8 +109,8 @@ export const SettingsGeneral: React.FC<SettingsGeneralProps> = ({
         />
         <div className="flex items-center justify-between py-3">
           <div>
-            <p className="text-sm font-medium text-white">Tour guiado</p>
-            <p className="text-xs text-zinc-400">Vuelve a ver el recorrido interactivo del espacio</p>
+            <p className="text-sm font-medium text-[#0B2240]">Tour guiado</p>
+            <p className="text-xs text-[#4A6485]">Vuelve a ver el recorrido interactivo del espacio</p>
           </div>
           <button
             onClick={handleResetTour}

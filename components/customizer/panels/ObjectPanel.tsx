@@ -49,10 +49,10 @@ export const ObjectPanel: React.FC<ObjectPanelProps> = ({
           key={category}
           onClick={() => catalog.selectCategory(category)}
           className={`
-            flex-shrink-0 rounded px-2 py-1.5 text-[8px] font-black uppercase tracking-[0.12em] transition-all duration-200
+            flex-shrink-0 rounded-lg px-2 py-1.5 text-[8px] font-bold uppercase tracking-[0.12em] transition-all duration-200
             ${catalog.selectedCategory === category
-              ? 'bg-[#0397ab] text-white shadow-[0_0_10px_rgba(3,151,171,0.4)] border border-[#04c8e0]'
-              : 'bg-[#0a0a0c] text-[#a09b8c] hover:bg-[#1e2328] hover:text-[#f0e6d2] border border-[#1e2328]'
+              ? 'bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] text-white shadow-[0_4px_10px_-4px_rgba(46,150,245,0.4)] border border-[rgba(46,150,245,0.3)]'
+              : 'bg-white/50 text-[#4A6485] hover:bg-white/70 hover:text-[#1B3A5C] border border-[rgba(46,150,245,0.12)]'
             }
           `}
         >
@@ -63,25 +63,23 @@ export const ObjectPanel: React.FC<ObjectPanelProps> = ({
 
     {/* Selected object detail + action */}
     {selectedObject && (
-      <div className="bg-[#0a0a0c] border border-[#1e2328] rounded-md p-2.5 relative">
-        <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#0397ab] opacity-50" />
-        <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#0397ab] opacity-50" />
+      <div className="bg-white/50 border border-[rgba(46,150,245,0.14)] rounded-xl p-2.5 backdrop-blur-sm">
         <div className="flex items-center gap-2">
           <div className="flex-1 min-w-0">
-            <h3 className="text-[10px] font-black text-[#f0e6d2] uppercase tracking-wide truncate">{selectedObject.nombre}</h3>
-            <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-[#0397ab]">
+            <h3 className="text-[10px] font-bold text-[#0B2240] uppercase tracking-wide truncate">{selectedObject.nombre}</h3>
+            <p className="text-[8px] font-bold uppercase tracking-[0.12em] text-[#1E86E5]">
               {CATEGORY_LABELS[selectedObject.categoria] || selectedObject.categoria}
             </p>
           </div>
           <button
             onClick={onPrepararObjeto}
             disabled={!canPlace}
-            className={`flex-shrink-0 px-3 py-1.5 text-[8px] font-black uppercase tracking-wider transition-all duration-200 rounded ${
+            className={`flex-shrink-0 px-3 py-1.5 text-[8px] font-bold uppercase tracking-wider transition-all duration-200 rounded-lg ${
               !canPlace
-                ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700'
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed border border-gray-300'
                 : modoColocacionActivo
-                  ? 'bg-emerald-600 text-white border border-emerald-400'
-                  : 'bg-[#0397ab] text-white border border-[#04c8e0] hover:bg-[#04c8e0]'
+                  ? 'bg-emerald-500 text-white border border-emerald-400'
+                  : 'bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] text-white border border-[rgba(46,150,245,0.3)] hover:shadow-[0_4px_14px_-4px_rgba(46,150,245,0.5)]'
             }`}
           >
             {modoColocacionActivo ? '✓ Activo' : '🎯 Colocar'}
@@ -92,8 +90,8 @@ export const ObjectPanel: React.FC<ObjectPanelProps> = ({
 
     {/* Objects grid */}
     {catalog.loadingObjects ? (
-      <div className="flex items-center justify-center gap-2 text-zinc-500 text-xs py-8">
-        <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center justify-center gap-2 text-[#4A6485] text-xs py-8">
+        <div className="w-4 h-4 border-2 border-[#2E96F5] border-t-transparent rounded-full animate-spin" />
         Cargando objetos...
       </div>
     ) : (

@@ -3,14 +3,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Building2, 
-  Users, 
-  ArrowRight, 
-  Check,
-  Sparkles,
-  Mail,
-  X,
-  Plus
+ Building2, 
+ Users, 
+ ArrowRight, 
+ Check,
+ Sparkles,
+ Mail,
+ X,
+ Plus
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useStore } from '@/store/useStore';
@@ -23,740 +23,740 @@ import { RepositorioRegistroEmpresaSupabase } from '@/src/core/infrastructure/ad
 import { InyectorPlantillaEspacio } from '@/src/core/infrastructure/adapters/InyectorPlantillaEspacioAdapter';
 
 const INDUSTRIAS = [
-  'Tecnología', 'Finanzas', 'Salud', 'Educación', 'Comercio',
-  'Manufactura', 'Servicios', 'Consultoría', 'Marketing',
-  'Inmobiliaria', 'Legal', 'Energía', 'Transporte', 'Otro',
+ 'Tecnología', 'Finanzas', 'Salud', 'Educación', 'Comercio',
+ 'Manufactura', 'Servicios', 'Consultoría', 'Marketing',
+ 'Inmobiliaria', 'Legal', 'Energía', 'Transporte', 'Otro',
 ];
 
 const TAMANOS = [
-  { value: 'startup', label: 'Startup (1-10)' },
-  { value: 'pequena', label: 'Pequeña (11-50)' },
-  { value: 'mediana', label: 'Mediana (51-200)' },
-  { value: 'grande', label: 'Grande (201-1000)' },
-  { value: 'enterprise', label: 'Enterprise (1000+)' },
+ { value: 'startup', label: 'Startup (1-10)' },
+ { value: 'pequena', label: 'Pequeña (11-50)' },
+ { value: 'mediana', label: 'Mediana (51-200)' },
+ { value: 'grande', label: 'Grande (201-1000)' },
+ { value: 'enterprise', label: 'Enterprise (1000+)' },
 ];
 
 interface OnboardingCreadorProps {
-  userId: string;
-  userEmail: string;
-  userName: string;
-  onComplete: () => void;
+ userId: string;
+ userEmail: string;
+ userName: string;
+ onComplete: () => void;
 }
 
 type Paso = 'bienvenida' | 'empresa' | 'plantilla' | 'cargo' | 'invitar' | 'completado';
 
 const ESPACIO_GLOBAL = {
-  id: '91887e81-1f26-448c-9d6d-9839e7d83b5d',
-  nombre: 'kronos'
+ id: '91887e81-1f26-448c-9d6d-9839e7d83b5d',
+ nombre: 'kronos'
 };
 
 const registrarEmpresaConPlantillaUseCase = new RegistrarEmpresaConPlantillaUseCase(
-  new RepositorioRegistroEmpresaSupabase(),
-  new InyectorPlantillaEspacio(),
+ new RepositorioRegistroEmpresaSupabase(),
+ new InyectorPlantillaEspacio(),
 );
 
 export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
-  userId,
-  userEmail,
-  userName,
-  onComplete
+ userId,
+ userEmail,
+ userName,
+ onComplete
 }) => {
-  const { fetchWorkspaces, setView } = useStore();
+ const { fetchWorkspaces, setView } = useStore();
 
-  useEffect(() => {
-    const verificarRol = async () => {
-      // Guard 1: Si hay un token de invitación pendiente en sessionStorage,
-      // este usuario llegó por invitación pero perdió el token en la URL.
-      // Redirigir al flujo de invitación para que lo procese correctamente.
-      const pendingToken = sessionStorage.getItem('pendingInvitationToken');
-      if (pendingToken) {
-        setView('invitation');
-        return;
-      }
+ useEffect(() => {
+ const verificarRol = async () => {
+ // Guard 1: Si hay un token de invitación pendiente en sessionStorage,
+ // este usuario llegó por invitación pero perdió el token en la URL.
+ // Redirigir al flujo de invitación para que lo procese correctamente.
+ const pendingToken = sessionStorage.getItem('pendingInvitationToken');
+ if (pendingToken) {
+ setView('invitation');
+ return;
+ }
 
-      // Guard 2: Si hay pendingOnboardingEspacioId en el store, el usuario
-      // ya aceptó una invitación y debe ir al onboarding de miembro, no de creador.
-      const pendingEspacioId = useStore.getState().pendingOnboardingEspacioId;
-      if (pendingEspacioId) {
-        setView('onboarding');
-        return;
-      }
+ // Guard 2: Si hay pendingOnboardingEspacioId en el store, el usuario
+ // ya aceptó una invitación y debe ir al onboarding de miembro, no de creador.
+ const pendingEspacioId = useStore.getState().pendingOnboardingEspacioId;
+ if (pendingEspacioId) {
+ setView('onboarding');
+ return;
+ }
 
-      // Guard 3: Verificar rol en la membresía más reciente.
-      // Si no es admin/super_admin, redirigir al onboarding de miembro.
-      const { data: miembro } = await supabase
-        .from('miembros_espacio')
-        .select('rol, espacio_id')
-        .eq('usuario_id', userId)
-        .eq('aceptado', true)
-        .order('aceptado_en', { ascending: false, nullsFirst: false })
-        .limit(1)
-        .maybeSingle();
+ // Guard 3: Verificar rol en la membresía más reciente.
+ // Si no es admin/super_admin, redirigir al onboarding de miembro.
+ const { data: miembro } = await supabase
+ .from('miembros_espacio')
+ .select('rol, espacio_id')
+ .eq('usuario_id', userId)
+ .eq('aceptado', true)
+ .order('aceptado_en', { ascending: false, nullsFirst: false })
+ .limit(1)
+ .maybeSingle();
 
-      if (miembro && miembro.rol !== 'admin' && miembro.rol !== 'super_admin') {
-        // Setear el espacioId para que OnboardingCargoView filtre correctamente
-        useStore.getState().setPendingOnboardingEspacioId(miembro.espacio_id);
-        setView('onboarding');
-      }
-    };
-    verificarRol();
-  }, [userId, setView]);
+ if (miembro && miembro.rol !== 'admin' && miembro.rol !== 'super_admin') {
+ // Setear el espacioId para que OnboardingCargoView filtre correctamente
+ useStore.getState().setPendingOnboardingEspacioId(miembro.espacio_id);
+ setView('onboarding');
+ }
+ };
+ verificarRol();
+ }, [userId, setView]);
 
-  const [paso, setPaso] = useState<Paso>('bienvenida');
-  const [cargoSeleccionado, setCargoSeleccionado] = useState<CargoLaboral | null>(null);
-  const [invitaciones, setInvitaciones] = useState<string[]>(['']);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [espacioCreado, setEspacioCreado] = useState<{ id: string; nombre: string } | null>(ESPACIO_GLOBAL);
-  const [cargosDB, setCargosDB] = useState<CargoDB[]>([]);
-  const [miembroId, setMiembroId] = useState<string | null>(null);
-  const [empresaId, setEmpresaId] = useState<string | null>(null);
-  const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<PlantillaEspacioId>('startup');
-  const [plantillaPersonalizada, setPlantillaPersonalizada] = useState(false);
-  const [empresaData, setEmpresaData] = useState({
-    nombre: '',
-    industria: '',
-    tamano: 'pequena',
-    sitio_web: '',
-  });
+ const [paso, setPaso] = useState<Paso>('bienvenida');
+ const [cargoSeleccionado, setCargoSeleccionado] = useState<CargoLaboral | null>(null);
+ const [invitaciones, setInvitaciones] = useState<string[]>(['']);
+ const [loading, setLoading] = useState(false);
+ const [error, setError] = useState<string | null>(null);
+ const [espacioCreado, setEspacioCreado] = useState<{ id: string; nombre: string } | null>(ESPACIO_GLOBAL);
+ const [cargosDB, setCargosDB] = useState<CargoDB[]>([]);
+ const [miembroId, setMiembroId] = useState<string | null>(null);
+ const [empresaId, setEmpresaId] = useState<string | null>(null);
+ const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<PlantillaEspacioId>('startup');
+ const [plantillaPersonalizada, setPlantillaPersonalizada] = useState(false);
+ const [empresaData, setEmpresaData] = useState({
+ nombre: '',
+ industria: '',
+ tamano: 'pequena',
+ sitio_web: '',
+ });
 
-  const plantillaRecomendadaId = useMemo(
-    () => recomendarPlantillaEspacio({
-      industria: empresaData.industria,
-      tamano: empresaData.tamano,
-    }).id,
-    [empresaData.industria, empresaData.tamano],
-  );
+ const plantillaRecomendadaId = useMemo(
+ () => recomendarPlantillaEspacio({
+ industria: empresaData.industria,
+ tamano: empresaData.tamano,
+ }).id,
+ [empresaData.industria, empresaData.tamano],
+ );
 
-  const cargarCargosDisponibles = async () => {
-    if (!espacioCreado) {
-      throw new Error('Espacio global no disponible');
-    }
+ const cargarCargosDisponibles = async () => {
+ if (!espacioCreado) {
+ throw new Error('Espacio global no disponible');
+ }
 
-    const { data: cargosData, error: cargosError } = await supabase
-      .from('cargos')
-      .select('id, nombre, clave, descripcion, categoria, icono, orden, activo, tiene_analisis_avanzado, analisis_disponibles, solo_admin')
-      .eq('espacio_id', espacioCreado.id)
-      .eq('activo', true)
-      .order('orden');
+ const { data: cargosData, error: cargosError } = await supabase
+ .from('cargos')
+ .select('id, nombre, clave, descripcion, categoria, icono, orden, activo, tiene_analisis_avanzado, analisis_disponibles, solo_admin')
+ .eq('espacio_id', espacioCreado.id)
+ .eq('activo', true)
+ .order('orden');
 
-    if (cargosError) {
-      throw cargosError;
-    }
+ if (cargosError) {
+ throw cargosError;
+ }
 
-    setCargosDB((cargosData || []) as CargoDB[]);
-  };
+ setCargosDB((cargosData || []) as CargoDB[]);
+ };
 
-  const handleSelectCargo = (cargo: CargoLaboral) => {
-    setError(null);
-    setCargoSeleccionado(cargo);
-    if (!plantillaPersonalizada) {
-      setPlantillaSeleccionada(plantillaRecomendadaId);
-    }
-    setPaso('plantilla');
-  };
+ const handleSelectCargo = (cargo: CargoLaboral) => {
+ setError(null);
+ setCargoSeleccionado(cargo);
+ if (!plantillaPersonalizada) {
+ setPlantillaSeleccionada(plantillaRecomendadaId);
+ }
+ setPaso('plantilla');
+ };
 
-  const completarOnboarding = async () => {
-    if (!espacioCreado) {
-      throw new Error('Espacio global no disponible');
-    }
+ const completarOnboarding = async () => {
+ if (!espacioCreado) {
+ throw new Error('Espacio global no disponible');
+ }
 
-    let targetMiembroId = miembroId;
+ let targetMiembroId = miembroId;
 
-    if (!targetMiembroId) {
-      const { data: miembroData, error: miembroError } = await supabase
-        .from('miembros_espacio')
-        .select('id')
-        .eq('espacio_id', espacioCreado.id)
-        .eq('usuario_id', userId)
-        .maybeSingle();
+ if (!targetMiembroId) {
+ const { data: miembroData, error: miembroError } = await supabase
+ .from('miembros_espacio')
+ .select('id')
+ .eq('espacio_id', espacioCreado.id)
+ .eq('usuario_id', userId)
+ .maybeSingle();
 
-      if (miembroError) throw miembroError;
-      if (miembroData?.id) {
-        targetMiembroId = miembroData.id;
-        setMiembroId(miembroData.id);
-      }
-    }
+ if (miembroError) throw miembroError;
+ if (miembroData?.id) {
+ targetMiembroId = miembroData.id;
+ setMiembroId(miembroData.id);
+ }
+ }
 
-    if (!targetMiembroId) {
-      throw new Error('No se encontró la membresía');
-    }
+ if (!targetMiembroId) {
+ throw new Error('No se encontró la membresía');
+ }
 
-    const { error: updateError } = await supabase
-      .from('miembros_espacio')
-      .update({ onboarding_completado: true })
-      .eq('id', targetMiembroId);
+ const { error: updateError } = await supabase
+ .from('miembros_espacio')
+ .update({ onboarding_completado: true })
+ .eq('id', targetMiembroId);
 
-    if (updateError) throw updateError;
-  };
+ if (updateError) throw updateError;
+ };
 
-  const finalizarOnboarding = async () => {
-    try {
-      await completarOnboarding();
-    } catch (err) {
-      console.warn('⚠️ Onboarding: Error en completarOnboarding (continuando):', err);
-    }
-    setPaso('completado');
-    // Timeout de seguridad: si onComplete tarda más de 8s, forzar redirección
-    const safeTimeout = setTimeout(() => {
-      console.warn('⚠️ Onboarding: onComplete tardó demasiado, forzando redirección');
-      onComplete();
-    }, 8000);
-    setTimeout(async () => {
-      try {
-        await onComplete();
-      } catch (err) {
-        console.error('❌ Error en onComplete:', err);
-        onComplete(); // Forzar redirección aunque falle
-      } finally {
-        clearTimeout(safeTimeout);
-      }
-    }, 2000);
-  };
+ const finalizarOnboarding = async () => {
+ try {
+ await completarOnboarding();
+ } catch (err) {
+ console.warn('⚠️ Onboarding: Error en completarOnboarding (continuando):', err);
+ }
+ setPaso('completado');
+ // Timeout de seguridad: si onComplete tarda más de 8s, forzar redirección
+ const safeTimeout = setTimeout(() => {
+ console.warn('⚠️ Onboarding: onComplete tardó demasiado, forzando redirección');
+ onComplete();
+ }, 8000);
+ setTimeout(async () => {
+ try {
+ await onComplete();
+ } catch (err) {
+ console.error('❌ Error en onComplete:', err);
+ onComplete(); // Forzar redirección aunque falle
+ } finally {
+ clearTimeout(safeTimeout);
+ }
+ }, 2000);
+ };
 
-  const handleGuardarEmpresa = async () => {
-    setLoading(true);
-    setError(null);
+ const handleGuardarEmpresa = async () => {
+ setLoading(true);
+ setError(null);
 
-    try {
-      if (!espacioCreado) {
-        throw new Error('Espacio global no disponible');
-      }
+ try {
+ if (!espacioCreado) {
+ throw new Error('Espacio global no disponible');
+ }
 
-      if (!empresaData.nombre.trim()) {
-        throw new Error('Ingresa el nombre de tu empresa para continuar');
-      }
+ if (!empresaData.nombre.trim()) {
+ throw new Error('Ingresa el nombre de tu empresa para continuar');
+ }
 
-      if (!plantillaPersonalizada) {
-        setPlantillaSeleccionada(plantillaRecomendadaId);
-      }
+ if (!plantillaPersonalizada) {
+ setPlantillaSeleccionada(plantillaRecomendadaId);
+ }
 
-      await cargarCargosDisponibles();
-      setPaso('cargo');
-    } catch (err: any) {
-      setError(err.message || 'Error preparando los cargos disponibles');
-    } finally {
-      setLoading(false);
-    }
-  };
+ await cargarCargosDisponibles();
+ setPaso('cargo');
+ } catch (err: any) {
+ setError(err.message || 'Error preparando los cargos disponibles');
+ } finally {
+ setLoading(false);
+ }
+ };
 
-  const handleGuardarPlantilla = async () => {
-    setLoading(true);
-    setError(null);
+ const handleGuardarPlantilla = async () => {
+ setLoading(true);
+ setError(null);
 
-    try {
-      if (!espacioCreado) {
-        throw new Error('Espacio global no disponible');
-      }
+ try {
+ if (!espacioCreado) {
+ throw new Error('Espacio global no disponible');
+ }
 
-      const resultado = await registrarEmpresaConPlantillaUseCase.execute({
-        empresaId,
-        userId,
-        espacioId: espacioCreado.id,
-        nombre: empresaData.nombre,
-        industria: empresaData.industria || null,
-        tamano: empresaData.tamano,
-        sitioWeb: empresaData.sitio_web.trim() || null,
-        cargoId: cargoSeleccionado,
-        plantillaId: plantillaSeleccionada,
-      });
+ const resultado = await registrarEmpresaConPlantillaUseCase.execute({
+ empresaId,
+ userId,
+ espacioId: espacioCreado.id,
+ nombre: empresaData.nombre,
+ industria: empresaData.industria || null,
+ tamano: empresaData.tamano,
+ sitioWeb: empresaData.sitio_web.trim() || null,
+ cargoId: cargoSeleccionado,
+ plantillaId: plantillaSeleccionada,
+ });
 
-      setEmpresaId(resultado.empresaId);
-      setMiembroId(resultado.miembroId);
+ setEmpresaId(resultado.empresaId);
+ setMiembroId(resultado.miembroId);
 
-      await fetchWorkspaces();
-      setPaso('invitar');
-    } catch (err: any) {
-      console.error('Error guardando plantilla de empresa:', err);
-      setError(err.message || 'Error al configurar la oficina inicial');
-    } finally {
-      setLoading(false);
-    }
-  };
+ await fetchWorkspaces();
+ setPaso('invitar');
+ } catch (err: any) {
+ console.error('Error guardando plantilla de empresa:', err);
+ setError(err.message || 'Error al configurar la oficina inicial');
+ } finally {
+ setLoading(false);
+ }
+ };
 
-  const handleAddEmail = () => {
-    setInvitaciones([...invitaciones, '']);
-  };
+ const handleAddEmail = () => {
+ setInvitaciones([...invitaciones, '']);
+ };
 
-  const handleRemoveEmail = (index: number) => {
-    setInvitaciones(invitaciones.filter((_, i) => i !== index));
-  };
+ const handleRemoveEmail = (index: number) => {
+ setInvitaciones(invitaciones.filter((_, i) => i !== index));
+ };
 
-  const handleEmailChange = (index: number, value: string) => {
-    const updated = [...invitaciones];
-    updated[index] = value;
-    setInvitaciones(updated);
-  };
+ const handleEmailChange = (index: number, value: string) => {
+ const updated = [...invitaciones];
+ updated[index] = value;
+ setInvitaciones(updated);
+ };
 
-  const handleEnviarInvitaciones = async () => {
-    const emailsValidos = invitaciones.filter(e => e.trim() && e.includes('@'));
-    
-    if (emailsValidos.length === 0) {
-      setLoading(true);
-      setError(null);
-      try {
-        await finalizarOnboarding();
-      } catch (err: any) {
-        console.error('Error completando onboarding:', err);
-        setError(err.message || 'Error al completar el onboarding');
-      } finally {
-        setLoading(false);
-      }
-      return;
-    }
+ const handleEnviarInvitaciones = async () => {
+ const emailsValidos = invitaciones.filter(e => e.trim() && e.includes('@'));
+ 
+ if (emailsValidos.length === 0) {
+ setLoading(true);
+ setError(null);
+ try {
+ await finalizarOnboarding();
+ } catch (err: any) {
+ console.error('Error completando onboarding:', err);
+ setError(err.message || 'Error al completar el onboarding');
+ } finally {
+ setLoading(false);
+ }
+ return;
+ }
 
-    setLoading(true);
-    setError(null);
+ setLoading(true);
+ setError(null);
 
-    try {
-      // Enviar invitaciones usando la Edge Function
-      for (const email of emailsValidos) {
-        const { data, error: fnError } = await supabase.functions.invoke('enviar-invitacion', {
-          body: {
-            email,
-            espacio_id: espacioCreado!.id,
-            rol: 'miembro',
-            invitador_id: userId
-          }
-        });
+ try {
+ // Enviar invitaciones usando la Edge Function
+ for (const email of emailsValidos) {
+ const { data, error: fnError } = await supabase.functions.invoke('enviar-invitacion', {
+ body: {
+ email,
+ espacio_id: espacioCreado!.id,
+ rol: 'miembro',
+ invitador_id: userId
+ }
+ });
 
-        if (fnError) throw new Error(fnError.message || 'Error al enviar la invitación');
-        if (data?.error) throw new Error(data.error);
-      }
+ if (fnError) throw new Error(fnError.message || 'Error al enviar la invitación');
+ if (data?.error) throw new Error(data.error);
+ }
 
-      await finalizarOnboarding();
-    } catch (err: any) {
-      console.error('Error enviando invitaciones:', err);
-      setError('Error al enviar algunas invitaciones');
-    } finally {
-      setLoading(false);
-    }
-  };
+ await finalizarOnboarding();
+ } catch (err: any) {
+ console.error('Error enviando invitaciones:', err);
+ setError('Error al enviar algunas invitaciones');
+ } finally {
+ setLoading(false);
+ }
+ };
 
-  const handleSkipInvitaciones = () => {
-    setLoading(true);
-    setError(null);
-    finalizarOnboarding()
-      .catch((err: any) => {
-        console.error('Error completando onboarding:', err);
-        setError(err.message || 'Error al completar el onboarding');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  };
+ const handleSkipInvitaciones = () => {
+ setLoading(true);
+ setError(null);
+ finalizarOnboarding()
+ .catch((err: any) => {
+ console.error('Error completando onboarding:', err);
+ setError(err.message || 'Error al completar el onboarding');
+ })
+ .finally(() => {
+ setLoading(false);
+ });
+ };
 
-  return (
-    <div className="fixed inset-0 bg-[#050508] flex items-center justify-center p-4 lg:p-3 overflow-y-auto min-h-0">
-      {/* Fondo con gradientes neon animados - mismo estilo que login */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-30%] left-[-20%] w-[70%] h-[70%] rounded-full bg-violet-600/15 blur-[180px] animate-pulse" />
-        <div className="absolute bottom-[-30%] right-[-20%] w-[70%] h-[70%] rounded-full bg-cyan-500/10 blur-[180px] animate-pulse" style={{ animationDelay: '1.5s' }} />
-        <div className="absolute top-[40%] left-[50%] w-[40%] h-[40%] rounded-full bg-fuchsia-600/10 blur-[120px] animate-pulse" style={{ animationDelay: '3s' }} />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
-      </div>
+ return (
+ <div className="fixed inset-0 bg-[#050508] flex items-center justify-center p-4 lg:p-3 overflow-y-auto min-h-0">
+ {/* Fondo con gradientes neon animados - mismo estilo que login */}
+ <div className="absolute inset-0 overflow-hidden pointer-events-none">
+ <div className="absolute top-[-30%] left-[-20%] w-[70%] h-[70%] rounded-full bg-[#2E96F5]/15 blur-[180px] animate-pulse" />
+ <div className="absolute bottom-[-30%] right-[-20%] w-[70%] h-[70%] rounded-full bg-[#2E96F5]/10 blur-[180px] animate-pulse" style={{ animationDelay: '1.5s' }} />
+ <div className="absolute top-[40%] left-[50%] w-[40%] h-[40%] rounded-full bg-[#2E96F5]/10 blur-[120px] animate-pulse" style={{ animationDelay: '3s' }} />
+ <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
+ </div>
 
-      <AnimatePresence mode="wait">
-        {/* PASO: Bienvenida - Compacto */}
-        {paso === 'bienvenida' && (
-          <motion.div
-            key="bienvenida"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="w-full max-w-md lg:max-w-sm text-center relative z-10"
-          >
-            <div className="mb-6 lg:mb-5">
-              {/* Logo con glow neon */}
-              <div className="relative group mx-auto w-14 h-14 lg:w-12 lg:h-12 mb-4 lg:mb-3">
-                <div className="absolute -inset-2 bg-gradient-to-r from-violet-600 to-cyan-500 rounded-xl blur-lg opacity-40 group-hover:opacity-60 transition-opacity duration-500" />
-                <div className="relative w-14 h-14 lg:w-12 lg:h-12 bg-gradient-to-br from-violet-600 via-fuchsia-600 to-cyan-500 rounded-xl flex items-center justify-center shadow-2xl">
-                  <Sparkles className="w-7 h-7 lg:w-6 lg:h-6 text-white" />
-                </div>
-              </div>
-              <h1 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-2">
-                ¡Bienvenido, {userName.split(' ')[0]}!
-              </h1>
-              <p className="text-sm lg:text-xs text-zinc-400">
-                Vamos a configurar tu empresa en el espacio global kronos
-              </p>
-            </div>
+ <AnimatePresence mode="wait">
+ {/* PASO: Bienvenida - Compacto */}
+ {paso === 'bienvenida' && (
+ <motion.div
+ key="bienvenida"
+ initial={{ opacity: 0, y: 20 }}
+ animate={{ opacity: 1, y: 0 }}
+ exit={{ opacity: 0, y: -20 }}
+ className="w-full max-w-md lg:max-w-sm text-center relative z-10"
+ >
+ <div className="mb-6 lg:mb-5">
+ {/* Logo con glow neon */}
+ <div className="relative group mx-auto w-14 h-14 lg:w-12 lg:h-12 mb-4 lg:mb-3">
+ <div className="absolute -inset-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] rounded-xl blur-lg opacity-40 group-hover:opacity-60 transition-opacity duration-500" />
+ <div className="relative w-14 h-14 lg:w-12 lg:h-12 bg-gradient-to-br from-[#4FB0FF] to-[#2E96F5] rounded-xl flex items-center justify-center shadow-2xl">
+ <Sparkles className="w-7 h-7 lg:w-6 lg:h-6 text-[#0B2240]" />
+ </div>
+ </div>
+ <h1 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#0B2240] via-[#1E86E5] to-[#0B2240] mb-2">
+ ¡Bienvenido, {userName.split(' ')[0]}!
+ </h1>
+ <p className="text-sm lg:text-xs text-[#4A6485]">
+ Vamos a configurar tu empresa en el espacio global kronos
+ </p>
+ </div>
 
-            <div className="space-y-2 lg:space-y-1.5 mb-6 lg:mb-5">
-              <div className="flex items-center gap-3 lg:gap-2 p-3 lg:p-2.5 backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-xl lg:rounded-lg group hover:border-violet-500/30 transition-all">
-                <div className="w-8 h-8 lg:w-7 lg:h-7 bg-gradient-to-br from-violet-600/20 to-fuchsia-600/20 rounded-lg flex items-center justify-center border border-violet-500/20">
-                  <span className="text-violet-400 font-black text-sm lg:text-xs">1</span>
-                </div>
-                <span className="text-zinc-300 font-medium text-sm lg:text-xs">Datos de tu empresa</span>
-              </div>
-              <div className="flex items-center gap-3 lg:gap-2 p-3 lg:p-2.5 backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-xl lg:rounded-lg group hover:border-violet-500/30 transition-all">
-                <div className="w-8 h-8 lg:w-7 lg:h-7 bg-gradient-to-br from-violet-600/20 to-fuchsia-600/20 rounded-lg flex items-center justify-center border border-violet-500/20">
-                  <span className="text-violet-400 font-black text-sm lg:text-xs">2</span>
-                </div>
-                <span className="text-zinc-300 font-medium text-sm lg:text-xs">Selecciona tu cargo</span>
-              </div>
-              <div className="flex items-center gap-3 lg:gap-2 p-3 lg:p-2.5 backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-xl lg:rounded-lg group hover:border-violet-500/30 transition-all">
-                <div className="w-8 h-8 lg:w-7 lg:h-7 bg-gradient-to-br from-violet-600/20 to-fuchsia-600/20 rounded-lg flex items-center justify-center border border-violet-500/20">
-                  <span className="text-violet-400 font-black text-sm lg:text-xs">3</span>
-                </div>
-                <span className="text-zinc-300 font-medium text-sm lg:text-xs">Elige tu plantilla inicial</span>
-              </div>
-              <div className="flex items-center gap-3 lg:gap-2 p-3 lg:p-2.5 backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-xl lg:rounded-lg group hover:border-violet-500/30 transition-all">
-                <div className="w-8 h-8 lg:w-7 lg:h-7 bg-gradient-to-br from-violet-600/20 to-fuchsia-600/20 rounded-lg flex items-center justify-center border border-violet-500/20">
-                  <span className="text-violet-400 font-black text-sm lg:text-xs">4</span>
-                </div>
-                <span className="text-zinc-300 font-medium text-sm lg:text-xs">Invita a tu equipo</span>
-              </div>
-            </div>
+ <div className="space-y-2 lg:space-y-1.5 mb-6 lg:mb-5">
+ <div className="flex items-center gap-3 lg:gap-2 p-3 lg:p-2.5 backdrop-blur-xl bg-white/50 border border-[rgba(46,150,245,0.14)] rounded-xl lg:rounded-lg group hover:border-[rgba(46,150,245,0.3)]/30 transition-all">
+ <div className="w-8 h-8 lg:w-7 lg:h-7 bg-gradient-to-br from-[#4FB0FF]/20 to-[#2E96F5]/20 rounded-lg flex items-center justify-center border border-[rgba(46,150,245,0.3)]/20">
+ <span className="text-[#1E86E5] font-black text-sm lg:text-xs">1</span>
+ </div>
+ <span className="text-[#1B3A5C] font-medium text-sm lg:text-xs">Datos de tu empresa</span>
+ </div>
+ <div className="flex items-center gap-3 lg:gap-2 p-3 lg:p-2.5 backdrop-blur-xl bg-white/50 border border-[rgba(46,150,245,0.14)] rounded-xl lg:rounded-lg group hover:border-[rgba(46,150,245,0.3)]/30 transition-all">
+ <div className="w-8 h-8 lg:w-7 lg:h-7 bg-gradient-to-br from-[#4FB0FF]/20 to-[#2E96F5]/20 rounded-lg flex items-center justify-center border border-[rgba(46,150,245,0.3)]/20">
+ <span className="text-[#1E86E5] font-black text-sm lg:text-xs">2</span>
+ </div>
+ <span className="text-[#1B3A5C] font-medium text-sm lg:text-xs">Selecciona tu cargo</span>
+ </div>
+ <div className="flex items-center gap-3 lg:gap-2 p-3 lg:p-2.5 backdrop-blur-xl bg-white/50 border border-[rgba(46,150,245,0.14)] rounded-xl lg:rounded-lg group hover:border-[rgba(46,150,245,0.3)]/30 transition-all">
+ <div className="w-8 h-8 lg:w-7 lg:h-7 bg-gradient-to-br from-[#4FB0FF]/20 to-[#2E96F5]/20 rounded-lg flex items-center justify-center border border-[rgba(46,150,245,0.3)]/20">
+ <span className="text-[#1E86E5] font-black text-sm lg:text-xs">3</span>
+ </div>
+ <span className="text-[#1B3A5C] font-medium text-sm lg:text-xs">Elige tu plantilla inicial</span>
+ </div>
+ <div className="flex items-center gap-3 lg:gap-2 p-3 lg:p-2.5 backdrop-blur-xl bg-white/50 border border-[rgba(46,150,245,0.14)] rounded-xl lg:rounded-lg group hover:border-[rgba(46,150,245,0.3)]/30 transition-all">
+ <div className="w-8 h-8 lg:w-7 lg:h-7 bg-gradient-to-br from-[#4FB0FF]/20 to-[#2E96F5]/20 rounded-lg flex items-center justify-center border border-[rgba(46,150,245,0.3)]/20">
+ <span className="text-[#1E86E5] font-black text-sm lg:text-xs">4</span>
+ </div>
+ <span className="text-[#1B3A5C] font-medium text-sm lg:text-xs">Invita a tu equipo</span>
+ </div>
+ </div>
 
-            <button
-              onClick={() => setPaso('empresa')}
-              className="relative w-full group overflow-hidden bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500 text-white py-3 lg:py-2.5 rounded-xl font-black text-xs lg:text-[10px] uppercase tracking-wider transition-all shadow-2xl shadow-violet-600/30 active:scale-[0.98]"
-            >
-              <span className="absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <span className="relative flex items-center justify-center gap-2">
-                Comenzar
-                <ArrowRight className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
-              </span>
-            </button>
-          </motion.div>
-        )}
+ <button
+ onClick={() => setPaso('empresa')}
+ className="relative w-full group overflow-hidden bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] text-white py-3 lg:py-2.5 rounded-xl font-black text-xs lg:text-[10px] uppercase tracking-wider transition-all shadow-2xl shadow-[0_4px_14px_-4px_rgba(46,150,245,0.3)] active:scale-[0.98]"
+ >
+ <span className="absolute inset-0 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+ <span className="relative flex items-center justify-center gap-2">
+ Comenzar
+ <ArrowRight className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
+ </span>
+ </button>
+ </motion.div>
+ )}
 
-        {/* PASO: Datos de Empresa */}
-        {paso === 'empresa' && (
-          <motion.div
-            key="empresa"
-            initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -100 }}
-            className="w-full max-w-md lg:max-w-sm relative z-10"
-          >
-            <div className="absolute -inset-1 bg-gradient-to-r from-fuchsia-600/20 via-violet-600/20 to-cyan-500/20 rounded-[40px] lg:rounded-[32px] blur-xl opacity-60" />
-            <div className="relative backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-[36px] lg:rounded-[28px] p-6 lg:p-5">
-              <div className="text-center mb-6 lg:mb-5">
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-violet-600/20 to-fuchsia-600/20 border border-violet-500/30 rounded-full text-violet-400 text-[9px] lg:text-[8px] font-bold uppercase tracking-wider mb-3">
-                  Paso 1 de 4
-                </div>
-                <div className="relative group mx-auto w-12 h-12 lg:w-10 lg:h-10 mb-3">
-                  <div className="absolute -inset-2 bg-gradient-to-r from-fuchsia-500 to-violet-500 rounded-xl blur-lg opacity-40" />
-                  <div className="relative w-12 h-12 lg:w-10 lg:h-10 bg-gradient-to-br from-fuchsia-500 to-violet-600 rounded-xl flex items-center justify-center">
-                    <Building2 className="w-6 h-6 lg:w-5 lg:h-5 text-white" />
-                  </div>
-                </div>
-                <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-1">Datos de tu empresa</h2>
-                <p className="text-zinc-500 text-xs lg:text-[10px]">
-                  Vincula tu organización a <span className="text-violet-400 font-medium">{espacioCreado?.nombre}</span>
-                </p>
-              </div>
+ {/* PASO: Datos de Empresa */}
+ {paso === 'empresa' && (
+ <motion.div
+ key="empresa"
+ initial={{ opacity: 0, x: 100 }}
+ animate={{ opacity: 1, x: 0 }}
+ exit={{ opacity: 0, x: -100 }}
+ className="w-full max-w-md lg:max-w-sm relative z-10"
+ >
+ <div className="absolute -inset-1 bg-gradient-to-r from-[#2E96F5]/20 to-[#4FB0FF]/20 rounded-[40px] lg:rounded-[32px] blur-xl opacity-60" />
+ <div className="relative backdrop-blur-xl bg-white/50 border border-[rgba(46,150,245,0.14)] rounded-[36px] lg:rounded-[28px] p-6 lg:p-5">
+ <div className="text-center mb-6 lg:mb-5">
+ <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-[#4FB0FF]/20 to-[#2E96F5]/20 border border-[rgba(46,150,245,0.3)]/30 rounded-full text-[#1E86E5] text-[9px] lg:text-[8px] font-bold uppercase tracking-wider mb-3">
+ Paso 1 de 4
+ </div>
+ <div className="relative group mx-auto w-12 h-12 lg:w-10 lg:h-10 mb-3">
+ <div className="absolute -inset-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] rounded-xl blur-lg opacity-40" />
+ <div className="relative w-12 h-12 lg:w-10 lg:h-10 bg-gradient-to-br from-[#4FB0FF] to-[#2E96F5] rounded-xl flex items-center justify-center">
+ <Building2 className="w-6 h-6 lg:w-5 lg:h-5 text-[#0B2240]" />
+ </div>
+ </div>
+ <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#0B2240] via-[#1E86E5] to-[#0B2240] mb-1">Datos de tu empresa</h2>
+ <p className="text-[#4A6485] text-xs lg:text-[10px]">
+ Vincula tu organización a <span className="text-[#1E86E5] font-medium">{espacioCreado?.nombre}</span>
+ </p>
+ </div>
 
-              <div className="space-y-3 lg:space-y-2.5 mb-5 lg:mb-4">
-                <div>
-                  <label className="block text-xs lg:text-[10px] font-medium text-zinc-400 mb-1.5">Nombre de la empresa *</label>
-                  <input
-                    type="text"
-                    value={empresaData.nombre}
-                    onChange={(e) => setEmpresaData({ ...empresaData, nombre: e.target.value })}
-                    placeholder="Mi Empresa S.A.S."
-                    className="w-full px-4 py-3.5 lg:py-3 bg-black/40 border border-white/5 rounded-xl text-sm lg:text-xs text-white placeholder-zinc-700 focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 outline-none transition-all"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs lg:text-[10px] font-medium text-zinc-400 mb-1.5">Industria</label>
-                    <select
-                      value={empresaData.industria}
-                      onChange={(e) => setEmpresaData({ ...empresaData, industria: e.target.value })}
-                      className="w-full px-3 py-3.5 lg:py-3 bg-black/40 border border-white/5 rounded-xl text-sm lg:text-xs text-white focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 outline-none transition-all"
-                    >
-                      <option value="">Seleccionar...</option>
-                      {INDUSTRIAS.map(i => (
-                        <option key={i} value={i}>{i}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs lg:text-[10px] font-medium text-zinc-400 mb-1.5">Tamaño</label>
-                    <select
-                      value={empresaData.tamano}
-                      onChange={(e) => setEmpresaData({ ...empresaData, tamano: e.target.value })}
-                      className="w-full px-3 py-3.5 lg:py-3 bg-black/40 border border-white/5 rounded-xl text-sm lg:text-xs text-white focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 outline-none transition-all"
-                    >
-                      {TAMANOS.map(t => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs lg:text-[10px] font-medium text-zinc-400 mb-1.5">Sitio web (opcional)</label>
-                  <input
-                    type="url"
-                    value={empresaData.sitio_web}
-                    onChange={(e) => setEmpresaData({ ...empresaData, sitio_web: e.target.value })}
-                    placeholder="https://miempresa.com"
-                    className="w-full px-4 py-3.5 lg:py-3 bg-black/40 border border-white/5 rounded-xl text-sm lg:text-xs text-white placeholder-zinc-700 focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 outline-none transition-all"
-                  />
-                </div>
-              </div>
+ <div className="space-y-3 lg:space-y-2.5 mb-5 lg:mb-4">
+ <div>
+ <label className="block text-xs lg:text-[10px] font-medium text-[#4A6485] mb-1.5">Nombre de la empresa *</label>
+ <input
+ type="text"
+ value={empresaData.nombre}
+ onChange={(e) => setEmpresaData({ ...empresaData, nombre: e.target.value })}
+ placeholder="Mi Empresa S.A.S."
+ className="w-full px-4 py-3.5 lg:py-3 bg-white/70 border border-[rgba(46,150,245,0.14)] rounded-xl text-sm lg:text-xs text-[#0B2240] placeholder-zinc-700 focus:border-[rgba(46,150,245,0.3)]/50 focus:ring-2 focus:ring-[#2E96F5]/20 outline-none transition-all"
+ />
+ </div>
+ <div className="grid grid-cols-2 gap-3">
+ <div>
+ <label className="block text-xs lg:text-[10px] font-medium text-[#4A6485] mb-1.5">Industria</label>
+ <select
+ value={empresaData.industria}
+ onChange={(e) => setEmpresaData({ ...empresaData, industria: e.target.value })}
+ className="w-full px-3 py-3.5 lg:py-3 bg-white/70 border border-[rgba(46,150,245,0.14)] rounded-xl text-sm lg:text-xs text-[#0B2240] focus:border-[rgba(46,150,245,0.3)]/50 focus:ring-2 focus:ring-[#2E96F5]/20 outline-none transition-all"
+ >
+ <option value="">Seleccionar...</option>
+ {INDUSTRIAS.map(i => (
+ <option key={i} value={i}>{i}</option>
+ ))}
+ </select>
+ </div>
+ <div>
+ <label className="block text-xs lg:text-[10px] font-medium text-[#4A6485] mb-1.5">Tamaño</label>
+ <select
+ value={empresaData.tamano}
+ onChange={(e) => setEmpresaData({ ...empresaData, tamano: e.target.value })}
+ className="w-full px-3 py-3.5 lg:py-3 bg-white/70 border border-[rgba(46,150,245,0.14)] rounded-xl text-sm lg:text-xs text-[#0B2240] focus:border-[rgba(46,150,245,0.3)]/50 focus:ring-2 focus:ring-[#2E96F5]/20 outline-none transition-all"
+ >
+ {TAMANOS.map(t => (
+ <option key={t.value} value={t.value}>{t.label}</option>
+ ))}
+ </select>
+ </div>
+ </div>
+ <div>
+ <label className="block text-xs lg:text-[10px] font-medium text-[#4A6485] mb-1.5">Sitio web (opcional)</label>
+ <input
+ type="url"
+ value={empresaData.sitio_web}
+ onChange={(e) => setEmpresaData({ ...empresaData, sitio_web: e.target.value })}
+ placeholder="https://miempresa.com"
+ className="w-full px-4 py-3.5 lg:py-3 bg-white/70 border border-[rgba(46,150,245,0.14)] rounded-xl text-sm lg:text-xs text-[#0B2240] placeholder-zinc-700 focus:border-[rgba(46,150,245,0.3)]/50 focus:ring-2 focus:ring-[#2E96F5]/20 outline-none transition-all"
+ />
+ </div>
+ </div>
 
-              {error && (
-                <div className="mb-3 p-2.5 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-[10px] font-bold">
-                  {error}
-                </div>
-              )}
+ {error && (
+ <div className="mb-3 p-2.5 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-[10px] font-bold">
+ {error}
+ </div>
+ )}
 
-              <div className="space-y-2.5">
-                <button
-                  onClick={handleGuardarEmpresa}
-                  disabled={loading || !empresaData.nombre.trim()}
-                  className="relative w-full group overflow-hidden bg-gradient-to-r from-fuchsia-500 via-violet-600 to-cyan-500 text-white py-3.5 lg:py-3 rounded-xl font-black text-xs lg:text-[10px] uppercase tracking-[0.15em] transition-all shadow-2xl shadow-violet-600/30 active:scale-[0.98] disabled:opacity-50"
-                >
-                  <span className="absolute inset-0 bg-gradient-to-r from-fuchsia-400 via-violet-500 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <span className="relative flex items-center justify-center gap-2">
-                    {loading ? (
-                      <>
-                        <div className="w-4 h-4 lg:w-3.5 lg:h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Guardando...
-                      </>
-                    ) : (
-                      <>
-                        Continuar
-                        <ArrowRight className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
-                      </>
-                    )}
-                  </span>
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
+ <div className="space-y-2.5">
+ <button
+ onClick={handleGuardarEmpresa}
+ disabled={loading || !empresaData.nombre.trim()}
+ className="relative w-full group overflow-hidden bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] text-white py-3.5 lg:py-3 rounded-xl font-black text-xs lg:text-[10px] uppercase tracking-[0.15em] transition-all shadow-2xl shadow-[0_4px_14px_-4px_rgba(46,150,245,0.3)] active:scale-[0.98] disabled:opacity-50"
+ >
+ <span className="absolute inset-0 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+ <span className="relative flex items-center justify-center gap-2">
+ {loading ? (
+ <>
+ <div className="w-4 h-4 lg:w-3.5 lg:h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+ Guardando...
+ </>
+ ) : (
+ <>
+ Continuar
+ <ArrowRight className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
+ </>
+ )}
+ </span>
+ </button>
+ </div>
+ </div>
+ </motion.div>
+ )}
 
-        {/* PASO: Selección de Plantilla */}
-        {paso === 'plantilla' && (
-          <motion.div
-            key="plantilla"
-            initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -100 }}
-            className="w-full max-w-3xl relative z-10"
-          >
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/20 via-violet-600/20 to-fuchsia-500/20 rounded-[40px] lg:rounded-[32px] blur-xl opacity-60" />
-            <div className="relative backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-[36px] lg:rounded-[28px] p-6 lg:p-5">
-              <div className="text-center mb-6 lg:mb-5">
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-cyan-500/20 to-violet-600/20 border border-cyan-400/30 rounded-full text-cyan-300 text-[9px] lg:text-[8px] font-bold uppercase tracking-wider mb-3">
-                  Paso 3 de 4
-                </div>
-                <div className="relative group mx-auto w-12 h-12 lg:w-10 lg:h-10 mb-3">
-                  <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500 to-violet-500 rounded-xl blur-lg opacity-40" />
-                  <div className="relative w-12 h-12 lg:w-10 lg:h-10 bg-gradient-to-br from-cyan-500 to-violet-600 rounded-xl flex items-center justify-center">
-                    <Sparkles className="w-6 h-6 lg:w-5 lg:h-5 text-white" />
-                  </div>
-                </div>
-                <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-200 to-white mb-1">Selecciona tu plantilla</h2>
-                <p className="text-zinc-500 text-xs lg:text-[10px]">
-                  Te sugerimos una distribución base para <span className="text-cyan-300 font-medium">{espacioCreado?.nombre}</span> según el perfil de tu empresa
-                </p>
-              </div>
+ {/* PASO: Selección de Plantilla */}
+ {paso === 'plantilla' && (
+ <motion.div
+ key="plantilla"
+ initial={{ opacity: 0, x: 100 }}
+ animate={{ opacity: 1, x: 0 }}
+ exit={{ opacity: 0, x: -100 }}
+ className="w-full max-w-3xl relative z-10"
+ >
+ <div className="absolute -inset-1 bg-gradient-to-r from-[#4FB0FF]/20 /20 to-[#2E96F5]/20 rounded-[40px] lg:rounded-[32px] blur-xl opacity-60" />
+ <div className="relative backdrop-blur-xl bg-white/50 border border-[rgba(46,150,245,0.14)] rounded-[36px] lg:rounded-[28px] p-6 lg:p-5">
+ <div className="text-center mb-6 lg:mb-5">
+ <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-[#4FB0FF]/20 to-[#2E96F5]/20 border border-[rgba(46,150,245,0.3)]/30 rounded-full text-[#1E86E5] text-[9px] lg:text-[8px] font-bold uppercase tracking-wider mb-3">
+ Paso 3 de 4
+ </div>
+ <div className="relative group mx-auto w-12 h-12 lg:w-10 lg:h-10 mb-3">
+ <div className="absolute -inset-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] rounded-xl blur-lg opacity-40" />
+ <div className="relative w-12 h-12 lg:w-10 lg:h-10 bg-gradient-to-br from-[#4FB0FF] to-[#2E96F5] rounded-xl flex items-center justify-center">
+ <Sparkles className="w-6 h-6 lg:w-5 lg:h-5 text-[#0B2240]" />
+ </div>
+ </div>
+ <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#0B2240] via-[#1E86E5] to-[#0B2240] mb-1">Selecciona tu plantilla</h2>
+ <p className="text-[#4A6485] text-xs lg:text-[10px]">
+ Te sugerimos una distribución base para <span className="text-[#1E86E5] font-medium">{espacioCreado?.nombre}</span> según el perfil de tu empresa
+ </p>
+ </div>
 
-              <SelectorPlantillaEspacio
-                value={plantillaSeleccionada}
-                onChange={(valor) => {
-                  setPlantillaPersonalizada(true);
-                  setPlantillaSeleccionada(valor);
-                }}
-                disabled={loading}
-                recomendadaId={plantillaRecomendadaId}
-              />
+ <SelectorPlantillaEspacio
+ value={plantillaSeleccionada}
+ onChange={(valor) => {
+ setPlantillaPersonalizada(true);
+ setPlantillaSeleccionada(valor);
+ }}
+ disabled={loading}
+ recomendadaId={plantillaRecomendadaId}
+ />
 
-              {error && (
-                <div className="mt-4 mb-3 p-2.5 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-[10px] font-bold">
-                  {error}
-                </div>
-              )}
+ {error && (
+ <div className="mt-4 mb-3 p-2.5 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-[10px] font-bold">
+ {error}
+ </div>
+ )}
 
-              <div className="mt-5 grid grid-cols-2 gap-2.5">
-                <button
-                  onClick={() => setPaso('cargo')}
-                  disabled={loading}
-                  className="w-full py-3 lg:py-2.5 rounded-xl border border-white/[0.08] bg-black/30 text-zinc-300 hover:text-white hover:border-white/15 transition-all text-xs lg:text-[10px] font-bold uppercase tracking-[0.15em] disabled:opacity-50"
-                >
-                  Volver
-                </button>
-                <button
-                  onClick={handleGuardarPlantilla}
-                  disabled={loading}
-                  className="relative w-full group overflow-hidden bg-gradient-to-r from-cyan-500 via-violet-600 to-fuchsia-500 text-white py-3 lg:py-2.5 rounded-xl font-black text-xs lg:text-[10px] uppercase tracking-[0.15em] transition-all shadow-2xl shadow-violet-600/30 active:scale-[0.98] disabled:opacity-50"
-                >
-                  <span className="absolute inset-0 bg-gradient-to-r from-cyan-400 via-violet-500 to-fuchsia-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <span className="relative flex items-center justify-center gap-2">
-                    {loading ? (
-                      <>
-                        <div className="w-4 h-4 lg:w-3.5 lg:h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Configurando...
-                      </>
-                    ) : (
-                      <>
-                        Crear oficina inicial
-                        <ArrowRight className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
-                      </>
-                    )}
-                  </span>
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
+ <div className="mt-5 grid grid-cols-2 gap-2.5">
+ <button
+ onClick={() => setPaso('cargo')}
+ disabled={loading}
+ className="w-full py-3 lg:py-2.5 rounded-xl border border-[rgba(46,150,245,0.14)] bg-white/70 text-[#1B3A5C] hover:text-[#0B2240] hover:border-[rgba(46,150,245,0.14)] transition-all text-xs lg:text-[10px] font-bold uppercase tracking-[0.15em] disabled:opacity-50"
+ >
+ Volver
+ </button>
+ <button
+ onClick={handleGuardarPlantilla}
+ disabled={loading}
+ className="relative w-full group overflow-hidden bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] text-white py-3 lg:py-2.5 rounded-xl font-black text-xs lg:text-[10px] uppercase tracking-[0.15em] transition-all shadow-2xl shadow-[0_4px_14px_-4px_rgba(46,150,245,0.3)] active:scale-[0.98] disabled:opacity-50"
+ >
+ <span className="absolute inset-0 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+ <span className="relative flex items-center justify-center gap-2">
+ {loading ? (
+ <>
+ <div className="w-4 h-4 lg:w-3.5 lg:h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+ Configurando...
+ </>
+ ) : (
+ <>
+ Crear oficina inicial
+ <ArrowRight className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
+ </>
+ )}
+ </span>
+ </button>
+ </div>
+ </div>
+ </motion.div>
+ )}
 
-        {/* PASO: Selección de Cargo (después de empresa) */}
-        {paso === 'cargo' && (
-          <motion.div
-            key="cargo"
-            initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -100 }}
-            className="w-full max-w-4xl"
-          >
-            <CargoSelector
-              onSelect={handleSelectCargo}
-              espacioNombre={espacioCreado?.nombre || 'kronos'}
-              isLoading={loading}
-              rolUsuario="super_admin"
-              cargosDB={cargosDB}
-              etiquetaPaso="Paso 2 de 4"
-              titulo="¿Cuál es tu cargo principal?"
-              descripcion="Usaremos este dato para terminar de personalizar tu oficina inicial"
-            />
-          </motion.div>
-        )}
+ {/* PASO: Selección de Cargo (después de empresa) */}
+ {paso === 'cargo' && (
+ <motion.div
+ key="cargo"
+ initial={{ opacity: 0, x: 100 }}
+ animate={{ opacity: 1, x: 0 }}
+ exit={{ opacity: 0, x: -100 }}
+ className="w-full max-w-4xl"
+ >
+ <CargoSelector
+ onSelect={handleSelectCargo}
+ espacioNombre={espacioCreado?.nombre || 'kronos'}
+ isLoading={loading}
+ rolUsuario="super_admin"
+ cargosDB={cargosDB}
+ etiquetaPaso="Paso 2 de 4"
+ titulo="¿Cuál es tu cargo principal?"
+ descripcion="Usaremos este dato para terminar de personalizar tu oficina inicial"
+ />
+ </motion.div>
+ )}
 
-        {/* PASO: Invitar Equipo */}
-        {paso === 'invitar' && (
-          <motion.div
-            key="invitar"
-            initial={{ opacity: 0, x: 100 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -100 }}
-            className="w-full max-w-md lg:max-w-sm relative z-10"
-          >
-            <div className="absolute -inset-1 bg-gradient-to-r from-violet-600/20 via-fuchsia-600/20 to-cyan-500/20 rounded-[40px] lg:rounded-[32px] blur-xl opacity-60" />
-            <div className="relative backdrop-blur-xl bg-white/[0.03] border border-white/[0.08] rounded-[36px] lg:rounded-[28px] p-6 lg:p-5">
-              <div className="text-center mb-6 lg:mb-5">
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-violet-600/20 to-fuchsia-600/20 border border-violet-500/30 rounded-full text-violet-400 text-[9px] lg:text-[8px] font-bold uppercase tracking-wider mb-3">
-                  Paso 4 de 4
-                </div>
-                <div className="relative group mx-auto w-12 h-12 lg:w-10 lg:h-10 mb-3">
-                  <div className="absolute -inset-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 rounded-xl blur-lg opacity-40" />
-                  <div className="relative w-12 h-12 lg:w-10 lg:h-10 bg-gradient-to-br from-violet-600 via-fuchsia-600 to-cyan-500 rounded-xl flex items-center justify-center">
-                    <Users className="w-6 h-6 lg:w-5 lg:h-5 text-white" />
-                  </div>
-                </div>
-                <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-1">Invita a tu equipo</h2>
-                <p className="text-zinc-500 text-xs lg:text-[10px]">
-                  Añade los emails para invitar a <span className="text-violet-400 font-medium">{espacioCreado?.nombre}</span>
-                </p>
-              </div>
+ {/* PASO: Invitar Equipo */}
+ {paso === 'invitar' && (
+ <motion.div
+ key="invitar"
+ initial={{ opacity: 0, x: 100 }}
+ animate={{ opacity: 1, x: 0 }}
+ exit={{ opacity: 0, x: -100 }}
+ className="w-full max-w-md lg:max-w-sm relative z-10"
+ >
+ <div className="absolute -inset-1 bg-gradient-to-r from-[#4FB0FF]/20 /20 to-[#2E96F5]/20 rounded-[40px] lg:rounded-[32px] blur-xl opacity-60" />
+ <div className="relative backdrop-blur-xl bg-white/50 border border-[rgba(46,150,245,0.14)] rounded-[36px] lg:rounded-[28px] p-6 lg:p-5">
+ <div className="text-center mb-6 lg:mb-5">
+ <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-[#4FB0FF]/20 to-[#2E96F5]/20 border border-[rgba(46,150,245,0.3)]/30 rounded-full text-[#1E86E5] text-[9px] lg:text-[8px] font-bold uppercase tracking-wider mb-3">
+ Paso 4 de 4
+ </div>
+ <div className="relative group mx-auto w-12 h-12 lg:w-10 lg:h-10 mb-3">
+ <div className="absolute -inset-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] rounded-xl blur-lg opacity-40" />
+ <div className="relative w-12 h-12 lg:w-10 lg:h-10 bg-gradient-to-br from-[#4FB0FF] to-[#2E96F5] rounded-xl flex items-center justify-center">
+ <Users className="w-6 h-6 lg:w-5 lg:h-5 text-[#0B2240]" />
+ </div>
+ </div>
+ <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#0B2240] via-[#1E86E5] to-[#0B2240] mb-1">Invita a tu equipo</h2>
+ <p className="text-[#4A6485] text-xs lg:text-[10px]">
+ Añade los emails para invitar a <span className="text-[#1E86E5] font-medium">{espacioCreado?.nombre}</span>
+ </p>
+ </div>
 
-              <div className="space-y-2.5 mb-4 lg:mb-3">
-                {invitaciones.map((email, index) => (
-                  <div key={index} className="flex gap-2">
-                    <div className="flex-1 relative">
-                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-600" />
-                      <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => handleEmailChange(index, e.target.value)}
-                        placeholder="email@ejemplo.com"
-                        className="w-full pl-10 pr-3 py-3.5 lg:py-3 bg-black/40 border border-white/5 rounded-xl text-sm lg:text-xs text-white placeholder-zinc-700 focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20 outline-none transition-all"
-                      />
-                    </div>
-                    {invitaciones.length > 1 && (
-                      <button
-                        onClick={() => handleRemoveEmail(index)}
-                        className="p-3.5 lg:p-3 bg-black/40 border border-white/5 rounded-xl text-zinc-500 hover:text-red-400 hover:border-red-500/50 transition-all"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
+ <div className="space-y-2.5 mb-4 lg:mb-3">
+ {invitaciones.map((email, index) => (
+ <div key={index} className="flex gap-2">
+ <div className="flex-1 relative">
+ <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6B83A0]" />
+ <input
+ type="email"
+ value={email}
+ onChange={(e) => handleEmailChange(index, e.target.value)}
+ placeholder="email@ejemplo.com"
+ className="w-full pl-10 pr-3 py-3.5 lg:py-3 bg-white/70 border border-[rgba(46,150,245,0.14)] rounded-xl text-sm lg:text-xs text-[#0B2240] placeholder-zinc-700 focus:border-[rgba(46,150,245,0.3)]/50 focus:ring-2 focus:ring-[#2E96F5]/20 outline-none transition-all"
+ />
+ </div>
+ {invitaciones.length > 1 && (
+ <button
+ onClick={() => handleRemoveEmail(index)}
+ className="p-3.5 lg:p-3 bg-white/70 border border-[rgba(46,150,245,0.14)] rounded-xl text-[#4A6485] hover:text-red-400 hover:border-red-500/50 transition-all"
+ >
+ <X className="w-4 h-4" />
+ </button>
+ )}
+ </div>
+ ))}
+ </div>
 
-              <button
-                onClick={handleAddEmail}
-                className="w-full py-3 lg:py-2.5 border-2 border-dashed border-white/[0.06] rounded-xl text-zinc-600 hover:text-violet-400 hover:border-violet-500/30 transition-all flex items-center justify-center gap-2 mb-4 lg:mb-3 text-xs"
-              >
-                <Plus className="w-4 h-4" />
-                Añadir otro email
-              </button>
+ <button
+ onClick={handleAddEmail}
+ className="w-full py-3 lg:py-2.5 border-2 border-dashed border-[rgba(46,150,245,0.14)] rounded-xl text-[#6B83A0] hover:text-[#1E86E5] hover:border-[rgba(46,150,245,0.3)]/30 transition-all flex items-center justify-center gap-2 mb-4 lg:mb-3 text-xs"
+ >
+ <Plus className="w-4 h-4" />
+ Añadir otro email
+ </button>
 
-              {error && (
-                <div className="mb-3 p-2.5 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-[10px] font-bold">
-                  {error}
-                </div>
-              )}
+ {error && (
+ <div className="mb-3 p-2.5 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-[10px] font-bold">
+ {error}
+ </div>
+ )}
 
-              <div className="space-y-2.5">
-                <button
-                  onClick={handleEnviarInvitaciones}
-                  disabled={loading}
-                  className="relative w-full group overflow-hidden bg-gradient-to-r from-violet-600 via-fuchsia-600 to-cyan-500 text-white py-3.5 lg:py-3 rounded-xl font-black text-xs lg:text-[10px] uppercase tracking-[0.15em] transition-all shadow-2xl shadow-violet-600/30 active:scale-[0.98] disabled:opacity-50"
-                >
-                  <span className="absolute inset-0 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <span className="relative flex items-center justify-center gap-2">
-                    {loading ? (
-                      <>
-                        <div className="w-4 h-4 lg:w-3.5 lg:h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Enviando...
-                      </>
-                    ) : (
-                      <>
-                        Enviar invitaciones
-                        <ArrowRight className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
-                      </>
-                    )}
-                  </span>
-                </button>
+ <div className="space-y-2.5">
+ <button
+ onClick={handleEnviarInvitaciones}
+ disabled={loading}
+ className="relative w-full group overflow-hidden bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] text-white py-3.5 lg:py-3 rounded-xl font-black text-xs lg:text-[10px] uppercase tracking-[0.15em] transition-all shadow-2xl shadow-[0_4px_14px_-4px_rgba(46,150,245,0.3)] active:scale-[0.98] disabled:opacity-50"
+ >
+ <span className="absolute inset-0 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+ <span className="relative flex items-center justify-center gap-2">
+ {loading ? (
+ <>
+ <div className="w-4 h-4 lg:w-3.5 lg:h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+ Enviando...
+ </>
+ ) : (
+ <>
+ Enviar invitaciones
+ <ArrowRight className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
+ </>
+ )}
+ </span>
+ </button>
 
-                <button
-                  onClick={handleSkipInvitaciones}
-                  disabled={loading}
-                  className="w-full py-2 text-zinc-500 hover:text-violet-400 transition-colors text-[10px] lg:text-[9px] font-bold uppercase tracking-widest"
-                >
-                  Omitir por ahora
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
+ <button
+ onClick={handleSkipInvitaciones}
+ disabled={loading}
+ className="w-full py-2 text-[#4A6485] hover:text-[#1E86E5] transition-colors text-[10px] lg:text-[9px] font-bold uppercase tracking-widest"
+ >
+ Omitir por ahora
+ </button>
+ </div>
+ </div>
+ </motion.div>
+ )}
 
-        {/* PASO: Completado */}
-        {paso === 'completado' && (
-          <motion.div
-            key="completado"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="w-full max-w-md lg:max-w-sm text-center relative z-10"
-          >
-            <div className="relative mx-auto w-16 h-16 lg:w-14 lg:h-14 mb-4">
-              <div className="absolute -inset-2 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-full blur-xl opacity-50 animate-pulse" />
-              <div className="relative w-16 h-16 lg:w-14 lg:h-14 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-full flex items-center justify-center shadow-2xl">
-                <Check className="w-8 h-8 lg:w-7 lg:h-7 text-white" />
-              </div>
-            </div>
-            <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-emerald-200 to-white mb-2">¡Todo listo!</h2>
-            <p className="text-zinc-300 text-sm lg:text-xs mb-1">
-              Tu espacio <span className="text-emerald-400 font-medium">{espacioCreado?.nombre}</span> está listo
-            </p>
-            <p className="text-zinc-600 text-[10px]">Redirigiendo...</p>
+ {/* PASO: Completado */}
+ {paso === 'completado' && (
+ <motion.div
+ key="completado"
+ initial={{ opacity: 0, scale: 0.9 }}
+ animate={{ opacity: 1, scale: 1 }}
+ className="w-full max-w-md lg:max-w-sm text-center relative z-10"
+ >
+ <div className="relative mx-auto w-16 h-16 lg:w-14 lg:h-14 mb-4">
+ <div className="absolute -inset-2 bg-gradient-to-r from-emerald-500 to-[#2E96F5] rounded-full blur-xl opacity-50 animate-pulse" />
+ <div className="relative w-16 h-16 lg:w-14 lg:h-14 bg-gradient-to-br from-emerald-500 to-[#2E96F5] rounded-full flex items-center justify-center shadow-2xl">
+ <Check className="w-8 h-8 lg:w-7 lg:h-7 text-[#0B2240]" />
+ </div>
+ </div>
+ <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#0B2240] via-[#1E86E5] to-[#0B2240] mb-2">¡Todo listo!</h2>
+ <p className="text-[#1B3A5C] text-sm lg:text-xs mb-1">
+ Tu espacio <span className="text-emerald-400 font-medium">{espacioCreado?.nombre}</span> está listo
+ </p>
+ <p className="text-[#6B83A0] text-[10px]">Redirigiendo...</p>
 
-            <div className="mt-6">
-              <div className="w-6 h-6 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
+ <div className="mt-6">
+ <div className="w-6 h-6 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
+ </div>
+ </motion.div>
+ )}
+ </AnimatePresence>
+ </div>
+ );
 };
 
 export default OnboardingCreador;

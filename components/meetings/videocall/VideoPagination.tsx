@@ -24,13 +24,13 @@ export const VideoPagination: React.FC<VideoPaginationProps> = ({
         <button
           onClick={onAnterior}
           disabled={paginaActual === 0}
-          className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-zinc-950/82 text-white/80 shadow-2xl backdrop-blur-xl transition-all hover:bg-zinc-900/92 hover:text-white disabled:opacity-30 disabled:hover:bg-zinc-950/82"
+          className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full border border-[rgba(46,150,245,0.14)] bg-[#0B2240]/80 text-white/80 shadow-2xl backdrop-blur-xl transition-all hover:bg-[#0B2240]/90 hover:text-white disabled:opacity-30 disabled:hover:bg-[#0B2240]/80"
           aria-label="Página anterior"
         >
           <ChevronLeft size={24} />
         </button>
 
-        <div className="pointer-events-none flex items-center gap-3 rounded-full border border-white/10 bg-zinc-950/72 px-3 py-2 shadow-2xl backdrop-blur-xl">
+        <div className="pointer-events-none flex items-center gap-3 rounded-full border border-[rgba(46,150,245,0.14)] bg-[#0B2240]/75 px-3 py-2 shadow-2xl backdrop-blur-xl">
           <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
             {paginaActual + 1} / {totalPaginas}
           </span>
@@ -39,7 +39,7 @@ export const VideoPagination: React.FC<VideoPaginationProps> = ({
               <div
                 key={i}
                 className={`h-2 transition-all rounded-full ${
-                  paginaActual === i ? 'w-6 bg-indigo-400' : 'w-2 bg-white/30'
+                  paginaActual === i ? 'w-6 bg-[#2E96F5]' : 'w-2 bg-white/30'
                 }`}
               />
             ))}
@@ -49,7 +49,7 @@ export const VideoPagination: React.FC<VideoPaginationProps> = ({
         <button
           onClick={onSiguiente}
           disabled={paginaActual === totalPaginas - 1}
-          className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-zinc-950/82 text-white/80 shadow-2xl backdrop-blur-xl transition-all hover:bg-zinc-900/92 hover:text-white disabled:opacity-30 disabled:hover:bg-zinc-950/82"
+          className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full border border-[rgba(46,150,245,0.14)] bg-[#0B2240]/80 text-white/80 shadow-2xl backdrop-blur-xl transition-all hover:bg-[#0B2240]/90 hover:text-white disabled:opacity-30 disabled:hover:bg-[#0B2240]/80"
           aria-label="Página siguiente"
         >
           <ChevronRight size={24} />
@@ -59,11 +59,11 @@ export const VideoPagination: React.FC<VideoPaginationProps> = ({
   }
 
   return (
-    <div className="pointer-events-auto mt-2 mb-2 flex items-center justify-center gap-3 self-center rounded-full bg-black/50 p-2.5 backdrop-blur-md">
+    <div className="pointer-events-auto mt-2 mb-2 flex items-center justify-center gap-3 self-center rounded-full bg-[rgba(46,150,245,0.08)] p-2.5 backdrop-blur-md">
       <button
         onClick={onAnterior}
         disabled={paginaActual === 0}
-        className="flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-white/70 transition-all hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent"
+        className="flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-white/70 transition-all hover:bg-[rgba(46,150,245,0.08)] hover:text-white disabled:opacity-30 disabled:hover:bg-transparent"
         aria-label="Página anterior"
       >
         <ChevronLeft size={24} />
@@ -78,7 +78,7 @@ export const VideoPagination: React.FC<VideoPaginationProps> = ({
             <div
               key={i}
               className={`h-2 transition-all rounded-full ${
-                paginaActual === i ? 'w-6 bg-indigo-500' : 'w-2 bg-white/30'
+                paginaActual === i ? 'w-6 bg-[#2E96F5]' : 'w-2 bg-white/30'
               }`}
             />
           ))}
@@ -88,7 +88,7 @@ export const VideoPagination: React.FC<VideoPaginationProps> = ({
       <button
         onClick={onSiguiente}
         disabled={paginaActual === totalPaginas - 1}
-        className="flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-white/70 transition-all hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:hover:bg-transparent"
+        className="flex h-11 w-11 touch-manipulation items-center justify-center rounded-full text-white/70 transition-all hover:bg-[rgba(46,150,245,0.08)] hover:text-white disabled:opacity-30 disabled:hover:bg-transparent"
         aria-label="Página siguiente"
       >
         <ChevronRight size={24} />

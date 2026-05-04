@@ -133,7 +133,7 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
         : 'bottom-6 left-1/2 -translate-x-1/2 flex items-end gap-2'
     }`} onClick={(e) => e.stopPropagation()}>
       {/* Barra Principal Glassmorphism 2026 - Adaptativa: horizontal (normal) / vertical (juego) */}
-      <div className={`${isGameActive ? 'flex flex-col' : 'flex'} items-center gap-1.5 p-1.5 rounded-2xl bg-black/20 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500 hover:bg-black/30 hover:border-white/20 hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)]`}>
+      <div className={`${isGameActive ? 'flex flex-col' : 'flex'} items-center gap-1.5 p-1.5 rounded-2xl border border-[rgba(46,150,245,0.18)] bg-[rgba(11,34,64,0.24)] backdrop-blur-2xl shadow-[0_1px_0_rgba(255,255,255,0.2)_inset,0_8px_32px_-8px_rgba(11,34,64,0.35)] transition-all duration-500 hover:bg-[rgba(11,34,64,0.32)] hover:border-[rgba(46,150,245,0.34)] hover:shadow-[0_1px_0_rgba(255,255,255,0.28)_inset,0_12px_40px_-8px_rgba(11,34,64,0.42)]`}>
         
         {/* Foto de usuario con indicador de estado */}
         <div className="relative">
@@ -258,7 +258,7 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
           isActive={isHandRaised} 
           activeColor="bg-sky-500 text-white" 
           inactiveColor="bg-transparent text-white/70 hover:bg-white/10 hover:text-white"
-          icon={<span className="text-base leading-none">✋</span>}
+          icon={<IconRaiseHand />}
           tooltip={isHandRaised ? 'Bajar la mano' : 'Levantar la mano'}
         />
 
@@ -480,6 +480,12 @@ const IconGamepad = () => (
 const IconMiniMode = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 14H14V20M4 10H10V4M14 10L21 3M3 21L10 14" />
+  </svg>
+);
+
+const IconRaiseHand = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
   </svg>
 );
 

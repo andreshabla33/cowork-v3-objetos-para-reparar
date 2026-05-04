@@ -144,11 +144,11 @@ export const ScreenShareViewer: React.FC<ScreenShareViewerProps> = ({
           </div>
           
           {/* Controles de zoom */}
-          <div className="flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-[#0B2240]/35 backdrop-blur-sm rounded-lg p-1">
             <button
               onClick={handleZoomOut}
               disabled={scale <= MIN_SCALE}
-              className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/20 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="w-8 h-8 flex items-center justify-center text-white hover:bg-[rgba(46,150,245,0.14)] rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               title="Alejar (Ctrl + Scroll)"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -163,7 +163,7 @@ export const ScreenShareViewer: React.FC<ScreenShareViewerProps> = ({
             <button
               onClick={handleZoomIn}
               disabled={scale >= MAX_SCALE}
-              className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/20 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="w-8 h-8 flex items-center justify-center text-white hover:bg-[rgba(46,150,245,0.14)] rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               title="Acercar (Ctrl + Scroll)"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -175,7 +175,7 @@ export const ScreenShareViewer: React.FC<ScreenShareViewerProps> = ({
             
             <button
               onClick={handleFit}
-              className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/20 rounded-lg transition-colors"
+              className="w-8 h-8 flex items-center justify-center text-white hover:bg-[rgba(46,150,245,0.14)] rounded-lg transition-colors"
               title="Ajustar a pantalla"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -185,7 +185,7 @@ export const ScreenShareViewer: React.FC<ScreenShareViewerProps> = ({
             
             <button
               onClick={handleReset}
-              className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/20 rounded-lg transition-colors"
+              className="w-8 h-8 flex items-center justify-center text-white hover:bg-[rgba(46,150,245,0.14)] rounded-lg transition-colors"
               title="Restablecer vista"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -197,7 +197,7 @@ export const ScreenShareViewer: React.FC<ScreenShareViewerProps> = ({
               onClick={() => {
                 void toggleFullscreen();
               }}
-              className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/20 rounded-lg transition-colors"
+              className="w-8 h-8 flex items-center justify-center text-white hover:bg-[rgba(46,150,245,0.14)] rounded-lg transition-colors"
               title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
             >
               {isFullscreen ? (
@@ -238,7 +238,7 @@ export const ScreenShareViewer: React.FC<ScreenShareViewerProps> = ({
       {/* Indicador de zoom activo */}
       {scale > 1 && (
         <div className="absolute bottom-4 left-4 z-20">
-          <div className="bg-black/70 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full">
+          <div className="bg-[#0B2240]/35 backdrop-blur-sm text-white text-xs px-3 py-1.5 rounded-full">
             Arrastra para mover • Doble clic para restablecer
           </div>
         </div>

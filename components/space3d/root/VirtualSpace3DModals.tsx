@@ -136,24 +136,21 @@ export const VirtualSpace3DModals: React.FC<VirtualSpace3DModalsProps> = ({
         >
           {/* Backdrop con blur profundo */}
           <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-md"
+            className="absolute inset-0 bg-[#0B2240]/35 backdrop-blur-[10px]"
             onClick={() => setShowAvatarModal(false)}
           />
 
-          {/* Modal - responsivo y con Glassmorphism */}
+          {/* Modal - Aurora GLASS */}
           <div
-            className="relative w-full max-w-[960px] h-[90vh] max-h-[720px] sm:max-h-[95vh] bg-[#0a0a14]/95 backdrop-blur-2xl rounded-3xl sm:rounded-2xl border border-white/[0.08] shadow-2xl shadow-violet-900/20 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+            className="relative w-full max-w-[960px] h-[90vh] max-h-[720px] sm:max-h-[95vh] bg-white/75 backdrop-blur-[28px] saturate-[160%] rounded-3xl sm:rounded-2xl border border-white/70 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset,0_30px_80px_-20px_rgba(46,100,175,0.25),0_8px_32px_-10px_rgba(46,100,175,0.15)] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Neon glow aura */}
-            <div className="absolute -inset-px rounded-3xl sm:rounded-2xl bg-gradient-to-r from-violet-600/10 via-fuchsia-600/5 to-cyan-500/10 pointer-events-none" />
-
             {/* Header */}
-            <div className="relative flex items-center justify-between px-5 py-3 border-b border-white/[0.06] flex-shrink-0">
+            <div className="relative flex items-center justify-between px-5 py-3 border-b border-[rgba(46,150,245,0.14)] flex-shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-600/30 to-fuchsia-600/20 flex items-center justify-center border border-violet-500/20">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#6FBBFF] to-[#2E96F5] flex items-center justify-center shadow-[0_4px_10px_-3px_rgba(46,150,245,0.5)]">
                   <svg
-                    className="w-3.5 h-3.5 text-violet-400"
+                    className="w-3.5 h-3.5 text-white"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -167,20 +164,20 @@ export const VirtualSpace3DModals: React.FC<VirtualSpace3DModalsProps> = ({
                   </svg>
                 </div>
                 <div>
-                  <h2 className="text-xs font-black text-white tracking-wide">
+                  <h2 className="text-xs font-bold text-[#0B2240] tracking-wide">
                     Mi Perfil y Avatar
                   </h2>
-                  <p className="text-[9px] text-white/30">
+                  <p className="text-[9px] text-[#4A6485]">
                     Personaliza tu apariencia en el espacio
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowAvatarModal(false)}
-                className="w-7 h-7 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] flex items-center justify-center transition-all group border border-white/[0.06] hover:border-violet-500/20"
+                className="w-7 h-7 rounded-lg bg-[rgba(46,150,245,0.08)] hover:bg-[rgba(46,150,245,0.15)] flex items-center justify-center transition-all group border border-[rgba(46,150,245,0.16)] hover:border-[rgba(46,150,245,0.3)]"
               >
                 <svg
-                  className="w-3.5 h-3.5 text-white/30 group-hover:text-white transition-colors"
+                  className="w-3.5 h-3.5 text-[#4A6485] group-hover:text-[#1E86E5] transition-colors"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"

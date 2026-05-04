@@ -63,20 +63,20 @@ export const SettingsCalendar: React.FC<SettingsCalendarProps> = ({
   return (
     <div>
       <div className="mb-8 lg:mb-6">
-        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-violet-200 to-white mb-2 lg:mb-1">
+        <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#1E86E5] via-[#4FB0FF] to-[#1E86E5] mb-2 lg:mb-1">
           {currentLang === 'en' ? 'Calendar' : currentLang === 'pt' ? 'Calendário' : 'Calendario'}
         </h2>
-        <p className="text-sm text-zinc-400">
+        <p className="text-sm text-[#4A6485]">
           {currentLang === 'en' ? 'Configure calendar sync and preferences' : currentLang === 'pt' ? 'Configure a sincronização e preferências do calendário' : 'Configura la sincronización y preferencias de calendario'}
         </p>
       </div>
 
       <SettingSection title={currentLang === 'en' ? 'Google Calendar' : currentLang === 'pt' ? 'Google Calendar' : 'Google Calendar'}>
-        <div className="py-4 border-b border-white/[0.05]">
+        <div className="py-4 border-b border-[rgba(46,150,245,0.14)]">
           <div className="flex items-center justify-between">
             <div className="flex-1 pr-4">
-              <p className="text-sm font-medium text-white">{currentLang === 'en' ? 'Connect Google Calendar' : currentLang === 'pt' ? 'Conectar Google Calendar' : 'Conectar Google Calendar'}</p>
-              <p className="text-xs text-zinc-400 mt-0.5">
+              <p className="text-sm font-medium text-[#0B2240]">{currentLang === 'en' ? 'Connect Google Calendar' : currentLang === 'pt' ? 'Conectar Google Calendar' : 'Conectar Google Calendar'}</p>
+              <p className="text-xs text-[#4A6485] mt-0.5">
                 {currentLang === 'en' ? 'Sync your events and create meetings with Google Meet' : currentLang === 'pt' ? 'Sincronize seus eventos e crie reuniões com Google Meet' : 'Sincroniza tus eventos y crea reuniones con Google Meet'}
               </p>
             </div>

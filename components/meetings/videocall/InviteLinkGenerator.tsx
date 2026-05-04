@@ -128,13 +128,13 @@ export const InviteLinkGenerator: React.FC<InviteLinkGeneratorProps> = ({
   const isArcade = theme === 'arcade';
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className={`w-full max-w-lg max-h-[85vh] rounded-2xl ${isArcade ? 'bg-black border-[#00ff41]/30' : 'bg-[#1a1a2e]'} border border-white/10 shadow-2xl overflow-hidden flex flex-col`}>
+    <div className="fixed inset-0 bg-[#0B2240]/35 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className={`w-full max-w-lg max-h-[85vh] rounded-2xl ${isArcade ? 'bg-white/60 border-[#00ff41]/30' : 'bg-white/60'} border border-[rgba(46,150,245,0.14)] shadow-2xl overflow-hidden flex flex-col`}>
         {/* Header */}
-        <div className={`p-4 border-b border-white/10 ${isArcade ? 'bg-[#00ff41]/5' : 'bg-indigo-500/10'}`}>
+        <div className={`p-4 border-b border-[rgba(46,150,245,0.14)] ${isArcade ? 'bg-[#00ff41]/5' : 'bg-[#2E96F5]/10'}`}>
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-10 h-10 rounded-xl ${isArcade ? 'bg-[#00ff41]' : 'bg-gradient-to-br from-indigo-500 to-purple-600'} flex items-center justify-center`}>
+              <div className={`w-10 h-10 rounded-xl ${isArcade ? 'bg-[#00ff41]' : 'bg-gradient-to-br from-[#4FB0FF] to-[#2E96F5]'} flex items-center justify-center`}>
                 <svg className={`w-5 h-5 ${isArcade ? 'text-black' : 'text-white'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                 </svg>
@@ -146,7 +146,7 @@ export const InviteLinkGenerator: React.FC<InviteLinkGeneratorProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-white/10 rounded-lg transition-all shrink-0"
+              className="p-2 hover:bg-[rgba(46,150,245,0.08)] rounded-lg transition-all shrink-0"
             >
               <svg className="w-5 h-5 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -160,7 +160,7 @@ export const InviteLinkGenerator: React.FC<InviteLinkGeneratorProps> = ({
           {enlaces.length === 0 ? (
             <>
               <div className="space-y-4 mb-4">
-                <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-4">
+                <div className="rounded-xl border border-[rgba(46,150,245,0.14)] bg-white/50 p-4 space-y-4">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-white/60 mb-2">
                       Nombre de referencia (opcional)
@@ -170,7 +170,7 @@ export const InviteLinkGenerator: React.FC<InviteLinkGeneratorProps> = ({
                       value={nombreReferencia}
                       onChange={(e) => setNombreReferencia(e.target.value)}
                       placeholder="Ej. Invitados externos"
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/50"
+                      className="w-full bg-white/50 border border-[rgba(46,150,245,0.14)] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#2E96F5]/50"
                     />
                   </div>
 
@@ -181,12 +181,12 @@ export const InviteLinkGenerator: React.FC<InviteLinkGeneratorProps> = ({
                     <select
                       value={tipoInvitado}
                       onChange={(e) => setTipoInvitado(e.target.value as TipoInvitado)}
-                      className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none text-white"
-                      style={{ colorScheme: 'dark' }}
+                      className="w-full bg-white border border-[rgba(46,150,245,0.14)] rounded-lg px-3 py-2 text-sm focus:outline-none text-white"
+
                     >
-                      <option value="invitado" className="bg-zinc-800 text-white">Invitado</option>
-                      <option value="cliente" className="bg-zinc-800 text-white">Cliente</option>
-                      <option value="candidato" className="bg-zinc-800 text-white">Candidato</option>
+                      <option value="invitado" className="bg-white text-white">Invitado</option>
+                      <option value="cliente" className="bg-white text-white">Cliente</option>
+                      <option value="candidato" className="bg-white text-white">Candidato</option>
                     </select>
                   </div>
 
@@ -207,7 +207,7 @@ export const InviteLinkGenerator: React.FC<InviteLinkGeneratorProps> = ({
               {/* Enlaces generados */}
               <div className="space-y-3">
                 {enlaces.map((enlace) => (
-                  <div key={enlace.enlace} className="p-4 bg-white/5 border border-white/10 rounded-xl">
+                  <div key={enlace.enlace} className="p-4 bg-white/50 border border-[rgba(46,150,245,0.14)] rounded-xl">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
                       <span className="text-sm font-medium break-words">{enlace.etiqueta}</span>
                       <button
@@ -217,7 +217,7 @@ export const InviteLinkGenerator: React.FC<InviteLinkGeneratorProps> = ({
                             ? 'bg-green-500 text-white'
                             : isArcade
                               ? 'bg-[#00ff41]/20 text-[#00ff41] hover:bg-[#00ff41]/30'
-                              : 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30'
+                              : 'bg-[#2E96F5]/20 text-[#1E86E5] hover:bg-[#2E96F5]/30'
                         }`}
                       >
                         {copied === enlace.etiqueta ? '✓ Copiado' : 'Copiar'}
@@ -246,10 +246,10 @@ export const InviteLinkGenerator: React.FC<InviteLinkGeneratorProps> = ({
 
         {/* Footer */}
         {enlaces.length === 0 && (
-          <div className="p-4 border-t border-white/10 flex flex-col-reverse sm:flex-row gap-2 shrink-0">
+          <div className="p-4 border-t border-[rgba(46,150,245,0.14)] flex flex-col-reverse sm:flex-row gap-2 shrink-0">
             <button
               onClick={onClose}
-              className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 rounded-lg text-sm font-bold transition-all"
+              className="flex-1 py-2.5 bg-white/50 hover:bg-[rgba(46,150,245,0.08)] rounded-lg text-sm font-bold transition-all"
             >
               Cancelar
             </button>
@@ -259,7 +259,7 @@ export const InviteLinkGenerator: React.FC<InviteLinkGeneratorProps> = ({
               className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all disabled:opacity-50 ${
                 isArcade
                   ? 'bg-[#00ff41] text-black hover:bg-white'
-                  : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                  : 'bg-[#2E96F5] hover:bg-[#2E96F5] text-white'
               }`}
             >
               {loading ? (

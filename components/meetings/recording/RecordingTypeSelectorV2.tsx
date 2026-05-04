@@ -156,7 +156,7 @@ export const RecordingTypeSelectorV2: React.FC<RecordingTypeSelectorV2Props> = (
     return (
       <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[400] flex items-center justify-center p-4">
         <div 
-          className={`bg-zinc-900 rounded-3xl max-w-lg w-full border border-white/10 shadow-2xl overflow-hidden transform transition-all duration-300 ${
+          className={`bg-white/60 rounded-3xl max-w-lg w-full border border-[rgba(46,150,245,0.14)] shadow-2xl overflow-hidden transform transition-all duration-300 ${
             isAnimating ? 'scale-95 opacity-0' : 'scale-100 opacity-100'
           }`}
         >
@@ -176,7 +176,7 @@ export const RecordingTypeSelectorV2: React.FC<RecordingTypeSelectorV2Props> = (
               </div>
               <div>
                 <h3 className="text-white font-bold text-xl">{config.titulo}</h3>
-                <p className="text-white/80 text-sm">Análisis conductual avanzado</p>
+                <p className="text-[#0B2240] text-sm">Análisis conductual avanzado</p>
               </div>
             </div>
           </div>
@@ -186,7 +186,7 @@ export const RecordingTypeSelectorV2: React.FC<RecordingTypeSelectorV2Props> = (
             {/* Selector de persona a evaluar */}
             {evaluadosDisponibles.length > 0 ? (
               <div className="mb-5">
-                <label className="block text-white/60 text-xs font-semibold uppercase tracking-wider mb-3">
+                <label className="block text-[#4A6485] text-xs font-semibold uppercase tracking-wider mb-3">
                   🎯 Selecciona a la persona a evaluar
                 </label>
                 <div className="grid gap-2">
@@ -196,21 +196,21 @@ export const RecordingTypeSelectorV2: React.FC<RecordingTypeSelectorV2Props> = (
                       onClick={() => setSelectedEvaluado(usuario.id)}
                       className={`p-4 rounded-xl text-left transition-all flex items-center gap-3 ${
                         selectedEvaluado === usuario.id
-                          ? 'bg-indigo-600/30 border-2 border-indigo-500 text-white'
-                          : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10'
+                          ? 'bg-[#2E96F5]/30 border-2 border-[#2E96F5] text-white'
+                          : 'bg-white/50 border border-[rgba(46,150,245,0.14)] text-[#1B3A5C] hover:bg-[rgba(46,150,245,0.08)]'
                       }`}
                     >
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold ${
-                        selectedEvaluado === usuario.id ? 'bg-indigo-500' : 'bg-white/10'
+                        selectedEvaluado === usuario.id ? 'bg-[#2E96F5]' : 'bg-[rgba(46,150,245,0.08)]'
                       }`}>
                         {usuario.nombre.charAt(0).toUpperCase()}
                       </div>
                       <div>
                         <p className="font-semibold">{usuario.nombre}</p>
-                        <p className="text-xs text-white/40">Recibirá solicitud de consentimiento</p>
+                        <p className="text-xs text-[#9CB0CA]">Recibirá solicitud de consentimiento</p>
                       </div>
                       {selectedEvaluado === usuario.id && (
-                        <svg className="w-5 h-5 ml-auto text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-5 h-5 ml-auto text-[#1E86E5]" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                         </svg>
                       )}
@@ -263,7 +263,7 @@ export const RecordingTypeSelectorV2: React.FC<RecordingTypeSelectorV2Props> = (
           <div className="p-6 pt-0 flex gap-3">
             <button
               onClick={handleDisclaimerCancel}
-              className="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 rounded-xl text-white/80 text-sm transition-all border border-white/10"
+              className="flex-1 px-4 py-3 bg-white/50 hover:bg-[rgba(46,150,245,0.08)] rounded-xl text-[#0B2240] text-sm transition-all border border-[rgba(46,150,245,0.14)]"
             >
               Cancelar
             </button>
@@ -273,7 +273,7 @@ export const RecordingTypeSelectorV2: React.FC<RecordingTypeSelectorV2Props> = (
               className={`flex-1 px-4 py-3 rounded-xl text-white text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
                 (evaluadosDisponibles.length === 0 || selectedEvaluado)
                   ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 shadow-lg shadow-green-500/25 cursor-pointer'
-                  : 'bg-white/10 cursor-not-allowed opacity-50'
+                  : 'bg-[rgba(46,150,245,0.08)] cursor-not-allowed opacity-50'
               }`}
             >
               {isSendingConsent ? (
@@ -295,17 +295,17 @@ export const RecordingTypeSelectorV2: React.FC<RecordingTypeSelectorV2Props> = (
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[400] flex items-center justify-center p-4">
       <div 
-        className={`bg-zinc-900/95 rounded-3xl max-w-3xl w-full border border-white/10 shadow-2xl overflow-hidden transform transition-all duration-300 ${
+        className={`bg-white/75 backdrop-blur-[28px] rounded-3xl max-w-3xl w-full border border-[rgba(46,150,245,0.14)] shadow-2xl overflow-hidden transform transition-all duration-300 ${
           isAnimating ? 'scale-95 opacity-0' : 'scale-100 opacity-100'
         }`}
       >
         {/* Header */}
-        <div className="p-6 border-b border-white/10">
+        <div className="p-6 border-b border-[rgba(46,150,245,0.14)]">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-white font-bold text-xl mb-1">Iniciar Grabación</h3>
-              <p className="text-white/50 text-sm flex items-center gap-2">
-                <span className="px-2 py-0.5 bg-white/10 rounded-full text-xs">
+              <p className="text-[#6B83A0] text-sm flex items-center gap-2">
+                <span className="px-2 py-0.5 bg-[rgba(46,150,245,0.08)] rounded-full text-xs">
                   {cargoInfo.icono} {cargoInfo.nombre}
                 </span>
                 <span>•</span>
@@ -319,7 +319,7 @@ export const RecordingTypeSelectorV2: React.FC<RecordingTypeSelectorV2Props> = (
             </div>
             <button
               onClick={handleClose}
-              className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 text-white/60 hover:text-white transition-all"
+              className="w-10 h-10 rounded-xl bg-white/50 flex items-center justify-center hover:bg-[rgba(46,150,245,0.08)] text-[#4A6485] hover:text-[#0B2240] transition-all"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -331,8 +331,8 @@ export const RecordingTypeSelectorV2: React.FC<RecordingTypeSelectorV2Props> = (
         {/* Opciones con análisis conductual */}
         {puedeAnalizar && (
           <div className="p-6">
-            <h4 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-4 flex items-center gap-2">
-              <span className="w-5 h-5 rounded bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-[10px]">🧠</span>
+            <h4 className="text-[#4A6485] text-xs font-semibold uppercase tracking-wider mb-4 flex items-center gap-2">
+              <span className="w-5 h-5 rounded bg-gradient-to-br from-[#4FB0FF] to-[#2E96F5] flex items-center justify-center text-[10px]">🧠</span>
               Con Análisis Conductual
             </h4>
             
@@ -355,7 +355,7 @@ export const RecordingTypeSelectorV2: React.FC<RecordingTypeSelectorV2Props> = (
                     className={`group relative p-5 rounded-2xl border text-left transition-all duration-300 overflow-hidden ${
                       isHovered 
                         ? `border-transparent bg-gradient-to-br ${config.color} shadow-lg` 
-                        : 'border-white/10 bg-white/5 hover:border-white/20'
+                        : 'border-[rgba(46,150,245,0.14)] bg-white/50 hover:border-[rgba(46,150,245,0.16)]'
                     }`}
                     style={{
                       boxShadow: isHovered ? `0 20px 40px -15px ${config.colorAccent}40` : undefined
@@ -379,7 +379,7 @@ export const RecordingTypeSelectorV2: React.FC<RecordingTypeSelectorV2Props> = (
                       </h4>
                       
                       {/* Descripción */}
-                      <p className={`text-sm mb-4 transition-colors ${isHovered ? 'text-white/90' : 'text-white/50'}`}>
+                      <p className={`text-sm mb-4 transition-colors ${isHovered ? 'text-[#0B2240]' : 'text-[#6B83A0]'}`}>
                         {config.descripcion}
                       </p>
 
@@ -390,8 +390,8 @@ export const RecordingTypeSelectorV2: React.FC<RecordingTypeSelectorV2Props> = (
                             key={i}
                             className={`px-2 py-1 rounded-lg text-xs transition-all duration-300 ${
                               isHovered 
-                                ? 'bg-white/20 text-white' 
-                                : 'bg-white/5 text-white/40'
+                                ? 'bg-[rgba(46,150,245,0.08)] text-[#0B2240]' 
+                                : 'bg-white/50 text-[#9CB0CA]'
                             }`}
                             style={{ transitionDelay: `${i * 50}ms` }}
                           >
@@ -400,7 +400,7 @@ export const RecordingTypeSelectorV2: React.FC<RecordingTypeSelectorV2Props> = (
                         ))}
                         {config.metricas.length > 3 && (
                           <span className={`px-2 py-1 rounded-lg text-xs ${
-                            isHovered ? 'bg-white/10 text-white/70' : 'bg-white/5 text-white/30'
+                            isHovered ? 'bg-[rgba(46,150,245,0.08)] text-[#1B3A5C]' : 'bg-white/50 text-[#9CB0CA]'
                           }`}>
                             +{config.metricas.length - 3}
                           </span>
@@ -441,10 +441,10 @@ export const RecordingTypeSelectorV2: React.FC<RecordingTypeSelectorV2Props> = (
           <div className="px-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/10"></div>
+                <div className="w-full border-t border-[rgba(46,150,245,0.14)]"></div>
               </div>
               <div className="relative flex justify-center">
-                <span className="bg-zinc-900 px-4 text-xs text-white/30 uppercase tracking-wider">o</span>
+                <span className="bg-white/60 px-4 text-xs text-[#9CB0CA] uppercase tracking-wider">o</span>
               </div>
             </div>
           </div>
@@ -454,16 +454,16 @@ export const RecordingTypeSelectorV2: React.FC<RecordingTypeSelectorV2Props> = (
         <div className="p-6">
           <button
             onClick={handleGrabarSinAnalisis}
-            className="w-full p-4 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all text-left flex items-center gap-4 group"
+            className="w-full p-4 rounded-2xl border border-[rgba(46,150,245,0.14)] bg-white/50 hover:bg-[rgba(46,150,245,0.08)] transition-all text-left flex items-center gap-4 group"
           >
-            <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <div className="w-12 h-12 rounded-xl bg-[rgba(46,150,245,0.08)] flex items-center justify-center group-hover:scale-110 transition-transform">
               <span className="text-2xl">📝</span>
             </div>
             <div className="flex-1">
               <h4 className="text-white font-semibold mb-0.5">Solo Transcripción</h4>
-              <p className="text-white/50 text-sm">Grabar sin análisis conductual - Solo texto de la reunión</p>
+              <p className="text-[#6B83A0] text-sm">Grabar sin análisis conductual - Solo texto de la reunión</p>
             </div>
-            <div className="text-white/30 group-hover:text-white/60 transition-colors">
+            <div className="text-[#6B83A0] group-hover:text-[#4A6485] transition-colors">
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
@@ -473,11 +473,11 @@ export const RecordingTypeSelectorV2: React.FC<RecordingTypeSelectorV2Props> = (
 
         {/* Footer info */}
         <div className="px-6 pb-6">
-          <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-            <div className="flex items-start gap-3 text-white/40 text-xs">
+          <div className="p-4 rounded-xl bg-white/50 border border-[rgba(46,150,245,0.14)]">
+            <div className="flex items-start gap-3 text-[#9CB0CA] text-xs">
               <span className="text-lg">🔒</span>
               <p className="leading-relaxed">
-                <strong className="text-white/60">Privacidad garantizada:</strong> Todo el análisis facial y corporal se procesa localmente en tu navegador. 
+                <strong className="text-[#4A6485]">Privacidad garantizada:</strong> Todo el análisis facial y corporal se procesa localmente en tu navegador. 
                 No se envían datos biométricos a servidores externos. Solo la transcripción y resumen se almacenan.
               </p>
             </div>

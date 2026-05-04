@@ -1,6 +1,6 @@
 /**
- * Input Component - Design System
- * Input con efecto glassmorphism
+ * Input — Aurora GLASS Design System.
+ * Sin hardcoding de colores. Estilos en `styles/aurora-glass.css`.
  */
 
 import React from 'react';
@@ -18,43 +18,48 @@ export const Input: React.FC<InputProps> = ({
   icon,
   fullWidth = true,
   className = '',
+  id,
   ...props
 }) => {
+  const inputId = id ?? props.name ?? undefined;
+
+  const inputClasses = [
+    'ag-input',
+    icon ? 'ag-input--with-icon' : '',
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <div className={fullWidth ? 'w-full' : ''}>
       {label && (
-        <label className="block text-[10px] lg:text-[9px] font-black uppercase tracking-widest text-zinc-500 mb-2">
+        <label className="ag-label" htmlFor={inputId}>
           {label}
         </label>
       )}
-      <div className="relative group">
+      <div className="ag-field">
         {icon && (
-          <div className="absolute inset-y-0 left-4 lg:left-3 flex items-center pointer-events-none opacity-30 group-focus-within:opacity-100 transition-opacity">
+          <span className="ag-field__icon" aria-hidden="true">
             {icon}
-          </div>
+          </span>
         )}
         <input
-          className={`
-            w-full
-            bg-black/40 
-            border ${error ? 'border-red-500/50' : 'border-white/5'}
-            rounded-xl lg:rounded-lg
-            ${icon ? 'pl-12 lg:pl-10' : 'pl-4 lg:pl-3'} 
-            pr-4 lg:pr-3 
-            py-4 lg:py-3 md:py-2.5
-            text-sm lg:text-xs
-            text-white placeholder-zinc-600
-            focus:outline-none 
-            focus:ring-2 focus:ring-violet-500/50 
-            focus:border-violet-500/50 
-            transition-all
-            ${className}
-          `.trim().replace(/\s+/g, ' ')}
+          id={inputId}
+          className={inputClasses}
+          aria-invalid={!!error || undefined}
           {...props}
+          style={
+            error
+              ? { borderColor: 'var(--cw-error)', ...(props.style ?? {}) }
+              : props.style
+          }
         />
       </div>
       {error && (
-        <p className="mt-1.5 text-[10px] lg:text-[9px] text-red-400 font-medium">{error}</p>
+        <p className="mt-1.5 text-xs font-medium" style={{ color: 'var(--cw-error)' }}>
+          {error}
+        </p>
       )}
     </div>
   );

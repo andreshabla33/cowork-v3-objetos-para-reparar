@@ -45,7 +45,7 @@ export const LobbyMediaControls: React.FC<LobbyMediaControlsProps> = ({
 }) => (
   <div className="flex justify-center px-3 pb-3 pt-2 sm:px-4 sm:pb-4 sm:pt-3">
     {/* Pill semitransparente que contiene los controles */}
-    <div className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-black/40 px-3 py-2 shadow-2xl backdrop-blur-xl sm:gap-3 sm:px-4 sm:py-2.5">
+    <div className="flex items-center gap-2 rounded-full border border-[rgba(46,150,245,0.14)] bg-[rgba(46,150,245,0.08)] px-3 py-2 shadow-2xl backdrop-blur-xl sm:gap-3 sm:px-4 sm:py-2.5">
       <SharedAudioDeviceControl
         isEnabled={micEnabled}
         settings={audioSettings ?? defaultAudioSettings}
