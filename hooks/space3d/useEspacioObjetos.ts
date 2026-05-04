@@ -22,6 +22,13 @@ import {
 } from '@/src/core/domain/entities/espacio3d/enriquecimientoCatalogo';
 import { useObjetosRealtime } from './useObjetosRealtime';
 
+// Logger module-level. CRÍTICO: NO crear logger.child() dentro del componente
+// — `logger.child()` retorna nueva instancia cada llamada, y si entra a las
+// deps de algún useCallback/useEffect dispara un infinite re-render loop
+// (regresión observada 2026-05-04: ERR_INSUFFICIENT_RESOURCES + 503 al abrir
+// modal por fetch infinito de espacio_objetos / catalogo_objetos_3d).
+const log = logger.child('useEspacioObjetos');
+
 // ─── Tipo canónico desde dominio ──────────────────────────────────────────────
 // CLEAN-ARCH-F1: EspacioObjeto es una entidad de dominio, no un detalle del hook.
 // La definición canónica vive en src/core/domain/entities/espacio3d/ObjetoEspacio3D.ts
@@ -71,7 +78,6 @@ export function useEspacioObjetos(
   userId: string | null,
   empresaId: string | null = null
 ): UseEspacioObjetosReturn {
-  const log = logger.child('useEspacioObjetos');
   const repo = useDI().espacioObjetos;
   const [objetos, setObjetos] = useState<EspacioObjeto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,7 +108,7 @@ export function useEspacioObjetos(
     } finally {
       setLoading(false);
     }
-  }, [espacioId, userId, repo, log]);
+  }, [espacioId, userId, repo]);
 
   // Fetch inicial al montar / cambiar espacio
   useEffect(() => {
@@ -196,7 +202,7 @@ export function useEspacioObjetos(
     });
 
     return nuevoObjeto;
-  }, [empresaId, espacioId, userId, repo, log]);
+  }, [empresaId, espacioId, userId, repo]);
 
   const reemplazarObjetoDesdeCatalogo = useCallback(async (
     objetoId: string,
@@ -260,7 +266,7 @@ export function useEspacioObjetos(
     const reemplazado = enriquecerObjetoEspacio(data, catalogoIndiceRef.current);
     setObjetos((prev) => prev.map((obj) => (obj.id === objetoId ? reemplazado : obj)));
     return reemplazado;
-  }, [repo, log]);
+  }, [repo]);
 
   // Reclamar un objeto (escritorio libre → asignar owner_id)
   // Enforce: un solo escritorio por usuario — libera el anterior si existe
@@ -290,7 +296,7 @@ export function useEspacioObjetos(
       await guardarSpawnPersonal(objeto.posicion_x, objeto.posicion_z);
     }
     return true;
-  }, [userId, espacioId, repo, log]);
+  }, [userId, espacioId, repo]);
 
   // Liberar un objeto (quitar owner_id)
   const liberarObjeto = useCallback(async (objetoId: string): Promise<boolean> => {
@@ -311,7 +317,7 @@ export function useEspacioObjetos(
     }
     setSpawnPersonal({ spawn_x: null, spawn_z: null });
     return liberado;
-  }, [userId, espacioId, repo, log]);
+  }, [userId, espacioId, repo]);
 
   const actualizarTransformacionObjeto = useCallback(async (objetoId: string, cambios: TransformacionObjetoInput): Promise<boolean> => {
     const objetoPrevio = objetosRef.current.find((obj) => obj.id === objetoId);
@@ -345,7 +351,7 @@ export function useEspacioObjetos(
       setObjetos((prev) => prev.map((obj) => (obj.id === objetoId ? objetoPrevio : obj)));
       return false;
     }
-  }, [repo, log]);
+  }, [repo]);
 
   // Mover un objeto (actualizar posición)
   const moverObjeto = useCallback(async (objetoId: string, x: number, y: number, z: number): Promise<boolean> => {
@@ -386,7 +392,7 @@ export function useEspacioObjetos(
       }
       return false;
     }
-  }, [repo, log]);
+  }, [repo]);
 
   const duplicarObjetos = useCallback(async (objetosList: EspacioObjeto[]): Promise<EspacioObjeto[]> => {
     if (!espacioId || !userId || objetosList.length === 0) return [];
@@ -437,7 +443,7 @@ export function useEspacioObjetos(
     });
 
     return nuevosObjetos;
-  }, [espacioId, userId, repo, log]);
+  }, [espacioId, userId, repo]);
 
   const restaurarObjeto = useCallback(async (objeto: EspacioObjeto): Promise<EspacioObjeto | null> => {
     const snapshotPrevio = [...objetosRef.current];
@@ -495,7 +501,7 @@ export function useEspacioObjetos(
     });
 
     return restaurado;
-  }, [repo, log]);
+  }, [repo]);
 
   // Guardar spawn personal
   const guardarSpawnPersonal = useCallback(async (x: number, z: number): Promise<boolean> => {
@@ -511,7 +517,7 @@ export function useEspacioObjetos(
       });
       return false;
     }
-  }, [espacioId, userId, repo, log]);
+  }, [espacioId, userId, repo]);
 
   return {
     objetos,
