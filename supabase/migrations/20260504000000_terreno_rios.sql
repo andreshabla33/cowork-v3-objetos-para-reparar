@@ -91,3 +91,74 @@ CREATE POLICY "espacio_terreno_delete" ON espacio_terreno FOR DELETE USING (
     AND me.rol IN ('owner', 'admin', 'super_admin')
   )
 );
+
+-- =====================================================
+-- STORAGE POLICIES — bucket 'heightmaps'
+-- Bucket creado manualmente (public=true). Path: '{espacio_id}/{filename}.png'.
+-- Upsert requiere SELECT + INSERT + UPDATE (docs oficiales Supabase Storage).
+-- =====================================================
+
+DROP POLICY IF EXISTS "heightmaps_select" ON storage.objects;
+CREATE POLICY "heightmaps_select" ON storage.objects FOR SELECT
+TO authenticated
+USING (
+  bucket_id = 'heightmaps'
+  AND EXISTS (
+    SELECT 1 FROM miembros_espacio me
+    WHERE me.espacio_id = ((storage.foldername(name))[1])::uuid
+    AND me.usuario_id = auth.uid()
+    AND me.aceptado = true
+  )
+);
+
+DROP POLICY IF EXISTS "heightmaps_insert" ON storage.objects;
+CREATE POLICY "heightmaps_insert" ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'heightmaps'
+  AND EXISTS (
+    SELECT 1 FROM miembros_espacio me
+    WHERE me.espacio_id = ((storage.foldername(name))[1])::uuid
+    AND me.usuario_id = auth.uid()
+    AND me.aceptado = true
+    AND me.rol IN ('owner', 'admin', 'super_admin')
+  )
+);
+
+DROP POLICY IF EXISTS "heightmaps_update" ON storage.objects;
+CREATE POLICY "heightmaps_update" ON storage.objects FOR UPDATE
+TO authenticated
+USING (
+  bucket_id = 'heightmaps'
+  AND EXISTS (
+    SELECT 1 FROM miembros_espacio me
+    WHERE me.espacio_id = ((storage.foldername(name))[1])::uuid
+    AND me.usuario_id = auth.uid()
+    AND me.aceptado = true
+    AND me.rol IN ('owner', 'admin', 'super_admin')
+  )
+)
+WITH CHECK (
+  bucket_id = 'heightmaps'
+  AND EXISTS (
+    SELECT 1 FROM miembros_espacio me
+    WHERE me.espacio_id = ((storage.foldername(name))[1])::uuid
+    AND me.usuario_id = auth.uid()
+    AND me.aceptado = true
+    AND me.rol IN ('owner', 'admin', 'super_admin')
+  )
+);
+
+DROP POLICY IF EXISTS "heightmaps_delete" ON storage.objects;
+CREATE POLICY "heightmaps_delete" ON storage.objects FOR DELETE
+TO authenticated
+USING (
+  bucket_id = 'heightmaps'
+  AND EXISTS (
+    SELECT 1 FROM miembros_espacio me
+    WHERE me.espacio_id = ((storage.foldername(name))[1])::uuid
+    AND me.usuario_id = auth.uid()
+    AND me.aceptado = true
+    AND me.rol IN ('owner', 'admin', 'super_admin')
+  )
+);
