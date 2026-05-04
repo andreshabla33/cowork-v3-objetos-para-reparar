@@ -17,7 +17,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTexture } from '@react-three/drei';
 import { HeightfieldCollider, RigidBody } from '@react-three/rapier';
-import { RepeatWrapping } from 'three';
+import { ClampToEdgeWrapping } from 'three';
 import {
   extractHeightsFromTexture,
   HeightmapInvalidoError,
@@ -73,10 +73,11 @@ function TerrainHeightfield({
   const texture = useTexture(url);
   const [heights, setHeights] = useState<Float32Array | null>(null);
 
-  // Configura wrapping de la textura una vez
+  // ClampToEdge evita patrones repetidos artificiales en los bordes del
+  // terreno (queremos un solo "rectángulo" cubriendo el espacio, no un tile).
   useEffect(() => {
-    texture.wrapS = RepeatWrapping;
-    texture.wrapT = RepeatWrapping;
+    texture.wrapS = ClampToEdgeWrapping;
+    texture.wrapT = ClampToEdgeWrapping;
     texture.needsUpdate = true;
   }, [texture]);
 
@@ -103,22 +104,31 @@ function TerrainHeightfield({
     [heights],
   );
 
-  // Centrado: el heightfield collider de Rapier se ancla en el centro del rectángulo escala.x×escala.z
+  // El heightmap empuja vértices solo hacia arriba (rango [0, escala.y]).
+  // Para que el "valle" (R=0) quede al nivel del suelo (Y=0) y las cumbres
+  // crezcan hacia arriba, mantenemos position Y=0 y displacementBias=0.
+  // Si el centro del PNG no es exactamente 0, displacementBias permite ajustar.
   const positionY = 0;
 
   return (
     <>
-      {/* VISUAL — 1 draw call, displacement en GPU */}
+      {/* VISUAL — 1 draw call, displacement en GPU.
+          NO usamos el heightmap como `map` (sería grayscale feo); solo como
+          `displacementMap`. El color base es verde tierra por defecto. */}
       <mesh rotation-x={-Math.PI / 2} position={[0, positionY, 0]} receiveShadow>
         <planeGeometry args={[escala.x, escala.z, ncols - 1, nrows - 1]} />
         <meshStandardMaterial
-          map={texture}
+          color="#6e8b50"
           displacementMap={texture}
           displacementScale={escala.y}
+          roughness={0.95}
+          metalness={0.0}
         />
       </mesh>
 
-      {/* FÍSICO — solo cuando heights estén listos. RigidBody fixed = no se mueve. */}
+      {/* FÍSICO — solo cuando heights estén listos. RigidBody fixed = no se mueve.
+          El HeightfieldCollider usa el mismo Y=0 que la mesh, así que la
+          colisión está alineada con el visual displacement. */}
       {heightsArray && (
         <RigidBody type="fixed" colliders={false} position={[0, positionY, 0]}>
           <HeightfieldCollider args={[nrows - 1, ncols - 1, heightsArray, escala]} />
