@@ -82,6 +82,17 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({
     return catalog.availableObjects.filter((o) => o.categoria === catalog.selectedCategory);
   }, [catalog.availableObjects, catalog.selectedCategory]);
 
+  // Sincroniza tab → categoría válida. Cuando el user entra al tab "objetos"
+  // pero `selectedCategory` quedó en 'avatares' (default del hook) o en una
+  // categoría que ya no existe en el catálogo cargado, resetea a 'todos'.
+  // Sin esto, el filtro retorna [] y la grid se ve vacía aunque haya objetos.
+  useEffect(() => {
+    if (activeTab !== 'objetos') return;
+    if (catalog.availableObjects.length === 0) return;
+    if (objectCategories.includes(catalog.selectedCategory)) return;
+    catalog.selectCategory('todos');
+  }, [activeTab, catalog, objectCategories]);
+
   // Auto-select first object if current selection not in filtered list
   useEffect(() => {
     if (filteredObjects.length === 0) return;
