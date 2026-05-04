@@ -293,28 +293,30 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({
           </button>
         </div>
 
-        <PreviewCanvas
-          cameraFov={30}
-          cameraPosition={[0, 0.8, 5]}
-          captureToken={captureRequest?.kind === 'avatar' ? captureRequest.token : null}
-          fallback={null}
-          onCapture={handlePreviewCapture}
-          frameloop="always"
-          pixelRatio={[1, 1.5]}
-          shadows={false}
-        >
-          <AvatarPreviewScene avatarConfig={catalog.previewConfig || avatarConfig} />
-        </PreviewCanvas>
-        {/* Overlay de loading durante el primer fetch de avatar.
-            Sin esto, GLTFAvatar resolvería a DEFAULT_MODEL_URL cuando ambos
-            configs son null, mostrando un avatar incorrecto por ~1-2s antes
-            del real (regresión visual reportada 2026-05-04). */}
-        {!catalog.previewConfig && !avatarConfig && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#0B2240]/30 backdrop-blur-sm pointer-events-none">
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-8 h-8 border-2 border-[#4FB0FF] border-t-transparent rounded-full animate-spin" />
-              <span className="text-[10px] text-white/60 font-medium uppercase tracking-wider">
-                Cargando avatar
+        {/* Render condicional del Canvas: NO montar GLTFAvatar mientras
+            ambos configs son null. Si lo montamos con null, GLTFAvatar resuelve
+            a DEFAULT_MODEL_URL (avatar default builtin) y lo muestra durante
+            ~1-2s hasta que llega el avatar real → flash visual.
+            La condición usa el config efectivo (mismo que pasa el Canvas). */}
+        {(catalog.previewConfig || avatarConfig) ? (
+          <PreviewCanvas
+            cameraFov={30}
+            cameraPosition={[0, 0.8, 5]}
+            captureToken={captureRequest?.kind === 'avatar' ? captureRequest.token : null}
+            fallback={null}
+            onCapture={handlePreviewCapture}
+            frameloop="always"
+            pixelRatio={[1, 1.5]}
+            shadows={false}
+          >
+            <AvatarPreviewScene avatarConfig={catalog.previewConfig || avatarConfig} />
+          </PreviewCanvas>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#0B2240]/40 to-[#1B3A5C]/20">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-10 h-10 border-2 border-[#4FB0FF] border-t-transparent rounded-full animate-spin" />
+              <span className="text-[10px] text-white/70 font-medium uppercase tracking-wider">
+                Cargando avatar…
               </span>
             </div>
           </div>
