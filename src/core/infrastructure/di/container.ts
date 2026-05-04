@@ -28,6 +28,7 @@ import type { IEnviarInvitacionRepository } from '../../domain/ports/IEnviarInvi
 import type { IOnboardingRepository } from '../../domain/ports/IOnboardingRepository';
 import type { IConfiguracionPerimetroRepository } from '../../domain/ports/IConfiguracionPerimetroRepository';
 import type { ITerrenoRepository } from '../../domain/ports/ITerrenoRepository';
+import type { IEspacioObjetosRepository } from '../../domain/ports/IEspacioObjetosRepository';
 
 // ─── Tipo del contenedor ──────────────────────────────────────────────────────
 
@@ -64,6 +65,8 @@ export interface DIContainer {
   configuracionPerimetro: IConfiguracionPerimetroRepository;
   /** Terreno (suelo + montañas via heightmap + ríos) por espacio */
   terreno: ITerrenoRepository;
+  /** Objetos 3D persistentes del espacio (CRUD + claim/release + realtime) */
+  espacioObjetos: IEspacioObjetosRepository;
 }
 
 // ─── Singleton ────────────────────────────────────────────────────────────────
@@ -97,6 +100,7 @@ export async function getDIContainer(): Promise<DIContainer> {
     { OnboardingSupabaseRepository },
     { ConfiguracionPerimetroSupabaseRepository },
     { TerrenoSupabaseRepository },
+    { EspacioObjetosSupabaseRepository },
   ] = await Promise.all([
     import('../adapters/ThreeTextureFactoryAdapter'),
     import('../adapters/RenderingOptimizationAdapter'),
@@ -114,6 +118,7 @@ export async function getDIContainer(): Promise<DIContainer> {
     import('../adapters/OnboardingSupabaseRepository'),
     import('../adapters/ConfiguracionPerimetroSupabaseRepository'),
     import('../adapters/TerrenoSupabaseRepository'),
+    import('../adapters/EspacioObjetosSupabaseRepository'),
   ]);
 
   _container = {
@@ -133,6 +138,7 @@ export async function getDIContainer(): Promise<DIContainer> {
     onboarding: new OnboardingSupabaseRepository(),
     configuracionPerimetro: new ConfiguracionPerimetroSupabaseRepository(),
     terreno: new TerrenoSupabaseRepository(),
+    espacioObjetos: new EspacioObjetosSupabaseRepository(),
   };
 
   return _container;

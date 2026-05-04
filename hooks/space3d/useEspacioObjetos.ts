@@ -5,12 +5,20 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
-import type { RealtimeChannel } from '@supabase/supabase-js';
 import { logger } from '@/lib/logger';
 import type { CatalogoObjeto3D } from '@/types/objetos3d';
 import { obtenerPlantillaZona } from '@/src/core/domain/entities/plantillasEspacio';
 import { ResolverModeloUrlObjetoUseCase } from '@/src/core/application/usecases/ResolverModeloUrlObjetoUseCase';
+import { useDI } from '@/src/core/infrastructure/di/DIProvider';
+import type {
+  CrearObjetoInput,
+  ReemplazarObjetoPayload,
+  TransformacionObjetoPatch,
+  UpsertObjetoPayload,
+  SpawnPersonal as SpawnPersonalPort,
+  CatalogoObjeto3DRuntime,
+} from '@/src/core/domain/ports/IEspacioObjetosRepository';
+import { useObjetosRealtime } from './useObjetosRealtime';
 
 // ─── Tipo canónico desde dominio ──────────────────────────────────────────────
 // CLEAN-ARCH-F1: EspacioObjeto es una entidad de dominio, no un detalle del hook.
@@ -18,10 +26,8 @@ import { ResolverModeloUrlObjetoUseCase } from '@/src/core/application/usecases/
 import type { ObjetoEspacio3D as EspacioObjeto } from '@/src/core/domain/entities/espacio3d';
 export type { EspacioObjeto };
 
-export interface SpawnPersonal {
-  spawn_x: number | null;
-  spawn_z: number | null;
-}
+// Re-export del tipo del port para mantener API pública del hook estable.
+export type SpawnPersonal = SpawnPersonalPort;
 
 export type TransformacionObjetoInput = Partial<Pick<
   EspacioObjeto,
@@ -54,36 +60,6 @@ export interface UseEspacioObjetosReturn {
   restaurarObjeto: (objeto: EspacioObjeto) => Promise<EspacioObjeto | null>;
   guardarSpawnPersonal: (x: number, z: number) => Promise<boolean>;
 }
-
-type CatalogoObjeto3DRuntime = Pick<
-  CatalogoObjeto3D,
-  | 'id'
-  | 'tipo'
-  | 'modelo_url'
-  | 'built_in_geometry'
-  | 'built_in_color'
-  | 'ancho'
-  | 'alto'
-  | 'profundidad'
-  | 'es_sentable'
-  | 'sit_offset_x'
-  | 'sit_offset_y'
-  | 'sit_offset_z'
-  | 'sit_rotation_y'
-  | 'es_interactuable'
-  | 'interaccion_tipo'
-  | 'interaccion_radio'
-  | 'interaccion_emoji'
-  | 'interaccion_label'
-  | 'interaccion_config'
-  | 'configuracion_geometria'
-  | 'es_reclamable'
-  | 'premium'
-  | 'escala_normalizacion'
-  | 'es_superficie'
-> & {
-  slug?: string | null;
-};
 
 const crearClaveModelo = (valor?: string | null) => {
   return (valor || '').trim().toLowerCase();
@@ -229,10 +205,10 @@ export function useEspacioObjetos(
   empresaId: string | null = null
 ): UseEspacioObjetosReturn {
   const log = logger.child('useEspacioObjetos');
+  const repo = useDI().espacioObjetos;
   const [objetos, setObjetos] = useState<EspacioObjeto[]>([]);
   const [loading, setLoading] = useState(true);
   const [spawnPersonal, setSpawnPersonal] = useState<SpawnPersonal>({ spawn_x: null, spawn_z: null });
-  const subscriptionRef = useRef<RealtimeChannel | null>(null);
   const catalogoIndiceRef = useRef<ReturnType<typeof crearIndiceCatalogo>>(crearIndiceCatalogo([]));
   const objetosRef = useRef<EspacioObjeto[]>(objetos);
   objetosRef.current = objetos;
@@ -245,95 +221,58 @@ export function useEspacioObjetos(
     }
 
     setLoading(true);
-    const [{ data, error }, { data: catalogoData, error: catalogoError }] = await Promise.all([
-      supabase
-        .from('espacio_objetos')
-        .select('*')
-        .eq('espacio_id', espacioId),
-      supabase
-        .from('catalogo_objetos_3d')
-        .select('id, slug, tipo, modelo_url, built_in_geometry, built_in_color, ancho, alto, profundidad, es_sentable, sit_offset_x, sit_offset_y, sit_offset_z, sit_rotation_y, es_interactuable, interaccion_tipo, interaccion_radio, interaccion_emoji, interaccion_label, interaccion_config, configuracion_geometria, es_reclamable, premium, escala_normalizacion, es_superficie'),
-    ]);
-
-    if (!catalogoError && catalogoData) {
-      catalogoIndiceRef.current = crearIndiceCatalogo(catalogoData as CatalogoObjeto3DRuntime[]);
-    } else if (catalogoError) {
-      log.error('Error fetching catálogo', { error: catalogoError instanceof Error ? catalogoError.message : String(catalogoError) });
+    try {
+      const [data, catalogoData] = await Promise.all([
+        repo.listarPorEspacio(espacioId),
+        repo.obtenerCatalogoRuntime(),
+      ]);
+      catalogoIndiceRef.current = crearIndiceCatalogo(catalogoData);
+      setObjetos(data.map((objeto) => enriquecerObjetoEspacio(objeto, catalogoIndiceRef.current)));
+    } catch (err: unknown) {
+      log.error('Error fetching objetos+catálogo', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setLoading(false);
     }
+  }, [espacioId, userId, repo, log]);
 
-    if (!error && data) {
-      setObjetos((data as EspacioObjeto[]).map((objeto) => enriquecerObjetoEspacio(objeto, catalogoIndiceRef.current)));
-    } else {
-      log.error('Error fetching objetos', { error: error instanceof Error ? error.message : String(error) });
-    }
-
-    setLoading(false);
-  }, [espacioId, userId]);
-
-  // Fetch objetos del espacio
+  // Fetch inicial al montar / cambiar espacio
   useEffect(() => {
     void fetchObjetos();
+  }, [fetchObjetos]);
 
-    if (!espacioId || !userId) {
-      return;
-    }
-
-    // Suscripción realtime para cambios en objetos del espacio
-    subscriptionRef.current = supabase
-      .channel(`espacio_objetos:${espacioId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'espacio_objetos',
-          filter: `espacio_id=eq.${espacioId}`,
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setObjetos((prev) => {
-              const nuevoObjeto = enriquecerObjetoEspacio(payload.new as EspacioObjeto, catalogoIndiceRef.current);
-              if (prev.some((obj) => obj.id === nuevoObjeto.id)) return prev;
-              return [...prev, nuevoObjeto];
-            });
-          } else if (payload.eventType === 'UPDATE') {
-            setObjetos((prev) =>
-              prev.map((obj) => (obj.id === (payload.new as EspacioObjeto).id ? enriquecerObjetoEspacio(payload.new as EspacioObjeto, catalogoIndiceRef.current) : obj))
-            );
-          } else if (payload.eventType === 'DELETE') {
-            const eliminadoId = (payload.old as Record<string, unknown>)?.id as string;
-            setObjetos((prev) => prev.filter((obj) => obj.id !== eliminadoId));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      if (subscriptionRef.current) {
-        supabase.removeChannel(subscriptionRef.current);
-      }
-    }
-  }, [espacioId, fetchObjetos, userId]);
+  // Realtime — extraído al hook dedicado `useObjetosRealtime`.
+  useObjetosRealtime(espacioId && userId ? espacioId : null, {
+    onInsert: (raw) => {
+      setObjetos((prev) => {
+        const nuevo = enriquecerObjetoEspacio(raw, catalogoIndiceRef.current);
+        if (prev.some((o) => o.id === nuevo.id)) return prev;
+        return [...prev, nuevo];
+      });
+    },
+    onUpdate: (raw) => {
+      setObjetos((prev) =>
+        prev.map((o) => (o.id === raw.id ? enriquecerObjetoEspacio(raw, catalogoIndiceRef.current) : o)),
+      );
+    },
+    onDelete: (id) => {
+      setObjetos((prev) => prev.filter((o) => o.id !== id));
+    },
+  });
 
   // Fetch spawn personal del usuario
   useEffect(() => {
     if (!espacioId || !userId) return;
 
-    const fetchSpawn = async () => {
-      const { data } = await supabase
-        .from('miembros_espacio')
-        .select('spawn_x, spawn_z')
-        .eq('espacio_id', espacioId)
-        .eq('usuario_id', userId)
-        .maybeSingle();
-
-      if (data) {
-        setSpawnPersonal({ spawn_x: data.spawn_x, spawn_z: data.spawn_z });
-      }
+    let cancelado = false;
+    void repo.obtenerSpawnPersonal(espacioId, userId).then((data) => {
+      if (!cancelado && data) setSpawnPersonal(data);
+    });
+    return () => {
+      cancelado = true;
     };
-
-    fetchSpawn();
-  }, [espacioId, userId]);
+  }, [espacioId, userId, repo]);
 
   // Escritorio del usuario actual
   const miEscritorio = objetos.find((o) => o.owner_id === userId) || null;
@@ -350,42 +289,39 @@ export function useEspacioObjetos(
         ? `builtin:${catalogo.built_in_geometry}:${(catalogo.built_in_color || '#6366f1').replace('#', '')}`
         : 'builtin:cubo:6366f1');
 
-    const escalaX = 1;
-    const escalaY = 1;
-    const escalaZ = 1;
+    const input: CrearObjetoInput = {
+      espacio_id: espacioId,
+      empresa_id: empresaId,
+      modelo_url: modeloUrl,
+      tipo: catalogo.tipo,
+      nombre: catalogo.nombre,
+      posicion_x: posicion.x,
+      posicion_y: posicion.y,
+      posicion_z: posicion.z,
+      rotacion_x: 0,
+      rotacion_y: rotacionY,
+      rotacion_z: 0,
+      escala_x: 1,
+      escala_y: 1,
+      escala_z: 1,
+      owner_id: userId,
+      catalogo_id: catalogo.id,
+      interactuable: Boolean(catalogo.es_interactuable || catalogo.es_sentable),
+      configuracion_geometria: catalogo.configuracion_geometria ?? null,
+      escala_normalizacion: null,
+    };
 
-    const { data, error } = await supabase
-      .from('espacio_objetos')
-      .insert({
-        espacio_id: espacioId,
-        empresa_id: empresaId,
-        modelo_url: modeloUrl,
-        tipo: catalogo.tipo,
-        nombre: catalogo.nombre,
-        posicion_x: posicion.x,
-        posicion_y: posicion.y,
-        posicion_z: posicion.z,
-        rotacion_x: 0,
-        rotacion_y: rotacionY,
-        rotacion_z: 0,
-        escala_x: escalaX,
-        escala_y: escalaY,
-        escala_z: escalaZ,
-        owner_id: userId,
-        catalogo_id: catalogo.id,
-        interactuable: Boolean(catalogo.es_interactuable || catalogo.es_sentable),
-        configuracion_geometria: catalogo.configuracion_geometria ?? null,
-        escala_normalizacion: null,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      log.error('Error creando objeto desde catálogo', { error: error instanceof Error ? error.message : String(error) });
+    let data: EspacioObjeto;
+    try {
+      data = await repo.crear(input);
+    } catch (err: unknown) {
+      log.error('Error creando objeto desde catálogo', {
+        error: err instanceof Error ? err.message : String(err),
+      });
       return null;
     }
 
-    const nuevoObjeto = enriquecerObjetoEspacio(data as EspacioObjeto, catalogoIndiceRef.current);
+    const nuevoObjeto = enriquecerObjetoEspacio(data, catalogoIndiceRef.current);
     // Alta optimista: añadir al estado local inmediatamente
     setObjetos((prev) => {
       if (prev.some((obj) => obj.id === nuevoObjeto.id)) return prev;
@@ -393,7 +329,7 @@ export function useEspacioObjetos(
     });
 
     return nuevoObjeto;
-  }, [empresaId, espacioId, userId]);
+  }, [empresaId, espacioId, userId, repo, log]);
 
   const reemplazarObjetoDesdeCatalogo = useCallback(async (
     objetoId: string,
@@ -423,13 +359,13 @@ export function useEspacioObjetos(
       } as any
       : ((configuracionCatalogo ?? null) as any);
 
-    const payload = {
+    const payload: ReemplazarObjetoPayload = {
       catalogo_id: catalogo.id,
       modelo_url: modeloUrl,
       tipo: catalogo.tipo,
       nombre: catalogo.nombre,
       interactuable: Boolean(catalogo.es_interactuable || catalogo.es_sentable),
-      configuracion_geometria: configuracionGeometria,
+      configuracion_geometria: configuracionGeometria ?? null,
       escala_normalizacion: catalogo.escala_normalizacion ?? null,
     };
 
@@ -443,23 +379,21 @@ export function useEspacioObjetos(
 
     setObjetos((prev) => prev.map((obj) => (obj.id === objetoId ? optimista : obj)));
 
-    const { data, error } = await supabase
-      .from('espacio_objetos')
-      .update(payload)
-      .eq('id', objetoId)
-      .select()
-      .single();
-
-    if (error) {
-      log.error('Error reemplazando objeto desde catálogo', { error: error instanceof Error ? error.message : String(error) });
+    let data: EspacioObjeto;
+    try {
+      data = await repo.reemplazar(objetoId, payload);
+    } catch (err: unknown) {
+      log.error('Error reemplazando objeto desde catálogo', {
+        error: err instanceof Error ? err.message : String(err),
+      });
       setObjetos((prev) => prev.map((obj) => (obj.id === objetoId ? objetoPrevio : obj)));
       return null;
     }
 
-    const reemplazado = enriquecerObjetoEspacio(data as EspacioObjeto, catalogoIndiceRef.current);
+    const reemplazado = enriquecerObjetoEspacio(data, catalogoIndiceRef.current);
     setObjetos((prev) => prev.map((obj) => (obj.id === objetoId ? reemplazado : obj)));
     return reemplazado;
-  }, []);
+  }, [repo, log]);
 
   // Reclamar un objeto (escritorio libre → asignar owner_id)
   // Enforce: un solo escritorio por usuario — libera el anterior si existe
@@ -467,32 +401,18 @@ export function useEspacioObjetos(
     log.info('reclamarObjeto', { objetoId, userId, espacioId });
     if (!userId) { log.warn('userId es null'); return false; }
 
-    // Si ya tiene un escritorio, liberarlo primero
-    const escritorioActual = objetosRef.current.find((o) => o.owner_id === userId);
-    if (escritorioActual && escritorioActual.id !== objetoId) {
-      log.info('Liberando escritorio anterior', { escritorioId: escritorioActual.id });
-      await supabase
-        .from('espacio_objetos')
-        .update({ owner_id: null })
-        .eq('id', escritorioActual.id)
-        .eq('owner_id', userId);
-    }
+    // Si ya tiene un escritorio distinto, libérarlo primero (idempotente).
+    await repo.liberarEscritorioActualDelUsuario(userId, objetoId);
 
-    const { data, error } = await supabase
-      .from('espacio_objetos')
-      .update({ owner_id: userId })
-      .eq('id', objetoId)
-      .is('owner_id', null)
-      .select();
-
-    log.debug('Resultado reclamar', { dataLength: data?.length ?? 0, hasError: !!error });
-
-    if (error) {
-      log.error('Error reclamando', { error: error instanceof Error ? error.message : String(error) });
+    let filas: EspacioObjeto[];
+    try {
+      filas = await repo.reclamar(objetoId, userId);
+    } catch (err: unknown) {
+      log.error('Error reclamando', { error: err instanceof Error ? err.message : String(err) });
       return false;
     }
 
-    if (!data || data.length === 0) {
+    if (filas.length === 0) {
       log.warn('No se reclamó — RLS o ya ocupado');
       return false;
     }
@@ -502,41 +422,29 @@ export function useEspacioObjetos(
     if (objeto) {
       await guardarSpawnPersonal(objeto.posicion_x, objeto.posicion_z);
     }
-
     return true;
-  }, [userId, espacioId]);
+  }, [userId, espacioId, repo, log]);
 
   // Liberar un objeto (quitar owner_id)
   const liberarObjeto = useCallback(async (objetoId: string): Promise<boolean> => {
     log.info('liberarObjeto', { objetoId, userId });
     if (!userId) { log.warn('userId null en liberar'); return false; }
 
-    const { data, error } = await supabase
-      .from('espacio_objetos')
-      .update({ owner_id: null })
-      .eq('id', objetoId)
-      .eq('owner_id', userId)
-      .select();
-
-    log.debug('Resultado liberar', { dataLength: data?.length ?? 0, hasError: !!error });
-
-    if (error) {
-      log.error('Error liberando', { error: error instanceof Error ? error.message : String(error) });
+    let liberado: boolean;
+    try {
+      liberado = await repo.liberar(objetoId, userId);
+    } catch (err: unknown) {
+      log.error('Error liberando', { error: err instanceof Error ? err.message : String(err) });
       return false;
     }
+    log.debug('Resultado liberar', { liberado });
 
-    // Limpiar spawn personal
     if (espacioId) {
-      await supabase
-        .from('miembros_espacio')
-        .update({ spawn_x: null, spawn_z: null })
-        .eq('espacio_id', espacioId)
-        .eq('usuario_id', userId);
+      await repo.limpiarSpawnPersonal(espacioId, userId);
     }
-
     setSpawnPersonal({ spawn_x: null, spawn_z: null });
-    return true;
-  }, [userId, espacioId]);
+    return liberado;
+  }, [userId, espacioId, repo, log]);
 
   const actualizarTransformacionObjeto = useCallback(async (objetoId: string, cambios: TransformacionObjetoInput): Promise<boolean> => {
     const objetoPrevio = objetosRef.current.find((obj) => obj.id === objetoId);
@@ -547,7 +455,7 @@ export function useEspacioObjetos(
 
     const payload = Object.fromEntries(
       Object.entries(cambios).filter(([, valor]) => valor !== undefined)
-    ) as TransformacionObjetoInput;
+    ) as TransformacionObjetoPatch;
 
     if (Object.keys(payload).length === 0) {
       return true;
@@ -560,19 +468,17 @@ export function useEspacioObjetos(
 
     setObjetos((prev) => prev.map((obj) => (obj.id === objetoId ? objetoSiguiente : obj)));
 
-    const { error } = await supabase
-      .from('espacio_objetos')
-      .update(payload)
-      .eq('id', objetoId);
-
-    if (error) {
-      log.error('Error actualizando transformación', { error: error instanceof Error ? error.message : String(error) });
+    try {
+      await repo.actualizarTransformacion(objetoId, payload);
+      return true;
+    } catch (err: unknown) {
+      log.error('Error actualizando transformación', {
+        error: err instanceof Error ? err.message : String(err),
+      });
       setObjetos((prev) => prev.map((obj) => (obj.id === objetoId ? objetoPrevio : obj)));
       return false;
     }
-
-    return true;
-  }, []);
+  }, [repo, log]);
 
   // Mover un objeto (actualizar posición)
   const moverObjeto = useCallback(async (objetoId: string, x: number, y: number, z: number): Promise<boolean> => {
@@ -596,13 +502,13 @@ export function useEspacioObjetos(
 
     setObjetos((prev) => prev.filter((obj) => obj.id !== objetoId));
 
-    const { error } = await supabase
-      .from('espacio_objetos')
-      .delete()
-      .eq('id', objetoId);
-
-    if (error) {
-      log.error('Error eliminando objeto', { error: error instanceof Error ? error.message : String(error) });
+    try {
+      await repo.eliminar(objetoId);
+      return true;
+    } catch (err: unknown) {
+      log.error('Error eliminando objeto', {
+        error: err instanceof Error ? err.message : String(err),
+      });
       if (objetoPrevio) {
         setObjetos((prev) => {
           if (prev.some((obj) => obj.id === objetoPrevio.id)) return prev;
@@ -613,13 +519,12 @@ export function useEspacioObjetos(
       }
       return false;
     }
-    return true;
-  }, []);
+  }, [repo, log]);
 
   const duplicarObjetos = useCallback(async (objetosList: EspacioObjeto[]): Promise<EspacioObjeto[]> => {
     if (!espacioId || !userId || objetosList.length === 0) return [];
 
-    const nuevasEntradas = objetosList.map(obj => ({
+    const nuevasEntradas: CrearObjetoInput[] = objetosList.map((obj) => ({
       espacio_id: espacioId,
       empresa_id: obj.empresa_id ?? null,
       es_de_plantilla: obj.es_de_plantilla ?? false,
@@ -642,22 +547,22 @@ export function useEspacioObjetos(
       escala_normalizacion: obj.escala_normalizacion,
     }));
 
-    const { data, error } = await supabase
-      .from('espacio_objetos')
-      .insert(nuevasEntradas)
-      .select();
-
-    if (error) {
-      log.error('Error duplicando objetos', { error: error instanceof Error ? error.message : String(error) });
+    let data: EspacioObjeto[];
+    try {
+      data = await repo.insertarBatch(nuevasEntradas);
+    } catch (err: unknown) {
+      log.error('Error duplicando objetos', {
+        error: err instanceof Error ? err.message : String(err),
+      });
       return [];
     }
 
-    const nuevosObjetos = (data as EspacioObjeto[]).map(obj => enriquecerObjetoEspacio(obj, catalogoIndiceRef.current));
-    
+    const nuevosObjetos = data.map((obj) => enriquecerObjetoEspacio(obj, catalogoIndiceRef.current));
+
     setObjetos((prev) => {
       const next = [...prev];
-      nuevosObjetos.forEach(nuevo => {
-        if (!next.some(o => o.id === nuevo.id)) {
+      nuevosObjetos.forEach((nuevo) => {
+        if (!next.some((o) => o.id === nuevo.id)) {
           next.push(nuevo);
         }
       });
@@ -665,11 +570,11 @@ export function useEspacioObjetos(
     });
 
     return nuevosObjetos;
-  }, [espacioId, userId]);
+  }, [espacioId, userId, repo, log]);
 
   const restaurarObjeto = useCallback(async (objeto: EspacioObjeto): Promise<EspacioObjeto | null> => {
     const snapshotPrevio = [...objetosRef.current];
-    const objetoBase = {
+    const objetoBase: UpsertObjetoPayload = {
       id: objeto.id,
       espacio_id: objeto.espacio_id,
       catalogo_id: objeto.catalogo_id ?? null,
@@ -692,7 +597,7 @@ export function useEspacioObjetos(
       interactuable: Boolean(objeto.interactuable ?? objeto.es_interactuable ?? false),
     };
 
-    const objetoOptimista = enriquecerObjetoEspacio(objetoBase as EspacioObjeto, catalogoIndiceRef.current);
+    const objetoOptimista = enriquecerObjetoEspacio(objetoBase as unknown as EspacioObjeto, catalogoIndiceRef.current);
 
     setObjetos((prev) => {
       const indice = prev.findIndex((item) => item.id === objeto.id);
@@ -702,19 +607,18 @@ export function useEspacioObjetos(
       return next;
     });
 
-    const { data, error } = await supabase
-      .from('espacio_objetos')
-      .upsert(objetoBase, { onConflict: 'id' })
-      .select()
-      .single();
-
-    if (error) {
-      log.error('Error restaurando objeto', { error: error instanceof Error ? error.message : String(error) });
+    let data: EspacioObjeto;
+    try {
+      data = await repo.upsert(objetoBase);
+    } catch (err: unknown) {
+      log.error('Error restaurando objeto', {
+        error: err instanceof Error ? err.message : String(err),
+      });
       setObjetos(snapshotPrevio);
       return null;
     }
 
-    const restaurado = enriquecerObjetoEspacio(data as EspacioObjeto, catalogoIndiceRef.current);
+    const restaurado = enriquecerObjetoEspacio(data, catalogoIndiceRef.current);
     setObjetos((prev) => {
       const indice = prev.findIndex((item) => item.id === restaurado.id);
       if (indice === -1) return [...prev, restaurado];
@@ -724,26 +628,23 @@ export function useEspacioObjetos(
     });
 
     return restaurado;
-  }, []);
+  }, [repo, log]);
 
   // Guardar spawn personal
   const guardarSpawnPersonal = useCallback(async (x: number, z: number): Promise<boolean> => {
     if (!espacioId || !userId) return false;
 
-    const { error } = await supabase
-      .from('miembros_espacio')
-      .update({ spawn_x: x, spawn_z: z })
-      .eq('espacio_id', espacioId)
-      .eq('usuario_id', userId);
-
-    if (error) {
-      log.error('Error guardando spawn', { error: error instanceof Error ? error.message : String(error) });
+    try {
+      await repo.guardarSpawnPersonal(espacioId, userId, x, z);
+      setSpawnPersonal({ spawn_x: x, spawn_z: z });
+      return true;
+    } catch (err: unknown) {
+      log.error('Error guardando spawn', {
+        error: err instanceof Error ? err.message : String(err),
+      });
       return false;
     }
-
-    setSpawnPersonal({ spawn_x: x, spawn_z: z });
-    return true;
-  }, [espacioId, userId]);
+  }, [espacioId, userId, repo, log]);
 
   return {
     objetos,
