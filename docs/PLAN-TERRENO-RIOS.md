@@ -3,7 +3,32 @@
 **Proyecto:** Cowork Virtual Workspace 3D v3.7
 **Fecha:** 2026-05-04
 **Autor:** Claude (Opus 4.7) — sesión con Andrés Maldonado
-**Estado:** Fase 1 ✅ completa | Storage policies ✅ aplicadas | Fase 2 en curso
+**Estado:** ⏸️ PAUSADO 2026-05-04 — priorizando otras funcionalidades del MVP. Código listo para retomar. Render deshabilitado vía DB (`tipo='flat'`).
+
+## ⏸️ Pausa MVP (2026-05-04)
+
+**Decisión técnica:** dejar los edificios del `DistantSkyline.tsx` (ya funcionan)
+y posponer las montañas. ROI muy bajo para MVP — el skyline ya cubre el 80%
+del trabajo visual del horizonte.
+
+**Estado al pausar:**
+- Row de DB en `espacio_terreno` cambiado a `tipo='flat'` → `Terrain3D` retorna
+  null automáticamente, las montañas no se renderizan.
+- Bucket `heightmaps` queda creado (puede contener el PNG de prueba — eliminable
+  manualmente desde Dashboard si se quiere).
+- Todo el código permanece: `Terrain3D.tsx`, `useTerreno.ts`,
+  `extractHeightsFromTexture.ts`, repos, use cases, migración SQL.
+- Para retomar: cambiar el row a `tipo='heightfield'` con un heightmap válido.
+- Para refactor mayor (recomendado por skill clean-architecture-refactor):
+  sustituir `Terrain3D.tsx` por `DistantMountains.tsx` siguiendo el patrón
+  de `DistantSkyline.tsx` (InstancedMesh procedural sin Storage).
+
+**Próximas prioridades MVP:**
+1. Configurar secrets en GitHub Actions → destrabar `test-smoke` del PR #6
+2. Mergear PR #6 (Aurora GLASS)
+3. Items de la memoria del proyecto (deuda técnica 2026-04-24)
+
+---
 
 ## Progreso (actualizado 2026-05-04)
 
