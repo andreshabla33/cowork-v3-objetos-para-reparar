@@ -78,9 +78,11 @@ function altura(x, y) {
   const rNorm = dCenter / maxR; // [0, 1]
 
   // Curva de elevación radial:
-  //   rNorm < 0.30 → 0 (centro plano)
-  //   rNorm > 0.30 → sube suavemente hasta picos en borde
-  const innerFlat = 0.30;
+  //   rNorm < 0.65 → 0 (centro plano cubre el área del skyline a R=120/250=0.48)
+  //   rNorm > 0.65 → sube hasta picos en borde
+  // Margen 0.17 entre fin del skyline y comienzo de cumbres garantiza que
+  // ninguna cumbre aparezca DENTRO del anillo de edificios.
+  const innerFlat = 0.65;
   if (rNorm < innerFlat) return 0;
 
   // Smoothstep desde innerFlat hasta 1.0

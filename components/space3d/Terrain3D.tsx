@@ -81,19 +81,17 @@ function TerrainHeightfield({
     texture.needsUpdate = true;
   }, [texture]);
 
-  // El plano se sume bajo el suelo del cowork: el "valle" del heightmap
-  // (R=0) queda invisible bajo Y=0, y solo las cumbres asoman por encima
-  // de los edificios del DistantSkyline (radio 120m, altura 8-28m).
+  // El plano se sume bajo el suelo del cowork: solo los picos MÁS altos
+  // asoman por encima del DistantSkyline (R=120m, edif. 8-28m alto).
   //
-  // Reglas:
-  //  - sinkBelowGround = altura visible deseada del horizonte. Negativo.
-  //  - displacementScale = escala.y (rango total del heightmap).
-  //  - peak height visible = sinkBelowGround + escala.y.
+  // Sumir 92% del rango → solo el 8% superior visible.
+  // Para escala.y=50 → cumbre máxima a Y=4 (asoman por detrás del skyline
+  // sin tapar el cielo ni dominar la escena).
   //
-  // Default: sumir 80% del rango. Las cumbres quedan al 20% de escala.y.
-  // Para escala.y=50 → cumbre máxima a Y=10 (debajo del skyline alto pero
-  // visible por encima del avatar y de los edificios bajos).
-  const sinkBelowGround = -escala.y * 0.8;
+  // El heightmap debe tener centro plano (R=0) en al menos rNorm < 0.65
+  // para que el área del skyline (R<120m sobre 250m de radio = 0.48) NO
+  // tenga cumbres dentro. Ver scripts/generate-test-heightmap.mjs.
+  const sinkBelowGround = -escala.y * 0.92;
 
   return (
     <mesh
