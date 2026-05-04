@@ -3,7 +3,32 @@
 **Proyecto:** Cowork Virtual Workspace 3D v3.7
 **Fecha:** 2026-05-04
 **Autor:** Claude (Opus 4.7) — sesión con Andrés Maldonado
-**Estado:** Pendiente de aprobación · Requiere paso previo en GitHub
+**Estado:** Fase 1 ✅ completa | Storage policies ✅ aplicadas | Fase 2 en curso
+
+## Progreso (actualizado 2026-05-04)
+
+| Fase | Estado | Commits |
+|---|---|---|
+| 0 — Pre-requisito GitHub (rama base) | ✅ `feature/terreno-rios` desde `redisenomayo` + cherry-picks | varios |
+| 1.1 — Migración SQL `espacio_terreno` | ✅ aplicada en remoto (Management API) + registrada en `schema_migrations` v20260504000000 | `2fbfa16` `6cff7bb` |
+| 1.2 — Bucket Storage `heightmaps` + RLS policies | ✅ bucket creado por usuario (public=true) + 4 policies aplicadas | `fa31473` |
+| 1.3 — `TerrenoEntity.ts` (Domain) | ✅ tipos + `validarTerreno()` + `TERRENO_FLAT_DEFAULT` | `2fbfa16` |
+| 1.4 — `ITerrenoRepository.ts` (port) | ✅ `obtener / guardar / eliminar` | `2fbfa16` |
+| 1.5 — `TerrenoSupabaseRepository.ts` (adapter) | ✅ upsert por `espacio_id`, mapeo snake↔camel | `2fbfa16` |
+| 1.6 — `CargarTerrenoUseCase` + `GuardarTerrenoUseCase` | ✅ con `TerrenoInvalidoError` | `2fbfa16` |
+| 2.1 — `Terrain3D.tsx` (PlaneGeometry + displacementMap) | ✅ | (este commit) |
+| 2.2 — `extractHeightsFromTexture()` helper (canvas → Float32Array) | ✅ | (este commit) |
+| 2.3 — `<HeightfieldCollider>` con `useMemo` | ✅ | (este commit) |
+| 2.4 — Integrar en `Scene3D.tsx` (render condicional, no rompe `flat`) | ✅ | (este commit) |
+| Hook `useTerreno()` + DI container slot | ✅ | (este commit) |
+| 3.1 — Shaders WATER_VS / WATER_FS | ⏳ pendiente | — |
+| 3.2 — `Water3D.tsx` con `ShaderMaterial` + `useFrame` | ⏳ pendiente | — |
+| 3.3 — Sensor collider para zonas de río | ⏳ pendiente | — |
+| 3.4 — Flotación del avatar dentro del río | ⏳ pendiente | — |
+| 4 — UI admin (`TerrenoPanel.tsx`) | ⏳ pendiente | — |
+| 5 — Validación + release | ⏳ pendiente | — |
+
+---
 
 ---
 

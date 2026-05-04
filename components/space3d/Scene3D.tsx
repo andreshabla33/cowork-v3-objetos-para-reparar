@@ -32,6 +32,8 @@ import { generarParedesPerimetrales } from '@/src/core/application/usecases/Gene
 import { ColocarObjetoUseCase } from '@/src/core/application/usecases/ColocarObjetoUseCase';
 import type { ObjetoColocable, Rayo } from '@/src/core/domain/entities/espacio3d/PlacementPolicy';
 import { useConfiguracionPerimetro } from '@/hooks/space3d/useConfiguracionPerimetro';
+import { useTerreno } from '@/hooks/space3d/useTerreno';
+import { Terrain3D } from './Terrain3D';
 import { EmoteSync, useSyncEffects } from '../3d/EmoteSync';
 import { hapticFeedback, isMobileDevice } from '@/lib/mobileDetect';
 import { useStore } from '@/store/useStore';
@@ -540,6 +542,8 @@ export const Scene: React.FC<SceneProps> = ({
   // tuviera un row. Fuente correcta: `activeWorkspace.id` del store.
   const espacioIdPerimeter = useStore((s) => s.activeWorkspace?.id ?? null);
   const { policy: perimeterPolicyPersisted } = useConfiguracionPerimetro(espacioIdPerimeter);
+  // Terreno (suelo + montañas) — solo renderiza algo si tipo='heightfield'
+  const { terreno: terrenoPersistido } = useTerreno(espacioIdPerimeter);
 
   // Paredes perimetrales virtuales — generadas por el use case del Application
   // layer a partir del terrainBounds y la policy persistida. No persisten en
@@ -1313,6 +1317,7 @@ export const Scene: React.FC<SceneProps> = ({
       )}
 
       <Physics gravity={[0, 0, 0]}>
+        <Terrain3D terreno={terrenoPersistido} />
         <RigidBody
           ref={playerColliderRef}
           type="kinematicPosition"

@@ -27,6 +27,7 @@ import type { IInvitacionRepository } from '../../domain/ports/IInvitacionReposi
 import type { IEnviarInvitacionRepository } from '../../domain/ports/IEnviarInvitacionRepository';
 import type { IOnboardingRepository } from '../../domain/ports/IOnboardingRepository';
 import type { IConfiguracionPerimetroRepository } from '../../domain/ports/IConfiguracionPerimetroRepository';
+import type { ITerrenoRepository } from '../../domain/ports/ITerrenoRepository';
 
 // ─── Tipo del contenedor ──────────────────────────────────────────────────────
 
@@ -61,6 +62,8 @@ export interface DIContainer {
   onboarding: IOnboardingRepository;
   /** Configuración del cerramiento perimetral por espacio (tabla dedicada + Realtime) */
   configuracionPerimetro: IConfiguracionPerimetroRepository;
+  /** Terreno (suelo + montañas via heightmap + ríos) por espacio */
+  terreno: ITerrenoRepository;
 }
 
 // ─── Singleton ────────────────────────────────────────────────────────────────
@@ -93,6 +96,7 @@ export async function getDIContainer(): Promise<DIContainer> {
     { EnviarInvitacionSupabaseRepository },
     { OnboardingSupabaseRepository },
     { ConfiguracionPerimetroSupabaseRepository },
+    { TerrenoSupabaseRepository },
   ] = await Promise.all([
     import('../adapters/ThreeTextureFactoryAdapter'),
     import('../adapters/RenderingOptimizationAdapter'),
@@ -109,6 +113,7 @@ export async function getDIContainer(): Promise<DIContainer> {
     import('../adapters/EnviarInvitacionSupabaseRepository'),
     import('../adapters/OnboardingSupabaseRepository'),
     import('../adapters/ConfiguracionPerimetroSupabaseRepository'),
+    import('../adapters/TerrenoSupabaseRepository'),
   ]);
 
   _container = {
@@ -127,6 +132,7 @@ export async function getDIContainer(): Promise<DIContainer> {
     enviarInvitacion: new EnviarInvitacionSupabaseRepository(),
     onboarding: new OnboardingSupabaseRepository(),
     configuracionPerimetro: new ConfiguracionPerimetroSupabaseRepository(),
+    terreno: new TerrenoSupabaseRepository(),
   };
 
   return _container;
