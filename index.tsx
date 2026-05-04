@@ -12,6 +12,15 @@ import { installSuppressRapierDeprecationWarning } from './lib/rendering/suppres
 
 installSuppressRapierDeprecationWarning();
 
+// ─── BVH-accelerated raycasting (three-mesh-bvh) ──────────────────────────
+// Override global de Mesh.prototype.raycast para que todos los meshes
+// soporten BVH. Sin overhead si la geometry no tiene árbol; con árbol
+// es ~100x más rápido — crítico para R3F event system en hardware bajo.
+// Ref: https://github.com/gkjohnson/three-mesh-bvh
+import { installAcceleratedRaycast } from './lib/rendering/installAcceleratedRaycast';
+
+installAcceleratedRaycast();
+
 // ─── Retry fetch para Supabase Storage ─────────────────────────────────────
 // Evita que un 429/500 transitorio en un GLB tumbe toda la escena (observado
 // en prod 2026-04-18: 15 GLBs paralelos → rate limit → drei throws →

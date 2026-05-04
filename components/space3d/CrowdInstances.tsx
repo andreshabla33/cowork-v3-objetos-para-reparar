@@ -58,6 +58,14 @@ export const CrowdInstances: React.FC<{
     [],
   );
 
+  // Disposal en unmount: liberar memoria GPU al cambiar de espacio.
+  useEffect(() => {
+    return () => {
+      geometry.dispose();
+      material.dispose();
+    };
+  }, [geometry, material]);
+
   // Sync instance transforms + colors whenever entities change
   useEffect(() => {
     const mesh = meshRef.current;

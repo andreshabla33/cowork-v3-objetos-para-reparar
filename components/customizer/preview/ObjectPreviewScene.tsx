@@ -170,28 +170,52 @@ export class ObjectPreviewErrorBoundary extends React.Component<ErrorBoundaryPro
 }
 
 // ─── Poster fallback (thumbnail or built-in) ────────────────────────────────
-const HtmlFullscreenImage: React.FC<{ src: string; alt: string }> = ({ src }) => (
-  <group>
-    <mesh position={[0, 0.8, -0.2]}>
-      <planeGeometry args={[2.4, 2.4]} />
-      <meshBasicMaterial transparent opacity={0} />
-    </mesh>
-    <primitive
-      object={new THREE.Group()}
-      onUpdate={(group: THREE.Group) => {
-        if (group.children.length > 0) return;
-        const textureLoader = new THREE.TextureLoader();
-        textureLoader.load(src, (texture) => {
-          texture.colorSpace = THREE.SRGBColorSpace;
-          const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
-          const sprite = new THREE.Sprite(material);
-          sprite.scale.set(2.4, 2.4, 1);
-          group.add(sprite);
-        });
-      }}
-    />
-  </group>
-);
+// Refactor 2026-05-04: usar useEffect + group ref para garantizar disposal
+// del SpriteMaterial + Texture al cambiar `src` o desmontar. Antes los
+// recursos se acumulaban en GPU cada cambio de objeto previsualizado.
+const HtmlFullscreenImage: React.FC<{ src: string; alt: string }> = ({ src }) => {
+  const groupRef = useRef<THREE.Group | null>(null);
+
+  useEffect(() => {
+    const group = groupRef.current;
+    if (!group) return;
+
+    let cancelado = false;
+    let sprite: THREE.Sprite | null = null;
+    let material: THREE.SpriteMaterial | null = null;
+    let texture: THREE.Texture | null = null;
+
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.load(src, (loaded) => {
+      if (cancelado) {
+        loaded.dispose();
+        return;
+      }
+      texture = loaded;
+      texture.colorSpace = THREE.SRGBColorSpace;
+      material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      sprite = new THREE.Sprite(material);
+      sprite.scale.set(2.4, 2.4, 1);
+      group.add(sprite);
+    });
+
+    return () => {
+      cancelado = true;
+      if (sprite) group.remove(sprite);
+      material?.dispose();
+      texture?.dispose();
+    };
+  }, [src]);
+
+  return (
+    <group ref={groupRef}>
+      <mesh position={[0, 0.8, -0.2]}>
+        <planeGeometry args={[2.4, 2.4]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
+    </group>
+  );
+};
 
 export const ObjectPreviewPoster: React.FC<{ selectedObject: CatalogoObjeto3D }> = ({ selectedObject }) => {
   if (selectedObject.thumbnail_url) {

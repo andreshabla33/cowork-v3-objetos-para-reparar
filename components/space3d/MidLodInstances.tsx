@@ -52,6 +52,15 @@ export const MidLodInstances: React.FC<{
     [],
   );
 
+  // Disposal en unmount: estos recursos viven en GPU y deben liberarse
+  // explícitamente cuando el componente se desmonta (ej. al cambiar de espacio).
+  useEffect(() => {
+    return () => {
+      geometry.dispose();
+      material.dispose();
+    };
+  }, [geometry, material]);
+
   useEffect(() => {
     const mesh = meshRef.current;
     if (!mesh) return;

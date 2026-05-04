@@ -63,6 +63,7 @@
     "react-dom": "^19.2.3",
     "react-i18next": "^16.5.4",
     "three": "^0.182.0",
+    "three-mesh-bvh": "^0.9.9",
     "three-stdlib": "^2.36.1",
     "uuid": "^13.0.0",
     "zustand": "^5.0.9"
