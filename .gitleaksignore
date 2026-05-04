@@ -1,0 +1,9 @@
+# Suprime falsos positivos de gitleaks.
+# Formato: <commit-sha>:<file>:<rule>:<line>
+# Documentación: https://github.com/gitleaks/gitleaks#gitleaksignore
+
+# Falso positivo: VITE_SUPABASE_ANON_KEY en .env.example es una Supabase
+# Publishable Key (prefijo sb_publishable_), pública por diseño y segura
+# para incluir en código frontend. No es un secret real.
+# Ver: https://supabase.com/docs/guides/api/api-keys
+72e9c44ac962e27bf41666b22ef355c9e8f334d6:.env.example:generic-api-key:5
