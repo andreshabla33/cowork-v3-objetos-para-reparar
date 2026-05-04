@@ -339,7 +339,6 @@ const _quat = new THREE.Quaternion();
 const _euler = new THREE.Euler();
 const _scale = new THREE.Vector3();
 const _matrix = new THREE.Matrix4();
-const _meshLocal = new THREE.Matrix4();
 
 function computeTransform(
   gltfScene: THREE.Object3D,
@@ -465,6 +464,17 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
           try {
             const normalizedGeo = ensureConsistentAttributes(mesh.geometry);
 
+            // FIX 2026-05-04: bake mesh.matrixWorld en los vértices de la
+            // geometry. Sin esto, el GLB con scaling en la jerarquía padre
+            // se renderiza microscópico porque computeTransform ya considera
+            // el bbox completo (incluyendo matrixWorld) y multiplicar la
+            // matriz por mesh.matrixWorld al instanciar produce DOBLE escala.
+            // Con la transform bakeada en la geometry, la matriz de instancia
+            // solo necesita pos/rot/uniformScale del objeto.
+            // Ref Three.js BufferGeometry.applyMatrix4:
+            //   https://threejs.org/docs/#api/en/core/BufferGeometry.applyMatrix4
+            normalizedGeo.applyMatrix4(mesh.matrixWorld);
+
             // ─── Fase 4B: Remap UVs for atlas ───────────────────────
             if (
               mat instanceof THREE.MeshStandardMaterial &&
@@ -505,9 +515,10 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
 
         for (const obj of objetos) {
           try {
+            // mesh.matrixWorld ya fue bakeado en la geometry (ver fix arriba),
+            // así que la matriz de instancia es solo la transform del objeto
+            // en el espacio (pos + rot + uniformScale). Sin doble multiplicación.
             const worldMatrix = computeTransform(gltfScene, obj);
-            _meshLocal.copy(mesh.matrixWorld);
-            worldMatrix.multiply(_meshLocal);
 
             const flatMatrix = new Float32Array(16);
             worldMatrix.toArray(flatMatrix);
