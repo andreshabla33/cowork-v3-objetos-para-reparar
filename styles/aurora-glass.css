@@ -787,7 +787,7 @@ body.ag-app-shell {
   position: absolute;
   left: -8px; top: 50%;
   transform: translateY(-50%);
-  width: 3px; height: 18px;
+  width: 3px; height: 20px;
   border-radius: 2px;
   background: var(--cw-blue-500);
   box-shadow: 0 0 8px rgba(46, 150, 245, 0.5);

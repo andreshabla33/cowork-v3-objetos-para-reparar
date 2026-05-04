@@ -34,6 +34,17 @@
   box-sizing: border-box;
 }
 
+/* Misma base que .cw-shell, para rutas autenticadas (p. ej. Dashboard) con scroll. */
+.cw-page-shell {
+  min-height: 100vh;
+  color: var(--cw-ink-700);
+  background:
+    radial-gradient(ellipse at 20% 10%, var(--cw-bg-radial-1) 0%, transparent 55%),
+    radial-gradient(ellipse at 90% 90%, var(--cw-bg-radial-2) 0%, transparent 50%),
+    linear-gradient(180deg, var(--cw-bg-grad-from) 0%, var(--cw-bg-grad-to) 100%);
+  -webkit-font-smoothing: antialiased;
+}
+
 /* Stage centra la card */
 .cw-stage {
   position: relative;

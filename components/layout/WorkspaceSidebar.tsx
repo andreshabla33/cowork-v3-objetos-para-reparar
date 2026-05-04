@@ -95,7 +95,7 @@ export const WorkspaceSidebar: React.FC<WorkspaceSidebarProps> = React.memo(({
             aria-pressed={active}
             title={t(item.labelKey, currentLang)}
           >
-            <Icon d={item.iconPath} />
+            <Icon d={item.iconPath} size={22} />
             {showBadge && (
               <span className="ag-rail__badge" aria-label={`${unreadChatCount} mensajes sin leer`}>
                 {unreadChatCount > 9 ? '9+' : unreadChatCount}

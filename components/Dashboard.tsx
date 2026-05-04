@@ -10,21 +10,66 @@
  *
  * Toda la estética vive en `styles/aurora-glass.css` (clases `.ag-*`).
  * Cero hardcoding de colores: cambiar tema = cambiar `data-theme` en <html>.
+ *
+ * Fondo animado: mismas capas y parallax que `LoginScreen` (clases `.cw-*` en
+ * `styles/login-theme.css`), coherente con el inicio de sesión.
  */
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import { Role } from '../types';
 import { AICopilotSlot } from './ui/AICopilotSlot';
 
 export const Dashboard: React.FC = () => {
   const { workspaces, setActiveWorkspace, currentUser, signOut, setAuthFeedback, authFeedback } = useStore();
+  const parallaxRootRef = useRef<HTMLDivElement | null>(null);
 
   const totalEspacios = workspaces.length;
 
+  // Parallax sutil del fondo (misma lógica que `LoginScreen`).
+  useEffect(() => {
+    const root = parallaxRootRef.current;
+    if (!root) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const layers = Array.from(
+      root.querySelectorAll<HTMLElement>('.cw-orb, .cw-cell, .cw-particle')
+    );
+    let mx = 0;
+    let my = 0;
+    let tx = 0;
+    let ty = 0;
+    let raf = 0;
+
+    const onMove = (e: MouseEvent) => {
+      mx = e.clientX / window.innerWidth - 0.5;
+      my = e.clientY / window.innerHeight - 0.5;
+    };
+    const tick = () => {
+      tx += (mx - tx) * 0.04;
+      ty += (my - ty) * 0.04;
+      layers.forEach((el, i) => {
+        const depth = ((i % 4) + 1) * 6;
+        el.style.translate = `${tx * depth}px ${ty * depth}px`;
+      });
+      raf = requestAnimationFrame(tick);
+    };
+
+    document.addEventListener('mousemove', onMove);
+    raf = requestAnimationFrame(tick);
+
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+
   return (
-    <div className="relative min-h-screen overflow-x-hidden">
-      <AuroraAtmosphere />
+    <div
+      ref={parallaxRootRef}
+      className="cw-page-shell relative min-h-screen overflow-x-hidden"
+    >
+      <LoginStyleBackdrop />
 
       <main className="relative z-10 mx-auto w-full max-w-5xl px-6 pb-24 pt-10 lg:px-8">
         <DashboardHeader
@@ -84,14 +129,41 @@ export const Dashboard: React.FC = () => {
 };
 
 /* ────────────────────────────────────────────────────────────────────────
-   Atmósfera Aurora — capa decorativa con orbes blur (spatial UI)
+   Fondo estilo Login — grid animado, orbes, celdas, partículas, conectores SVG
+   (markup alineado con `LoginScreen` / `styles/login-theme.css`)
    ──────────────────────────────────────────────────────────────────────── */
-const AuroraAtmosphere: React.FC = () => (
-  <div className="ag-atmosphere" aria-hidden="true">
-    <div className="ag-atmosphere__grid" />
-    <div className="ag-atmosphere__orb ag-atmosphere__orb--a" />
-    <div className="ag-atmosphere__orb ag-atmosphere__orb--b" />
-    <div className="ag-atmosphere__orb ag-atmosphere__orb--c" />
+const LoginStyleBackdrop: React.FC = () => (
+  <div
+    className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+    aria-hidden="true"
+  >
+    <div className="cw-grid-bg" />
+
+    <svg
+      className="cw-connector"
+      preserveAspectRatio="none"
+      viewBox="0 0 1440 900"
+      aria-hidden="true"
+    >
+      <path d="M 100 200 Q 400 100, 700 300 T 1340 250" />
+      <path d="M 80 700 Q 300 600, 600 750 T 1360 680" />
+      <path d="M 1200 100 Q 1100 400, 1300 600" />
+    </svg>
+
+    <div className="cw-orb cw-orb--1" />
+    <div className="cw-orb cw-orb--2" />
+    <div className="cw-orb cw-orb--3" />
+
+    {(['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8', 'c9'] as const).map((c, i) => (
+      <div
+        key={c}
+        className={`cw-cell cw-cell--${c}${i % 3 === 1 ? ' cw-cell--alt' : ''}`}
+      />
+    ))}
+
+    {(['p1', 'p2', 'p3', 'p4', 'p5', 'p6'] as const).map((p) => (
+      <div key={p} className={`cw-particle cw-particle--${p}`} />
+    ))}
   </div>
 );
 
