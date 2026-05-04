@@ -3,25 +3,27 @@
  *
  * Render del terreno (montañas) — capa de presentación.
  *
- * Visual: 1 PlaneGeometry con `displacementMap` (vertex shader, GPU-only).
- * Físico: 1 HeightfieldCollider de Rapier (one-shot lookup, 0 coste por frame).
+ * Diseño actual: el terreno es el **horizonte lejano**, no el suelo del
+ * avatar. Se posiciona DETRÁS del DistantSkyline (radio 120m default) y
+ * sumido bajo el nivel del suelo, de modo que solo las cumbres asoman por
+ * encima del skyline urbano. El centro del heightmap (donde está el cowork)
+ * queda invisible bajo el suelo plano del espacio.
  *
- * Si `terreno.tipo === 'flat'` retorna null (el suelo flat default de Scene3D
- * sigue aplicándose). Solo activa render extra cuando hay un heightmap real.
+ * Visual: 1 PlaneGeometry grande (escala 500×500m típica) con
+ * `displacementMap` (vertex shader, GPU-only). 1 draw call total.
  *
- * Coste objetivo: < 1 ms GPU, ~0 ms CPU (más allá del fetch inicial del PNG).
+ * Físico: NO se usa collider. El avatar nunca llega tan lejos (las paredes
+ * perimetrales del cowork lo bloquean a ~10m del centro). Eliminar el
+ * HeightfieldCollider ahorra el parseo del PNG en CPU.
  *
- * Plan: docs/PLAN-TERRENO-RIOS.md (Fase 2.1 + 2.3).
+ * Si `terreno.tipo === 'flat'` retorna null.
+ *
+ * Plan: docs/PLAN-TERRENO-RIOS.md (Fase 2 — ajuste post-test del usuario).
  */
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useTexture } from '@react-three/drei';
-import { HeightfieldCollider, RigidBody } from '@react-three/rapier';
 import { ClampToEdgeWrapping } from 'three';
-import {
-  extractHeightsFromTexture,
-  HeightmapInvalidoError,
-} from '@/lib/rendering/extractHeightsFromTexture';
 import type { TerrenoEntity } from '@/src/core/domain/entities/espacio3d/TerrenoEntity';
 import { logger } from '@/lib/logger';
 
@@ -64,76 +66,51 @@ interface TerrainHeightfieldProps {
 }
 
 function TerrainHeightfield({
-  espacioId,
+  espacioId: _espacioId,
   url,
   nrows,
   ncols,
   escala,
 }: TerrainHeightfieldProps): React.JSX.Element | null {
   const texture = useTexture(url);
-  const [heights, setHeights] = useState<Float32Array | null>(null);
 
-  // ClampToEdge evita patrones repetidos artificiales en los bordes del
-  // terreno (queremos un solo "rectángulo" cubriendo el espacio, no un tile).
+  // ClampToEdge evita patrones repetidos artificiales en los bordes del terreno.
   useEffect(() => {
     texture.wrapS = ClampToEdgeWrapping;
     texture.wrapT = ClampToEdgeWrapping;
     texture.needsUpdate = true;
   }, [texture]);
 
-  // Extrae heights del PNG (one-shot, memoizado por url+dims)
-  useEffect(() => {
-    let cancelado = false;
-    extractHeightsFromTexture({ url, nrows, ncols })
-      .then((arr) => {
-        if (!cancelado) setHeights(arr);
-      })
-      .catch((err: unknown) => {
-        if (cancelado) return;
-        const msg = err instanceof HeightmapInvalidoError ? err.message : String(err);
-        log.error('No se pudo extraer heights del heightmap', { espacioId, url, msg });
-      });
-    return () => {
-      cancelado = true;
-    };
-  }, [espacioId, url, nrows, ncols]);
-
-  // Convertir Float32Array → number[] para HeightfieldArgs (Rapier exige number[])
-  const heightsArray = useMemo<number[] | null>(
-    () => (heights ? Array.from(heights) : null),
-    [heights],
-  );
-
-  // El heightmap empuja vértices solo hacia arriba (rango [0, escala.y]).
-  // Para que el "valle" (R=0) quede al nivel del suelo (Y=0) y las cumbres
-  // crezcan hacia arriba, mantenemos position Y=0 y displacementBias=0.
-  // Si el centro del PNG no es exactamente 0, displacementBias permite ajustar.
-  const positionY = 0;
+  // El plano se sume bajo el suelo del cowork: el "valle" del heightmap
+  // (R=0) queda invisible bajo Y=0, y solo las cumbres asoman por encima
+  // de los edificios del DistantSkyline (radio 120m, altura 8-28m).
+  //
+  // Reglas:
+  //  - sinkBelowGround = altura visible deseada del horizonte. Negativo.
+  //  - displacementScale = escala.y (rango total del heightmap).
+  //  - peak height visible = sinkBelowGround + escala.y.
+  //
+  // Default: sumir 80% del rango. Las cumbres quedan al 20% de escala.y.
+  // Para escala.y=50 → cumbre máxima a Y=10 (debajo del skyline alto pero
+  // visible por encima del avatar y de los edificios bajos).
+  const sinkBelowGround = -escala.y * 0.8;
 
   return (
-    <>
-      {/* VISUAL — 1 draw call, displacement en GPU.
-          NO usamos el heightmap como `map` (sería grayscale feo); solo como
-          `displacementMap`. El color base es verde tierra por defecto. */}
-      <mesh rotation-x={-Math.PI / 2} position={[0, positionY, 0]} receiveShadow>
-        <planeGeometry args={[escala.x, escala.z, ncols - 1, nrows - 1]} />
-        <meshStandardMaterial
-          color="#6e8b50"
-          displacementMap={texture}
-          displacementScale={escala.y}
-          roughness={0.95}
-          metalness={0.0}
-        />
-      </mesh>
-
-      {/* FÍSICO — solo cuando heights estén listos. RigidBody fixed = no se mueve.
-          El HeightfieldCollider usa el mismo Y=0 que la mesh, así que la
-          colisión está alineada con el visual displacement. */}
-      {heightsArray && (
-        <RigidBody type="fixed" colliders={false} position={[0, positionY, 0]}>
-          <HeightfieldCollider args={[nrows - 1, ncols - 1, heightsArray, escala]} />
-        </RigidBody>
-      )}
-    </>
+    <mesh
+      rotation-x={-Math.PI / 2}
+      position={[0, sinkBelowGround, 0]}
+      receiveShadow={false}
+      castShadow={false}
+      frustumCulled={false}
+    >
+      <planeGeometry args={[escala.x, escala.z, ncols - 1, nrows - 1]} />
+      <meshStandardMaterial
+        color="#3d4a32"
+        displacementMap={texture}
+        displacementScale={escala.y}
+        roughness={1.0}
+        metalness={0.0}
+      />
+    </mesh>
   );
 }
