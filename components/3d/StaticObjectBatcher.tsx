@@ -361,29 +361,26 @@ function computeTransform(
   const uniformScale = factors.length > 0 ? Math.min(...factors) : 1;
   const offsetY = -_box.min.y * uniformScale - h / 2;
 
-  // Diagnóstico temporal — root cause de mesa microscópica.
-  // Solo loguear UNA vez por objeto (evitar log infinito en useFrame loops).
-  const diagKey = `${obj.id}::${obj.modelo_url}`;
-  if (!_diagLoggedObjects.has(diagKey)) {
-    _diagLoggedObjects.add(diagKey);
-    log.info('computeTransform diag', {
-      objetoId: obj.id,
-      tipo: obj.tipo,
-      modeloUrl: obj.modelo_url,
-      dimsCatalogo: { w, h, d },
-      bboxGltfScene: { x: _size.x, y: _size.y, z: _size.z },
-      factors,
-      uniformScale,
-      catalogoSnapshot: {
-        ancho: obj.catalogo?.ancho,
-        alto: obj.catalogo?.alto,
-        profundidad: obj.catalogo?.profundidad,
-        escala_normalizacion: obj.catalogo?.escala_normalizacion,
-      },
-      escala: { x: obj.escala_x, y: obj.escala_y, z: obj.escala_z },
-      escalaNormalizacion: obj.escala_normalizacion,
-    });
-  }
+  // Diagnóstico temporal v2 — log SIEMPRE en cada compute (no cacheado),
+  // se ejecuta solo cuando se registra/re-registra el modelo. console.log
+  // directo (no via logger) para que el usuario vea el objeto crudo expandible.
+  console.log('[DIAG-BATCHER v2] computeTransform', {
+    objetoId: obj.id,
+    tipo: obj.tipo,
+    modeloUrl: obj.modelo_url,
+    dimsCatalogo: { w, h, d },
+    bboxGltfScene: { x: _size.x, y: _size.y, z: _size.z },
+    factors,
+    uniformScale,
+    catalogoSnapshot: {
+      ancho: obj.catalogo?.ancho,
+      alto: obj.catalogo?.alto,
+      profundidad: obj.catalogo?.profundidad,
+      escala_normalizacion: obj.catalogo?.escala_normalizacion,
+    },
+    escala: { x: obj.escala_x, y: obj.escala_y, z: obj.escala_z },
+    escalaNormalizacion: obj.escala_normalizacion,
+  });
 
   _pos.set(obj.posicion_x, obj.posicion_y + offsetY, obj.posicion_z);
   _euler.set(obj.rotacion_x ?? 0, obj.rotacion_y ?? 0, obj.rotacion_z ?? 0);
@@ -392,9 +389,6 @@ function computeTransform(
 
   return _matrix.compose(_pos, _quat, _scale).clone();
 }
-
-// Set para limitar el log diag a una vez por objeto (no por frame).
-const _diagLoggedObjects = new Set<string>();
 
 // ─── BatchedGroupLoader — processes one GLTF model's objects ────────────────
 
