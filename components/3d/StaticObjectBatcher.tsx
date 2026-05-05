@@ -34,6 +34,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useGLTF } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
+import { mergeBufferGeometries } from 'three-stdlib';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import type { SceneOptimizationServices } from '@/hooks/space3d/useSceneOptimization';
 import type { MultiBatchInstanceRef } from '@/src/core/domain/ports/IMultiBatchMeshService';
@@ -376,6 +377,87 @@ function computeTransform(
   return _matrix.compose(_pos, _quat, _scale).clone();
 }
 
+// ─── Sub-mesh merge by material ───────────────────────────────────────────────
+
+/**
+ * Mergea los sub-meshes de un GLB que compartan el mismo material en una sola
+ * BufferGeometry, con `mesh.matrixWorld` ya bakeado en los vértices.
+ *
+ * Why:
+ *   BatchedMesh con N geometrías en el mismo grupo de material renderizaba
+ *   microscópicos los GLBs multi-mesh (Desk (1).normalized.glb tiene 12
+ *   sub-meshes compartiendo material). Mergear pre-registro reduce el grupo a
+ *   1 geometría por material por GLB y produce el resultado visual correcto.
+ *
+ * Architecture:
+ *   Helper local de Presentation/Infrastructure (Three.js). No toca Domain ni
+ *   Application — el use case sigue recibiendo objetos planos.
+ *
+ * Ref: three-stdlib mergeBufferGeometries (port oficial de
+ *   examples/jsm/utils/BufferGeometryUtils).
+ */
+type MergedMaterialGroup = {
+  geometry: THREE.BufferGeometry;
+  material: THREE.Material;
+};
+
+function mergeGltfSubMeshesByMaterial(
+  gltfScene: THREE.Object3D,
+): Map<string, MergedMaterialGroup> {
+  // Bucket key = material.uuid (instancia exacta).
+  // Sub-meshes con la MISMA material instance se mergean (ej. Desk con 12
+  // drawers compartiendo madera). Sub-meshes con material instances DIFERENTES
+  // se mantienen separados (ej. Computer Screen con 4 partes de colores
+  // distintos), preservando comportamiento previo donde el DataTexture
+  // per-instance aplica colores correctos.
+  const result = new Map<string, MergedMaterialGroup>();
+  const buckets = new Map<
+    string,
+    { material: THREE.Material; geometries: THREE.BufferGeometry[] }
+  >();
+
+  gltfScene.updateMatrixWorld(true);
+
+  gltfScene.traverse((child) => {
+    if (!(child as THREE.Mesh).isMesh) return;
+    const mesh = child as THREE.Mesh;
+    const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+
+    materials.forEach((mat) => {
+      const cloned = ensureConsistentAttributes(mesh.geometry);
+      cloned.applyMatrix4(mesh.matrixWorld);
+
+      let bucket = buckets.get(mat.uuid);
+      if (!bucket) {
+        bucket = { material: mat, geometries: [] };
+        buckets.set(mat.uuid, bucket);
+      }
+      bucket.geometries.push(cloned);
+    });
+  });
+
+  for (const [matUuid, { material, geometries }] of buckets.entries()) {
+    if (geometries.length === 0) continue;
+
+    let merged: THREE.BufferGeometry | null = null;
+    if (geometries.length === 1) {
+      merged = geometries[0];
+    } else {
+      merged = mergeBufferGeometries(geometries, false);
+      for (const g of geometries) g.dispose();
+    }
+
+    if (!merged) {
+      log.warn('Sub-mesh merge falló para material', { matUuid });
+      continue;
+    }
+
+    result.set(matUuid, { geometry: merged, material });
+  }
+
+  return result;
+}
+
 // ─── BatchedGroupLoader — processes one GLTF model's objects ────────────────
 
 const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
@@ -404,209 +486,151 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
     }
 
     const { multiBatch, textureAtlas, materialProps } = services;
-    gltfScene.updateMatrixWorld(true);
 
     let meshCount = 0;
     let instanceCount = 0;
     let atlasTextureCount = 0;
     let colorGroupsCreatedHere = 0;
 
-    gltfScene.traverse((child) => {
-      if (!(child as THREE.Mesh).isMesh) return;
-      const mesh = child as THREE.Mesh;
-      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    // FIX 2026-05-04 #3: pre-merge sub-meshes por material antes de registrar
+    // en BatchedMesh. GLBs con N sub-meshes compartiendo material (ej. Desk
+    // (1).normalized.glb con 12 drawers) se renderizaban microscópicos al
+    // registrar cada sub-mesh como geometría separada en el grupo. Mergear
+    // colapsa a 1 geometría por (modelo_url, material) y produce el
+    // resultado visual correcto (validado contra docs oficiales — issue
+    // mrdoob/three.js#27930).
+    const mergedByMaterial = mergeGltfSubMeshesByMaterial(gltfScene);
 
-      materials.forEach((mat) => {
-        const matKey = getMaterialKey(mat);
-        const geoKey = `${modeloUrl}::${mesh.name || mesh.uuid}::${matKey}`;
+    for (const [matUuid, { geometry: mergedGeo, material: mat }] of mergedByMaterial.entries()) {
+      const matKey = getMaterialKey(mat);
+      const geoKey = `${modeloUrl}::merged::${matUuid}`;
 
-        // ─── Fase 4A: Create material group if needed ───────────────
-        if (!multiBatch.tieneGrupo(matKey)) {
-          let groupMaterial: THREE.Material;
+      // ─── Fase 4A: Create material group if needed ───────────────
+      if (!multiBatch.tieneGrupo(matKey)) {
+        let groupMaterial: THREE.Material;
 
-          // ─── Fase 4B: Texture atlas for textured materials ────────
+        // ─── Fase 4B: Texture atlas for textured materials ────────
+        if (
+          mat instanceof THREE.MeshStandardMaterial &&
+          mat.map &&
+          mat.map.image
+        ) {
+          const texKey = `tex_${mat.map.uuid}`;
+
+          if (!textureAtlas.tieneTextura(texKey)) {
+            try {
+              textureAtlas.agregarTextura(texKey, mat.map.image);
+              atlasTextureCount++;
+            } catch {
+              // Atlas full — fall back to individual texture
+            }
+          }
+
+          groupMaterial = cloneMaterialForBatch(mat, false);
+        } else {
+          // Color-only group: white base + Fase 4D DataTexture shader injection
+          groupMaterial = cloneMaterialForBatch(mat, true);
+        }
+
+        multiBatch.crearGrupoMaterial({
+          materialKey: matKey,
+          material: groupMaterial,
+          maxInstances: GROUP_MAX_INSTANCES,
+          maxVertices: GROUP_MAX_VERTICES,
+          maxIndices: GROUP_MAX_INDICES,
+        });
+
+        if (!materialHasTextures(mat)) {
+          materialProps.inicializarGrupo(matKey, GROUP_MAX_INSTANCES);
+          materialProps.aplicarAMaterial(matKey, groupMaterial);
+          colorGroupsCreatedHere++;
+        }
+      }
+
+      // ─── Register merged geometry ────────────────────────────────
+      let geoId = multiBatch.obtenerIdGeometria(matKey, geoKey);
+      if (!geoId) {
+        try {
+          // ─── Fase 4B: Remap UVs for atlas ───────────────────────
           if (
             mat instanceof THREE.MeshStandardMaterial &&
-            mat.map &&
-            mat.map.image
+            mat.map
           ) {
             const texKey = `tex_${mat.map.uuid}`;
-
-            // Add texture to atlas if not already there
-            if (!textureAtlas.tieneTextura(texKey)) {
-              try {
-                textureAtlas.agregarTextura(texKey, mat.map.image);
-                atlasTextureCount++;
-              } catch {
-                // Atlas full — fall back to individual texture
-              }
+            const uvTransform = textureAtlas.obtenerTransformacionUV(texKey);
+            if (uvTransform) {
+              remapUVsForAtlas(
+                mergedGeo,
+                uvTransform.offsetX,
+                uvTransform.offsetY,
+                uvTransform.scaleX,
+                uvTransform.scaleY,
+              );
             }
-
-            // Clone textured material — keep original color (texture dominates)
-            groupMaterial = cloneMaterialForBatch(mat, false);
-          } else {
-            // Color-only group: white base + Fase 4D DataTexture shader injection
-            // DataTexture REPLACES diffuseColor entirely (not multiplicative like setColorAt)
-            groupMaterial = cloneMaterialForBatch(mat, true);
           }
 
-          multiBatch.crearGrupoMaterial({
-            materialKey: matKey,
-            material: groupMaterial,
-            maxInstances: GROUP_MAX_INSTANCES,
-            maxVertices: GROUP_MAX_VERTICES,
-            maxIndices: GROUP_MAX_INDICES,
+          geoId = multiBatch.agregarGeometria(matKey, geoKey, mergedGeo);
+          mergedGeo.dispose();
+          meshCount++;
+        } catch (err) {
+          log.warn('MultiBatch geometry capacity exceeded', {
+            geoKey,
+            error: (err as Error).message,
+          });
+          continue;
+        }
+      }
+
+      // ─── Create instances per object (1 instance por obj × material) ───
+      const vertexCount = mergedGeo.getAttribute('position')?.count ?? 0;
+
+      for (const obj of objetos) {
+        try {
+          const worldMatrix = computeTransform(gltfScene, obj);
+          const flatMatrix = new Float32Array(16);
+          worldMatrix.toArray(flatMatrix);
+
+          const instanceRef = multiBatch.agregarInstancia(matKey, geoId, flatMatrix);
+
+          if (materialProps.tieneGrupo(matKey) && 'color' in mat) {
+            const stdMat = mat as THREE.MeshStandardMaterial;
+            const c = stdMat.color;
+            if (c) {
+              materialProps.establecerPropiedades(
+                matKey,
+                parseInt(instanceRef.instanceId, 10),
+                {
+                  r: c.r,
+                  g: c.g,
+                  b: c.b,
+                  // Clamp metalness/roughness para evitar Fresnel white-out
+                  // (GLBs traen metalness > 0 en madera/plástico).
+                  metalness: Math.min(stdMat.metalness ?? 0, 0.15),
+                  roughness: Math.max(Math.min(stdMat.roughness ?? 0.5, 1), 0.3),
+                },
+              );
+            }
+          }
+
+          _trackedInstances.push({
+            ref: instanceRef,
+            worldPos: new THREE.Vector3(obj.posicion_x, obj.posicion_y, obj.posicion_z),
+            vertexCount,
+            objetoId: obj.id,
           });
 
-          // ─── Fase 4D: Initialize DataTexture + shader injection for color-only groups ──
-          if (!materialHasTextures(mat)) {
-            materialProps.inicializarGrupo(matKey, GROUP_MAX_INSTANCES);
-            materialProps.aplicarAMaterial(matKey, groupMaterial);
-            colorGroupsCreatedHere++;
-          }
+          instanceCount++;
+        } catch (err) {
+          log.warn('Instance capacity exceeded', {
+            matKey,
+            modeloUrl,
+            objetoId: obj.id,
+            error: (err as Error).message,
+          });
+          continue;
         }
-
-        // ─── Register geometry ───────────────────────────────────────
-        let geoId = multiBatch.obtenerIdGeometria(matKey, geoKey);
-        if (!geoId) {
-          try {
-            const normalizedGeo = ensureConsistentAttributes(mesh.geometry);
-
-            // FIX 2026-05-04 #2: Bake mesh.matrixWorld en los vértices.
-            // Mesh.matrixWorld captura la jerarquía padre del mesh dentro del GLB
-            // (pueden ser nodos con scale/translate). Sin bakearlo en geometry,
-            // pasarlo en la per-instance matrix funciona vía InstancedMesh pero
-            // produce resultados incorrectos en BatchedMesh con DataTexture en
-            // ciertos GLBs específicos (Desk.normalized.glb es uno).
-            // Test del usuario confirmó: solo Desk falla, otros modelos OK →
-            // BatchedMesh maneja diferente la per-instance matrix cuando
-            // mesh.matrixWorld no es identity. Bakear mueve la transform al
-            // espacio de vertex (estable pre-shader) y deja la per-instance
-            // matrix como solo pos/rot/uniformScale.
-            // Diag temporal: log mesh.matrixWorld decompuesto para confirmar.
-            const mwPos = new THREE.Vector3();
-            const mwQuat = new THREE.Quaternion();
-            const mwScale = new THREE.Vector3();
-            mesh.matrixWorld.decompose(mwPos, mwQuat, mwScale);
-            const isIdentity = (
-              mwPos.lengthSq() < 1e-10 &&
-              mwScale.x.toFixed(4) === '1.0000' &&
-              mwScale.y.toFixed(4) === '1.0000' &&
-              mwScale.z.toFixed(4) === '1.0000'
-            );
-            console.log(
-              `[DIAG-MW] ${mesh.name || mesh.uuid.slice(0, 8)} | matrixWorld pos=(${mwPos.x.toFixed(4)},${mwPos.y.toFixed(4)},${mwPos.z.toFixed(4)}) scale=(${mwScale.x.toFixed(4)},${mwScale.y.toFixed(4)},${mwScale.z.toFixed(4)}) identity=${isIdentity} | modelo=${(modeloUrl.split('/').pop() || '?')}`,
-            );
-            normalizedGeo.applyMatrix4(mesh.matrixWorld);
-
-            // ─── Fase 4B: Remap UVs for atlas ───────────────────────
-            if (
-              mat instanceof THREE.MeshStandardMaterial &&
-              mat.map
-            ) {
-              const texKey = `tex_${mat.map.uuid}`;
-              const uvTransform = textureAtlas.obtenerTransformacionUV(texKey);
-              if (uvTransform) {
-                remapUVsForAtlas(
-                  normalizedGeo,
-                  uvTransform.offsetX,
-                  uvTransform.offsetY,
-                  uvTransform.scaleX,
-                  uvTransform.scaleY,
-                );
-              }
-            }
-
-            geoId = multiBatch.agregarGeometria(matKey, geoKey, normalizedGeo);
-
-            // Dispose the cloned geometry — BatchedMesh.addGeometry() copies
-            // buffer data internally. Keeping the clone leaks GPU memory.
-            // Ref: https://threejs.org/docs/#manual/en/introduction/How-to-dispose-of-objects
-            normalizedGeo.dispose();
-
-            meshCount++;
-          } catch (err) {
-            log.warn('MultiBatch geometry capacity exceeded', {
-              geoKey,
-              error: (err as Error).message,
-            });
-            return;
-          }
-        }
-
-        // ─── Create instances per object ─────────────────────────────
-        const vertexCount = mesh.geometry.getAttribute('position')?.count ?? 0;
-
-        for (const obj of objetos) {
-          try {
-            // mesh.matrixWorld ya fue bakeado en la geometry (ver fix arriba),
-            // así que la per-instance matrix es solo pos + rot + uniformScale
-            // del objeto. Sin post-multiply por mesh.matrixWorld (eso causaba
-            // que BatchedMesh aplicara la transform de jerarquía 2 veces).
-            const worldMatrix = computeTransform(gltfScene, obj);
-
-            const flatMatrix = new Float32Array(16);
-            worldMatrix.toArray(flatMatrix);
-
-            const instanceRef = multiBatch.agregarInstancia(matKey, geoId, flatMatrix);
-
-            // ─── Fase 4D: Per-instance PBR properties via DataTexture ────
-            // Uses materialProps.tieneGrupo() (global service check) instead of
-            // a local Set — ensures ALL models that share a color-only group
-            // get their per-instance properties set, not just the first model.
-            //
-            // instanceId is BatchInstanceId (string) — parse to integer index
-            // for the DataTexture row (gl_DrawID = integer in GLSL).
-            //
-            // Ref: gkjohnson/batched-material-properties-demo
-            // Ref: Three.js r170 — gl_DrawID in batching_pars_vertex.glsl
-            if (materialProps.tieneGrupo(matKey) && 'color' in mat) {
-              const stdMat = mat as THREE.MeshStandardMaterial;
-              const c = stdMat.color;
-              if (c) {
-                materialProps.establecerPropiedades(
-                  matKey,
-                  parseInt(instanceRef.instanceId, 10),
-                  {
-                    r: c.r,
-                    g: c.g,
-                    b: c.b,
-                    // Clamp metalness/roughness para evitar Fresnel white-out:
-                    // GLTF importados pueden traer metalness > 0 en objetos no-metálicos
-                    // (madera, tela, plástico). Combinado con toneMappingExposure > 1,
-                    // produce reflejos blancos en ángulos rasantes (efecto Fresnel).
-                    // Ref: https://threejs.org/docs/#api/en/materials/MeshStandardMaterial.metalness
-                    metalness: Math.min(stdMat.metalness ?? 0, 0.15),
-                    roughness: Math.max(Math.min(stdMat.roughness ?? 0.5, 1), 0.3),
-                  },
-                );
-              }
-            }
-
-            // ─── Fase 4C: Track instance for frustum culling ─────────
-            _trackedInstances.push({
-              ref: instanceRef,
-              worldPos: new THREE.Vector3(obj.posicion_x, obj.posicion_y, obj.posicion_z),
-              vertexCount,
-              objetoId: obj.id,
-            });
-
-            instanceCount++;
-          } catch (err) {
-            // Log capacity overflow per-instance — don't silently break.
-            // `break` would skip ALL remaining objects for this mesh,
-            // but other material groups may still have capacity.
-            log.warn('Instance capacity exceeded', {
-              matKey,
-              modeloUrl,
-              objetoId: obj.id,
-              error: (err as Error).message,
-            });
-            continue;
-          }
-        }
-      });
-    });
+      }
+    }
 
     // ─── Fase 4B: Pack atlas after all textures are added ──────────────
     if (atlasTextureCount > 0) {
