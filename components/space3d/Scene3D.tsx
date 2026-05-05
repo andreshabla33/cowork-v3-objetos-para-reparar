@@ -614,6 +614,16 @@ export const Scene: React.FC<SceneProps> = ({
         esSuperficie: Boolean(obj.catalogo?.es_superficie),
       });
     }
+    // Diagnóstico temporal: confirmar que es_superficie llega del catálogo.
+    if (typeof window !== 'undefined') {
+      const superficies = out.filter((o) => o.esSuperficie);
+      console.log(
+        `[DIAG-SNAP] objetosColocables=${out.length} | superficies=${superficies.length}`,
+        superficies.length > 0
+          ? superficies.map((s) => `${s.id.slice(0, 8)}@y=${s.posicionY.toFixed(2)}+h=${s.alto.toFixed(2)}`).join(', ')
+          : '(ninguna — catálogo aún cacheado o ningún objeto-superficie en el espacio)',
+      );
+    }
     return out;
   }, [espacioObjetos]);
 
