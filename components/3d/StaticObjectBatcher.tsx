@@ -339,7 +339,6 @@ const _quat = new THREE.Quaternion();
 const _euler = new THREE.Euler();
 const _scale = new THREE.Vector3();
 const _matrix = new THREE.Matrix4();
-const _meshLocal = new THREE.Matrix4();
 
 function computeTransform(
   gltfScene: THREE.Object3D,
@@ -473,6 +472,33 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
           try {
             const normalizedGeo = ensureConsistentAttributes(mesh.geometry);
 
+            // FIX 2026-05-04 #2: Bake mesh.matrixWorld en los vértices.
+            // Mesh.matrixWorld captura la jerarquía padre del mesh dentro del GLB
+            // (pueden ser nodos con scale/translate). Sin bakearlo en geometry,
+            // pasarlo en la per-instance matrix funciona vía InstancedMesh pero
+            // produce resultados incorrectos en BatchedMesh con DataTexture en
+            // ciertos GLBs específicos (Desk.normalized.glb es uno).
+            // Test del usuario confirmó: solo Desk falla, otros modelos OK →
+            // BatchedMesh maneja diferente la per-instance matrix cuando
+            // mesh.matrixWorld no es identity. Bakear mueve la transform al
+            // espacio de vertex (estable pre-shader) y deja la per-instance
+            // matrix como solo pos/rot/uniformScale.
+            // Diag temporal: log mesh.matrixWorld decompuesto para confirmar.
+            const mwPos = new THREE.Vector3();
+            const mwQuat = new THREE.Quaternion();
+            const mwScale = new THREE.Vector3();
+            mesh.matrixWorld.decompose(mwPos, mwQuat, mwScale);
+            const isIdentity = (
+              mwPos.lengthSq() < 1e-10 &&
+              mwScale.x.toFixed(4) === '1.0000' &&
+              mwScale.y.toFixed(4) === '1.0000' &&
+              mwScale.z.toFixed(4) === '1.0000'
+            );
+            console.log(
+              `[DIAG-MW] ${mesh.name || mesh.uuid.slice(0, 8)} | matrixWorld pos=(${mwPos.x.toFixed(4)},${mwPos.y.toFixed(4)},${mwPos.z.toFixed(4)}) scale=(${mwScale.x.toFixed(4)},${mwScale.y.toFixed(4)},${mwScale.z.toFixed(4)}) identity=${isIdentity} | modelo=${(modeloUrl.split('/').pop() || '?')}`,
+            );
+            normalizedGeo.applyMatrix4(mesh.matrixWorld);
+
             // ─── Fase 4B: Remap UVs for atlas ───────────────────────
             if (
               mat instanceof THREE.MeshStandardMaterial &&
@@ -513,9 +539,11 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
 
         for (const obj of objetos) {
           try {
+            // mesh.matrixWorld ya fue bakeado en la geometry (ver fix arriba),
+            // así que la per-instance matrix es solo pos + rot + uniformScale
+            // del objeto. Sin post-multiply por mesh.matrixWorld (eso causaba
+            // que BatchedMesh aplicara la transform de jerarquía 2 veces).
             const worldMatrix = computeTransform(gltfScene, obj);
-            _meshLocal.copy(mesh.matrixWorld);
-            worldMatrix.multiply(_meshLocal);
 
             const flatMatrix = new Float32Array(16);
             worldMatrix.toArray(flatMatrix);
