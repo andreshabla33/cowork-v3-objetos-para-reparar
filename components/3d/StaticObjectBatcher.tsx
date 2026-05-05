@@ -353,26 +353,23 @@ function computeTransform(
   _box.setFromObject(gltfScene);
   _box.getSize(_size);
 
-  const factors = [
-    w / Math.max(_size.x, 0.001),
-    h / Math.max(_size.y, 0.001),
-    d / Math.max(_size.z, 0.001),
-  ].filter((v) => Number.isFinite(v) && v > 0);
-  const uniformScale = factors.length > 0 ? Math.min(...factors) : 1;
-  const offsetY = -_box.min.y * uniformScale - h / 2;
-
-  // Diagnóstico temporal v3 — formato plano para visibilidad inline.
-  const fix = (n: number | null | undefined) =>
-    typeof n === 'number' && Number.isFinite(n) ? n.toFixed(4) : String(n);
-  const slug = (obj.modelo_url || '').split('/').pop() || '?';
-  console.log(
-    `[DIAG v3] ${obj.tipo}/${slug} | dimsCat=(${fix(w)},${fix(h)},${fix(d)}) | bboxGLB=(${fix(_size.x)},${fix(_size.y)},${fix(_size.z)}) | factors=[${factors.map(fix).join(',')}] | uniformScale=${fix(uniformScale)} | catSnap=(${fix(obj.catalogo?.ancho)},${fix(obj.catalogo?.alto)},${fix(obj.catalogo?.profundidad)},norm=${fix(obj.catalogo?.escala_normalizacion)}) | escalaObj=(${fix(obj.escala_x)},${fix(obj.escala_y)},${fix(obj.escala_z)},norm=${fix(obj.escala_normalizacion)})`,
-  );
+  // FIX 2026-05-05: non-uniform scale para coincidir EXACTO con dimensiones
+  // del catálogo. Antes (Math.min uniformScale) → fit-inside que dejaba slack
+  // en algunos ejes. Resultado: GLBs con aspect ratio distinto al catálogo
+  // (ej. Small Table.glb: 0.9×0.59×1.365 vs catálogo 1.2×0.75×1.2) se
+  // renderizaban significativamente más pequeños que la dimensión declarada.
+  // Para Y rotation only (caso del proyecto) la non-uniform scale produce
+  // ellipse rotation correcta — no shear porque scale se aplica antes de R.
+  // Ref: Three.js Matrix4.compose() = T × R × S → S aplicado al vertex primero.
+  const sx = w / Math.max(_size.x, 0.001);
+  const sy = h / Math.max(_size.y, 0.001);
+  const sz = d / Math.max(_size.z, 0.001);
+  const offsetY = -_box.min.y * sy - h / 2;
 
   _pos.set(obj.posicion_x, obj.posicion_y + offsetY, obj.posicion_z);
   _euler.set(obj.rotacion_x ?? 0, obj.rotacion_y ?? 0, obj.rotacion_z ?? 0);
   _quat.setFromEuler(_euler);
-  _scale.setScalar(uniformScale);
+  _scale.set(sx, sy, sz);
 
   return _matrix.compose(_pos, _quat, _scale).clone();
 }
