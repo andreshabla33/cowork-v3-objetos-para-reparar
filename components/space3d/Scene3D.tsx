@@ -1,5 +1,5 @@
 'use client';
-import React, { useRef, useEffect, useMemo, Suspense, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useMemo, Suspense, useState, useCallback, useSyncExternalStore } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { OrthographicCamera, PerspectiveCamera, Grid, Text, OrbitControls, Html, PerformanceMonitor, useGLTF } from '@react-three/drei';
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';
@@ -42,6 +42,11 @@ import { FloorType, calcularNivelAnidamientoRectangulo, detectarSolapamientoSubz
 import { DRAWING_MAX_ORBIT_DISTANCE } from '@/src/core/domain/entities/espacio3d/CameraFramingPolicy';
 import { obtenerPlantillaZona } from '@/src/core/domain/entities/plantillasEspacio';
 import { crearPropsMaterialSueloPbr } from '@/lib/rendering/textureRegistry';
+import {
+  getScaledBbox,
+  getScaledBboxVersion,
+  subscribeToScaledBbox,
+} from '@/lib/rendering/scaledBboxRegistry';
 import { SceneEnvironment } from './SceneEnvironment';
 import { SceneCamera } from './SceneCamera';
 import { SceneZonas } from './SceneZonas';
@@ -591,6 +596,14 @@ export const Scene: React.FC<SceneProps> = ({
   // para decidir si el objeto que arrastras cae al suelo o se apila encima.
   // Excluimos objetos sin catálogo resuelto (dimensiones desconocidas → no
   // pueden actuar como AABB fiable).
+  // Suscripción al registry de bbox escalada — re-memoiza objetosColocables
+  // cuando cualquier GLB termina de cargar y registra su bbox.
+  const scaledBboxVersion = useSyncExternalStore(
+    subscribeToScaledBbox,
+    getScaledBboxVersion,
+    getScaledBboxVersion, // SSR snapshot
+  );
+
   const objetosColocables = useMemo<ObjetoColocable[]>(() => {
     const out: ObjetoColocable[] = [];
     for (const obj of espacioObjetos) {
@@ -603,6 +616,15 @@ export const Scene: React.FC<SceneProps> = ({
       if (!Number.isFinite(ancho) || ancho <= 0) continue;
       if (!Number.isFinite(alto) || alto <= 0) continue;
       if (!Number.isFinite(profundidad) || profundidad <= 0) continue;
+      // Override topY usando bbox escalado real del GLB cuando esté disponible.
+      // Resuelve "objeto flotando" cuando catálogo alto > altura visible real.
+      // Si el GLB todavía no se cargó (registry vacío), usamos catálogo (fallback
+      // al comportamiento previo) — primer drop puede flotar, pero al moverse el
+      // GLB se carga y el siguiente drop snapea correcto.
+      const bboxInfo = obj.modelo_url ? getScaledBbox(obj.modelo_url) : undefined;
+      const topYOverride = bboxInfo
+        ? obj.posicion_y + bboxInfo.maxY - alto / 2
+        : undefined;
       out.push({
         id: obj.id,
         posicionX: obj.posicion_x,
@@ -612,20 +634,27 @@ export const Scene: React.FC<SceneProps> = ({
         alto,
         profundidad,
         esSuperficie: Boolean(obj.catalogo?.es_superficie),
+        topYOverride,
       });
     }
-    // Diagnóstico temporal: confirmar que es_superficie llega del catálogo.
+    // Diagnóstico temporal: confirmar que es_superficie + topYOverride llegan.
     if (typeof window !== 'undefined') {
       const superficies = out.filter((o) => o.esSuperficie);
       console.log(
         `[DIAG-SNAP] objetosColocables=${out.length} | superficies=${superficies.length}`,
         superficies.length > 0
-          ? superficies.map((s) => `${s.id.slice(0, 8)}@y=${s.posicionY.toFixed(2)}+h=${s.alto.toFixed(2)}`).join(', ')
-          : '(ninguna — catálogo aún cacheado o ningún objeto-superficie en el espacio)',
+          ? superficies
+              .map(
+                (s) =>
+                  `${s.id.slice(0, 8)}@y=${s.posicionY.toFixed(2)}+h=${s.alto.toFixed(2)}` +
+                  (typeof s.topYOverride === 'number' ? ` topVisible=${s.topYOverride.toFixed(3)}` : ' (sin GLB-bbox)'),
+              )
+              .join(', ')
+          : '(ninguna)',
       );
     }
     return out;
-  }, [espacioObjetos]);
+  }, [espacioObjetos, scaledBboxVersion]);
 
   // Fix 2026-04-21: antes pasábamos `zonasEmpresa` completo a la generación
   // de cerramientos. Incluía zonas con `estado='inactiva'`, y la función

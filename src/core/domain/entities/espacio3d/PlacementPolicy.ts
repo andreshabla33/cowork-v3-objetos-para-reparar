@@ -45,6 +45,15 @@ export interface ObjetoColocable {
   readonly alto: number;
   readonly profundidad: number;
   readonly esSuperficie: boolean;
+  /**
+   * Override opcional para el "topY" usado en la AABB. Si está presente, la
+   * AABB.max.y usa este valor en lugar de `posicionY + alto/2`. Sirve para
+   * GLBs cuyo bbox escalado no llena el alto declarado por el catálogo
+   * (uniformScale limitado por X o Z): el render visible queda más bajo que
+   * `posicionY + alto/2` y el objeto apilado encima quedaba flotando.
+   * Calculado por la Presentation desde el bbox real escalado del GLB.
+   */
+  readonly topYOverride?: number;
 }
 
 /** Rayo en coordenadas de mundo (origen + dirección normalizada). */
@@ -85,6 +94,7 @@ export function construirAABB(objeto: ObjetoColocable): AABB {
   const halfAncho = objeto.ancho / 2;
   const halfAlto = objeto.alto / 2;
   const halfProfundidad = objeto.profundidad / 2;
+  const topY = objeto.topYOverride ?? (objeto.posicionY + halfAlto);
   return {
     min: {
       x: objeto.posicionX - halfAncho,
@@ -93,7 +103,7 @@ export function construirAABB(objeto: ObjetoColocable): AABB {
     },
     max: {
       x: objeto.posicionX + halfAncho,
-      y: objeto.posicionY + halfAlto,
+      y: topY,
       z: objeto.posicionZ + halfProfundidad,
     },
   };

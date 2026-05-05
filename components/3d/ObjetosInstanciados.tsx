@@ -30,6 +30,7 @@ import { ObjetoEscena3D } from './ObjetoEscena3D';
 import { useStore } from '@/store/useStore';
 import { hapticFeedback } from '@/lib/mobileDetect';
 import { logger } from '@/lib/logger';
+import { registerScaledBbox } from '@/lib/rendering/scaledBboxRegistry';
 
 const log = logger.child('ObjetosInstanciados');
 
@@ -202,6 +203,13 @@ const GrupoModeloGLTF: React.FC<GrupoModeloProps> = ({
         ].filter((v) => Number.isFinite(v) && v > 0);
         const escalaUniforme = factores.length > 0 ? Math.min(...factores) : 1;
         const offsetY = -box.min.y * escalaUniforme - dimensiones[1] / 2;
+        // Registrar bbox escalada para snap-to-surface preciso (placement
+        // policy usa esta info para apuntar al visible top, no al catálogo top).
+        registerScaledBbox(modeloUrl, {
+          minY: box.min.y * escalaUniforme,
+          maxY: box.max.y * escalaUniforme,
+          height: size.y * escalaUniforme,
+        });
         // FIX 2026-05-05: XZ centering consistente con ObjetoEscena3D y
         // StaticObjectBatcher. Anchor unificado: bbox center en XZ,
         // bbox.min en Y. Evita que el objeto "salte" entre modo construcción
