@@ -68,22 +68,25 @@ const calcularTransformacionUniformeGLTF = (
   objeto: THREE.Object3D,
   dimensiones: [number, number, number]
 ) => {
-  // FIX 2026-05-05: non-uniform scale para coincidir EXACTO con catálogo.
-  // Consistente con StaticObjectBatcher.computeTransform y
-  // ObjetosInstanciados.calcularEscalaInstancia.
   const box = new THREE.Box3().setFromObject(objeto);
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
-  const sx = dimensiones[0] / Math.max(size.x, 0.001);
-  const sy = dimensiones[1] / Math.max(size.y, 0.001);
-  const sz = dimensiones[2] / Math.max(size.z, 0.001);
+  const factores = [
+    dimensiones[0] / Math.max(size.x, 0.001),
+    dimensiones[1] / Math.max(size.y, 0.001),
+    dimensiones[2] / Math.max(size.z, 0.001),
+  ].filter((valor) => Number.isFinite(valor) && valor > 0);
+  const factorContain = Math.min(...factores);
+  const escalaUniforme = Number.isFinite(factorContain) && factorContain > 0
+    ? factorContain
+    : 1;
   const sueloObjetivoLocalY = -(dimensiones[1] / 2);
 
-  objeto.scale.set(sx, sy, sz);
+  objeto.scale.setScalar(escalaUniforme);
   objeto.position.set(
-    -center.x * sx,
-    (-box.min.y * sy) + sueloObjetivoLocalY,
-    -center.z * sz
+    -center.x * escalaUniforme,
+    (-box.min.y * escalaUniforme) + sueloObjetivoLocalY,
+    -center.z * escalaUniforme
   );
 
   return objeto;

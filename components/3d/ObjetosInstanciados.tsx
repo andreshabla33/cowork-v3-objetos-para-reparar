@@ -186,23 +186,26 @@ const GrupoModeloGLTF: React.FC<GrupoModeloProps> = ({
 
       objetosParaInstancing.forEach((obj, instanceIdx) => {
         const dims = obtenerDimensionesObjetoRuntime(obj);
-        const w = Math.max(dims.ancho, 0.05);
-        const h = Math.max(dims.alto, 0.05);
-        const d = Math.max(dims.profundidad, 0.05);
+        const dimensiones: [number, number, number] = [
+          Math.max(dims.ancho, 0.05),
+          Math.max(dims.alto, 0.05),
+          Math.max(dims.profundidad, 0.05),
+        ];
 
-        // FIX 2026-05-05: non-uniform scale para coincidir EXACTO con catálogo.
-        // Consistente con StaticObjectBatcher.computeTransform.
         const box = new THREE.Box3().setFromObject(gltfScene);
         const size = box.getSize(new THREE.Vector3());
-        const sx = w / Math.max(size.x, 0.001);
-        const sy = h / Math.max(size.y, 0.001);
-        const sz = d / Math.max(size.z, 0.001);
-        const offsetY = -box.min.y * sy - h / 2;
+        const factores = [
+          dimensiones[0] / Math.max(size.x, 0.001),
+          dimensiones[1] / Math.max(size.y, 0.001),
+          dimensiones[2] / Math.max(size.z, 0.001),
+        ].filter((v) => Number.isFinite(v) && v > 0);
+        const escalaUniforme = factores.length > 0 ? Math.min(...factores) : 1;
+        const offsetY = -box.min.y * escalaUniforme - dimensiones[1] / 2;
 
         posicion.set(obj.posicion_x, obj.posicion_y + offsetY, obj.posicion_z);
         euler.set(obj.rotacion_x ?? 0, obj.rotacion_y ?? 0, obj.rotacion_z ?? 0);
         rotacion.setFromEuler(euler);
-        escalaVec.set(sx, sy, sz);
+        escalaVec.setScalar(escalaUniforme);
 
         matrizInstancia.compose(posicion, rotacion, escalaVec);
         matrizInstancia.multiply(meshLocalMatrix);

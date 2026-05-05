@@ -353,23 +353,18 @@ function computeTransform(
   _box.setFromObject(gltfScene);
   _box.getSize(_size);
 
-  // FIX 2026-05-05: non-uniform scale para coincidir EXACTO con dimensiones
-  // del catálogo. Antes (Math.min uniformScale) → fit-inside que dejaba slack
-  // en algunos ejes. Resultado: GLBs con aspect ratio distinto al catálogo
-  // (ej. Small Table.glb: 0.9×0.59×1.365 vs catálogo 1.2×0.75×1.2) se
-  // renderizaban significativamente más pequeños que la dimensión declarada.
-  // Para Y rotation only (caso del proyecto) la non-uniform scale produce
-  // ellipse rotation correcta — no shear porque scale se aplica antes de R.
-  // Ref: Three.js Matrix4.compose() = T × R × S → S aplicado al vertex primero.
-  const sx = w / Math.max(_size.x, 0.001);
-  const sy = h / Math.max(_size.y, 0.001);
-  const sz = d / Math.max(_size.z, 0.001);
-  const offsetY = -_box.min.y * sy - h / 2;
+  const factors = [
+    w / Math.max(_size.x, 0.001),
+    h / Math.max(_size.y, 0.001),
+    d / Math.max(_size.z, 0.001),
+  ].filter((v) => Number.isFinite(v) && v > 0);
+  const uniformScale = factors.length > 0 ? Math.min(...factors) : 1;
+  const offsetY = -_box.min.y * uniformScale - h / 2;
 
   _pos.set(obj.posicion_x, obj.posicion_y + offsetY, obj.posicion_z);
   _euler.set(obj.rotacion_x ?? 0, obj.rotacion_y ?? 0, obj.rotacion_z ?? 0);
   _quat.setFromEuler(_euler);
-  _scale.set(sx, sy, sz);
+  _scale.setScalar(uniformScale);
 
   return _matrix.compose(_pos, _quat, _scale).clone();
 }
