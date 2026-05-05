@@ -177,6 +177,11 @@ export const Avatar: React.FC<AvatarProps> = ({
   const lastClickRef = useRef(0);
   const clickPreventedRef = useRef(false);
   const { avatar3DConfig } = useStore();
+  // Cuando el admin está en modo edición, el avatar propio NO debe capturar
+  // clicks: si lo hace, bloquea la selección/movimiento de objetos detrás de
+  // él (caso reportado: monitor cerca del avatar abre el modal del avatar
+  // en lugar de seleccionar el objeto).
+  const isEditMode = useStore((s) => s.isEditMode);
 
   const videoSettings = useMemo(() => getSettingsSection('video'), []);
   const perfS = useMemo(() => getSettingsSection('performance'), []);
@@ -225,6 +230,8 @@ export const Avatar: React.FC<AvatarProps> = ({
   }, []);
 
   const handleClick = useCallback((e: any) => {
+    // Modo edición: avatar propio NO captura el click (deja pasar al objeto).
+    if (isCurrentUser && isEditMode) return;
     e.stopPropagation();
     if (isCurrentUser && onClickAvatar) { onClickAvatar(); return; }
     if (isCurrentUser || !userId) return;
