@@ -194,6 +194,7 @@ const GrupoModeloGLTF: React.FC<GrupoModeloProps> = ({
 
         const box = new THREE.Box3().setFromObject(gltfScene);
         const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
         const factores = [
           dimensiones[0] / Math.max(size.x, 0.001),
           dimensiones[1] / Math.max(size.y, 0.001),
@@ -201,8 +202,18 @@ const GrupoModeloGLTF: React.FC<GrupoModeloProps> = ({
         ].filter((v) => Number.isFinite(v) && v > 0);
         const escalaUniforme = factores.length > 0 ? Math.min(...factores) : 1;
         const offsetY = -box.min.y * escalaUniforme - dimensiones[1] / 2;
+        // FIX 2026-05-05: XZ centering consistente con ObjetoEscena3D y
+        // StaticObjectBatcher. Anchor unificado: bbox center en XZ,
+        // bbox.min en Y. Evita que el objeto "salte" entre modo construcción
+        // (selected→ObjetoEscena3D) y modo construcción (no-selected→este path).
+        const offsetX = -center.x * escalaUniforme;
+        const offsetZ = -center.z * escalaUniforme;
 
-        posicion.set(obj.posicion_x, obj.posicion_y + offsetY, obj.posicion_z);
+        posicion.set(
+          obj.posicion_x + offsetX,
+          obj.posicion_y + offsetY,
+          obj.posicion_z + offsetZ,
+        );
         euler.set(obj.rotacion_x ?? 0, obj.rotacion_y ?? 0, obj.rotacion_z ?? 0);
         rotacion.setFromEuler(euler);
         escalaVec.setScalar(escalaUniforme);

@@ -334,6 +334,7 @@ function remapUVsForAtlas(
 
 const _box = new THREE.Box3();
 const _size = new THREE.Vector3();
+const _center = new THREE.Vector3();
 const _pos = new THREE.Vector3();
 const _quat = new THREE.Quaternion();
 const _euler = new THREE.Euler();
@@ -352,6 +353,7 @@ function computeTransform(
 
   _box.setFromObject(gltfScene);
   _box.getSize(_size);
+  _box.getCenter(_center);
 
   const factors = [
     w / Math.max(_size.x, 0.001),
@@ -360,8 +362,20 @@ function computeTransform(
   ].filter((v) => Number.isFinite(v) && v > 0);
   const uniformScale = factors.length > 0 ? Math.min(...factors) : 1;
   const offsetY = -_box.min.y * uniformScale - h / 2;
+  // FIX 2026-05-05: XZ centering consistente con ObjetoEscena3D.calcular-
+  // TransformacionUniformeGLTF. Sin esto, GLBs cuyo pivot no coincida con
+  // el centro del bbox se renderizaban en posiciones distintas en
+  // construcción (selected) vs normal (BatchedMesh) → "el objeto se movió
+  // al salir de construcción". Anchor unificado: bbox center en XZ,
+  // bbox.min en Y (suelo).
+  const offsetX = -_center.x * uniformScale;
+  const offsetZ = -_center.z * uniformScale;
 
-  _pos.set(obj.posicion_x, obj.posicion_y + offsetY, obj.posicion_z);
+  _pos.set(
+    obj.posicion_x + offsetX,
+    obj.posicion_y + offsetY,
+    obj.posicion_z + offsetZ,
+  );
   _euler.set(obj.rotacion_x ?? 0, obj.rotacion_y ?? 0, obj.rotacion_z ?? 0);
   _quat.setFromEuler(_euler);
   _scale.setScalar(uniformScale);
