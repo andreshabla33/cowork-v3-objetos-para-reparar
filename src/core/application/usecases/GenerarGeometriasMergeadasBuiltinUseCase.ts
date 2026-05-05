@@ -160,7 +160,7 @@ export class GenerarGeometriasMergeadasBuiltinUseCase {
       if (bucket.length === 0) continue;
       totalOpaqueGeos += bucket.length;
 
-      if (process.env.NODE_ENV !== 'production') {
+      if (import.meta.env.DEV) {
         this._verificarCompatibilidadAtributos('opaque', bucket);
       }
 
@@ -180,7 +180,7 @@ export class GenerarGeometriasMergeadasBuiltinUseCase {
 
     // Merge metal bucket (single material, no sub-types needed)
     if (metalBucket.length > 0) {
-      if (process.env.NODE_ENV !== 'production') {
+      if (import.meta.env.DEV) {
         this._verificarCompatibilidadAtributos('metal', metalBucket);
       }
 
