@@ -74,9 +74,14 @@ export interface UseLiveKitRoomLifecycleParams {
   cleanupParticipantTracks: (participantId: string) => void;
   cleanupStaleParticipants: (activeIds: Set<string>) => void;
   resetAllRemoteTracksState: () => void;
-  resetSpeakingUsers: () => void;
 
-  // Late-binding resets (refs populated by sibling sub-hooks).
+  // Late-binding resets (refs populated by sibling sub-hooks). Using a ref
+  // for `resetSpeakingUsers` (instead of a direct callback prop) keeps
+  // `limpiarLivekit`'s identity stable across renders — otherwise the
+  // unmount cleanup `useEffect(... , [limpiarLivekit])` re-fires on every
+  // render and calls `room.disconnect()` mid-handshake, cancelling connect
+  // (regression bug observed on Vercel preview of commit 1f4a8ab).
+  resetSpeakingUsersRef: React.MutableRefObject<(() => void) | null>;
   zombieResetRef: React.MutableRefObject<(() => void) | null>;
   subscriptionPolicyResetRef: React.MutableRefObject<(() => void) | null>;
 
@@ -112,8 +117,8 @@ export function useLiveKitRoomLifecycle(
     onRemoteTrackSubscribedRef, onRemoteTrackUnsubscribedRef,
     onSpeakerChangeRef, onConnectionQualityChangedRef,
     cleanupParticipantTracks, cleanupStaleParticipants,
-    resetAllRemoteTracksState, resetSpeakingUsers,
-    zombieResetRef, subscriptionPolicyResetRef,
+    resetAllRemoteTracksState,
+    resetSpeakingUsersRef, zombieResetRef, subscriptionPolicyResetRef,
     realtimePositionsRef,
     recordTelemetry, logRemoteMediaLifecycle,
   } = params;
@@ -159,12 +164,12 @@ export function useLiveKitRoomLifecycle(
     setLivekitConnected(false);
     setRealtimeCoordinatorState(null);
     setRemoteParticipantIds(new Set());
-    resetSpeakingUsers();
+    resetSpeakingUsersRef.current?.();
     zombieResetRef.current?.();
     subscriptionPolicyResetRef.current?.();
   }, [
-    livekitRoomNameRef, resetAllRemoteTracksState, resetSpeakingUsers,
-    zombieResetRef, subscriptionPolicyResetRef,
+    livekitRoomNameRef, resetAllRemoteTracksState,
+    resetSpeakingUsersRef, zombieResetRef, subscriptionPolicyResetRef,
   ]);
 
   // ─── Connect ───────────────────────────────────────────────────────────────

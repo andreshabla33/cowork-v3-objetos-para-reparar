@@ -104,6 +104,7 @@ export function useLiveKit(params: {
   const onConnectionQualityChangedRef = useRef<((id: string, quality: string) => void) | null>(null);
   const subscriptionPolicyResetRef = useRef<(() => void) | null>(null);
   const zombieResetRef = useRef<(() => void) | null>(null);
+  const resetSpeakingUsersRef = useRef<(() => void) | null>(null);
 
   // ─── Sub-hook composition (topological order) ─────────────────────────────
   // 1. Telemetry — no deps.
@@ -131,7 +132,7 @@ export function useLiveKit(params: {
     cleanupParticipantTracks: remoteTracks.cleanupParticipantTracks,
     cleanupStaleParticipants: remoteTracks.cleanupStaleParticipants,
     resetAllRemoteTracksState: remoteTracks.resetAllRemoteTracksState,
-    resetSpeakingUsers: () => speaker.setSpeakingUsers(new Set()),
+    resetSpeakingUsersRef,
     zombieResetRef,
     subscriptionPolicyResetRef,
     realtimePositionsRef,
@@ -145,6 +146,7 @@ export function useLiveKit(params: {
   const speaker = useLiveKitSpeakerDetection({
     realtimeCoordinatorRef: lifecycle.realtimeCoordinatorRef,
     onSpeakerChangeOutRef: onSpeakerChangeRef,
+    resetSpeakingUsersOutRef: resetSpeakingUsersRef,
   });
 
   // 5. ZombieCleanup — uses Lifecycle's setRemoteParticipantIds + RemoteTracks

@@ -21,6 +21,8 @@ import type { SpaceRealtimeCoordinator } from '@/modules/realtime-room';
 export interface UseLiveKitSpeakerDetectionParams {
   realtimeCoordinatorRef: React.MutableRefObject<SpaceRealtimeCoordinator | null>;
   onSpeakerChangeOutRef: React.MutableRefObject<((speakerIds: string[]) => void) | null>;
+  /** Output ref populated with `resetSpeakingUsers`. Read by Lifecycle's limpiarLivekit. */
+  resetSpeakingUsersOutRef: React.MutableRefObject<(() => void) | null>;
 }
 
 export interface UseLiveKitSpeakerDetectionReturn {
@@ -33,7 +35,7 @@ export interface UseLiveKitSpeakerDetectionReturn {
 export function useLiveKitSpeakerDetection(
   params: UseLiveKitSpeakerDetectionParams,
 ): UseLiveKitSpeakerDetectionReturn {
-  const { realtimeCoordinatorRef, onSpeakerChangeOutRef } = params;
+  const { realtimeCoordinatorRef, onSpeakerChangeOutRef, resetSpeakingUsersOutRef } = params;
 
   const [speakingUsers, setSpeakingUsers] = useState<Set<string>>(new Set());
   const speakingUsersRef = useRef<Set<string>>(new Set());
@@ -54,6 +56,15 @@ export function useLiveKitSpeakerDetection(
   const resetSpeakingUsers = useCallback(() => {
     setSpeakingUsers(new Set());
   }, []);
+
+  // Publish via output ref so Lifecycle.limpiarLivekit can clear speaking
+  // users without taking `resetSpeakingUsers` as a direct prop dep — that
+  // would unstabilize Lifecycle's `limpiarLivekit` identity each render and
+  // trigger the unmount-effect cleanup to disconnect the in-flight LiveKit
+  // connect (regression observed on Vercel preview of commit 1f4a8ab).
+  useEffect(() => {
+    resetSpeakingUsersOutRef.current = resetSpeakingUsers;
+  }, [resetSpeakingUsersOutRef, resetSpeakingUsers]);
 
   return { speakingUsers, setSpeakingUsers, speakingUsersRef, resetSpeakingUsers };
 }
