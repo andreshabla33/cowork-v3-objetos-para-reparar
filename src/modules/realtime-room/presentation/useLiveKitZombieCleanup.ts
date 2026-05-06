@@ -16,7 +16,6 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
-import type { ConnectionQuality } from 'livekit-client';
 import { logger } from '@/lib/logger';
 
 const log = logger.child('useLiveKit-zombie-cleanup');
@@ -34,7 +33,7 @@ export interface UseLiveKitZombieCleanupParams {
     category?: 'remote_media' | 'subscription_policy' | 'meeting_access' | 'meeting_realtime' | 'meeting_quality' | 'space_realtime',
   ) => void;
   onConnectionQualityChangedOutRef: React.MutableRefObject<
-    ((participantId: string, quality: ConnectionQuality) => void) | null
+    ((participantId: string, quality: string) => void) | null
   >;
 }
 

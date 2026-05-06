@@ -12,8 +12,8 @@
  *
  * Skills: clean-architecture-refactor + official-docs-alignment.
  * Refs (livekit-client):
- *   - Track / RemoteTrack / RemoteTrackPublication:
- *     https://docs.livekit.io/reference/client-sdk-js/classes/RemoteTrackPublication.html
+ *   - Track / RemoteTrack / TrackPublication:
+ *     https://docs.livekit.io/reference/client-sdk-js/classes/TrackPublication.html
  *   - Track.Kind / Track.Source enums:
  *     https://docs.livekit.io/reference/client-sdk-js/enums/Track.Kind.html
  *     https://docs.livekit.io/reference/client-sdk-js/enums/Track.Source.html
@@ -22,7 +22,7 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
-import type { RemoteTrack, RemoteTrackPublication, RemoteParticipant } from 'livekit-client';
+import type { TrackPublication, RemoteParticipant } from 'livekit-client';
 import { Track } from 'livekit-client';
 import { RemoteRenderLifecyclePolicy, RemoteTrackAttachmentPolicy } from '@/modules/realtime-room';
 
@@ -32,10 +32,10 @@ export interface UseLiveKitRemoteTracksParams {
   permitirMediaParticipante: (metadata?: string | null) => boolean;
   logRemoteMediaLifecycle: (event: string, payload?: Record<string, unknown>) => void;
   onRemoteTrackSubscribedOutRef: React.MutableRefObject<
-    ((track: RemoteTrack, pub: RemoteTrackPublication, participant: RemoteParticipant) => void) | null
+    ((track: Track, pub: TrackPublication, participant: RemoteParticipant) => void) | null
   >;
   onRemoteTrackUnsubscribedOutRef: React.MutableRefObject<
-    ((track: RemoteTrack, pub: RemoteTrackPublication, participant: RemoteParticipant) => void) | null
+    ((track: Track, pub: TrackPublication, participant: RemoteParticipant) => void) | null
   >;
 }
 
