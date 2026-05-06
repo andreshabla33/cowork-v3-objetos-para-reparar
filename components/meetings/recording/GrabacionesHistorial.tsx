@@ -12,6 +12,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '../../../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { logger } from '@/lib/logger';
 import { useGrabacionesHistorial } from '../../../hooks/meetings/useGrabacionesHistorial';
 import type {
@@ -166,7 +167,14 @@ const CustomDropdown: React.FC<CustomDropdownProps> = ({
 
 export const GrabacionesHistorial: React.FC = () => {
   const { t } = useTranslation();
-  const { activeWorkspace, session, theme, userRoleInActiveWorkspace } = useStore();
+  const { activeWorkspace, session, theme, userRoleInActiveWorkspace } = useStore(
+    useShallow(s => ({
+      activeWorkspace: s.activeWorkspace,
+      session: s.session,
+      theme: s.theme,
+      userRoleInActiveWorkspace: s.userRoleInActiveWorkspace,
+    }))
+  );
 
   // Use hook for data loading
   const { grabaciones, isLoading, error, cargoUsuario, rolSistema, cargarGrabaciones } =

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useStore } from '../../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { supabase } from '../../lib/supabase';
 import { ScheduledMeeting, MeetingParticipant } from '../../types';
 import { googleCalendar } from '../../lib/googleCalendar';
@@ -9,7 +10,9 @@ interface ScheduledMeetingsProps {
 }
 
 export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeeting }) => {
-  const { currentUser, activeWorkspace, theme } = useStore();
+  const { currentUser, activeWorkspace, theme } = useStore(
+    useShallow(s => ({ currentUser: s.currentUser, activeWorkspace: s.activeWorkspace, theme: s.theme }))
+  );
   const [meetings, setMeetings] = useState<ScheduledMeeting[]>([]);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [loading, setLoading] = useState(true);

@@ -21,7 +21,7 @@ interface ActiveMeeting {
 }
 
 export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) => {
-  const { theme } = useStore();
+  const theme = useStore(s => s.theme);
 
   // Use the hook for all state and business logic
   const {

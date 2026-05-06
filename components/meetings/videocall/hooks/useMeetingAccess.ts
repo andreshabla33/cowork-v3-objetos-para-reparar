@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useStore } from '@/store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { logger } from '@/lib/logger';
 import { SUPABASE_URL } from '@/lib/supabase';
 import { otorgarXP, XP_POR_ACCION } from '@/lib/gamificacion';
@@ -29,7 +30,14 @@ export const useMeetingAccess = ({
 }: MeetingRoomProps) => {
   const MAX_RECONNECT_ATTEMPTS = 3;
   const RECONNECT_BASE_DELAY_MS = 2000;
-  const { theme, currentUser, session, activeWorkspace } = useStore();
+  const { theme, currentUser, session, activeWorkspace } = useStore(
+    useShallow(s => ({
+      theme: s.theme,
+      currentUser: s.currentUser,
+      session: s.session,
+      activeWorkspace: s.activeWorkspace,
+    }))
+  );
   const [tokenData, setTokenData] = useState<TokenData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

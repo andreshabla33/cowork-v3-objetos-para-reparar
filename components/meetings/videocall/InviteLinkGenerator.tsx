@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase';
 import { useStore } from '@/store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 
 interface InviteLinkGeneratorProps {
   salaId: string;
@@ -24,7 +25,9 @@ export const InviteLinkGenerator: React.FC<InviteLinkGeneratorProps> = ({
   salaId,
   onClose,
 }) => {
-  const { theme, currentUser } = useStore();
+  const { theme, currentUser } = useStore(
+    useShallow(s => ({ theme: s.theme, currentUser: s.currentUser }))
+  );
   const [nombreReferencia, setNombreReferencia] = useState('');
   const [tipoInvitado, setTipoInvitado] = useState<TipoInvitado>('invitado');
   const [loading, setLoading] = useState(false);
