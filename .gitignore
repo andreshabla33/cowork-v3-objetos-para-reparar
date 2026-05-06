@@ -50,3 +50,7 @@ DEBUG_*.md
 docs/COMPARATIVA-*.md
 docs/SKILLS_CATALOG.md
 docs/fase-*-supabase-insert.sql
+
+# Skills compartidas del proyecto (override del ignore .claude/)
+!.claude/skills/
+!.claude/skills/**
