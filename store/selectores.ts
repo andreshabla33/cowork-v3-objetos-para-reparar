@@ -1,3 +1,10 @@
+/**
+ * @deprecated Selectores compuestos acoplados al store monolítico legacy.
+ *   Prefer la composición de selectores específicos por bounded context
+ *   (`useUserStore`, `useUIStore`, `useWorkspaceStore`, …) — ver `src/modules/<feature>/state/`.
+ *   Mantener mientras se migran los consumidores (App.tsx, VirtualSpace.tsx,
+ *   InvitationProcessor.tsx, hooks/space3d/useSpace3D.ts).
+ */
 import type { StoreState } from './state';
 
 export const seleccionarBootstrapApp = (state: StoreState) => ({

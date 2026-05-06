@@ -1,49 +1,21 @@
-import { create } from 'zustand';
-import type { AvatarConfig } from '../types';
-import type { StoreState } from './state';
-import { createInitializeAction } from './orchestrators/initializeStore';
-import { createFetchWorkspacesAction } from './orchestrators/workspaceStore';
-import { createSignOutAction } from './orchestrators/authStore';
-import { createUpdateAvatarAction, createUpdateStatusAction } from './orchestrators/userStore';
-import {
-  createAuthSlice,
-  createUISlice,
-  createWorkspaceSlice,
-  createChatSlice,
-  createEditorSlice,
-  createUsersSlice,
-  createAvatarSlice,
-} from './slices';
+/**
+ * @module store/useStore
+ * @description Backwards-compatibility shim for the multi-store decomposition (P0-04).
+ *
+ * The canonical store now lives in `src/modules/_state/composedStore.ts`, with
+ * feature-bounded views exposed under `src/modules/<feature>/state/use<X>Store.ts`
+ * (`useUserStore`, `useUIStore`, `useWorkspaceStore`, `useChatStore`,
+ * `useSpace3DStore`, `usePresenceStore`). This file re-exports the composed
+ * store under the legacy `useStore` name so existing consumers keep working
+ * unchanged while migration progresses.
+ *
+ * @deprecated Prefer importing the bounded-context store you actually need:
+ *   - `useUserStore`        from `@/modules/user/state/useUserStore`
+ *   - `useUIStore`          from `@/modules/ui/state/useUIStore`
+ *   - `useWorkspaceStore`   from `@/modules/workspace/state/useWorkspaceStore`
+ *   - `useChatStore`        from `@/modules/chat/state/useChatStore`
+ *   - `useSpace3DStore`     from `@/modules/space3d/state/useSpace3DStore`
+ *   - `usePresenceStore`    from `@/modules/presence/state/usePresenceStore`
+ */
 
-type AppState = StoreState;
-
-const initialAvatar: AvatarConfig = {
-  skinColor: '#fcd34d',
-  clothingColor: '#6366f1',
-  hairColor: '#4b2c20',
-  accessory: 'headphones'
-};
-
-const STORAGE_WS_KEY = 'cowork_active_workspace_id';
-
-export const useStore = create<AppState>()((set, get, store) => ({
-  ...createAuthSlice(set, get, store),
-  ...createUISlice(set, get, store),
-  ...createWorkspaceSlice(set, get, store),
-  ...createChatSlice(set, get, store),
-  ...createEditorSlice(set, get, store),
-  ...createUsersSlice(set, get, store),
-  ...createAvatarSlice(set, get, store),
-
-  initialize: createInitializeAction(set, get, {
-    initialAvatar,
-    storageWorkspaceKey: STORAGE_WS_KEY,
-  }),
-
-  fetchWorkspaces: createFetchWorkspacesAction(set, get),
-
-  signOut: createSignOutAction(set, { storageWorkspaceKey: STORAGE_WS_KEY }),
-
-  updateAvatar: createUpdateAvatarAction(set, get),
-  updateStatus: createUpdateStatusAction(set, get),
-}));
+export { useComposedStore as useStore } from '../src/modules/_state/composedStore';
