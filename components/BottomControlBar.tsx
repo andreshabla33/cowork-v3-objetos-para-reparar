@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { UserAvatar } from './UserAvatar';
 import { AvatarConfig, PresenceStatus } from '../types';
 import { SharedAudioDeviceControl, SharedCameraDeviceControl } from './media/SharedMediaDeviceControls';
@@ -82,7 +83,14 @@ export const BottomControlBar: React.FC<BottomControlBarProps> = ({
   onIrAMiEscritorio,
   tieneMiEscritorio = false,
 }) => {
-  const { currentUser, updateStatus, isEditMode, setIsEditMode } = useStore();
+  const { currentUser, updateStatus, isEditMode, setIsEditMode } = useStore(
+    useShallow(s => ({
+      currentUser: s.currentUser,
+      updateStatus: s.updateStatus,
+      isEditMode: s.isEditMode,
+      setIsEditMode: s.setIsEditMode,
+    }))
+  );
   const emojis = ['👍', '🔥', '❤️', '👏', '😂', '😮', '🚀', '✨'];
   
   const currentStatus = currentUser.status || PresenceStatus.AVAILABLE;

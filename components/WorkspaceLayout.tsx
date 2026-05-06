@@ -17,6 +17,7 @@
 import React, { lazy, Suspense, useEffect, useState, useCallback } from 'react';
 import type { User } from '../types';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { getThemeStyles } from '@/lib/theme';
 import { MiniModeOverlay } from './MiniModeOverlay';
 import { NotificationToast } from './ui/NotificationToast';
@@ -61,7 +62,13 @@ export const WorkspaceLayout: React.FC = () => {
     setOnlineUsers, unreadChatCount, clearUnreadChat,
     userRoleInActiveWorkspace, setMiniMode, isMiniMode,
     setEmpresaId, setDepartamentoId, setEmpresasAutorizadas,
-  } = useStore();
+  } = useStore(useShallow(s => ({
+    activeWorkspace: s.activeWorkspace, activeSubTab: s.activeSubTab, setActiveSubTab: s.setActiveSubTab, setActiveWorkspace: s.setActiveWorkspace,
+    currentUser: s.currentUser, theme: s.theme, setTheme: s.setTheme, setView: s.setView, session: s.session,
+    setOnlineUsers: s.setOnlineUsers, unreadChatCount: s.unreadChatCount, clearUnreadChat: s.clearUnreadChat,
+    userRoleInActiveWorkspace: s.userRoleInActiveWorkspace, setMiniMode: s.setMiniMode, isMiniMode: s.isMiniMode,
+    setEmpresaId: s.setEmpresaId, setDepartamentoId: s.setDepartamentoId, setEmpresasAutorizadas: s.setEmpresasAutorizadas,
+  })));
   // Fuente única para avatares: Supabase Presence (global cross-Room).
   //
   // NOTA (2026-04-23): previamente había un gate que filtraba onlineUsers por

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { getSettingsSection } from '../lib/userSettings';
 import { PresenceStatus } from '../types';
 
@@ -135,7 +136,17 @@ const MiniMapCanvas: React.FC<{ currentUser: any; onlineUsers: any[] }> = ({ cur
 };
 
 export const MiniModeOverlay: React.FC = () => {
- const { isMiniMode, currentUser, onlineUsers, toggleMic, toggleCamera, setActiveSubTab, updateStatus } = useStore();
+ const { isMiniMode, currentUser, onlineUsers, toggleMic, toggleCamera, setActiveSubTab, updateStatus } = useStore(
+   useShallow(s => ({
+     isMiniMode: s.isMiniMode,
+     currentUser: s.currentUser,
+     onlineUsers: s.onlineUsers,
+     toggleMic: s.toggleMic,
+     toggleCamera: s.toggleCamera,
+     setActiveSubTab: s.setActiveSubTab,
+     updateStatus: s.updateStatus,
+   }))
+ );
  const miniSettings = getSettingsSection('minimode');
 
  const [collapsed, setCollapsed] = useState(false);

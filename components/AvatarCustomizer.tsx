@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { AvatarPreview } from './Navbar';
 import { SpaceItem } from '../types';
 
@@ -9,7 +10,14 @@ interface AvatarCustomizerProps {
 }
 
 export const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({ compact = false }) => {
-  const { currentUser, updateAvatar, addSpaceItem, theme } = useStore();
+  const { currentUser, updateAvatar, addSpaceItem, theme } = useStore(
+    useShallow(s => ({
+      currentUser: s.currentUser,
+      updateAvatar: s.updateAvatar,
+      addSpaceItem: s.addSpaceItem,
+      theme: s.theme,
+    }))
+  );
   const config = currentUser.avatarConfig!;
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<'style' | 'objects'>('style');

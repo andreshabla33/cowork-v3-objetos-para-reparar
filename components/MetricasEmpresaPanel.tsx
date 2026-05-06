@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 
 // ============== TIPOS ==============
 interface MetricaDiaria {
@@ -132,7 +133,9 @@ const BarraHorizontal: React.FC<{
 
 // ============== COMPONENTE PRINCIPAL ==============
 export const MetricasEmpresaPanel: React.FC = () => {
-  const { activeWorkspace, theme } = useStore();
+  const { activeWorkspace, theme } = useStore(
+    useShallow(s => ({ activeWorkspace: s.activeWorkspace, theme: s.theme }))
+  );
   const [metricas, setMetricas] = useState<MetricaDiaria[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [loading, setLoading] = useState(true);

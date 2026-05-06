@@ -17,11 +17,21 @@
 
 import React, { useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { Role } from '../types';
 import { AICopilotSlot } from './ui/AICopilotSlot';
 
 export const Dashboard: React.FC = () => {
-  const { workspaces, setActiveWorkspace, currentUser, signOut, setAuthFeedback, authFeedback } = useStore();
+  const { workspaces, setActiveWorkspace, currentUser, signOut, setAuthFeedback, authFeedback } = useStore(
+    useShallow(s => ({
+      workspaces: s.workspaces,
+      setActiveWorkspace: s.setActiveWorkspace,
+      currentUser: s.currentUser,
+      signOut: s.signOut,
+      setAuthFeedback: s.setAuthFeedback,
+      authFeedback: s.authFeedback,
+    }))
+  );
   const parallaxRootRef = useRef<HTMLDivElement | null>(null);
 
   const totalEspacios = workspaces.length;

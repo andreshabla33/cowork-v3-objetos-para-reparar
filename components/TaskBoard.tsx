@@ -1,10 +1,13 @@
 
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { TaskStatus, Task, Attachment } from '../types';
 
 export const TaskBoard: React.FC = () => {
- const { tasks, updateTaskStatus, addTask } = useStore();
+ const { tasks, updateTaskStatus, addTask } = useStore(
+   useShallow(s => ({ tasks: s.tasks, updateTaskStatus: s.updateTaskStatus, addTask: s.addTask }))
+ );
  const [isModalOpen, setIsModalOpen] = useState(false);
  const [collapsedTaskIds, setCollapsedTaskIds] = useState<Set<string>>(new Set());
  const [newTask, setNewTask] = useState<{

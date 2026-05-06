@@ -1,10 +1,18 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 
 export const ChatSidebar: React.FC = () => {
  const [msg, setMsg] = useState('');
- const { messages, addMessage, currentUser, activeChatGroupId } = useStore();
+ const { messages, addMessage, currentUser, activeChatGroupId } = useStore(
+   useShallow(s => ({
+     messages: s.messages,
+     addMessage: s.addMessage,
+     currentUser: s.currentUser,
+     activeChatGroupId: s.activeChatGroupId,
+   }))
+ );
  const chatEndRef = useRef<HTMLDivElement>(null);
 
  useEffect(() => {

@@ -12,6 +12,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { generateChatResponse, type ChatHistoryEntry } from '../services/geminiService';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuthSession } from '../hooks/auth/useAuthSession';
 import { TaskStatus, type Task } from '../types';
 import {
@@ -44,7 +45,15 @@ const MonicaDockInline: React.FC<Props> = ({ onClose }) => {
   const [enrichedContext, setEnrichedContext] = useState('');
   const [channels, setChannels] = useState<string[]>([]);
 
-  const { tasks, currentUser, addTask, activeWorkspace, onlineUsers } = useStore();
+  const { tasks, currentUser, addTask, activeWorkspace, onlineUsers } = useStore(
+    useShallow(s => ({
+      tasks: s.tasks,
+      currentUser: s.currentUser,
+      addTask: s.addTask,
+      activeWorkspace: s.activeWorkspace,
+      onlineUsers: s.onlineUsers,
+    }))
+  );
   const { accessToken } = useAuthSession();
 
   useEffect(() => { inputRef.current?.focus(); }, []);

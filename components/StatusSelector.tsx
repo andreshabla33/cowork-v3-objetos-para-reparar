@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { PresenceStatus } from '../types';
 
 const STATUS_OPTIONS = [
@@ -10,7 +11,9 @@ const STATUS_OPTIONS = [
 ];
 
 export const StatusSelector: React.FC = () => {
- const { currentUser, updateStatus } = useStore();
+ const { currentUser, updateStatus } = useStore(
+   useShallow(s => ({ currentUser: s.currentUser, updateStatus: s.updateStatus }))
+ );
  const [isOpen, setIsOpen] = useState(false);
  const [customStatus, setCustomStatus] = useState(currentUser.statusText || '');
  const [isEditingCustom, setIsEditingCustom] = useState(false);

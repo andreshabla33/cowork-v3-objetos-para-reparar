@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { ThemeType, AvatarConfig } from '../types';
 import { Language, getCurrentLanguage, subscribeToLanguageChange, t } from '../lib/i18n';
 import { UserAvatar } from './UserAvatar';
@@ -57,7 +58,9 @@ interface NavbarProps {
 }
 
 export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, onVibenToggle }) => {
- const { theme, setTheme, currentUser } = useStore();
+ const { theme, setTheme, currentUser } = useStore(
+   useShallow(s => ({ theme: s.theme, setTheme: s.setTheme, currentUser: s.currentUser }))
+ );
  const [currentLang, setCurrentLang] = useState<Language>(getCurrentLanguage());
 
  // Suscribirse a cambios de idioma

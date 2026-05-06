@@ -20,6 +20,7 @@ import { ChatToast } from './ChatToast';
 import { UserAvatar } from './UserAvatar';
 import type { ChatGroup } from '../types';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -49,7 +50,14 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   showNotifications = false,
 }) => {
   const { t } = useTranslation();
-  const { activeWorkspace, currentUser, theme, onlineUsers } = useStore();
+  const { activeWorkspace, currentUser, theme, onlineUsers } = useStore(
+    useShallow(s => ({
+      activeWorkspace: s.activeWorkspace,
+      currentUser: s.currentUser,
+      theme: s.theme,
+      onlineUsers: s.onlineUsers,
+    }))
+  );
 
   const hook = useChatPanel({ sidebarOnly, chatOnly, showNotifications, onChannelSelect });
 

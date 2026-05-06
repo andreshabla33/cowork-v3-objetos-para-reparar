@@ -2,6 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { generateChatResponse, ChatHistoryEntry } from '../services/geminiService';
 import { useStore } from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { supabase } from '../lib/supabase';
 import { useAuthSession } from '../hooks/auth/useAuthSession';
 import { TaskStatus, Task } from '../types';
@@ -28,7 +29,15 @@ export const VibenAssistant: React.FC<VibenAssistantProps> = ({ onClose }) => {
  const [isMinimized, setIsMinimized] = useState(false);
  const scrollRef = useRef<HTMLDivElement>(null);
  const containerRef = useRef<HTMLDivElement>(null);
- const { tasks, currentUser, addTask, activeWorkspace, onlineUsers } = useStore();
+ const { tasks, currentUser, addTask, activeWorkspace, onlineUsers } = useStore(
+   useShallow(s => ({
+     tasks: s.tasks,
+     currentUser: s.currentUser,
+     addTask: s.addTask,
+     activeWorkspace: s.activeWorkspace,
+     onlineUsers: s.onlineUsers,
+   }))
+ );
  const { accessToken } = useAuthSession();
  const abortControllerRef = useRef<boolean>(false);
  const [channels, setChannels] = useState<string[]>([]);
