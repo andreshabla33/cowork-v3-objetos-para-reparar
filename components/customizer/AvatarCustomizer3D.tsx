@@ -57,7 +57,7 @@ export const AvatarCustomizer3D: React.FC<AvatarCustomizer3DProps> = ({
   modoColocacionActivo = false,
   modoReemplazoActivo = false,
 }) => {
-  const { currentUser } = useStore();
+  const currentUser = useStore(s => s.currentUser);
   const { avatarConfig } = useAvatar3D(currentUser?.id);
   const [activeTab, setActiveTab] = useState<TabKey>('profile');
 

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useStore } from '@/store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { CargoSelector } from './CargoSelector';
 import type { CargoLaboral, CargoDB } from './CargoSelector';
 import { SelectorPlantillaEspacio } from './SelectorPlantillaEspacio';
@@ -61,7 +62,9 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
  userName,
  onComplete
 }) => {
- const { fetchWorkspaces, setView } = useStore();
+ const { fetchWorkspaces, setView } = useStore(
+   useShallow(s => ({ fetchWorkspaces: s.fetchWorkspaces, setView: s.setView }))
+ );
 
  useEffect(() => {
  const verificarRol = async () => {

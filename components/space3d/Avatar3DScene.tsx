@@ -176,7 +176,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastClickRef = useRef(0);
   const clickPreventedRef = useRef(false);
-  const { avatar3DConfig } = useStore();
+  const avatar3DConfig = useStore(s => s.avatar3DConfig);
   // Cuando el admin está en modo edición, el avatar propio NO debe capturar
   // clicks: si lo hace, bloquea la selección/movimiento de objetos detrás de
   // él (caso reportado: monitor cerca del avatar abre el modal del avatar
@@ -416,7 +416,7 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
   ecsStateRef, zonasEmpresa = [], frustumRef,
   onClickRemoteAvatar, avatarInteractions,
 }) => {
-  const { currentUser } = useStore();
+  const currentUser = useStore(s => s.currentUser);
   const { camera } = useThree();
   const frustumLocal = useMemo(() => new THREE.Frustum(), []);
   const projMatrix = useMemo(() => new THREE.Matrix4(), []);

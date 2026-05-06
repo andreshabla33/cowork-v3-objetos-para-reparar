@@ -13,6 +13,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useStore } from '../../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { logger } from '../../lib/logger';
 import { CargoSelector } from './CargoSelector';
 import { OnboardingAvatarStep } from './OnboardingAvatarStep';
@@ -42,7 +43,16 @@ export const OnboardingCargoView: React.FC = () => {
  const obtenerDatosUC = useDIUseCase((c) => new ObtenerDatosOnboardingUseCase(c.onboarding));
  const completarUC = useDIUseCase((c) => new CompletarOnboardingUseCase(c.onboarding));
 
- const { session, setView, setAuthFeedback, fetchWorkspaces, pendingOnboardingEspacioId, setPendingOnboardingEspacioId } = useStore();
+ const { session, setView, setAuthFeedback, fetchWorkspaces, pendingOnboardingEspacioId, setPendingOnboardingEspacioId } = useStore(
+   useShallow(s => ({
+     session: s.session,
+     setView: s.setView,
+     setAuthFeedback: s.setAuthFeedback,
+     fetchWorkspaces: s.fetchWorkspaces,
+     pendingOnboardingEspacioId: s.pendingOnboardingEspacioId,
+     setPendingOnboardingEspacioId: s.setPendingOnboardingEspacioId,
+   }))
+ );
  const [state, setState] = useState<OnboardingCargoState>({
  isLoading: true,
  error: null,
