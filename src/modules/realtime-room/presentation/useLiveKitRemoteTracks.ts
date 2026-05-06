@@ -25,12 +25,13 @@ import { useCallback, useRef, useState } from 'react';
 import type { TrackPublication, RemoteParticipant } from 'livekit-client';
 import { Track } from 'livekit-client';
 import { RemoteRenderLifecyclePolicy, RemoteTrackAttachmentPolicy } from '@/modules/realtime-room';
+import type { RemoteMediaLifecycleEvent } from '@/modules/realtime-room/application/RemoteMediaLifecycleDiagnostics';
 
 type Slot = 'camera' | 'screen_share' | 'audio';
 
 export interface UseLiveKitRemoteTracksParams {
   permitirMediaParticipante: (metadata?: string | null) => boolean;
-  logRemoteMediaLifecycle: (event: string, payload?: Record<string, unknown>) => void;
+  logRemoteMediaLifecycle: (event: RemoteMediaLifecycleEvent, payload?: Record<string, unknown>) => void;
   onRemoteTrackSubscribedOutRef: React.MutableRefObject<
     ((track: Track, pub: TrackPublication, participant: RemoteParticipant) => void) | null
   >;

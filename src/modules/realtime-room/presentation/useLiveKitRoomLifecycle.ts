@@ -39,6 +39,7 @@ import {
   type RealtimeEventBus,
   SpaceRealtimeCoordinator,
 } from '@/modules/realtime-room';
+import type { RemoteMediaLifecycleEvent } from '@/modules/realtime-room/application/RemoteMediaLifecycleDiagnostics';
 import type { RealtimePositionEntry } from '@/hooks/space3d/types';
 
 const log = logger.child('useLiveKit-room-lifecycle');
@@ -87,7 +88,7 @@ export interface UseLiveKitRoomLifecycleParams {
     severity?: 'info' | 'warn' | 'error',
     category?: 'remote_media' | 'subscription_policy' | 'meeting_access' | 'meeting_realtime' | 'meeting_quality' | 'space_realtime',
   ) => void;
-  logRemoteMediaLifecycle: (event: string, payload?: Record<string, unknown>) => void;
+  logRemoteMediaLifecycle: (event: RemoteMediaLifecycleEvent, payload?: Record<string, unknown>) => void;
 }
 
 export interface UseLiveKitRoomLifecycleReturn {

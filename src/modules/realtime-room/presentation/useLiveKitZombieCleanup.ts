@@ -35,6 +35,8 @@ export interface UseLiveKitZombieCleanupParams {
   onConnectionQualityChangedOutRef: React.MutableRefObject<
     ((participantId: string, quality: string) => void) | null
   >;
+  /** Output ref populated with `resetZombieTimers`. Read by Lifecycle's limpiarLivekit. */
+  resetZombieTimersOutRef: React.MutableRefObject<(() => void) | null>;
 }
 
 export interface UseLiveKitZombieCleanupReturn {
@@ -52,6 +54,7 @@ export function useLiveKitZombieCleanup(
     setRemoteAudioTracks,
     recordTelemetry,
     onConnectionQualityChangedOutRef,
+    resetZombieTimersOutRef,
   } = params;
 
   const zombiePeerTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -99,6 +102,11 @@ export function useLiveKitZombieCleanup(
     zombiePeerTimersRef.current.forEach((t) => clearTimeout(t));
     zombiePeerTimersRef.current.clear();
   }, []);
+
+  // Publish via output ref so Lifecycle.limpiarLivekit can drop pending timers.
+  useEffect(() => {
+    resetZombieTimersOutRef.current = resetZombieTimers;
+  }, [resetZombieTimersOutRef, resetZombieTimers]);
 
   return { resetZombieTimers };
 }
