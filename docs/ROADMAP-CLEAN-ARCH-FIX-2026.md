@@ -149,13 +149,45 @@
 - **Semana 10**: FASE 6 con aprobaciones de Andrés (ITEMs 18-20).
 - **Semana 11**: FASE 7 + cierre (ITEM 21).
 
-## Decisiones pendientes (necesitan input de Andrés)
+## Decisiones tomadas (2026-05-05)
 
-1. **Single store global vs múltiples stores por bounded context.** Si single → ITEM 4 (mecánico, useShallow en 40+ sitios). Si múltiples → ITEM 8 (rediseño, alto blast radius).
-2. **¿`@livekit/components-react` se usa?** Paquete instalado pero sin imports puros del SDK de componentes — el proyecto parece usar `livekit-client` directo. Si no se usa, candidato a eliminar (Grupo 3).
-3. **`modules/` shim**: ¿eliminar ya o mantener durante la migración? Único archivo (`modules/realtime-room/index.ts`).
-4. **`lib/`**: ¿re-categorizar por adapter target (recomendado por skill) o consolidar en `src/core/shared/`?
-5. **TASK B (vitest baseline) — ¿regenerar lockfile?**: el lockfile actual fue generado en host Windows. Regenerar en WSL/Linux desbloquea vitest local pero podría romper dev en host Windows. Alternativa: instalar solo el binding faltante con `npm install @rollup/rollup-linux-x64-gnu --no-save` (no toca lockfile, solo el dev de WSL).
+1. **Store → múltiples stores por bounded context (resuelve ITEM 4 + ITEM 8).** Descomponer `store/` legacy en `useUserStore`, `useWorkspaceStore`, `useChatStore`, `useMeetingStore`, `useSpace3DStore`, etc., en `src/modules/<feature>/state/`.
+   - Justificación: performance natural sin necesidad de `useShallow` global, encaja con Clean Arch, respeta criterio duro de 30+ FPS en hardware básico.
+   - Cross-store communication: `useUserStore` como root + otros stores leen pero no mutan.
+   - Impacto en ITEM 4 (P0-02 useStore sin selector): el barrido mecánico con `useShallow` queda subsumido por la descomposición. Solo se aplica `useShallow` en el remanente que aún consuma stores multi-campo durante la transición.
+
+2. **`@livekit/components-react` + `@livekit/components-styles` → MANTENER (NO eliminar).** Grep confirma 9 archivos con imports activos en `components/meetings/videocall/`:
+   - `VideoLayoutManager`, `MeetingRoom` (×2), `MeetingRoomContent`, `MeetingControlBar`, `CustomParticipantTile`, `MeetingAudioRenderer`, `useMeetingRealtimeState`, `useOptimizacionSalaGrande`, `useMeetingLayoutSnapshot`.
+   - Sale del Grupo 3 (no candidato a eliminación).
+
+3. **`modules/` shim → eliminar YA + path alias (FASE propia).** Crear `tsconfig.json` path alias `@modules/realtime-room` → `src/modules/realtime-room/` + codemod de imports. Bajo riesgo (1 archivo shim + ~30 imports a reescribir). Adelanta el ITEM 14 a una fase independiente.
+
+4. **`lib/` legacy → re-categorizar por adapter target (NO consolidar en shared/).** Mapping concreto que reemplaza al ITEM 12:
+   - `lib/rendering/`, `lib/gpu/`, `lib/ecs/`, `lib/spatial/` → `src/core/infrastructure/r3f/`
+   - `lib/avatar3d/` → `src/core/infrastructure/r3f/avatar/`
+   - `lib/security/` → `src/core/infrastructure/security/`
+   - `lib/monitoring/`, `lib/metrics/` → `src/core/infrastructure/monitoring/`
+   - `lib/network/`, `lib/routing/` → `src/core/infrastructure/network/`
+   - `lib/performance/` → `src/core/shared/performance/` (genuinamente cross-cutting)
+   - Validar paridad con archivos ya existentes en `src/` antes de mover (duplicados latentes en `textureRegistry.ts` y `fabricaMaterialesArquitectonicos.ts`).
+
+## Regla LiveKit dual (videocall)
+
+> Aplica a todo código que toque LiveKit. Marcado para incorporar a la skill `clean-architecture-refactor` cuando se actualice.
+
+| Layer | Qué usa | Por qué |
+|---|---|---|
+| UI declarativa videocall | `@livekit/components-react` (`<LiveKitRoom>`, `<ParticipantTile>`, `<ControlBar>`, `<TracksList>`) | Pre-built, accesible, mantenido oficialmente |
+| State / hooks | Hooks oficiales (`useRoom`, `useParticipant`, `useTracks`, `useParticipants`, `useLiveKitRoom`) | LiveKit recomienda explícitamente — no reimplementar |
+| Infrastructure custom | `livekit-client` en `src/core/infrastructure/livekit/` | Solo para features no expuestas: audio espacial 3D, suscripción selectiva por proximidad, métricas custom, advanced lifecycle |
+| Efectos cámara | `@livekit/track-processors` | Único proveedor de blur/virtual-bg/mirror — NUNCA eliminar |
+| Regla dura | NO remount `<LiveKitRoom>` al cambiar props | Causa `Client initiated disconnect errors` — UX crítica. Usar memo/keys estables |
+
+**Impacto en P0-03 (god-hook `useLiveKit.ts` 1205 líneas):** buena parte se ELIMINA usando hooks oficiales — el esfuerzo total se reduce significativamente. Solo audio espacial + proximidad + métricas custom queda en `src/core/infrastructure/livekit/`.
+
+## Decisiones aún pendientes
+
+1. **TASK B (vitest baseline) — ¿regenerar lockfile?**: el lockfile actual fue generado en host Windows. Regenerar en WSL/Linux desbloquea vitest local pero podría romper dev en host Windows. Alternativa: instalar solo el binding faltante con `npm install @rollup/rollup-linux-x64-gnu --no-save` (no toca lockfile, solo el dev de WSL).
 
 ## Items para Grupo 3 (requieren autorización explícita de Andrés)
 
