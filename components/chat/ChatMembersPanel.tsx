@@ -9,6 +9,7 @@
 
 import React from 'react';
 import { useStore } from '@/store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { MiembroCanal } from '@/src/core/domain/ports/IChatRepository';
 
 // ─── Props ───────────────────────────────────────────────────────────────────
@@ -29,7 +30,9 @@ export const ChatMembersPanel: React.FC<ChatMembersPanelProps> = ({
   setShowMembersPanel,
   setShowAddMembers,
 }) => {
-  const { currentUser, onlineUsers } = useStore();
+  const { currentUser, onlineUsers } = useStore(
+    useShallow(s => ({ currentUser: s.currentUser, onlineUsers: s.onlineUsers }))
+  );
 
   return (
     <div className={`fixed top-0 right-0 h-full w-[320px] bg-white/95 backdrop-blur-xl border-l border-[var(--cw-glass-border)] shadow-2xl z-50 transform transition-transform duration-300 ease-out ${showMembersPanel ? 'translate-x-0' : 'translate-x-full'}`}>

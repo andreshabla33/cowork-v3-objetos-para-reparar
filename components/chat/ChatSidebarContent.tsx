@@ -16,6 +16,7 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStore } from '@/store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { ModalCrearGrupo } from './ModalCrearGrupo';
 import { ChatToast } from '../ChatToast';
 import { PresenceStatus } from '@/types';
@@ -125,7 +126,14 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
     theme,
     onlineUsers,
     userRoleInActiveWorkspace,
-  } = useStore();
+  } = useStore(useShallow(s => ({
+    currentUser: s.currentUser,
+    activeWorkspace: s.activeWorkspace,
+    setActiveSubTab: s.setActiveSubTab,
+    theme: s.theme,
+    onlineUsers: s.onlineUsers,
+    userRoleInActiveWorkspace: s.userRoleInActiveWorkspace,
+  })));
 
   const [searchQuery, setSearchQuery] = useState('');
 
