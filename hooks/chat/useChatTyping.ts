@@ -32,7 +32,7 @@ export function useChatTyping({
   grupoActivo: string | null;
   sidebarOnly: boolean;
 }): UseChatTypingReturn {
-  const { currentUser } = useStore();
+  const currentUser = useStore(s => s.currentUser);
 
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const typingChannelRef = useRef<ChatRealtimeSubscription | null>(null);

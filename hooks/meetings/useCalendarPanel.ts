@@ -12,6 +12,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useStore } from '@/store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { logger } from '@/lib/logger';
 import { getSettingsSection } from '@/lib/userSettings';
 import { googleCalendar, GoogleCalendarEvent } from '@/lib/googleCalendar';
@@ -164,7 +165,14 @@ export interface UseCalendarPanelReturn {
  * Provides zero-Supabase interface for the component layer.
  */
 export function useCalendarPanel(): UseCalendarPanelReturn {
-  const { currentUser, activeWorkspace, theme, addNotification } = useStore();
+  const { currentUser, activeWorkspace, theme, addNotification } = useStore(
+    useShallow(s => ({
+      currentUser: s.currentUser,
+      activeWorkspace: s.activeWorkspace,
+      theme: s.theme,
+      addNotification: s.addNotification,
+    }))
+  );
 
   // State - UI
   const [loading, setLoading] = useState(true);

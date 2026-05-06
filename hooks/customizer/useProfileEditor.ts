@@ -9,6 +9,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useStore } from '@/store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { logger } from '@/lib/logger';
 import { ProfileSupabaseRepository } from '@/src/core/infrastructure/adapters/ProfileSupabaseRepository';
 import { GestionarPerfilUseCase } from '@/src/core/application/usecases/GestionarPerfilUseCase';
@@ -52,7 +53,9 @@ export interface UseProfileEditorOptions {
  * Sincroniza cambios con Zustand store automáticamente.
  */
 export const useProfileEditor = (options: UseProfileEditorOptions = {}): UseProfileEditorReturn => {
-  const { currentUser, session } = useStore();
+  const { currentUser, session } = useStore(
+    useShallow(s => ({ currentUser: s.currentUser, session: s.session }))
+  );
   const { onClose } = options;
 
   // Estado

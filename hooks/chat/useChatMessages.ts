@@ -9,6 +9,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useStore } from '@/store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { logger } from '@/lib/logger';
 import type { ChatMessage } from '@/types';
 import type { ChatRealtimeSubscription } from '@/src/core/domain/ports/IChatRealtimeService';
@@ -61,7 +62,9 @@ export function useChatMessages({
   sidebarOnly: boolean;
   detectMentions: (text: string) => string[];
 }): UseChatMessagesReturn {
-  const { activeWorkspace, currentUser } = useStore();
+  const { activeWorkspace, currentUser } = useStore(
+    useShallow(s => ({ activeWorkspace: s.activeWorkspace, currentUser: s.currentUser }))
+  );
 
   const [mensajes, setMensajes] = useState<ChatMessage[]>([]);
   const [nuevoMensaje, setNuevoMensaje] = useState('');

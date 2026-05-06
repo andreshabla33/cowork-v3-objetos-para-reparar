@@ -10,6 +10,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useStore } from '@/store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { logger } from '@/lib/logger';
 import { getSettingsSection } from '@/lib/userSettings';
 import { audioManager } from '@/services/audioManager';
@@ -48,7 +49,13 @@ export function useChatNotifications({
 }: {
   showNotifications: boolean;
 }): UseChatNotificationsReturn {
-  const { activeWorkspace, currentUser, incrementUnreadChat } = useStore();
+  const { activeWorkspace, currentUser, incrementUnreadChat } = useStore(
+    useShallow(s => ({
+      activeWorkspace: s.activeWorkspace,
+      currentUser: s.currentUser,
+      incrementUnreadChat: s.incrementUnreadChat,
+    }))
+  );
 
   const [unreadByChannel, setUnreadByChannel] = useState<Record<string, number>>({});
   const [toastNotifications, setToastNotifications] = useState<ToastNotification[]>([]);

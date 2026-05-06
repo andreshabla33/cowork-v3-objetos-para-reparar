@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useStore } from '@/store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { logger } from '@/lib/logger';
 import { getSettingsSection } from '@/lib/userSettings';
 import type { ChatGroup } from '@/types';
@@ -68,7 +69,14 @@ export function useChatChannels({
     userRoleInActiveWorkspace,
     activeChatGroupId,
     setActiveChatGroupId,
-  } = useStore();
+  } = useStore(useShallow(s => ({
+    activeWorkspace: s.activeWorkspace,
+    currentUser: s.currentUser,
+    setActiveSubTab: s.setActiveSubTab,
+    userRoleInActiveWorkspace: s.userRoleInActiveWorkspace,
+    activeChatGroupId: s.activeChatGroupId,
+    setActiveChatGroupId: s.setActiveChatGroupId,
+  })));
 
   const [grupos, setGrupos] = useState<ChatGroup[]>([]);
   const [loading, setLoading] = useState(true);

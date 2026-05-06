@@ -11,6 +11,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useStore } from '@/store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { logger } from '@/lib/logger';
 import { AvatarCatalogSupabaseRepository } from '@/src/core/infrastructure/adapters/AvatarCatalogSupabaseRepository';
 import { CargarCatalogosUseCase } from '@/src/core/application/usecases/CargarCatalogosUseCase';
@@ -126,7 +127,13 @@ export interface UseAvatarCatalogReturn extends AvatarCatalogState, UseAvatarCat
  * Carga catálogos en paralelo, maneja selecciones, captura de thumbnails y errores de modelos.
  */
 export const useAvatarCatalog = (): UseAvatarCatalogReturn => {
-  const { currentUser, session, setAvatar3DConfig } = useStore();
+  const { currentUser, session, setAvatar3DConfig } = useStore(
+    useShallow(s => ({
+      currentUser: s.currentUser,
+      session: s.session,
+      setAvatar3DConfig: s.setAvatar3DConfig,
+    }))
+  );
 
   // Estado
   const [availableAvatars, setAvailableAvatars] = useState<AvatarModelData[]>([]);
