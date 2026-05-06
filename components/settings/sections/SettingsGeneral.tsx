@@ -6,6 +6,7 @@ import { SettingSection } from '../components/SettingSection';
 import { Language, getCurrentLanguage, setLanguage } from '../../../lib/i18n';
 import { supabase } from '../../../lib/supabase';
 import { useStore } from '../../../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 
 interface GeneralSettings {
   skipWelcomeScreen: boolean;
@@ -26,7 +27,9 @@ export const SettingsGeneral: React.FC<SettingsGeneralProps> = ({
   const { t, i18n } = useTranslation();
   const [currentLang, setCurrentLang] = useState<Language>(getCurrentLanguage());
   const [tourResetDone, setTourResetDone] = useState(false);
-  const { session, activeWorkspace } = useStore();
+  const { session, activeWorkspace } = useStore(
+    useShallow(s => ({ session: s.session, activeWorkspace: s.activeWorkspace }))
+  );
 
   const handleResetTour = async () => {
     if (!session?.user?.id || !activeWorkspace?.id) return;

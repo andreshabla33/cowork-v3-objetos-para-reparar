@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthSession } from '@/hooks/auth/useAuthSession';
 import type { AutorizacionEmpresa, ZonaEmpresa } from '@/types';
 import { useStore } from '@/store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { obtenerPlantillaZona, PLANTILLAS_ZONA_OFICINA, type PlantillaZonaId } from '@/src/core/domain/entities/plantillasEspacio';
 import { normalizarConfiguracionZonaEmpresa } from '@/src/core/domain/entities/cerramientosZona';
 import { AplicarPlantillaEspacioCompletaUseCase, type IRepositorioPlantillaEspacioCompleta } from '@/src/core/application/usecases/AplicarPlantillaEspacioCompletaUseCase';
@@ -46,7 +47,15 @@ interface SettingsZonaProps {
 }
 
 export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin, onCloseModal }) => {
-  const { setActiveChatGroupId, setActiveSubTab, setPlantillaZonaEnColocacion, addNotification, setIsEditMode } = useStore();
+  const { setActiveChatGroupId, setActiveSubTab, setPlantillaZonaEnColocacion, addNotification, setIsEditMode } = useStore(
+    useShallow(s => ({
+      setActiveChatGroupId: s.setActiveChatGroupId,
+      setActiveSubTab: s.setActiveSubTab,
+      setPlantillaZonaEnColocacion: s.setPlantillaZonaEnColocacion,
+      addNotification: s.addNotification,
+      setIsEditMode: s.setIsEditMode,
+    }))
+  );
   const [zonas, setZonas] = useState<ZonaEmpresa[]>([]);
   const [empresas, setEmpresas] = useState<EmpresaBasica[]>([]);
   const [empresaUsuarioId, setEmpresaUsuarioId] = useState<string | null>(null);

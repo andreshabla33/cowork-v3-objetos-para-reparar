@@ -3,6 +3,7 @@ import { SettingToggle } from '../components/SettingToggle';
 import { SettingSection } from '../components/SettingSection';
 import { Language, getCurrentLanguage, subscribeToLanguageChange } from '../../../lib/i18n';
 import { useStore } from '../../../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { supabase } from '../../../lib/supabase';
 import {
   TipoAnalisis as TipoAnalisisService,
@@ -110,7 +111,9 @@ export const SettingsMeetings: React.FC<SettingsMeetingsProps> = ({
   isAdmin,
   workspaceId,
 }) => {
-  const { currentUser, session } = useStore();
+  const { currentUser, session } = useStore(
+    useShallow(s => ({ currentUser: s.currentUser, session: s.session }))
+  );
   const [currentLang, setCurrentLang] = useState<Language>(getCurrentLanguage());
   const [expandedTipo, setExpandedTipo] = useState<TipoAnalisis | null>(null);
   const [metricasEspacio, setMetricasEspacio] = useState<Record<TipoAnalisis, string[]> | null>(null);

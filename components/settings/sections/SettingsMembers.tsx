@@ -36,7 +36,7 @@ export const SettingsMembers: React.FC<SettingsMembersProps> = ({
   workspaceId,
   isAdmin
 }) => {
-  const { activeWorkspace } = useStore();
+  const activeWorkspace = useStore(s => s.activeWorkspace);
   const [members, setMembers] = useState<Member[]>([]);
   const [invitaciones, setInvitaciones] = useState<InvitacionPendiente[]>([]);
   const [loading, setLoading] = useState(true);
