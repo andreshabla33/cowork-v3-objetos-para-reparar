@@ -85,6 +85,15 @@ export interface UseLiveKitRoomLifecycleParams {
   zombieResetRef: React.MutableRefObject<(() => void) | null>;
   subscriptionPolicyResetRef: React.MutableRefObject<(() => void) | null>;
 
+  /**
+   * Late-binding sweep populated by RemoteTracks. Invoked after `connect()`
+   * and `Reconnected` to replay `RemoteTrackPublication`s already in the
+   * subscribed state at that moment. Closes the subscribe-before-publish
+   * race where peer B joins before peer A publishes — A's TrackSubscribed
+   * event can land while B's React handler ref is mid-commit.
+   */
+  replaySubscribedTracksRef: React.MutableRefObject<((room: Room) => void) | null>;
+
   realtimePositionsRef?: React.MutableRefObject<Map<string, RealtimePositionEntry>>;
 
   recordTelemetry: (
@@ -119,6 +128,7 @@ export function useLiveKitRoomLifecycle(
     cleanupParticipantTracks, cleanupStaleParticipants,
     resetAllRemoteTracksState,
     resetSpeakingUsersRef, zombieResetRef, subscriptionPolicyResetRef,
+    replaySubscribedTracksRef,
     realtimePositionsRef,
     recordTelemetry, logRemoteMediaLifecycle,
   } = params;
@@ -257,6 +267,10 @@ export function useLiveKitRoomLifecycle(
           setRemoteParticipantIds(nextIds);
           cleanupStaleParticipants(nextIds);
           subscriptionPolicyResetRef.current?.();
+          // Re-sweep after Reconnected: tracks that survive the moveParticipant
+          // and remain subscribed to the same identities are otherwise lost
+          // here for the same race reason as on initial connect.
+          replaySubscribedTracksRef.current?.(room);
           // Nota: NO tocamos avatarStore aquí. Avatares 3D vienen de Supabase
           // Presence (visibles cross-Room); la media se gatea por
           // remoteParticipantIds en useProximity.
@@ -293,6 +307,15 @@ export function useLiveKitRoomLifecycle(
       livekitRoomRef.current = room;
       livekitRoomNameRef.current = roomName;
       setRemoteParticipantIds(new Set(room.remoteParticipants.keys()));
+      // Defensive sweep: replay TrackSubscribed for any RemoteTrackPublication
+      // already in `pub.isSubscribed` state at this moment. Closes the
+      // subscribe-before-publish race observed when peer B connects while
+      // peer A publishes — A's track lands at the SDK level before B's React
+      // handler ref commits, so without this sweep `remoteStreams` never
+      // receives A. Mirrors `@livekit/components-core` `getTrackReferences()`
+      // (the sweep that powers the official `useTracks` hook).
+      // Idempotent — see `replaySubscribedTracks` in useLiveKitRemoteTracks.
+      replaySubscribedTracksRef.current?.(room);
       log.info('Connected to room', { roomName, remoteParticipants: room.remoteParticipants.size });
       recordTelemetry('livekit_connected', {
         roomName,
@@ -319,6 +342,7 @@ export function useLiveKitRoomLifecycle(
     onSpeakerChangeRef, onConnectionQualityChangedRef,
     cleanupParticipantTracks, cleanupStaleParticipants,
     subscriptionPolicyResetRef,
+    replaySubscribedTracksRef,
     realtimePositionsRef,
     bumpParticipantJoinVersion,
     recordTelemetry, logRemoteMediaLifecycle,

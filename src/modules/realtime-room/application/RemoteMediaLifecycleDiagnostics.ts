@@ -13,7 +13,8 @@ export type RemoteMediaLifecycleEvent =
   | 'video_render_exposed'
   | 'video_render_hidden'
   | 'participant_disconnected'
-  | 'remote_cleanup';
+  | 'remote_cleanup'
+  | 'track_subscription_replayed';
 
 export interface RemoteMediaLifecycleDiagnosticsPayload {
   [key: string]: unknown;

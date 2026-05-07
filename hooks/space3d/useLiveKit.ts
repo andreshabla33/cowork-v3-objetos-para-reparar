@@ -21,7 +21,7 @@
  */
 
 import { useCallback, useRef } from 'react';
-import type { Track, TrackPublication, RemoteParticipant } from 'livekit-client';
+import type { Room, Track, TrackPublication, RemoteParticipant } from 'livekit-client';
 import type { Session } from '@supabase/supabase-js';
 import type { User, Workspace } from '@/types';
 import type {
@@ -105,6 +105,10 @@ export function useLiveKit(params: {
   const subscriptionPolicyResetRef = useRef<(() => void) | null>(null);
   const zombieResetRef = useRef<(() => void) | null>(null);
   const resetSpeakingUsersRef = useRef<(() => void) | null>(null);
+  // Owned by RemoteTracks (sweep), consumed by Lifecycle (post-connect/reconnect).
+  // Closes the subscribe-before-publish race — see useLiveKitRemoteTracks
+  // `replaySubscribedTracks` for the full rationale.
+  const replaySubscribedTracksRef = useRef<((room: Room) => void) | null>(null);
 
   // ─── Sub-hook composition (topological order) ─────────────────────────────
   // 1. Telemetry — no deps.
@@ -117,6 +121,7 @@ export function useLiveKit(params: {
     logRemoteMediaLifecycle: tel.logRemoteMediaLifecycle,
     onRemoteTrackSubscribedOutRef: onRemoteTrackSubscribedRef,
     onRemoteTrackUnsubscribedOutRef: onRemoteTrackUnsubscribedRef,
+    replaySubscribedTracksOutRef: replaySubscribedTracksRef,
   });
 
   // 3. Lifecycle — owns Coordinator + room/participant state; reads sibling
@@ -135,6 +140,7 @@ export function useLiveKit(params: {
     resetSpeakingUsersRef,
     zombieResetRef,
     subscriptionPolicyResetRef,
+    replaySubscribedTracksRef,
     realtimePositionsRef,
     recordTelemetry: tel.recordTelemetry,
     logRemoteMediaLifecycle: tel.logRemoteMediaLifecycle,

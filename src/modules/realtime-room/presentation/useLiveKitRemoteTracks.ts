@@ -21,9 +21,9 @@
  *     Capture spec — used to drive RemoteRenderLifecyclePolicy expose/hide.
  */
 
-import { useCallback, useRef, useState } from 'react';
-import type { TrackPublication, RemoteParticipant } from 'livekit-client';
-import { Track } from 'livekit-client';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Room, TrackPublication, RemoteParticipant } from 'livekit-client';
+import { RemoteTrackPublication, Track } from 'livekit-client';
 import { RemoteRenderLifecyclePolicy, RemoteTrackAttachmentPolicy } from '@/modules/realtime-room';
 import type { RemoteMediaLifecycleEvent } from '@/modules/realtime-room/application/RemoteMediaLifecycleDiagnostics';
 
@@ -38,6 +38,19 @@ export interface UseLiveKitRemoteTracksParams {
   onRemoteTrackUnsubscribedOutRef: React.MutableRefObject<
     ((track: Track, pub: TrackPublication, participant: RemoteParticipant) => void) | null
   >;
+  /**
+   * Output ref populated with `replaySubscribedTracks(room)`. Lifecycle invokes
+   * it after `connect()` and `Reconnected` so any `RemoteTrackPublication` already
+   * in `pub.isSubscribed` state at that moment is replayed through the same
+   * handler as `RoomEvent.TrackSubscribed`. Mirrors the canonical sweep in
+   * `@livekit/components-core` `getTrackReferences()` (used by `useTracks`).
+   *
+   * Required because `RoomEvent.TrackSubscribed` is delta-only: tracks already
+   * subscribed at the moment the React handler ref is bound are otherwise lost
+   * (subscribe-before-publish race observed when peer B joins before peer A
+   * publishes — A's track lands while B's render commit is in flight).
+   */
+  replaySubscribedTracksOutRef: React.MutableRefObject<((room: Room) => void) | null>;
 }
 
 export interface UseLiveKitRemoteTracksReturn {
@@ -74,6 +87,7 @@ export function useLiveKitRemoteTracks(
     logRemoteMediaLifecycle,
     onRemoteTrackSubscribedOutRef,
     onRemoteTrackUnsubscribedOutRef,
+    replaySubscribedTracksOutRef,
   } = params;
 
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
@@ -443,6 +457,64 @@ export function useLiveKitRemoteTracks(
       }
     });
   }, [clearRemoteVideoTrackListener]);
+
+  // Idempotent sweep that replays the `onRemoteTrackSubscribed` handler for
+  // every `RemoteTrackPublication` already in `pub.isSubscribed` state at call
+  // time. Mirrors `@livekit/components-core` `getTrackReferences()` —
+  // node_modules/@livekit/components-core/dist/index.js:2025-2047 — which is
+  // what the official `useTracks` hook calls on mount + after every
+  // ParticipantConnected/Disconnected/ConnectionStateChanged event.
+  //
+  // Why this is needed in addition to `RoomEvent.TrackSubscribed`:
+  // The SDK only fires TrackSubscribed once per subscription transition. A
+  // peer B that joins while peer A is mid-publishing can land in a state
+  // where A's TrackSubscribed event is delivered before B's React handler ref
+  // commits (autoSubscribe:false → policy → setSubscribed flow has multiple
+  // async hops; Strict Mode double-mount in dev compounds it). Without this
+  // sweep, A's track stays subscribed at the SDK level but never reaches
+  // `remoteStreams` at the React level — exactly the symptom Andrés reproduced
+  // (B doesn't see A; A sees B because A published before subscribing).
+  //
+  // Idempotency contract:
+  //   - `RemoteTrackAttachmentPolicy.onTrackSubscribed` returns 'noop' when
+  //     `currentTrackId === trackId` → no double-attach.
+  //   - `bindRemoteVideoTrackLifecycle` short-circuits to 'rebind' if the
+  //     listener key already exists → no duplicate listeners.
+  //   - `applyRemoteRenderedVideoState` re-evaluates `isTrackRenderReady` at
+  //     call time → also recovers tracks that arrived muted and unmuted before
+  //     the MediaStreamTrack 'unmute' listener was attached.
+  //
+  // Refs:
+  //   - https://docs.livekit.io/reference/client-sdk-js/classes/Room.html#remoteparticipants
+  //   - https://docs.livekit.io/reference/client-sdk-js/classes/RemoteParticipant.html#trackpublications
+  //   - https://docs.livekit.io/reference/client-sdk-js/classes/RemoteTrackPublication.html#issubscribed
+  const replaySubscribedTracks = useCallback((room: Room): void => {
+    let replayed = 0;
+    room.remoteParticipants.forEach((participant) => {
+      participant.trackPublications.forEach((pub) => {
+        if (!(pub instanceof RemoteTrackPublication)) return;
+        if (!pub.isSubscribed) return;
+        const track = pub.track;
+        if (!track || !track.mediaStreamTrack) return;
+        onRemoteTrackSubscribedOutRef.current?.(track, pub, participant);
+        replayed += 1;
+      });
+    });
+    if (replayed > 0) {
+      logRemoteMediaLifecycle('track_subscription_replayed', {
+        replayedSubscribedTracks: replayed,
+        participantCount: room.remoteParticipants.size,
+      });
+    }
+  }, [logRemoteMediaLifecycle, onRemoteTrackSubscribedOutRef]);
+
+  // Publish via output ref so Lifecycle can invoke after `connect()` /
+  // `Reconnected` without a direct prop dep (keeps `conectarLivekit`'s
+  // useCallback identity stable — same pattern as resetSpeakingUsersRef
+  // introduced in fix e5d9d83).
+  useEffect(() => {
+    replaySubscribedTracksOutRef.current = replaySubscribedTracks;
+  }, [replaySubscribedTracks, replaySubscribedTracksOutRef]);
 
   const resetAllRemoteTracksState = useCallback(() => {
     Array.from(remoteVideoTrackListenerCleanupRef.current.keys()).forEach((listenerKey) => {
