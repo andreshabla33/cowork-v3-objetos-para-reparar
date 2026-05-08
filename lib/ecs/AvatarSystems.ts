@@ -192,7 +192,20 @@ export const animationSystem = {
       if (now - e.lastAnimUpdate < frameInterval) continue;
       e.lastAnimUpdate = now;
 
-      // Determinar animación basada en estado de movimiento
+      // FIX 2026-05-08: solo aplicar la heurística isMoving→walk/idle cuando
+      // el estado actual sea uno de los que ESTE sistema puede derivar
+      // (idle/walk/run). Estados ricos enviados por broadcast vía DataChannel
+      // (sit_down, sit, stand_up, wave, dance, etc.) deben preservarse — los
+      // setea movementSystem.setTarget desde el packet del peer.
+      //
+      // Bug previo: cualquier animState recibido era pisado al siguiente
+      // tick por `newAnim = isMoving ? 'walk' : 'idle'`, descartando
+      // sentarse/saludar/bailar tras 1 frame y dejando el avatar en idle.
+      //
+      // Ref: capa de DATOS (DataChannel) es source of truth para animState
+      // — la capa de RENDER no debe re-decidir state.
+      // Ref: useBroadcast.ts:271 envía animState en cada movement packet.
+      if (!MOVEMENT_DERIVABLE_STATES.has(e.animState)) continue;
       const newAnim = e.isMoving ? 'walk' : 'idle';
       if (newAnim !== e.animState) {
         e.animState = newAnim as any;
@@ -203,3 +216,8 @@ export const animationSystem = {
     return changed;
   },
 };
+
+// Estados que `animationSystem` puede derivar de `isMoving`. Cualquier otro
+// estado proviene del broadcast del peer (sit_down, wave, dance, etc.) y
+// no debe ser sobreescrito por la heurística local.
+const MOVEMENT_DERIVABLE_STATES = new Set(['idle', 'walk', 'run']);
