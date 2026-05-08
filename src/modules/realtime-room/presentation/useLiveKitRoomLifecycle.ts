@@ -256,7 +256,15 @@ export function useLiveKitRoomLifecycle(
             n.add(participant.identity);
             return n;
           });
-          bumpParticipantJoinVersion();
+          // Delay 1s antes del welcome-broadcast. Recomendación oficial
+          // LiveKit: el RemoteParticipant recién conectado transita
+          // JOINED → ACTIVE (puede tomar varias centenas de ms) y
+          // packets reliable enviados durante JOINED se pierden.
+          // Esperar 1s garantiza que el nuevo peer está ACTIVE y
+          // recibirá nuestro snapshot de posición.
+          // Ref: https://github.com/livekit/livekit/issues/3049
+          // Ref: https://github.com/livekit/livekit/issues/2102
+          setTimeout(() => bumpParticipantJoinVersion(), 1000);
         },
         // Multi-Room meetings: tras moveParticipant, room.remoteParticipants
         // queda con los peers de la Room destino. Re-seedamos el set + limpiamos
@@ -326,10 +334,17 @@ export function useLiveKitRoomLifecycle(
       // Solución: si encontramos peers ya en el Room al conectar,
       // disparamos bumpParticipantJoinVersion para que Player3D resetee
       // lastBroadcastTime y la próxima idle-heartbeat envíe coords frescas.
+      //
+      // Delay de 1s antes de bumpear: oficial LiveKit recommendation
+      // (issues #3049, #2102) — packets reliable enviados a un peer en
+      // estado JOINED (transición a ACTIVE) pueden perderse. Esperar 1s
+      // garantiza que peers existentes ya vieron nuestro JOIN y los
+      // nuestros estamos en ACTIVE para recibir sus reciprocal broadcasts.
+      // Ref: https://github.com/livekit/livekit/issues/3049
+      // Ref: https://github.com/livekit/livekit/issues/2102
       // Ref: https://docs.livekit.io/reference/client-sdk-js/classes/Room.html
-      //   (room.remoteParticipants — authoritative al momento de connect)
       if (room.remoteParticipants.size > 0) {
-        bumpParticipantJoinVersion();
+        setTimeout(() => bumpParticipantJoinVersion(), 1000);
       }
       log.info('Connected to room', { roomName, remoteParticipants: room.remoteParticipants.size });
       recordTelemetry('livekit_connected', {
