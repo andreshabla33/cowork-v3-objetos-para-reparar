@@ -12,6 +12,12 @@ export * from './domain/types';
 export type { AudioSettings, CameraSettings } from './domain/MediaSettings';
 export { defaultAudioSettings, defaultCameraSettings } from './domain/MediaSettings';
 export { resolveDeliveryReliable, resolveDeliveryMode, type DeliveryMode } from './domain/DataDeliveryPolicy';
+export {
+  extractPresencePosition,
+  isPresencePositionSentinel,
+  type PresenceSpatialPayload,
+  type PresencePosition,
+} from './domain/PresencePositionPolicy';
 
 // Application
 export { SpaceMediaCoordinator } from './application/SpaceMediaCoordinator';

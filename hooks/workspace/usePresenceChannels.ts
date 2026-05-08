@@ -32,6 +32,7 @@ import { logger } from '@/lib/logger';
 import { obtenerChunk } from '@/lib/chunkSystem';
 import { getSettingsSection } from '@/lib/userSettings';
 import { EvaluarPresenceSubscriptionUseCase } from '@/src/core/application/usecases/EvaluarPresenceSubscriptionUseCase';
+import { extractPresencePosition } from '@/modules/realtime-room';
 import { PresenceStatus } from '@/types';
 import type { User, Role } from '@/types';
 import type { PresencePayload } from '@/types/workspace';
@@ -75,7 +76,14 @@ interface UsePresenceChannelsProps {
 }
 
 interface UsePresenceChannelsReturn {
-  syncPresenceByChunk: () => void;
+  /**
+   * Sync chunk subscriptions. Pass `{ force: true }` to bypass the
+   * `syncThrottleMs` (2 s) check — required when local position transitions
+   * from the (0,0) sentinel to a real value within the throttle window, so
+   * the chunk subscriptions actually re-target the new position instead of
+   * staying frozen on the default-position chunks.
+   */
+  syncPresenceByChunk: (options?: { force?: boolean }) => void;
   updatePresenceInChannels: (nivelDetalle: 'publico' | 'empresa') => Promise<void>;
   forceRetrackAll: () => void;
   cleanup: () => void;
@@ -226,8 +234,11 @@ export function usePresenceChannels({
               avatar3DConfig: presence.avatar3DConfig || null,
               empresa_id: currentEmpresaId,
               departamento_id: presence.departamento_id || undefined,
-              x: presence.x || 500,
-              y: presence.y || 500,
+              // FIX 2026-05-08: el helper preserva el sentinel (0,0) y
+              // descarta valores no-finitos. Reemplaza `presence.x || 500`
+              // que colapsaba el sentinel a una posición fantasma — ver
+              // `src/modules/realtime-room/domain/PresencePositionPolicy.ts`.
+              ...extractPresencePosition(presence),
               direction: presence.direction || 'front',
               isOnline: true,
               isMicOn: presence.isMicOn || false,
@@ -334,8 +345,8 @@ export function usePresenceChannels({
             avatar3DConfig: presence.avatar3DConfig || null,
             empresa_id: resolvedEmpresaId,
             departamento_id: presence.departamento_id || undefined,
-            x: presence.x || 500,
-            y: presence.y || 500,
+            // FIX 2026-05-08: ver Phase 0 — preserva el sentinel (0,0).
+            ...extractPresencePosition(presence),
             direction: presence.direction || 'front',
             isOnline: true,
             isMicOn: isSameCompany ? (presence.isMicOn || false) : false,
@@ -480,7 +491,7 @@ export function usePresenceChannels({
    * 3. Adaptive radius: base=1 (9 chunks) with density expansion/reduction
    * 4. Channel count: max 18 (9 chunks × 2 types) vs old 50
    */
-  const syncPresenceByChunk = useCallback((): void => {
+  const syncPresenceByChunk = useCallback((options: { force?: boolean } = {}): void => {
     if (!activeWorkspaceId || !userId) return;
 
     const usuario = userRef.current;
@@ -507,7 +518,10 @@ export function usePresenceChannels({
       usuario.x,
       usuario.y,
       nearbyCount,
-      lastSyncRef.current,
+      // FIX 2026-05-08: cuando se solicita `force`, hacemos como si el último
+      // sync hubiera ocurrido hace un siglo para que la policy no devuelva
+      // shouldSkip. Mantiene la decisión de radio adaptativo sin filtrar.
+      options.force ? 0 : lastSyncRef.current,
     );
 
     if (decision.shouldSkip) return;

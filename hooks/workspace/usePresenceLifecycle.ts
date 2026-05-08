@@ -48,7 +48,7 @@ interface UsePresenceLifecycleParams {
   activeWorkspaceId: string | undefined;
   userId: string | undefined;
   currentUser: User;
-  syncPresenceByChunk: () => void;
+  syncPresenceByChunk: (options?: { force?: boolean }) => void;
   updatePresenceInChannels: (nivel: 'publico' | 'empresa') => Promise<void>;
   forceRetrackAll: () => void;
   cleanup: () => void;
@@ -77,6 +77,33 @@ export function usePresenceLifecycle({
   checkChannelHealth,
 }: UsePresenceLifecycleParams): void {
   const empresaIdLoadedRef = useRef(false);
+  /**
+   * One-shot guard for the sentinel→real position transition.
+   *
+   * Bug que cubre (2026-05-08): cuando un usuario se conecta, su slot
+   * `currentUser.x/y` arranca en (0,0) (sentinel oficial — ver
+   * `store/slices/authSlice.ts:55-56`). El primer `syncPresenceByChunk`
+   * suscribe canales contra ese (0,0). Cuando 500-1500 ms más tarde el
+   * Player3D hidrata la posición real (spawnPersonal / zonaEmpresa /
+   * BD), `currentUser.x/y` cambia y `usePresenceLifecycle` (efecto #2
+   * abajo) llama otra vez a `syncPresenceByChunk` — pero la policy lo
+   * **THROTTLEA** porque `syncThrottleMs=2000` ya transcurrió < 2 s.
+   * Resultado: los chunks quedan congelados en el chunk del sentinel
+   * (~chunk_2_2 con el viejo default 500,500, o chunk_0_0 con el nuevo)
+   * mientras el avatar realmente está en otro chunk → otros usuarios
+   * jamás reciben la posición real vía presence (sólo vía global empresa
+   * discovery channel, que también está stuck en (0,0) por el
+   * `trackThrottleMs=45_000` del propio `updatePresenceInChannels`).
+   * Cuando los DataPackets de LiveKit se demoran más que la ventana de
+   * frescura ECS (2 s) por jitter de red, el render cae al fallback de
+   * presence — que tras este fix preserva (0,0) y `useProximity` filtra,
+   * pero ANTES caía en `||500` y co-localizaba a todos en (500,500).
+   *
+   * Refs:
+   *   - https://supabase.com/docs/guides/realtime/presence (track/sync)
+   *   - https://docs.livekit.io/home/client/data/packets/ (data channel)
+   */
+  const positionHydratedRef = useRef(false);
 
   // ── 1. Subscribe/unsubscribe on workspace + empresa_id ────────────────
   // Single effect replaces 2 duplicates. The dependency on empresa_id
@@ -95,6 +122,24 @@ export function usePresenceLifecycle({
     if (!activeWorkspaceId || !userId) return;
     syncPresenceByChunk();
   }, [activeWorkspaceId, userId, currentUser.x, currentUser.y, syncPresenceByChunk]);
+
+  // ── 2b. Force-sync on first sentinel→real transition ──────────────────
+  // El sync regular del efecto #2 está sujeto al `syncThrottleMs=2000` de la
+  // policy. La primera hidratación suele caer DENTRO de la ventana del
+  // throttle (la suscripción inicial fija `lastSyncRef.current = now`), por
+  // lo que `decision.shouldSkip = true` y los chunks no se actualizan.
+  // Aquí forzamos UNA vez la operación ignorando el throttle, y además
+  // re-trackeamos todos los canales (incluido el global empresa discovery)
+  // para que la posición real se propague vía presence inmediatamente —
+  // sin esperar el `trackThrottleMs=45_000` de `updatePresenceInChannels`.
+  useEffect(() => {
+    if (!activeWorkspaceId || !userId) return;
+    if (positionHydratedRef.current) return;
+    if (currentUser.x === 0 && currentUser.y === 0) return;
+    positionHydratedRef.current = true;
+    syncPresenceByChunk({ force: true });
+    forceRetrackAll();
+  }, [activeWorkspaceId, userId, currentUser.x, currentUser.y, syncPresenceByChunk, forceRetrackAll]);
 
   // ── 3. Force re-track when empresa_id loads for the first time ────────
   // Ensures all channel payloads carry the correct empresa_id and triggers

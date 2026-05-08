@@ -50,7 +50,16 @@ export function useChunkSystem(params: UseChunkSystemParams): UseChunkSystemRetu
     const mapa = new Map<string, { x: number; y: number; direction?: User['direction']; isMoving?: boolean }>();
     usuariosEcs.forEach((usuario) => {
       const ecsData = obtenerEstadoUsuarioEcs(ecsStateRef.current, usuario.id);
-      if (ecsData && ahora - (ecsData.timestamp ?? 0) <= 2000) {
+      // FIX 2026-05-08: ventana 2000→3000 ms. El idle heartbeat de
+      // `Player3D.tsx:1221` re-emite cada 2 s; con la ventana en 2000 ms
+      // exacto, cualquier jitter de red (≥1 ms tras la marca) hace expirar
+      // ECS y caer al fallback de presence (que vivía con `||500`). La
+      // ventana de 3 s da 1 s de margen sobre el heartbeat — fresca durante
+      // operación normal y sólo cae al fallback si el remoto está
+      // realmente desconectado.
+      // Refs:
+      //   - https://docs.livekit.io/home/client/data/packets/ (best-effort)
+      if (ecsData && ahora - (ecsData.timestamp ?? 0) <= 3000) {
         mapa.set(usuario.id, {
           x: ecsData.x * 16,
           y: ecsData.z * 16,
