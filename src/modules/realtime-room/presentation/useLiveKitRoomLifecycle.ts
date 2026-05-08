@@ -256,15 +256,15 @@ export function useLiveKitRoomLifecycle(
             n.add(participant.identity);
             return n;
           });
-          // Delay 1s antes del welcome-broadcast. Recomendación oficial
-          // LiveKit: el RemoteParticipant recién conectado transita
-          // JOINED → ACTIVE (puede tomar varias centenas de ms) y
-          // packets reliable enviados durante JOINED se pierden.
-          // Esperar 1s garantiza que el nuevo peer está ACTIVE y
-          // recibirá nuestro snapshot de posición.
-          // Ref: https://github.com/livekit/livekit/issues/3049
-          // Ref: https://github.com/livekit/livekit/issues/2102
-          setTimeout(() => bumpParticipantJoinVersion(), 1000);
+          // Welcome-broadcast INMEDIATO: bumpear participantJoinVersion
+          // resetea lastBroadcastTime en Player3D → el próximo frame
+          // dispara idle-heartbeat con nuestras coords frescas.
+          // Sobre delay 1s (LiveKit issue #3049): aplica a RELIABLE
+          // packets durante JOINED→ACTIVE. Usamos LOSSY + heartbeat 2s
+          // como recovery — equivalente a retransmit pero sin penalizar
+          // el primer broadcast. Patrón documentado en fix-avatares-
+          // fantasma-position-desync-2026-04-17 (commit 5aa1b08).
+          bumpParticipantJoinVersion();
         },
         // Multi-Room meetings: tras moveParticipant, room.remoteParticipants
         // queda con los peers de la Room destino. Re-seedamos el set + limpiamos
@@ -332,19 +332,20 @@ export function useLiveKitRoomLifecycle(
       // welcome-broadcast pattern → el peer B sigue viendo a A en coords
       // stale de Supabase Presence (throttled 45s).
       // Solución: si encontramos peers ya en el Room al conectar,
-      // disparamos bumpParticipantJoinVersion para que Player3D resetee
-      // lastBroadcastTime y la próxima idle-heartbeat envíe coords frescas.
+      // disparamos bumpParticipantJoinVersion INMEDIATO para que Player3D
+      // resetee lastBroadcastTime y la próxima idle-heartbeat envíe
+      // coords frescas en el siguiente frame.
       //
-      // Delay de 1s antes de bumpear: oficial LiveKit recommendation
-      // (issues #3049, #2102) — packets reliable enviados a un peer en
-      // estado JOINED (transición a ACTIVE) pueden perderse. Esperar 1s
-      // garantiza que peers existentes ya vieron nuestro JOIN y los
-      // nuestros estamos en ACTIVE para recibir sus reciprocal broadcasts.
-      // Ref: https://github.com/livekit/livekit/issues/3049
-      // Ref: https://github.com/livekit/livekit/issues/2102
+      // Sobre delay 1s (issue LiveKit #3049): aplica a packets RELIABLE
+      // que pueden perderse durante JOINED→ACTIVE transition. Nuestro
+      // broadcast es LOSSY (reliable=false default) y la recovery viene
+      // del idle-heartbeat de 2s — equivalente al retransmit de RELIABLE
+      // pero sin penalizar el primer broadcast. Patrón documentado en
+      // doc previo del proyecto (fix-avatares-fantasma-position-desync-
+      // 2026-04-17, commit 5aa1b08): broadcast inmediato + heartbeat 2s.
       // Ref: https://docs.livekit.io/reference/client-sdk-js/classes/Room.html
       if (room.remoteParticipants.size > 0) {
-        setTimeout(() => bumpParticipantJoinVersion(), 1000);
+        bumpParticipantJoinVersion();
       }
       log.info('Connected to room', { roomName, remoteParticipants: room.remoteParticipants.size });
       recordTelemetry('livekit_connected', {

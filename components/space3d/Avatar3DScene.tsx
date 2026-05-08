@@ -530,13 +530,33 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
       }
     }
 
-    // 2. Alimentar desde ECS state (fallback)
+    // 2. Alimentar desde ECS state (fallback Presence-fed)
+    //
+    // FIX 2026-05-08: este path viene de Supabase Presence (CRDT, throttled
+    // 45s) → coords stale. NO debe pasar por movementSystem.setTarget
+    // porque setTarget setea hasReceivedFirstRealTarget=true, y ese flag
+    // semánticamente representa "primer snapshot AUTHORITATIVE recibido"
+    // (Source/Valve net-code). Reservar el flag para path DataChannel
+    // (línea ~515) que sí es authoritative.
+    //
+    // Bypass: escribir target directo + metadata sin tocar el flag. Si
+    // este path es la única fuente para una entity, el avatar usa coords
+    // stale provisorias hasta que llegue el primer DataChannel packet —
+    // que entonces sí setea el flag y ejecuta el snap inicial documentado.
+    //
+    // Esto preserva el patrón de useProximity guard: proximidad/cámaras
+    // solo activan tras DataChannel-confirmed coords, evitando activación
+    // falsa por coords stale de Presence.
     if (ecsStateRef?.current) {
       for (const entity of avatarStore.getAll()) {
         const ecsData = obtenerEstadoUsuarioEcs(ecsStateRef.current, entity.userId);
         if (!ecsData || Date.now() - (ecsData.timestamp ?? 0) > 2000) continue;
         if (entity.lastServerUpdate > Date.now() - 1500) continue;
-        movementSystem.setTarget(entity.userId, ecsData.x, ecsData.z, ecsData.direction, ecsData.isMoving);
+        entity.targetX = ecsData.x;
+        entity.targetZ = ecsData.z;
+        if (ecsData.direction !== undefined) entity.direction = ecsData.direction;
+        if (ecsData.isMoving !== undefined) entity.isMoving = ecsData.isMoving;
+        // hasReceivedFirstRealTarget se mantiene en su valor actual.
       }
     }
 
