@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { CONFIG_PUBLICA_APP } from './env';
 import { runStartupSecurityChecks } from './security/validateEnvKeys';
 import { logger } from './logger';
@@ -11,6 +11,55 @@ export const SUPABASE_ANON_KEY = CONFIG_PUBLICA_APP.claveAnonSupabase;
 runStartupSecurityChecks(SUPABASE_ANON_KEY);
 
 const logRealtime = logger.child('realtime-health');
+
+// ── Forced socket recovery (issue supabase/realtime#1088) ────────────────────
+//
+// Problema: tras `disconnected` heartbeats sostenidos (típicamente por tab
+// backgrounded mucho tiempo), el rejoinTimer interno de realtime-js no logra
+// reconectar — los channels quedan en `errored` state forever, emitiendo
+// TIMED_OUT en cada intento. El health-check de presence sólo purga
+// channels en `closed`, no `errored`, así que la recuperación nunca dispara.
+//
+// Fix oficial recomendado en issue #1088: `manual disconnection works
+// properly`. Forzamos `realtime.disconnect()` + `realtime.connect()` cuando
+// vemos N consecutive `disconnected` heartbeats. Los channels suscritos
+// auto-rejoin sobre el nuevo socket.
+//
+// Debouncing: mínimo 10s entre intentos para no entrar en loop si la
+// network está caída del lado del usuario.
+//
+// Refs:
+// - https://github.com/supabase/realtime/issues/1088
+// - https://supabase.com/docs/guides/troubleshooting/realtime-connections-timed_out-status
+// - https://supabase.com/docs/guides/troubleshooting/realtime-handling-silent-disconnections-in-backgrounded-applications-592794
+const RECOVERY_DISCONNECTED_THRESHOLD = 2; // disconnected events before force-recover
+const RECOVERY_MIN_INTERVAL_MS = 10_000;
+let consecutiveDisconnected = 0;
+let lastRecoveryAt = 0;
+let supabaseRef: SupabaseClient | null = null;
+
+function tryForceRealtimeRecovery(): void {
+  const now = Date.now();
+  if (now - lastRecoveryAt < RECOVERY_MIN_INTERVAL_MS) return;
+  if (!supabaseRef) return;
+  lastRecoveryAt = now;
+  consecutiveDisconnected = 0;
+  logRealtime.warn('Forcing realtime socket recovery (disconnect + connect)');
+  try {
+    supabaseRef.realtime.disconnect();
+    // Brief delay para asegurar disconnect limpio antes de reabrir.
+    setTimeout(() => {
+      try {
+        supabaseRef?.realtime.connect();
+        logRealtime.info('Realtime socket reconnected after forced recovery');
+      } catch (e) {
+        logRealtime.warn('Realtime reconnect failed', { error: e instanceof Error ? e.message : String(e) });
+      }
+    }, 200);
+  } catch (e) {
+    logRealtime.warn('Realtime disconnect failed', { error: e instanceof Error ? e.message : String(e) });
+  }
+}
 
 // ── Realtime transport config ────────────────────────────────────────────────
 //
@@ -43,7 +92,18 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     heartbeatCallback: (status) => {
       if (status === 'disconnected' || status === 'timeout') {
         logRealtime.warn('Heartbeat status', { status });
+        if (status === 'disconnected') {
+          consecutiveDisconnected += 1;
+          if (consecutiveDisconnected >= RECOVERY_DISCONNECTED_THRESHOLD) {
+            tryForceRealtimeRecovery();
+          }
+        }
+      } else {
+        // 'sent' | 'received' → heartbeat alive; reset counter.
+        consecutiveDisconnected = 0;
       }
     },
   },
 });
+
+supabaseRef = supabase;
