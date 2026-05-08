@@ -225,8 +225,30 @@ export function useLiveKitLocalPublishing(
   ]);
 
   // Expose the live LocalVideoTrack for camera effects pipeline.
-  // Deps include `realtimeCoordinatorState` so the callback identity changes
-  // when the publication changes (consumer hook re-runs its lifecycle).
+  //
+  // Identity is intentionally STABLE (output-ref pattern, consistent with
+  // e5d9d83 `limpiarLivekit` and c4ae8c9 `replaySubscribedTracksRef`).
+  //
+  // Why we do NOT depend on `realtimeCoordinatorState`:
+  //   The wrapper returned here is the SAME `LocalVideoTrack` JS object
+  //   that `useLocalCameraTrack` returns to the consumer (both go through
+  //   `LocalVideoTrackFactory` cache keyed by `MediaStreamTrack.id`; see
+  //   `src/core/infrastructure/adapters/LocalVideoTrackFactory.ts:55-94` and
+  //   `PublicarLocalTrackUseCase.ts:46`). When the publication appears,
+  //   `getPublishedVideoTrack()` starts returning a non-null wrapper, but
+  //   it is the same object as `localCameraTrack` (the `useState` value in
+  //   `useLocalCameraTrack`). React's state already triggers consumer
+  //   re-renders for that change. Adding `realtimeCoordinatorState` here
+  //   only forced `resolveActiveVideoTrack` (in `VirtualSpace3D.tsx:222`)
+  //   to change identity on every coordinator state change (publish,
+  //   remote-subscribe, speaker, …) which propagated into
+  //   `useLiveKitVideoBackground`'s `useEffect` cleanup→setup, racing
+  //   against the WASM init mid-publish and producing a visible second
+  //   processor swap (the camera "second flicker" reported 2026-05-08).
+  //   The same cascade is also documented at
+  //   `LiveKitOfficialBackgroundAdapter.ts:367-369` as the root cause of
+  //   the WebGL-context exhaustion that killed the canvas in earlier
+  //   sessions.
   const getPublishedVideoTrack = useCallback((): LocalVideoTrack | null => {
     const coordinator = realtimeCoordinatorRef.current;
     if (!coordinator) return null;
@@ -234,8 +256,7 @@ export function useLiveKitLocalPublishing(
     if (!pub?.track) return null;
     if (pub.track instanceof LocalVideoTrack) return pub.track;
     return null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [realtimeCoordinatorRef, realtimeCoordinatorState]);
+  }, [realtimeCoordinatorRef]);
 
   return {
     publicarTrackLocal,
