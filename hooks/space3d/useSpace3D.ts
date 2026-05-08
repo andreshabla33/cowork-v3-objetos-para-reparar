@@ -381,7 +381,6 @@ export function useSpace3D(props: {
     usersInCall: proximity.usersInCall,
     enviarDataLivekit: livekit.enviarDataLivekit,
     ecsStateRef: chunks.ecsStateRef,
-    usuariosVisiblesRef: chunks.usuariosVisiblesRef,
     realtimePositionsRef,
     realtimeEventBusRef: livekit.realtimeEventBusRef,
     livekitConnected: livekit.livekitConnected,

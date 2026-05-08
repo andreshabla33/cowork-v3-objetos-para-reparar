@@ -42,7 +42,6 @@ export function useBroadcast(params: {
   usersInCall: User[];
   enviarDataLivekit: (mensaje: PublishableDataPacketContract, reliable?: boolean) => boolean;
   ecsStateRef: React.MutableRefObject<EstadoEcsEspacio>;
-  usuariosVisiblesRef: React.MutableRefObject<Set<string>>;
   realtimePositionsRef: React.MutableRefObject<Map<string, RealtimePositionEntry>>;
   realtimeEventBusRef: React.MutableRefObject<RealtimeEventBus | null>;
   livekitConnected: boolean;
@@ -73,7 +72,7 @@ export function useBroadcast(params: {
   const {
     session, currentUser, currentUserEcs, activeWorkspace, usersInCall,
     enviarDataLivekit, ecsStateRef,
-    usuariosVisiblesRef, realtimePositionsRef,
+    realtimePositionsRef,
     realtimeEventBusRef, livekitConnected,
     raisedHandParticipantIds, setRaisedHandParticipantIds,
     conversacionBloqueada, setConversacionBloqueada,
@@ -225,7 +224,28 @@ export function useBroadcast(params: {
 
     if (mensaje.type === 'movement') {
       if (mensaje.payload.id === session.user.id) return;
-      if (!usuariosVisiblesRef.current.has(mensaje.payload.id)) return;
+      // FIX 2026-05-08: NO filtrar por usuariosVisiblesRef (chunk-of-interest).
+      //
+      // Bug previo: cuando un remote estaba fuera del radio de chunks
+      // del local, sus packets de movement se descartaban acá. Al cruzar
+      // el threshold del chunk, su id ingresaba a usuariosVisibles y de
+      // golpe empezaban a aplicarse las posiciones — el avatar saltaba
+      // desde su última posición conocida (vieja) a la actual.
+      //
+      // Aplicación correcta de capas (Clean Arch): la capa de DATOS
+      // siempre actualiza el state. La capa de RENDER (Avatar3DScene,
+      // InstancedAvatarRenderer) ya filtra qué avatares dibuja según
+      // visibilidad/chunks. Mantener realtimePositionsRef + ECS al día
+      // para todos los participantes garantiza que cuando un avatar
+      // entra a render, su posición está fresca, sin saltos.
+      //
+      // Costo: Map.set + ECS update por packet (microsegundos). Cleanup
+      // garantizado vía avatarStore.onRemove en Avatar3DScene.tsx:489.
+      //
+      // Ref LiveKit Client v2.18 — DataPackets son broadcast a todos los
+      // participantes por default; no hay filtering oficial server-side.
+      // La decisión de aplicar o no es responsabilidad de la app.
+      // https://docs.livekit.io/home/client/data/messages/
       realtimePositionsRef.current.set(mensaje.payload.id, {
         x: mensaje.payload.x, y: mensaje.payload.y,
         direction: mensaje.payload.direction, isMoving: mensaje.payload.isMoving,
