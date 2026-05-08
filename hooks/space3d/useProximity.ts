@@ -15,6 +15,7 @@ import { normalizarConfiguracionZonaEmpresa } from '@/src/core/domain/entities/c
 import { isMeetingZone } from '@/src/core/domain/entities/realtime/MeetingRoomAssignment';
 import { classifyZonasEmpresa } from '@/src/core/domain/entities/realtime/ZonaEmpresaKind';
 import { SpatialHashGrid } from '@/src/core/domain/services/SpatialHashGrid';
+import { avatarStore } from '@/lib/ecs/AvatarECS';
 import { logger } from '@/lib/logger';
 
 const log = logger.child('useProximity');
@@ -251,6 +252,24 @@ export function useProximity(params: {
       // user está en el sentinel (0,0) — evita distancia=0 con un remote que
       // casualmente caiga en (0,0). La guardia superior solo cubría al remote.
       if (stableProximityCoords.x === 0 && stableProximityCoords.y === 0) {
+        return false;
+      }
+      // FIX 2026-05-08 (stale-position on peer join): si el ECS entity del
+      // remote NO ha recibido aún el primer DataChannel packet, sus coords
+      // vienen sólo de Supabase Presence — que está throttled a 45s. En el
+      // momento que un peer aparece via Presence, su last-known position
+      // puede ser de hasta 45s vieja. Hasta que el primer movement packet
+      // confirme coords frescas (vía LiveKit DataChannel), tratamos al
+      // remote como "no listo" para proximidad — evita activar cámaras en
+      // base a posición stale.
+      //
+      // Cuando A empieza a broadcastar (movimiento o snapshot vía
+      // bumpParticipantJoinVersion en useLiveKitRoomLifecycle), el handler
+      // de movement en useBroadcast llama movementSystem.setTarget que
+      // setea hasReceivedFirstRealTarget=true → este guard pasa y la
+      // proximidad activa con coords frescas.
+      const ecsEntity = avatarStore.get(u.id);
+      if (ecsEntity && !ecsEntity.hasReceivedFirstRealTarget) {
         return false;
       }
 

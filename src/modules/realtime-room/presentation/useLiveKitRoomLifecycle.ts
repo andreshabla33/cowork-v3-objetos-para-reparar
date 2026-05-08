@@ -316,6 +316,21 @@ export function useLiveKitRoomLifecycle(
       // (the sweep that powers the official `useTracks` hook).
       // Idempotent — see `replaySubscribedTracks` in useLiveKitRemoteTracks.
       replaySubscribedTracksRef.current?.(room);
+      // FIX 2026-05-08 (stale-position on peer join): si A conecta a un
+      // Room que YA tiene peers, RoomEvent.ParticipantConnected NO dispara
+      // para esos peers existentes (LiveKit oficial: solo emite el evento
+      // para participantes que se unen DESPUÉS del local). Resultado: A
+      // nunca rebroadcastea su posición a los peers ya presentes vía el
+      // welcome-broadcast pattern → el peer B sigue viendo a A en coords
+      // stale de Supabase Presence (throttled 45s).
+      // Solución: si encontramos peers ya en el Room al conectar,
+      // disparamos bumpParticipantJoinVersion para que Player3D resetee
+      // lastBroadcastTime y la próxima idle-heartbeat envíe coords frescas.
+      // Ref: https://docs.livekit.io/reference/client-sdk-js/classes/Room.html
+      //   (room.remoteParticipants — authoritative al momento de connect)
+      if (room.remoteParticipants.size > 0) {
+        bumpParticipantJoinVersion();
+      }
       log.info('Connected to room', { roomName, remoteParticipants: room.remoteParticipants.size });
       recordTelemetry('livekit_connected', {
         roomName,
