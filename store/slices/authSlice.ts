@@ -45,8 +45,15 @@ export const createAuthSlice: StateCreator<AuthSlice, [], [], AuthSlice> = (set,
       hairColor: '#4b2c20',
       accessory: 'headphones',
     },
-    x: 500,
-    y: 500,
+    // FIX 2026-05-08: sentinel (0,0) en lugar de (500,500). El default
+    // anterior provocaba que dos usuarios al conectar simultáneamente sin
+    // posición de BD aparecieran co-localizados en (500,500), disparando
+    // proximidad fantasma. (0,0) es el sentinel oficial: useProximity lo
+    // detecta para bloquear hidratación; useNotifications, Player3D y
+    // SceneRoot ya manejan el fallback con `currentUser.x || 400`.
+    // Ref hooks/space3d/useProximity.ts:93-117 (gate hidratación).
+    x: 0,
+    y: 0,
     direction: 'front',
     isSitting: false,
     isOnline: true,
