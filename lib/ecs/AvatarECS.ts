@@ -20,6 +20,7 @@ import type { AnimationState } from '@/components/avatar3d/shared';
 import type { AvatarConfig } from '@/types';
 import type { Avatar3DConfig } from '@/components/avatar3d/shared';
 import type { AvatarDisposeCallback, IAvatarResourceDisposer } from '@/src/core/domain/ports/IAvatarResourceDisposer';
+import { isPresencePositionSentinel } from '@/modules/realtime-room';
 
 // ─── Tipos del ECS ──────────────────────────────────────────────────────────
 
@@ -226,7 +227,46 @@ class AvatarStore implements IAvatarResourceDisposer {
       if (user.id === currentUserId) continue;
       onlineIds.add(user.id);
 
+      // FIX 2026-05-08: enforce the (0,0) sentinel contract on the
+      // rendering bootstrap path. The presence layer (`usePresenceChannels`)
+      // already preserves the sentinel verbatim via `extractPresencePosition`
+      // (commit f763a23), but until now this hook materialized the sentinel
+      // into an entity with `currentX = currentZ = 0` — the avatar rendered
+      // at world origin until the first DataPacket arrived, at which point
+      // `movementSystem.setTarget`'s `hasReceivedFirstRealTarget` snap
+      // teleported it to the real position. That instantaneous swap is the
+      // visible "remote avatar jumps from wrong position" regression.
+      //
+      // Sentinel sources reaching this hook:
+      //   - `currentUser.x === 0 && y === 0` (auth-slice default,
+      //     `store/slices/authSlice.ts:55-56`).
+      //   - Privacy-off broadcaster (`usePresenceChannels.ts:439-440`
+      //     blanks coords to 0).
+      //   - Pre-hydration window between Supabase presence:join and the
+      //     remote's first `forceRetrackAll`.
+      //
+      // Treatment:
+      //   - **No entity yet → skip create.** The avatar appears only when
+      //     the remote broadcasts non-sentinel coords (presence catch-up
+      //     ~200ms-2s later, or ECS overlay after first DataPacket).
+      //   - **Entity already exists → preserve `targetX/Z`.** A delayed
+      //     presence sync that lands AFTER a DataPacket already populated
+      //     the real target must NOT snap the entity back to origin.
+      //
+      // Refs:
+      //   - `src/modules/realtime-room/domain/PresencePositionPolicy.ts`
+      //     (single source of truth for the sentinel predicate).
+      //   - `lib/ecs/AvatarSystems.ts:100-107` (`hasReceivedFirstRealTarget`
+      //     snap that this fix complements).
+      const presencePosition = { x: user.x, y: user.y };
+      const isSentinel = isPresencePositionSentinel(presencePosition);
+
       if (!this.entities.has(user.id)) {
+        if (isSentinel) {
+          // Defer creation. The next sync that carries non-sentinel
+          // coords will create the entity directly at the real spot.
+          continue;
+        }
         // Nuevo usuario: crear entidad
         this.upsert(user.id, {
           currentX: user.x / scaleFactor,
@@ -244,15 +284,15 @@ class AvatarStore implements IAvatarResourceDisposer {
           profilePhoto: user.profilePhoto || null,
         });
       } else {
-        // Usuario existente: actualizar posición + metadata.
-        // Supabase presence es la fuente de verdad en este sync; siempre sincronizar
-        // posición incluso para usuarios existentes. Si el broadcast de posiciones aún
-        // no ha llegado, la posición de presencia es lo más reciente disponible.
-        // Ref: syncWithOnlineUsers es called on presence:sync después de cada cambio,
-        //      así que posición debe estar actualizada.
+        // Usuario existente: actualizar metadata siempre. La posición
+        // sólo se reescribe si la presence trae un valor REAL — el
+        // sentinel (0,0) significa "no info disponible" y no debe
+        // sobrescribir un targetX/Z ya hidratado por DataPacket.
+        const positionUpdate = isSentinel
+          ? {}
+          : { targetX: user.x / scaleFactor, targetZ: user.y / scaleFactor };
         this.upsert(user.id, {
-          targetX: user.x / scaleFactor,
-          targetZ: user.y / scaleFactor,
+          ...positionUpdate,
           direction: user.direction || 'south',
           name: user.name,
           status: user.status,
