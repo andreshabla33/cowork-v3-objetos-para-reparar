@@ -180,7 +180,22 @@ class AvatarStore implements IAvatarResourceDisposer {
   }
 
   getAllVisible(): AvatarEntity[] {
-    return this.getAll().filter(e => e.isVisible);
+    // FIX 2026-05-08: requerir `hasReceivedFirstRealTarget=true` para
+    // ocultar avatares cuyas coords vienen sólo de Supabase Presence
+    // (throttled 45s, posiblemente stale). Cuando llega el primer
+    // DataChannel packet vía movementSystem.setTarget, el flag se setea
+    // y el avatar entra al render pipeline en su posición REAL — sin
+    // salto desde la posición stale de Presence.
+    //
+    // Pattern industria (Source/Valve, Gaffer-on-games "snapshot
+    // interpolation"): no renderizar entidades sin snapshot confirmado.
+    // El welcome-broadcast en useLiveKitRoomLifecycle garantiza que
+    // los peers reciben snapshot dentro de 1s tras connect.
+    //
+    // Refs:
+    // - https://developer.valvesoftware.com/wiki/Source_Multiplayer_Networking
+    // - https://gafferongames.com/post/snapshot_interpolation/
+    return this.getAll().filter(e => e.isVisible && e.hasReceivedFirstRealTarget);
   }
 
   get size(): number {
