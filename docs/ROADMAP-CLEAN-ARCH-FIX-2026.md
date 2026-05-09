@@ -166,10 +166,11 @@
   - `monitoring/`, `metrics/` → `src/core/infrastructure/observability/`.
 - Riesgo: validar paridad con archivos ya en src/ (`src/core/infrastructure/textureRegistry.ts`, `src/core/infrastructure/fabricaMaterialesArquitectonicos.ts`) — duplicación latente.
 
-#### ITEM 13 — P2-15 lib/database.types.ts → src/core/infrastructure/supabase ⏸ SIN TOCAR
-- Esfuerzo: S
-- **Estado real**: `lib/database.types.ts` sigue presente (≈101 KB, autogenerado). Carpeta `src/core/infrastructure/supabase/` **no existe**.
-- Acción: crear `src/core/infrastructure/supabase/`, mover archivo a `types.gen.ts`, actualizar comando `supabase gen types` y reescribir todos los imports `from '@/lib/database.types'`.
+#### ITEM 13 — P2-15 lib/database.types.ts ✅ CERRADO (2026-05-08, eliminación directa)
+- Esfuerzo real: XS (1 comando `git rm`).
+- **Hallazgo de auditoría 2026-05-08**: el archivo estaba marcado huérfano desde 2026-03-30 (ARCH-CLEANUP-001) y tenía un comentario auto-deprecatorio explícito *"Eliminar manualmente"*. 0 imports activos en el código (`grep "from '@/lib/database.types'"` → 0 matches). El plan original ("mover + reescribir imports") no aplicaba porque no había imports que reescribir.
+- Acción aplicada: `git rm lib/database.types.ts`. tsc OK, vitest 191/191. E8 cerrado.
+- Nota: si en el futuro se regenera tipos vía `supabase gen types`, el path canónico debe ser `src/core/infrastructure/supabase/types.gen.ts` (no recrear en `lib/`).
 
 #### ITEM 14 — P2-16 modules/ shim → eliminar tras alias ⏸ SIN TOCAR
 - Esfuerzo: S
@@ -324,7 +325,7 @@
 - **E5**: Carpeta `hooks/` completa (después de ITEM 10).
 - **E6**: Carpeta `components/` completa (después de ITEM 11).
 - **E7**: Carpeta `modules/` (después de ITEM 14).
-- **E8**: `lib/database.types.ts` (después de ITEM 13).
+- ~~**E8**: `lib/database.types.ts`~~ — ✅ removido (ver ITEM 13 cerrado).
 - **E9**: Carpeta `lib/` completa (después de ITEM 12).
 - **E10**: `node_modules` y `package-lock.json` LOCALES — refresh de instalación, no eliminación de código del producto. Si se opta por la opción destructiva del ITEM 1.
 
