@@ -568,6 +568,33 @@ export class ChatSupabaseRepository implements IChatRepository {
     }
   }
 
+  async agregarMiembrosCanal(
+    grupoId: string,
+    usuarioIds: string[],
+    rol: string,
+  ): Promise<void> {
+    if (usuarioIds.length === 0) return;
+    try {
+      const rows = usuarioIds.map((usuario_id) => ({
+        grupo_id: grupoId,
+        usuario_id,
+        rol,
+      }));
+      const { error } = await supabase
+        .from('miembros_grupo')
+        .upsert(rows, { onConflict: 'grupo_id,usuario_id' });
+
+      if (error) throw error;
+    } catch (err) {
+      log.error('agregarMiembrosCanal failed', {
+        grupoId,
+        count: usuarioIds.length,
+        error: String(err),
+      });
+      throw err;
+    }
+  }
+
   async agregarMiembrosDM(grupoId: string, usuarioIds: string[]): Promise<void> {
     try {
       const { error } = await supabase.rpc('agregar_miembros_dm', {

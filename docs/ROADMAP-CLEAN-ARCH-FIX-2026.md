@@ -45,11 +45,20 @@
 - Stores ya creados en `src/modules/<feature>/state/`: `useUserStore`, `useWorkspaceStore`, `useChatStore`, `useSpace3DStore`, `usePresenceStore`, `useUIStore`. La descomposición por contexto evitó la necesidad del barrido mecánico de `useShallow`.
 - Persisten 58 usos de `useStore` en código legacy (`hooks/`, `components/`, `store/orchestrators/*`). Esa migración cae bajo ITEMs 8/10/11 (legacy → src/), no requiere acción independiente.
 
-## Update 2026-05-08 — ITEM 6 progreso real (2/13 archivos = 15%)
-- **Corrección de scope**: el roadmap original decía "18 sitios". Auditoría con `grep "supabase.from("` muestra **13 archivos consumidores únicos en legacy** (excluyendo edge functions server-side y los nuevos repositorios en `src/`). Algunos archivos contienen múltiples calls; el conteo de calls totales es ~25.
+## Update 2026-05-08 — ITEM 6 progreso real (4/N archivos)
+- **Re-corrección de scope** (auditoría más profunda con grep multiline):
+  - El conteo "13 archivos / 25 calls" era **undercount**. El grep estricto `supabase\.from\(` (single-line) no capturaba las calls multi-línea (`await supabase\n  .from('table')...`).
+  - Conteo real con `grep -U` multiline supera **80+ calls** en legacy; archivos adicionales NO listados en el roadmap original incluyen: `services/monicaContextService.ts` (4+ calls), `lib/avatar3d/universalAnimationsPreloader.ts` (1), `hooks/useOnboarding.ts` (4+), `lib/gamificacion.ts` (9+), `lib/autorizacionesEmpresa.ts` (13+ calls, no 3).
+  - **Decisión pragmática**: mantener el alcance del ITEM 6 al subset originalmente planeado (los archivos con calls de escritura críticas) para no inflar el ITEM. Los archivos adicionales (gamificacion, monicaContext, useOnboarding) caen bajo ITEMs 9/10/12 (migración de services/, hooks/, lib/) — abordar al migrar ESAS carpetas, no como parte de ITEM 6.
 - **Sub-batch 1 cerrado** (`c84b987`): cargos + departamentos.
   - Nuevos: `src/core/domain/ports/{ICargoRepository,IDepartamentoRepository}.ts` + `src/core/infrastructure/adapters/{Cargo,Departamento}SupabaseRepository.ts`.
   - Refactorizados: `components/settings/sections/Settings{Cargos,Departamentos}.tsx` consumen singleton del adapter.
+  - tsc OK, vitest 191/191.
+- **Sub-batch 2 cerrado**: Members (MiembrosView + AgregarMiembros).
+  - Extendido `IInvitacionRepository` + `InvitacionSupabaseRepository` con `cancelarInvitacionPendiente(id)`. Singleton `invitacionRepository` exportado.
+  - Extendido `IChatRepository` + `ChatSupabaseRepository` con `agregarMiembrosCanal(grupoId, usuarioIds[], rol)` (batch upsert sobre `miembros_grupo`).
+  - Refactorizados: `components/MiembrosView.tsx` (delete `invitaciones_pendientes`) y `components/chat/AgregarMiembros.tsx` (insert `miembros_grupo`).
+  - **Out-of-scope intencional para este batch**: las calls de SELECT (reads) en estos archivos (`miembros_espacio`, `usuarios`, `registro_conexiones`) no se migraron — caerán al migrar componentes a `src/modules/` (ITEM 11) o cuando se cree un MembershipRepository dedicado.
   - tsc OK, vitest 191/191.
 - **11 archivos pendientes** (con calls verificadas):
   | Archivo | calls | Notas |

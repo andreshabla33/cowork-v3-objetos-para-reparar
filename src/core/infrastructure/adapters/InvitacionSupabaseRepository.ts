@@ -88,4 +88,17 @@ export class InvitacionSupabaseRepository implements IInvitacionRepository {
       .update({ usada: true })
       .eq('token_hash', tokenHash);
   }
+
+  async cancelarInvitacionPendiente(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('invitaciones_pendientes')
+      .delete()
+      .eq('id', id);
+    if (error) {
+      log.warn('Failed to cancel pending invitation', { id, error: error.message });
+      throw error;
+    }
+  }
 }
+
+export const invitacionRepository = new InvitacionSupabaseRepository();

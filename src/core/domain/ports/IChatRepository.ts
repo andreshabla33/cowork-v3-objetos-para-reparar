@@ -218,6 +218,17 @@ export interface IChatRepository {
   agregarMiembroCanal(grupoId: string, usuarioId: string, rol: string): Promise<void>;
 
   /**
+   * Add multiple members to a channel in a single batch insert.
+   * All items share the same role; passes through Supabase batch insert.
+   * Used by the "Agregar miembros" admin flow in chat.
+   */
+  agregarMiembrosCanal(
+    grupoId: string,
+    usuarioIds: string[],
+    rol: string,
+  ): Promise<void>;
+
+  /**
    * Add multiple members to a DM group atomically via RPC.
    * Uses SECURITY DEFINER to bypass RLS upsert limitations
    * (SELECT+INSERT+UPDATE all required for upsert on empty groups).

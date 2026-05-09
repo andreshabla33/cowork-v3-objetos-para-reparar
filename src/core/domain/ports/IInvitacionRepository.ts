@@ -34,4 +34,10 @@ export interface IInvitacionRepository {
    * Accept an invitation: upsert the membership and mark the invitation as used.
    */
   aceptar(payload: AceptarInvitacionPayload, tokenHash: string): Promise<void>;
+
+  /**
+   * Cancel a pending invitation by its id (admin action from miembros UI).
+   * Hard-deletes the row from `invitaciones_pendientes`.
+   */
+  cancelarInvitacionPendiente(id: string): Promise<void>;
 }

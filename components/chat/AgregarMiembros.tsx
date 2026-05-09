@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { chatRepository } from '@/src/core/infrastructure/adapters/ChatSupabaseRepository';
 import { Language, getCurrentLanguage, subscribeToLanguageChange, t } from '../../lib/i18n';
 
 interface Props {
@@ -52,16 +53,13 @@ export const AgregarMiembros: React.FC<Props> = ({ grupoId, espacioId, onClose }
   const agregarMiembros = async () => {
     const nuevos = seleccionados.filter(id => !miembrosActuales.includes(id));
     if (nuevos.length === 0) return;
-    
-    const { error } = await supabase.from('miembros_grupo').insert(
-      nuevos.map(usuario_id => ({
-        grupo_id: grupoId,
-        usuario_id,
-        rol: 'miembro'
-      }))
-    );
-    
-    if (!error) onClose();
+
+    try {
+      await chatRepository.agregarMiembrosCanal(grupoId, nuevos, 'miembro');
+      onClose();
+    } catch {
+      // Error logged by repository; keep modal open so user can retry
+    }
   };
 
   const toggleSeleccion = (id: string) => {
