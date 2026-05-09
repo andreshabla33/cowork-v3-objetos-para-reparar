@@ -17,6 +17,17 @@
 - Verificado: `grep -r "process.env" src/` → 0 matches. La capa Application ya no depende de `process.env` (residual técnico aceptado: `import.meta.env` sigue siendo bundler-specific; el ideal Clean Arch — verbose por DI — queda fuera de scope).
 - Deuda colateral detectada (no parte de ITEM 2): el archivo importa `@/lib/logger` (línea 19), legacy import. Se aborda en ITEM 12 (lib/ → re-categorizar por adapter target).
 
+## Update 2026-05-08 — ITEM 3 cerrado
+- Commits `bad863b` (adapter) + `4ffff61` (HandController refactor) ya migraron MediaPipe HandController a `@mediapipe/tasks-vision`.
+- Estructura final:
+  - `src/core/infrastructure/mediapipe/HandLandmarkerAdapter.ts` (90 líneas, ≤200 ✓): encapsula `FilesetResolver.forVisionTasks` + `HandLandmarker.createFromOptions` + `detectForVideo` por doc oficial.
+  - `src/modules/marketplace/presentation/useHandTracking.ts` (92 líneas, ≤100 ✓): hook con rAF loop + lifecycle del adapter + `onResult` callback (evita re-renders a 30+ FPS).
+  - `components/marketplace/HandController.tsx`: gesture state machine + One-Euro filter consumen el hook.
+- Deps removidas de `package.json`: `@mediapipe/hands`, `@mediapipe/selfie_segmentation`, `@mediapipe/camera_utils`, `@mediapipe/drawing_utils`. Solo queda `@mediapipe/tasks-vision ^0.10.33`.
+- Verificado: `grep "@mediapipe/(hands|selfie_segmentation|camera_utils|drawing_utils)"` → 0 referencias en código (solo doc legacy en `WEBRTC_VIDEO_HUD_DOCUMENTACION.md:508` que describe arquitectura previa).
+- E1 (Grupo 3) cerrado por adelantado.
+- Pendiente: verificación browser manual de Andrés del flujo de gestos en marketplace.
+
 ## Skills aplicadas
 - `clean-architecture-refactor` — criterios duros de performance (30+ FPS), 3 reglas de migración (no legacy / no duplicaciones / todo conectado), capas con paths concretos (Domain/Application/Infrastructure/Modules), patrones obligatorios (Repository, DI, Zustand selectores, R3F separation, LiveKit encapsulado), tamaños 500/200/50/100.
 - `official-docs-alignment` — validación contra docs oficiales con versiones reales: React 19.2.3, TypeScript 5.8, Vite 6.2, Three.js 0.182, R3F 9.5, Drei 10.7, Rapier 2.2, LiveKit Client 2.18.9, LiveKit Components 2.9, Supabase JS 2.47, Zustand 5.0.9, MediaPipe Tasks Vision 0.10, Sentry 10.47, Tailwind 3.4.
@@ -41,15 +52,15 @@
 
 ### FASE 1 — Migración crítica (M-L, scope acotado)
 
-#### ITEM 3 — P0-01 MediaPipe HandController → tasks-vision
+#### ITEM 3 — P0-01 MediaPipe HandController → tasks-vision ✅ CERRADO (`bad863b` + `4ffff61`)
 - Esfuerzo: M
-- Archivos:
-  - Nuevo: `src/core/infrastructure/mediapipe/HandLandmarkerAdapter.ts` (≤200 líneas).
-  - Nuevo: `src/modules/marketplace/presentation/useHandTracking.ts` (≤100 líneas).
-  - Refactor: `components/marketplace/HandController.tsx` (consumir hook, mantener gesture state machine + OneEuro filter).
-- Skills: `official-docs-alignment` (https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker — `FilesetResolver` + `HandLandmarker.createFromOptions` + `detectForVideo`), `clean-architecture-refactor` (encapsular adapter + hook con DI).
-- Reportar a Grupo 3: 4 deps a eliminar de `package.json` tras migración (`@mediapipe/hands`, `@mediapipe/selfie_segmentation`, `@mediapipe/camera_utils`, `@mediapipe/drawing_utils`).
-- Riesgo: cambio de proveedor sin tests browser; verificación manual obligatoria de Andrés tras merge.
+- Archivos creados/refactorizados:
+  - `src/core/infrastructure/mediapipe/HandLandmarkerAdapter.ts` (90 líneas).
+  - `src/modules/marketplace/presentation/useHandTracking.ts` (92 líneas).
+  - `components/marketplace/HandController.tsx` (consume hook, mantiene gesture state machine + OneEuro filter).
+- Deps removidas: `@mediapipe/hands`, `@mediapipe/selfie_segmentation`, `@mediapipe/camera_utils`, `@mediapipe/drawing_utils`. E1 cerrado.
+- Skills aplicadas: `official-docs-alignment` (https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker), `clean-architecture-refactor`.
+- Pendiente: verificación browser manual del flujo de gestos en marketplace por Andrés.
 
 ### FASE 2 — Performance sistémica (L)
 
@@ -206,7 +217,7 @@
 
 ## Items para Grupo 3 (requieren autorización explícita de Andrés)
 
-- **E1**: 4 deps `@mediapipe/{hands,selfie_segmentation,camera_utils,drawing_utils}` en `package.json` (después de ITEM 3 + verificación browser).
+- ~~**E1**: 4 deps `@mediapipe/{hands,selfie_segmentation,camera_utils,drawing_utils}`~~ — ✅ removidas (ver ITEM 3 cerrado).
 - **E2**: `hooks/space3d/useLiveKit.ts` (después de ITEM 7).
 - **E3**: Carpeta `store/` completa (después de ITEM 8).
 - **E4**: Carpeta `services/` completa (después de ITEM 9).
