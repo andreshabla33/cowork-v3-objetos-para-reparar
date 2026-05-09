@@ -11,7 +11,7 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { recordingRepository } from '@/core/infrastructure/adapters/RecordingSupabaseRepository';
 import { useAuthSessionGetter } from '../../../hooks/auth/useAuthSession';
 import { useTranscription } from './useTranscription';
 import { useCombinedAnalysis, AnalisisResumenTiempoReal } from './useCombinedAnalysis';
@@ -191,7 +191,7 @@ export const RecordingManagerV2: React.FC<RecordingManagerV2Props> = ({
       startTimeRef.current = Date.now();
 
       // Registrar en Supabase
-      await supabase.from('grabaciones').insert({
+      await recordingRepository.crearGrabacion({
         id: grabacionIdRef.current,
         espacio_id: espacioId,
         creado_por: userId,
@@ -343,25 +343,20 @@ export const RecordingManagerV2: React.FC<RecordingManagerV2Props> = ({
 
       // Guardar transcripción en Supabase
       if (transcript && transcript.trim().length > 0) {
-        const transcripcionRecord = {
-          grabacion_id: grabacionIdRef.current,
-          texto: transcript,
-          inicio_segundos: 0,
-          fin_segundos: duration,
-          speaker_id: userId,
-          speaker_nombre: userName,
-          confianza: 0.9,
-          idioma: 'es',
-        };
-        
-        const { error: transcError } = await supabase
-          .from('transcripciones')
-          .insert(transcripcionRecord);
-        
-        if (transcError) {
-          console.error('Error guardando transcripción:', transcError);
-        } else {
+        try {
+          await recordingRepository.guardarTranscripcion({
+            grabacion_id: grabacionIdRef.current,
+            texto: transcript,
+            inicio_segundos: 0,
+            fin_segundos: duration,
+            speaker_id: userId,
+            speaker_nombre: userName,
+            confianza: 0.9,
+            idioma: 'es',
+          });
           console.log('✅ Transcripción guardada en Supabase');
+        } catch (transcError) {
+          console.error('Error guardando transcripción:', transcError);
         }
       }
 
@@ -382,15 +377,12 @@ export const RecordingManagerV2: React.FC<RecordingManagerV2Props> = ({
             participante_nombre: userName,
           }));
 
-        // Insertar en lotes
-        for (let i = 0; i < emotionRecords.length; i += 50) {
-          const batch = emotionRecords.slice(i, i + 50);
-          const { error: analisisError } = await supabase.from('analisis_comportamiento').insert(batch);
-          if (analisisError) {
-            console.error('Error guardando análisis:', analisisError);
-          }
+        try {
+          await recordingRepository.guardarAnalisisComportamiento(emotionRecords);
+          console.log(`✅ ${emotionRecords.length} registros de análisis guardados`);
+        } catch (analisisError) {
+          console.error('Error guardando análisis:', analisisError);
         }
-        console.log(`✅ ${emotionRecords.length} registros de análisis guardados`);
       } else {
         console.warn('⚠️ No hay frames de análisis para guardar');
       }
@@ -405,13 +397,10 @@ export const RecordingManagerV2: React.FC<RecordingManagerV2Props> = ({
       // Obtener token de sesión para autenticar la llamada.
       // Read synchronously from Zustand store — NO async getSession() to avoid orphaned Web Lock.
       const accessToken = getAuthSession().accessToken ?? undefined;
-      
+
       if (accessToken) {
-        const { data: aiData, error: aiError } = await supabase.functions.invoke('generar-resumen-ai', {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: {
+        try {
+          await recordingRepository.generarResumenAI({
             grabacion_id: grabacionIdRef.current,
             espacio_id: espacioId,
             creador_id: userId,
@@ -426,25 +415,22 @@ export const RecordingManagerV2: React.FC<RecordingManagerV2Props> = ({
               microexpresiones_detectadas: resultadoAnalisis.microexpresiones.length,
               tipo_analisis: tipoGrabacion,
             },
-          },
-        });
-        
-        if (aiError) {
-          console.warn('⚠️ Error generando resumen AI:', aiError.message);
-        } else {
+          });
           console.log('✅ Resumen AI generado');
+        } catch (aiError) {
+          console.warn('⚠️ Error generando resumen AI:', aiError instanceof Error ? aiError.message : String(aiError));
         }
       } else {
         console.warn('⚠️ No hay sesión activa para generar resumen AI');
       }
 
       // Actualizar grabación en Supabase (metadatos sin archivo de video)
-      await supabase.from('grabaciones').update({
+      await recordingRepository.completarGrabacion(grabacionIdRef.current, {
         estado: 'completado',
         duracion_segundos: duration,
         fin_grabacion: new Date().toISOString(),
         archivo_nombre: reunionTitulo || `Reunión ${new Date().toLocaleDateString('es-ES')}`,
-      }).eq('id', grabacionIdRef.current);
+      });
 
       // Video procesado localmente - no se sube a storage por privacidad
       console.log('📹 Video procesado localmente (no subido a storage)');
@@ -456,7 +442,7 @@ export const RecordingManagerV2: React.FC<RecordingManagerV2Props> = ({
       onProcessingComplete?.(resultadoAnalisis);
 
       // Notificación
-      await supabase.from('notificaciones').insert({
+      await recordingRepository.crearNotificacionAnalisis({
         usuario_id: userId,
         espacio_id: espacioId,
         tipo: 'analisis_listo',
@@ -475,10 +461,10 @@ export const RecordingManagerV2: React.FC<RecordingManagerV2Props> = ({
       updateState({ step: 'error', message: err.message || 'Error en el procesamiento' });
 
       // Marcar grabación como error
-      await supabase.from('grabaciones').update({
+      await recordingRepository.marcarGrabacionError(grabacionIdRef.current, {
         estado: 'error',
         error_mensaje: err.message || 'Error en procesamiento',
-      }).eq('id', grabacionIdRef.current);
+      });
     }
   }, [
     processingState.duration, 
