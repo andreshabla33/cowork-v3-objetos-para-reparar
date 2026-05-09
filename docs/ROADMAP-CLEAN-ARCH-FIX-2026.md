@@ -52,7 +52,7 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 | 7 | ITEM 6 batch 7 | S | M | requiere ITEM 15 batch 1 |
 | 8 | ITEM 15 batch 2 (SettingsZona) | L | M | desbloquea ITEM 6 batch 8 |
 | 9 | ITEM 6 batch 8 | S | M | requiere ITEM 15 batch 2 |
-| 10 | ITEM 12 resto (rendering, gpu, ecs, avatar3d) | L | H | post-hojas |
+| ~~10~~ | ITEM 12 resto ✅ CERRADO 2026-05-09 — lib/ ELIMINADA | L | H | 12 commits totales |
 | 11 | ITEM 16 (god-hooks split) | L | H | extract use-cases |
 | 12 | ITEM 10 (hooks/ migration) | L | H | strangler fig |
 | 13 | ITEM 11 (components/ migration) | XL | H | strangler fig, multi-sesión |
@@ -282,9 +282,9 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 - Subdirs: `3d/`, `agente/`, `avatar3d/`, `chat/`, `customizer/`, `games/`, `invitaciones/`, `invitation/`, `layout/`, `marketplace/`, `media/`, `meetings/`, `onboarding/`, `settings/`, `space3d/`, `ui/`, también archivos sueltos en raíz (`VirtualSpace.tsx`, `VirtualSpace3D.tsx`, `MeetingRooms.tsx`, `MiembrosView.tsx`, `ChatSidebar.tsx`, etc.).
 - Por feature: fragmentar god-files (ver FASE 5) en el camino.
 
-#### ITEM 12 — P2-18 lib/ → re-categorizar por adapter target 🟡 PARCIAL (5 subdirs cerrados)
+#### ITEM 12 — P2-18 lib/ → re-categorizar por adapter target ✅ CERRADO (2026-05-09) — lib/ ELIMINADA
 - Esfuerzo: M-L
-- **Estado real (2026-05-09 final sesión)**: 6 subdirs restantes en `lib/`: avatar3d/, ecs/, ecs/rendering/, gpu/, performance/ (vacía), rendering/, spatial/. **18 archivos sueltos** restantes en raíz (de los ~30 originales): agonesClient, audioProcessing, authRecoveryService, autorizacionesEmpresa (facade), chunkSystem, edgeProxyService, gamificacion, googleCalendar, gpuCapabilities, i18n.ts, interestManager, livekitService, metricasAnalisis, realtimeChunkManager, regionDetector, terrenosMarketplace, userSettings, zonaLayoutEngine.
+- **Estado final (2026-05-09)**: la carpeta `lib/` **ya no existe en el repo**. Todos los archivos migrados o eliminados.
 - Mapeo objetivo (decisión 2026-05-05):
   - `rendering/`, `gpu/`, `ecs/`, `spatial/`, `avatar3d/` → `src/core/infrastructure/r3f/`.
   - `security/validateEnvKeys`, `env`, `i18n-config` → `src/core/infrastructure/<aspect>/`.
@@ -296,15 +296,18 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
   - **hojas-3** (`15d540c`, 2026-05-09): env.ts + i18n-config.ts → `src/core/infrastructure/{env,i18n}/`. 7 consumers (incluye 4 archivos lib/ con imports relativos `./env` reparados a absolutos).
   - **hojas-4** (`852cf8b`, 2026-05-09): devLog.ts (`git rm` huérfano), mobileDetect.ts → `src/core/infrastructure/platform/`, rtcConfig.ts → `src/core/infrastructure/livekit/`, theme.ts → `src/core/infrastructure/theme/`, constants.ts → `src/core/domain/` (regla de negocio: ESPACIO_GLOBAL_ID). 20 imports actualizados.
   - **fanout-1** (`4574eb8`, 2026-05-09): logger.ts → `src/core/infrastructure/observability/logger.ts`. **134 archivos**, 133 imports (113 absolutos + 20 relativos + 1 special index.tsx). Operación bulk con sed; tsc + vitest 191/191 verde.
-  - **fanout-2** (`53bbb56`, 2026-05-09): supabase.ts → `src/core/infrastructure/supabase/supabaseClient.ts`. **79 archivos**, 77 imports (73 absolutos + 4 relativos + 1 dynamic + 1 vi.mock). Renombrado a `supabaseClient.ts` (no `supabase.ts`) por convención: directorio ya se llama `supabase/`.
-- **Pendiente (siguiente sesión)**:
-  - `lib/i18n.ts` — 21 consumers, mover a `src/core/infrastructure/i18n/`.
-  - `lib/userSettings.ts` — sueltos.
-  - `lib/rendering/`, `lib/gpu/`, `lib/ecs/`, `lib/spatial/`, `lib/avatar3d/` → `src/core/infrastructure/r3f/`. Riesgo H (cruza con consumers VirtualSpace3D + Avatar3DScene).
-  - `lib/livekitService.ts`, `lib/regionDetector.ts`, `lib/edgeProxyService.ts` → `src/core/infrastructure/livekit/`.
-  - `lib/gamificacion.ts` (9+ supabase.from calls) → necesita `IGamificacionRepository` + adapter (cae bajo ITEM 6 batch nuevo).
-  - `lib/autorizacionesEmpresa.ts` (facade 84L) → mover el facade tras migrar consumers a usar singletons directo (`zonaEmpresaRepository`/`autorizacionEmpresaRepository`).
-- Riesgo: validar paridad con archivos ya en src/ (`src/core/infrastructure/textureRegistry.ts`, `src/core/infrastructure/fabricaMaterialesArquitectonicos.ts`) — duplicación latente.
+  - **fanout-2** (`53bbb56`, 2026-05-09): supabase.ts → `src/core/infrastructure/supabase/supabaseClient.ts`. **79 archivos**, 77 imports.
+  - **hojas-5** (`0e7202e`, 2026-05-09): i18n.ts → `src/core/infrastructure/i18n/`. 22 imports.
+  - **hojas-6** (`da3f6cc`, 2026-05-09): edgeProxyService (huérfano `git rm`) + 6 archivos → `r3f/{chunkSystem,interestManager,gpuCapabilities,realtimeChunkManager}` + `livekit/{livekitService,regionDetector}` + `audio/audioProcessing`.
+  - **hojas-7** (`f33a701`, 2026-05-09): agonesClient (huérfano `git rm`) + 6 archivos → `auth/authRecoveryService`, `googleCalendar/googleCalendarService`, `observability/metricasAnalisis`, `r3f/realtimeChunkManager`, `userSettings/userSettings`, `domain/zonaLayoutEngine` (algoritmo puro).
+  - **hojas-8** (`47ca6d9`, 2026-05-09): terrenosMarketplace + autorizacionesEmpresaFacade → `infrastructure/adapters/`.
+  - **hojas-9** (`9037822`, 2026-05-09): gamificacion → `infrastructure/adapters/` AS-IS (deuda pendiente: convertir a Repository en ITEM 6 batch). performance/ vacía eliminada.
+  - **hojas-r3f** (`2b0dd2a`, 2026-05-09): 5 subdirs r3f-bound (avatar3d/, spatial/, gpu/, ecs/, rendering/) → `src/core/infrastructure/r3f/`. **18 archivos**, ~35 imports. **2 shims duplicados eliminados** (textureRegistry, fabricaMaterialesArquitectonicos en root de infrastructure/) — eran @deprecated re-export proxies. Imports relativos rotos `../../src/core/...` reparados a `@/core/...`. **lib/ ELIMINADA**.
+- **Resumen ejecutivo**: 12 commits ejecutados en una sesión, ~600 archivos modificados. Toda la infrastructure de adapters Supabase/LiveKit/R3F/i18n/observability/auth/etc. consolidada en `src/core/infrastructure/`.
+- **Deuda residual documentada**:
+  - `gamificacion.ts` (movido AS-IS a `infrastructure/adapters/`) necesita conversión a Repository pattern en ITEM 6 batch nuevo (extraer IGamificacionRepository + adapter).
+  - `terrenosMarketplace.ts` (módulo de funciones) idem — conversión a Repository en ITEM 6 batch.
+  - `autorizacionesEmpresaFacade.ts` (84L) — eliminar facade tras migrar 3 consumers a singletons directos (cae bajo ITEM 11 cuando muevan los components a `src/modules/`).
 
 #### ITEM 13 — P2-15 lib/database.types.ts ✅ CERRADO (2026-05-08, eliminación directa)
 - Esfuerzo real: XS (1 comando `git rm`).
