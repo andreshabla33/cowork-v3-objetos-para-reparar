@@ -30,7 +30,7 @@ import type { Room, RemoteParticipant, Track, TrackPublication } from 'livekit-c
 import type { User, Workspace } from '@/types';
 import { logger } from '@/lib/logger';
 import { avatarStore } from '@/lib/ecs/AvatarECS';
-import { useStore } from '@/store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { crearSalaLivekitPorEspacio, obtenerTokenLivekitEspacio } from '@/lib/livekitService';
 import { supabase } from '@/lib/supabase';
 import { getTurnIceServers } from '@/lib/network/turnCredentialsService';

@@ -12,7 +12,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useStore } from '@/store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 
 const TOAST_DURATION_MS = 4000;
 const EXIT_ANIMATION_MS = 300;

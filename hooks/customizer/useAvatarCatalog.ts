@@ -10,7 +10,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useGLTF } from '@react-three/drei';
-import { useStore } from '@/store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { logger } from '@/lib/logger';
 import { AvatarCatalogSupabaseRepository } from '@/src/core/infrastructure/adapters/AvatarCatalogSupabaseRepository';

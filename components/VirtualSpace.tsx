@@ -18,7 +18,7 @@
 
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import Phaser from 'phaser';
-import { useStore } from '../store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { User, Role, PresenceStatus } from '../types';
 import { ICE_SERVERS } from '../lib/rtcConfig';

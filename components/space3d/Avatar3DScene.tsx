@@ -9,7 +9,7 @@ import type { AnimationState, AvatarAssetQuality, Avatar3DConfig } from '../avat
 import { resolveAvatarModelUrl } from '../avatar3d/shared';
 import { GhostAvatar } from '../3d/GhostAvatar';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
-import { useStore } from '@/store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { obtenerDimensionesObjetoRuntime } from './objetosRuntime';
 import { obtenerEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
 import { getSettingsSection, subscribeToSettings } from '@/lib/userSettings';

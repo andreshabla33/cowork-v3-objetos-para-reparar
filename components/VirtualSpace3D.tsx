@@ -41,7 +41,7 @@ import { obtenerEstadoUsuarioEcs } from '@/lib/ecs/espacioEcs';
 // `setBroadcastSoundFunctions` eliminado: useBroadcast recibe ISoundBus
 // por inyección via container (plan 328c3152 #3).
 import { XP_POR_ACCION } from '@/lib/gamificacion';
-import { useStore } from '@/store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useApplicationServices } from '@/src/core/application/useApplicationServices';
 import type { InteraccionObjetoAccion } from '@/src/core/application/usecases/InteraccionObjetoUseCase';
 // GameHub ahora se importa en WorkspaceLayout

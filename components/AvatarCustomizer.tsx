@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useStore } from '../store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { AvatarPreview } from './Navbar';
 import { SpaceItem } from '../types';

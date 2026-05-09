@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useStore } from '../store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { ThemeType, AvatarConfig } from '../types';
 import { Language, getCurrentLanguage, subscribeToLanguageChange, t } from '../lib/i18n';

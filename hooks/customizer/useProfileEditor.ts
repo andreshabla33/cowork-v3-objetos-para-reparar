@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useStore } from '@/store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { logger } from '@/lib/logger';
 import { ProfileSupabaseRepository } from '@/src/core/infrastructure/adapters/ProfileSupabaseRepository';

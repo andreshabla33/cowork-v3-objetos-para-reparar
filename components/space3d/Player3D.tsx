@@ -21,7 +21,7 @@ import { ObjetosInteractivos } from '../3d/ObjetosInteractivos';
 import { ParticulasClima } from '../3d/ParticulasClima';
 import { EmoteSync, useSyncEffects } from '../3d/EmoteSync';
 import { hapticFeedback, isMobileDevice } from '@/lib/mobileDetect';
-import { useStore } from '@/store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { type CameraSettings } from '@/modules/realtime-room';
 import { obtenerEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
 import { normalizarConfiguracionZonaEmpresa } from '@/src/core/domain/entities/cerramientosZona';

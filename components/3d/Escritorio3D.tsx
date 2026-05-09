@@ -10,7 +10,7 @@ import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { logger } from '@/lib/logger';
-import { useStore } from '@/store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { hapticFeedback } from '@/lib/mobileDetect';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import { FACTOR_ESCALA_OBJETOS_ESCENA } from '../space3d/shared';

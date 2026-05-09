@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useStore } from '@/store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { guardarZonaEmpresa, eliminarZonaEmpresa } from '@/lib/autorizacionesEmpresa';
 import { logger } from '@/lib/logger';
 import { FloorType, FLOOR_TYPE_LABELS, FLOOR_TYPE_CATEGORIES, normalizarTipoSuelo } from '../../src/core/domain/entities';

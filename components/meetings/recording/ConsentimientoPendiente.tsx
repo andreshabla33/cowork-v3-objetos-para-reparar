@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../../lib/supabase';
-import { useStore } from '../../../store/useStore';
+import { useUserStore } from '@/modules/user/state/useUserStore';
 
 interface SolicitudConsentimiento {
   grabacion_id: string;
@@ -36,7 +36,7 @@ const TIPO_LABELS: Record<string, { titulo: string; descripcion: string; icono: 
 export const ConsentimientoPendiente: React.FC<ConsentimientoPendienteProps> = ({
   onConsentimientoRespondido,
 }) => {
-  const session = useStore(s => s.session);
+  const session = useUserStore(s => s.session);
   const [solicitud, setSolicitud] = useState<SolicitudConsentimiento | null>(null);
   const [isResponding, setIsResponding] = useState(false);
   const solicitudRef = useRef<SolicitudConsentimiento | null>(null);

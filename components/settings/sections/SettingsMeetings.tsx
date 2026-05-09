@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { SettingToggle } from '../components/SettingToggle';
 import { SettingSection } from '../components/SettingSection';
 import { Language, getCurrentLanguage, subscribeToLanguageChange } from '../../../lib/i18n';
-import { useStore } from '../../../store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { supabase } from '../../../lib/supabase';
 import {

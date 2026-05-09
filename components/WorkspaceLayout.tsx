@@ -16,7 +16,7 @@
 
 import React, { lazy, Suspense, useEffect, useState, useCallback } from 'react';
 import type { User } from '../types';
-import { useStore } from '../store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { getThemeStyles } from '@/lib/theme';
 import { MiniModeOverlay } from './MiniModeOverlay';

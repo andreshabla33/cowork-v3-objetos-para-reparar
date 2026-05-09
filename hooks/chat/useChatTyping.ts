@@ -8,7 +8,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { useStore } from '@/store/useStore';
+import { useUserStore } from '@/modules/user/state/useUserStore';
 import { logger } from '@/lib/logger';
 import type { ChatRealtimeSubscription } from '@/src/core/domain/ports/IChatRealtimeService';
 
@@ -32,7 +32,7 @@ export function useChatTyping({
   grupoActivo: string | null;
   sidebarOnly: boolean;
 }): UseChatTypingReturn {
-  const currentUser = useStore(s => s.currentUser);
+  const currentUser = useUserStore(s => s.currentUser);
 
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const typingChannelRef = useRef<ChatRealtimeSubscription | null>(null);

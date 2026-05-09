@@ -15,7 +15,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useStore } from '@/store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { ModalCrearGrupo } from './ModalCrearGrupo';
 import { ChatToast } from '../ChatToast';

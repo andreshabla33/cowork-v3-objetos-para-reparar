@@ -6,7 +6,7 @@ import { Building2, Check, MapPin, Plus, RefreshCw, Send, Sparkles, XCircle, Lay
 import { supabase } from '@/lib/supabase';
 import { useAuthSession } from '@/hooks/auth/useAuthSession';
 import type { AutorizacionEmpresa, ZonaEmpresa } from '@/types';
-import { useStore } from '@/store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { obtenerPlantillaZona, PLANTILLAS_ZONA_OFICINA, type PlantillaZonaId } from '@/src/core/domain/entities/plantillasEspacio';
 import { normalizarConfiguracionZonaEmpresa } from '@/src/core/domain/entities/cerramientosZona';

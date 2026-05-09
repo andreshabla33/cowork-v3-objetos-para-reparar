@@ -13,7 +13,7 @@ import {
  Plus
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import { useStore } from '@/store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { CargoSelector } from './CargoSelector';
 import type { CargoLaboral, CargoDB } from './CargoSelector';

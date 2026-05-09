@@ -19,7 +19,7 @@ import { AgregarMiembros } from './chat/AgregarMiembros';
 import { ChatToast } from './ChatToast';
 import { UserAvatar } from './UserAvatar';
 import type { ChatGroup } from '../types';
-import { useStore } from '../store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 
 // ─── Constants ───────────────────────────────────────────────────────────────

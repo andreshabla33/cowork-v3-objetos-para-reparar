@@ -11,7 +11,7 @@
 
 import React, { useState, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useStore } from '../../../store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { logger } from '@/lib/logger';
 import { useGrabacionesHistorial } from '../../../hooks/meetings/useGrabacionesHistorial';

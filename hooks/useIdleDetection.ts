@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { PresenceStatus } from '../types';
-import { useStore } from '../store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 
 const IDLE_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 horas sin actividad (jornada laboral) → away
 const EVENTS_TO_WATCH = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'pointerdown'];

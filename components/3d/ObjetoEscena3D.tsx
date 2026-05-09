@@ -4,7 +4,7 @@ import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Html, useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useStore } from '@/store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { hapticFeedback } from '@/lib/mobileDetect';
 import { logger } from '@/lib/logger';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';

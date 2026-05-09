@@ -3,7 +3,7 @@ import { supabase } from '../../../lib/supabase';
 import { SettingSection } from '../components/SettingSection';
 import { Language, getCurrentLanguage, subscribeToLanguageChange } from '../../../lib/i18n';
 import { ModalInvitarUsuario } from '../../invitaciones/ModalInvitarUsuario';
-import { useStore } from '../../../store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 
 interface Member {
   id: string;

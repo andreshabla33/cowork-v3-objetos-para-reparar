@@ -9,7 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { cargarAutorizacionesActivas, cargarSolicitudesEnviadas, cargarZonasEmpresa, solicitarAccesoEmpresa } from '@/lib/autorizacionesEmpresa';
 import type { AutorizacionEmpresa, ZonaEmpresa } from '@/types';
 import { ZONA_SOLICITUD_RADIO, type UseNotificationsReturn, type UseNotificationsParams } from './types';
-import { useStore } from '@/store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 
 export function useNotifications(params: UseNotificationsParams): UseNotificationsReturn {
   const { session, activeWorkspace, currentUser, empresasAutorizadas, setEmpresasAutorizadas, currentUserEcs, notifSettings } = params;

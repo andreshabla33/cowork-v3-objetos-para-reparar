@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { useStore } from '@/store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import type { MiembroCanal } from '@/src/core/domain/ports/IChatRepository';
 

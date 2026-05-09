@@ -232,19 +232,14 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 
 **Update 2026-05-09**: descubierto que `useStore` legacy ya es un compat shim de 1 línea apuntando a `src/modules/_state/composedStore.ts` (commit anterior no documentado). El composed store + bounded views (`createStoreView`) ES el patrón híbrido óptimo (slices internos + multi-store API). Migración real = solo cambiar imports de consumers.
 
-**Sub-batch 1 cerrado** (auth flow, 8 archivos):
-- `hooks/auth/useAuthSession.ts` → `useUserStore`
-- `hooks/auth/useLoginAuth.ts` → `useUserStore`
-- `hooks/app/useLogoutUser.ts` → `useUserStore`
-- `hooks/useOnboarding.ts` → `useUserStore`
-- `components/ResetPasswordScreen.tsx` → `useUserStore`
-- `hooks/app/useBootstrapAplicacion.ts` → `useComposedStore` (orchestrator multi-context)
-- `App.tsx` → `useComposedStore` (orchestrator)
-- `components/invitation/InvitationProcessor.tsx` → `useComposedStore` (multi-context)
+**Fase 1 (sub-batches 1-9) CERRADA** — todos los 64 consumers del shim `useStore` migrados:
+- Single-bounded consumers → bounded store específico (`useUserStore`, `useUIStore`):
+  - useAuthSession, useLoginAuth, useLogoutUser, useOnboarding, ResetPasswordScreen, useChatTyping, ConsentimientoPendiente → `useUserStore`
+  - CalendarPanel → `useUIStore`
+- Multi-bounded consumers/orchestrators → `useComposedStore` directo: ~57 archivos restantes (chat panels, meetings, space3d, settings, customizer, onboarding, shared UI, dynamic imports en ChatSupabaseRepository/RecordingSupabaseRepository/authRecoveryService).
+- **Shim `store/useStore.ts` eliminado** (commit pendiente). 0 consumers reales restantes.
 
-Reglas: consumers single-bounded-context → bounded store específico. Orchestrators multi-bounded → `useComposedStore` directo (acceso al store completo, OK arquitectónicamente porque está en src/, no en legacy).
-
-Pendientes: 56 archivos legacy con `useStore` (sub-batches futuros por feature).
+**Fase 2 (pendiente)**: eliminar `store/orchestrators/*`, `store/slices/*`, `store/state.ts`, `store/selectores.ts`, `store/gameStore.ts` requiere migrar ~18 consumers que hoy importan directo de esas paths. Se cruza con ITEMs 10/11 (mover archivos legacy a src/) — abordar en sesión coordinada.
 - Esfuerzo: L
 - **Estado real (2026-05-08)**: bounded-context stores **ya creados** en `src/modules/<feature>/state/` (useUserStore, useWorkspaceStore, useChatStore, useSpace3DStore, usePresenceStore, useUIStore). Pero **`store/` legacy intacto con 21 archivos** (slices, orchestrators, gameStore, useStore, etc.). Coexisten — la migración real (eliminar legacy) no comenzó.
 - Acción pendiente: migrar consumers que aún apuntan a `@/store/useStore` hacia los stores nuevos en `src/modules/`, luego eliminar `store/`.

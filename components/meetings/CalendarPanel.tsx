@@ -1,5 +1,5 @@
 import React from 'react';
-import { useStore } from '../../store/useStore';
+import { useUIStore } from '@/modules/ui/state/useUIStore';
 import { ScheduledMeeting } from '../../types';
 import { MeetingRoom, InviteLinkGenerator } from './videocall';
 import {
@@ -21,7 +21,7 @@ interface ActiveMeeting {
 }
 
 export const CalendarPanel: React.FC<CalendarPanelProps> = ({ onJoinMeeting }) => {
-  const theme = useStore(s => s.theme);
+  const theme = useUIStore(s => s.theme);
 
   // Use the hook for all state and business logic
   const {

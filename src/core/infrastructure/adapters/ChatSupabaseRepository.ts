@@ -114,8 +114,8 @@ export class ChatSupabaseRepository implements IChatRepository {
 
     // RLS policy "Crear grupos" requires creado_por = auth.uid()
     // Read from Zustand store — NO async getUser() to avoid orphaned Web Lock.
-    const { useStore } = await import('../../../../store/useStore');
-    const userId = useStore.getState().session?.user?.id;
+    const { useComposedStore } = await import('../../../modules/_state/composedStore');
+    const userId = useComposedStore.getState().session?.user?.id;
     if (!userId) {
       throw new Error('Cannot create chat group: user not authenticated');
     }

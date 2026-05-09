@@ -351,8 +351,8 @@ class RecordingSupabaseRepository implements IRecordingRepository {
 
       // Read session from Zustand store (synced by onAuthStateChange).
       // NO async getSession() — avoids orphaned Web Lock (gotrue-js issue #1594).
-      const { useStore } = await import('../../../../store/useStore');
-      const token = useStore.getState().session?.access_token;
+      const { useComposedStore } = await import('../../../modules/_state/composedStore');
+      const token = useComposedStore.getState().session?.access_token;
 
       if (!token) {
         log.error('No auth token available for Edge Function', {

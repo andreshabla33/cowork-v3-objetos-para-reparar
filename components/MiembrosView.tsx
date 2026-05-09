@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { useStore } from '../store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { supabase } from '../lib/supabase';
 import { invitacionRepository } from '@/src/core/infrastructure/adapters/InvitacionSupabaseRepository';
