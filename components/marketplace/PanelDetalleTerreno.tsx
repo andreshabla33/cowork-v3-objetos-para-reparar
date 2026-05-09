@@ -3,7 +3,7 @@
 import React from 'react';
 import { X, MapPin, Users, DoorOpen, Palette, Headphones, Star, ShoppingCart, Clock } from 'lucide-react';
 import type { TerrenoMarketplace } from '@/types';
-import { TIER_CONFIG } from '@/lib/terrenosMarketplace';
+import { TIER_CONFIG } from '@/core/infrastructure/adapters/terrenosMarketplace';
 
 interface PanelDetalleTerrenoProps {
  terreno: TerrenoMarketplace | null;

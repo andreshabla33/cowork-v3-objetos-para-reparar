@@ -27,7 +27,7 @@ import {
   revocarAutorizacionEmpresa,
   solicitarAccesoEmpresa,
   aplicarLayoutMasivo,
-} from '@/lib/autorizacionesEmpresa';
+} from '@/core/infrastructure/adapters/autorizacionesEmpresaFacade';
 import { generarLayoutZonas, detectarOverlaps, type EmpresaParaLayout, type ZonaGenerada, type LayoutConfig } from '@/core/domain/zonaLayoutEngine';
 import { FloorType, FLOOR_TYPE_LABELS, normalizarTipoSuelo } from '@/src/core/domain/entities';
 import { useConfiguracionPerimetro } from '@/hooks/space3d/useConfiguracionPerimetro';

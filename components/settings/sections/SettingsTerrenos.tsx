@@ -11,7 +11,7 @@ import {
   guardarTerreno,
   eliminarTerreno,
   TIER_CONFIG,
-} from '@/lib/terrenosMarketplace';
+} from '@/core/infrastructure/adapters/terrenosMarketplace';
 
 interface SettingsTerrenosProps {
   workspaceId: string;

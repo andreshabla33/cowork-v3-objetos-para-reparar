@@ -4,7 +4,7 @@ import React, { Suspense, useMemo, useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Text } from '@react-three/drei';
 import * as THREE from 'three';
-import type { ObjetoEspacio } from '@/lib/terrenosMarketplace';
+import type { ObjetoEspacio } from '@/core/infrastructure/adapters/terrenosMarketplace';
 
 /**
  * Escritorio3D read-only — replica exacta de la geometría real

@@ -5,7 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import * as THREE from 'three';
 import type { TerrenoMarketplace } from '@/types';
-import { TIER_CONFIG } from '@/lib/terrenosMarketplace';
+import { TIER_CONFIG } from '@/core/infrastructure/adapters/terrenosMarketplace';
 
 interface TerrenoDisponible3DProps {
   terreno: TerrenoMarketplace;

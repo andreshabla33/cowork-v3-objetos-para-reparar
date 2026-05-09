@@ -3,7 +3,7 @@
 import React from 'react';
 import { X, Users, Building2, Globe, Briefcase, MapPin, ExternalLink, Sparkles } from 'lucide-react';
 import type { ZonaEmpresa } from '@/types';
-import type { EmpresaPublica, ObjetoEspacio } from '@/lib/terrenosMarketplace';
+import type { EmpresaPublica, ObjetoEspacio } from '@/core/infrastructure/adapters/terrenosMarketplace';
 import { PreviewInteriorEmpresa3D } from './PreviewInteriorEmpresa3D';
 
 interface PanelDetalleEmpresaProps {

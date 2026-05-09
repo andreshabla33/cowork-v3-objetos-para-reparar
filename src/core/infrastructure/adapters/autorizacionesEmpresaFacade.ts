@@ -13,20 +13,20 @@
  * vive ahora en esos dos repositorios.
  */
 
-import type { AutorizacionEmpresa, ZonaEmpresa } from '../types';
-import type { ConfiguracionZonaEmpresa } from '../src/core/domain/entities/cerramientosZona';
-import { zonaEmpresaRepository } from '../src/core/infrastructure/adapters/ZonaEmpresaSupabaseRepository';
-import { autorizacionEmpresaRepository } from '../src/core/infrastructure/adapters/AutorizacionEmpresaSupabaseRepository';
+import type { AutorizacionEmpresa, ZonaEmpresa } from '@/types';
+import type { ConfiguracionZonaEmpresa } from '@/core/domain/entities/cerramientosZona';
+import { zonaEmpresaRepository } from '@/core/infrastructure/adapters/ZonaEmpresaSupabaseRepository';
+import { autorizacionEmpresaRepository } from '@/core/infrastructure/adapters/AutorizacionEmpresaSupabaseRepository';
 import type {
   ActualizarEstadoZonaInput,
   AplicarLayoutInput,
   EliminarZonaInput,
   GuardarZonaInput,
-} from '../src/core/domain/ports/IZonaEmpresaRepository';
+} from '@/core/domain/ports/IZonaEmpresaRepository';
 import type {
   AprobarAutorizacionInput,
   SolicitarAccesoInput,
-} from '../src/core/domain/ports/IAutorizacionEmpresaRepository';
+} from '@/core/domain/ports/IAutorizacionEmpresaRepository';
 
 // ── Zona CRUD wrappers ────────────────────────────────────────────────────────
 
