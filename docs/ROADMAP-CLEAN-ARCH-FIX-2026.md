@@ -380,10 +380,34 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
   | `hooks/space3d/useLiveKit.ts` | 220 | ✅ OK (cubierto ITEM 7) | Compat shim post-split del god-hook 1205L → 11 sub-hooks en `src/modules/realtime-room/presentation/`. Eliminación cae en ITEM 10. |
 
 - **Veredicto sesión 2026-05-09**: **11 OK as-is**, **1 SPLIT** (`useMeetingRealtimeState`).
-- **Plan futuro (sesión dedicada para `useMeetingRealtimeState` split)**:
-  - Crear sub-hooks por bounded context: `useMeetingChatState`, `useMeetingRaiseHandState`, `useMeetingRecordingState`, `useMeetingAccessState`, `useMeetingTelemetryState`.
-  - El hook `useMeetingRealtimeState` queda como facade delgado coordinando los 5 sub-hooks (≤100 líneas).
-  - Riesgo M-H (es el hook más complejo del módulo videocall — afecta producción crítica).
+- **Plan ejecutable detallado para `useMeetingRealtimeState` split** (preparado 2026-05-09 tras audit del archivo completo):
+  - **Sub-hook 1: `useMeetingChatState`** (~400L) — extrae:
+    - State: `meetingGroupId`, `persistedMessages`, `chatNotifications`, refs `processedChatMessageIdsRef`, `chatMessagesReadyRef`, `persistedMessageIdsRef`.
+    - Hooks oficiales: `useChat({ room })` con `chatMessages`, `send`, `isSending`.
+    - Effects: init meeting chat group + load history + realtime subscription via `gestionarChat.suscribir` + persist incoming LiveKit messages to DB.
+    - Funciones: `persistMessageToDB`, `sendAndPersist`, `allChatMessages` (memo merge).
+  - **Sub-hook 2: `useMeetingRaiseHandState`** (~150L) — extrae:
+    - State: `raisedHandParticipantIds`, refs `raiseHandUseCaseRef`, `meetingGatewayRef`.
+    - Funciones: handlers raise/lower hand + DataPacket subscription para sync remoto + sound `playRaiseHandSound`.
+  - **Sub-hook 3: `useMeetingRecordingState`** (~200L) — extrae:
+    - State: `remoteRecording`, `isRecording`, `recordingDuration`, `recordingTrigger`, `guestConsentRequest`, refs `prevRecordingRef`.
+    - Hooks: `useTracks` para detectar tracks de recording.
+    - Effects: sync local recording state + remote recording broadcast + duration timer + consent flow.
+    - Use case: `gestionarGrabacion` (GestionarGrabacionUseCase).
+  - **Sub-hook 4: `useMeetingAccessState`** (~150L) — extrae:
+    - State: `localStream`, accesos invitado externo.
+    - Use case: `obtenerAcceso` (ObtenerAccesoReunionUseCase).
+    - Helpers permission gating, `invitadosExternos`.
+  - **Sub-hook 5: `useMeetingViewState`** (~150L) — extrae:
+    - State: `viewMode`, `pinnedParticipantId`, `reactions`, `stableSpeakerIdentity`, `speakerBubbleParticipant`, refs `pendingSpeakerIdentityRef`, `speakerHoldTimeoutRef`, `speakerBubbleTimeoutRef`.
+    - Funciones: `appendReaction`, `handleSendReaction`, gestión speaker bubble.
+    - Audio context helpers (playMeetingTone, getMeetingAudioContext).
+  - **Sub-hook 6: `useMeetingTelemetryAndJoinSounds`** (~100L) — extrae:
+    - Refs: `telemetryRef` (RealtimeSessionTelemetry), `knownRemoteParticipantsRef`, `localJoinSoundPlayedRef`.
+    - Effects: ParticipantConnected/Disconnected event handlers + Connected event → playParticipantJoinSound.
+  - **Facade `useMeetingRealtimeState` final** (~100L): coordina los 6 sub-hooks vía composición + retorna API consolidada.
+  - **Riesgo M-H** (afecta producción crítica videocall). UX testing manual obligatorio: chat persiste, raise hand sincroniza cross-tab, recording state correctamente disparado, sound feedback al join.
+  - **Patrón validado**: mismo enfoque que RecordingManagerV2 split (commit `33e40c2`) — extraer state + effects + handlers a sub-hooks, facade coordinador delgado.
 - **Decisión arquitectónica**: regla "≤100L por hook" se relaja cuando (a) facade coordina sub-hooks ya extraídos, (b) consume exclusivamente Application use cases, (c) es adapter delgado a infrastructure compleja, o (d) el bounded context es coherente y el tamaño viene de optimización + race handling. Mismo criterio que ITEM 7 fase A.
 
 #### ITEM 17 — P2-14 archivos en src/ ya >500 líneas 🟡 PARCIAL (auditoría 2026-05-09)
