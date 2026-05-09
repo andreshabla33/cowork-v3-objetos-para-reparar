@@ -91,6 +91,10 @@ export { AuthSupabaseRepository, authRepository } from './AuthSupabaseRepository
 export { ProfileSupabaseRepository, profileRepository } from './ProfileSupabaseRepository';
 export { OnboardingSupabaseRepository } from './OnboardingSupabaseRepository';
 
+// Workspace settings (cargos, departamentos)
+export { CargoSupabaseRepository, cargoRepository } from './CargoSupabaseRepository';
+export { DepartamentoSupabaseRepository, departamentoRepository } from './DepartamentoSupabaseRepository';
+
 // Spaces & Templates
 export { spaceRepository } from './SpaceSupabaseRepository';
 export { InyectorPlantillaEspacio } from './InyectorPlantillaEspacioAdapter';

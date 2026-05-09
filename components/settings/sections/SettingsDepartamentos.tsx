@@ -6,7 +6,8 @@ import {
   Users, TrendingUp, Code, Megaphone, Settings as SettingsIcon,
   HelpCircle, Palette
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { departamentoRepository } from '@/src/core/infrastructure/adapters/DepartamentoSupabaseRepository';
+import type { Departamento } from '@/src/core/domain/ports/IDepartamentoRepository';
 
 const COLORES_PRESET = [
   '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444',
@@ -22,14 +23,6 @@ const ICON_MAP_DEPT: Record<string, React.ComponentType<{ className?: string; st
   users: Users, 'trending-up': TrendingUp, code: Code, megaphone: Megaphone,
   settings: SettingsIcon, 'help-circle': HelpCircle, palette: Palette,
 };
-
-interface Departamento {
-  id: string;
-  nombre: string;
-  descripcion: string | null;
-  color: string;
-  icono: string;
-}
 
 interface SettingsDepartamentosProps {
   workspaceId: string;
@@ -54,16 +47,12 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
 
   const fetchDepartamentos = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('departamentos')
-      .select('*')
-      .eq('espacio_id', workspaceId)
-      .order('nombre');
-    if (error) {
+    try {
+      const data = await departamentoRepository.listByWorkspace(workspaceId);
+      setDepartamentos(data);
+    } catch (err) {
       setError('Error al cargar departamentos');
-      console.error(error);
-    } else {
-      setDepartamentos(data || []);
+      console.error(err);
     }
     setLoading(false);
   }, [workspaceId]);
@@ -87,29 +76,17 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
     setSaving(true);
 
     try {
+      const payload = {
+        nombre: formData.nombre.trim(),
+        descripcion: formData.descripcion.trim() || null,
+        color: formData.color,
+        icono: formData.icono,
+      };
       if (editingId) {
-        const { error } = await supabase
-          .from('departamentos')
-          .update({
-            nombre: formData.nombre.trim(),
-            descripcion: formData.descripcion.trim() || null,
-            color: formData.color,
-            icono: formData.icono,
-          })
-          .eq('id', editingId);
-        if (error) throw error;
+        await departamentoRepository.update(editingId, payload);
         showMessage('Departamento actualizado', 'success');
       } else {
-        const { error } = await supabase
-          .from('departamentos')
-          .insert({
-            espacio_id: workspaceId,
-            nombre: formData.nombre.trim(),
-            descripcion: formData.descripcion.trim() || null,
-            color: formData.color,
-            icono: formData.icono,
-          });
-        if (error) throw error;
+        await departamentoRepository.create(workspaceId, payload);
         showMessage('Departamento creado', 'success');
       }
       resetForm();
@@ -134,9 +111,13 @@ export const SettingsDepartamentos: React.FC<SettingsDepartamentosProps> = ({ wo
 
   const handleDelete = async (id: string) => {
     if (!confirm('¿Eliminar este departamento? Los miembros asignados no se verán afectados.')) return;
-    const { error } = await supabase.from('departamentos').delete().eq('id', id);
-    if (error) showMessage('Error al eliminar', 'error');
-    else { showMessage('Departamento eliminado', 'success'); fetchDepartamentos(); }
+    try {
+      await departamentoRepository.delete(id);
+      showMessage('Departamento eliminado', 'success');
+      fetchDepartamentos();
+    } catch {
+      showMessage('Error al eliminar', 'error');
+    }
   };
 
   if (!isAdmin) {

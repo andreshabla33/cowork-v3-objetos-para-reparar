@@ -7,7 +7,8 @@ import {
   Plus, Pencil, Trash2, GripVertical, Shield, Check, X, ChevronDown,
   ToggleLeft, ToggleRight
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { cargoRepository } from '@/src/core/infrastructure/adapters/CargoSupabaseRepository';
+import type { Cargo } from '@/src/core/domain/ports/ICargoRepository';
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   crown: Crown, settings: Settings, users: Users, 'user-check': UserCheck,
@@ -25,19 +26,6 @@ const CATEGORIAS = [
   { value: 'producto', label: 'Producto y Desarrollo' },
   { value: 'otros', label: 'Otros' },
 ];
-
-interface Cargo {
-  id: string;
-  nombre: string;
-  descripcion: string | null;
-  categoria: string;
-  icono: string;
-  orden: number;
-  activo: boolean;
-  tiene_analisis_avanzado: boolean;
-  analisis_disponibles: string[];
-  solo_admin: boolean;
-}
 
 interface SettingsCargosProps {
   workspaceId: string;
@@ -64,16 +52,12 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
 
   const fetchCargos = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('cargos')
-      .select('*')
-      .eq('espacio_id', workspaceId)
-      .order('orden');
-    if (error) {
+    try {
+      const data = await cargoRepository.listByWorkspace(workspaceId);
+      setCargos(data);
+    } catch (err) {
       setError('Error al cargar cargos');
-      console.error(error);
-    } else {
-      setCargos(data || []);
+      console.error(err);
     }
     setLoading(false);
   }, [workspaceId]);
@@ -98,34 +82,26 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
 
     try {
       if (editingId) {
-        const { error } = await supabase
-          .from('cargos')
-          .update({
-            nombre: formData.nombre.trim(),
-            descripcion: formData.descripcion.trim() || null,
-            categoria: formData.categoria,
-            icono: formData.icono,
-            solo_admin: formData.solo_admin,
-            tiene_analisis_avanzado: formData.tiene_analisis_avanzado,
-          })
-          .eq('id', editingId);
-        if (error) throw error;
+        await cargoRepository.update(editingId, {
+          nombre: formData.nombre.trim(),
+          descripcion: formData.descripcion.trim() || null,
+          categoria: formData.categoria,
+          icono: formData.icono,
+          solo_admin: formData.solo_admin,
+          tiene_analisis_avanzado: formData.tiene_analisis_avanzado,
+        });
         showMessage('Cargo actualizado', 'success');
       } else {
         const maxOrden = cargos.length > 0 ? Math.max(...cargos.map(c => c.orden)) + 1 : 1;
-        const { error } = await supabase
-          .from('cargos')
-          .insert({
-            espacio_id: workspaceId,
-            nombre: formData.nombre.trim(),
-            descripcion: formData.descripcion.trim() || null,
-            categoria: formData.categoria,
-            icono: formData.icono,
-            orden: maxOrden,
-            solo_admin: formData.solo_admin,
-            tiene_analisis_avanzado: formData.tiene_analisis_avanzado,
-          });
-        if (error) throw error;
+        await cargoRepository.create(workspaceId, {
+          nombre: formData.nombre.trim(),
+          descripcion: formData.descripcion.trim() || null,
+          categoria: formData.categoria,
+          icono: formData.icono,
+          orden: maxOrden,
+          solo_admin: formData.solo_admin,
+          tiene_analisis_avanzado: formData.tiene_analisis_avanzado,
+        });
         showMessage('Cargo creado', 'success');
       }
       resetForm();
@@ -152,19 +128,23 @@ export const SettingsCargos: React.FC<SettingsCargosProps> = ({ workspaceId, isA
   };
 
   const handleToggleActivo = async (cargo: Cargo) => {
-    const { error } = await supabase
-      .from('cargos')
-      .update({ activo: !cargo.activo })
-      .eq('id', cargo.id);
-    if (error) showMessage('Error al cambiar estado', 'error');
-    else fetchCargos();
+    try {
+      await cargoRepository.toggleActivo(cargo.id, !cargo.activo);
+      fetchCargos();
+    } catch {
+      showMessage('Error al cambiar estado', 'error');
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm('¿Eliminar este cargo? Los miembros con este cargo no se verán afectados.')) return;
-    const { error } = await supabase.from('cargos').delete().eq('id', id);
-    if (error) showMessage('Error al eliminar', 'error');
-    else { showMessage('Cargo eliminado', 'success'); fetchCargos(); }
+    try {
+      await cargoRepository.delete(id);
+      showMessage('Cargo eliminado', 'success');
+      fetchCargos();
+    } catch {
+      showMessage('Error al eliminar', 'error');
+    }
   };
 
   if (!isAdmin) {
