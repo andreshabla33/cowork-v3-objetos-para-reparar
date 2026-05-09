@@ -259,6 +259,20 @@ export interface IChatRepository {
   enviarMensaje(datos: DatosCrearMensaje): Promise<MensajeChatData | null>;
 
   /**
+   * Find or create a 1:1 direct chat group between two users in a workspace.
+   * Used when broadcasting a message from the 3D scene to peers — there is no
+   * pre-existing channel, the system finds the existing direct chat or
+   * provisions one (group + 2 memberships).
+   *
+   * Returns the group_id of the direct chat, or null if creation failed.
+   */
+  obtenerOCrearChatDirecto(
+    userA: string,
+    userB: string,
+    espacioId: string,
+  ): Promise<string | null>;
+
+  /**
    * Count replies for each message ID.
    * Returns a map of messageId → replyCount.
    */

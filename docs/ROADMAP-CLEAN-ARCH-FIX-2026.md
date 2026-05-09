@@ -60,12 +60,18 @@
   - Refactorizados: `components/MiembrosView.tsx` (delete `invitaciones_pendientes`) y `components/chat/AgregarMiembros.tsx` (insert `miembros_grupo`).
   - **Out-of-scope intencional para este batch**: las calls de SELECT (reads) en estos archivos (`miembros_espacio`, `usuarios`, `registro_conexiones`) no se migraron — caerán al migrar componentes a `src/modules/` (ITEM 11) o cuando se cree un MembershipRepository dedicado.
   - tsc OK, vitest 191/191.
-- **Sub-batch 3 cerrado**: Meetings (ScheduledMeetings).
+- **Sub-batch 3 cerrado** (`05a252b`): Meetings (ScheduledMeetings).
   - Refactorizado `components/meetings/ScheduledMeetings.tsx`:
     - `supabase.from('reunion_participantes').insert(...)` → `meetingRepository.agregarParticipantesReunion(meetingId, items)` (método ya existente, no se extendió port/repo).
     - `supabase.from('reuniones_programadas').delete().eq('id', meetingId)` → `meetingRepository.eliminarReunion(meetingId)` (método ya existente).
   - Cero cambios en ports/adapters — el repository ya cubría las 2 operaciones.
   - **Out-of-scope intencional**: las otras calls de ScheduledMeetings (insert reuniones_programadas en línea 152, update reunion_participantes en 193, reads en 38/62/70/113) no se migraron — caen bajo ITEM 11/15 (god-file 762 líneas) o requieren extender repo con métodos adicionales.
+  - tsc OK, vitest 191/191.
+- **Sub-batch 3.5 cerrado**: services/chatService.ts → fusionado con ChatSupabaseRepository + eliminado.
+  - Extendido `IChatRepository` + `ChatSupabaseRepository` con `obtenerOCrearChatDirecto(userA, userB, espacioId)`. Lógica lifteada del método `getOrCreateDirectChat` legacy: lookup por nombre `userA|userB` → fallback intersección de miembros → create group + 2 memberships.
+  - Refactorizado `hooks/space3d/useBroadcast.ts:322`: el call a `ChatService.sendMessage(...)` se compone como `obtenerOCrearChatDirecto + enviarMensaje` en un `Promise.all` sobre los recipients.
+  - Eliminado `services/chatService.ts` (132 líneas). Único consumer (useBroadcast) ya migrado.
+  - **services/ legacy reduce 1 archivo** (queda en 3: audioManager, geminiService, monicaContextService).
   - tsc OK, vitest 191/191.
 - **11 archivos pendientes** (con calls verificadas):
   | Archivo | calls | Notas |

@@ -14,7 +14,7 @@ import { actualizarEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/esp
 import { getSettingsSection, sendDesktopNotification } from '@/lib/userSettings';
 import { useStore } from '@/store/useStore';
 import { audioManager } from '@/services/audioManager';
-import { ChatService } from '@/services/chatService';
+import { chatRepository } from '@/src/core/infrastructure/adapters/ChatSupabaseRepository';
 import {
   createChatDataPacket,
   createLockConversationDataPacket,
@@ -317,9 +317,21 @@ export function useBroadcast(params: {
     setLocalMessage(content);
     setTimeout(() => setLocalMessage(null), 5000);
     enviarDataLivekit(createChatDataPacket({ message: content, from: session.user.id, fromName: currentUser.name }));
-    if (usersInCall.length > 0) {
-      const recipientIds = usersInCall.map(u => u.id);
-      await ChatService.sendMessage(content, session.user.id, activeWorkspace?.id || '', recipientIds);
+    if (usersInCall.length > 0 && activeWorkspace?.id) {
+      const senderId = session.user.id;
+      const espacioId = activeWorkspace.id;
+      await Promise.all(
+        usersInCall.map(async (u) => {
+          const grupoId = await chatRepository.obtenerOCrearChatDirecto(senderId, u.id, espacioId);
+          if (!grupoId) return;
+          await chatRepository.enviarMensaje({
+            grupo_id: grupoId,
+            usuario_id: senderId,
+            contenido: content,
+            tipo: 'texto',
+          });
+        }),
+      );
     }
     grantXP('mensaje_chat', 5000);
     setChatInput('');

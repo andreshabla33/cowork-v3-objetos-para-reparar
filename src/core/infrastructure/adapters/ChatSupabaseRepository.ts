@@ -695,6 +695,95 @@ export class ChatSupabaseRepository implements IChatRepository {
     }
   }
 
+  async obtenerOCrearChatDirecto(
+    userA: string,
+    userB: string,
+    espacioId: string,
+  ): Promise<string | null> {
+    try {
+      // Method 1: lookup by group name (legacy ChatPanel writes "userA|userB").
+      const namePattern1 = `${userA}|${userB}`;
+      const namePattern2 = `${userB}|${userA}`;
+      const { data: groupByName } = await supabase
+        .from('grupos_chat')
+        .select('id')
+        .eq('tipo', 'directo')
+        .eq('espacio_id', espacioId)
+        .or(`nombre.eq.${namePattern1},nombre.eq.${namePattern2}`)
+        .limit(1)
+        .maybeSingle();
+
+      if (groupByName) return (groupByName as { id: string }).id;
+
+      // Method 2: lookup by member intersection (fallback for groups created
+      // without the "userA|userB" naming convention).
+      const { data: userGroups } = await supabase
+        .from('miembros_grupo')
+        .select('grupo_id')
+        .eq('usuario_id', userA);
+
+      if (userGroups && userGroups.length > 0) {
+        const groupIds = (userGroups as Array<{ grupo_id: string }>).map((g) => g.grupo_id);
+        const { data: commonGroup } = await supabase
+          .from('miembros_grupo')
+          .select('grupo_id, grupos_chat!inner(tipo)')
+          .in('grupo_id', groupIds)
+          .eq('usuario_id', userB)
+          .eq('grupos_chat.tipo', 'directo')
+          .limit(1)
+          .maybeSingle();
+
+        if (commonGroup) return (commonGroup as { grupo_id: string }).grupo_id;
+      }
+
+      // Provision: new direct group + both memberships.
+      const { data: newGroup, error: groupError } = await supabase
+        .from('grupos_chat')
+        .insert({
+          espacio_id: espacioId,
+          nombre: 'Directo',
+          tipo: 'directo',
+          creado_por: userA,
+        })
+        .select()
+        .single();
+
+      if (groupError || !newGroup) {
+        log.warn('Failed to create direct chat group', {
+          error: groupError?.message,
+          userA,
+          userB,
+        });
+        return null;
+      }
+
+      const newGroupId = (newGroup as { id: string }).id;
+      const { error: membersError } = await supabase
+        .from('miembros_grupo')
+        .insert([
+          { grupo_id: newGroupId, usuario_id: userA },
+          { grupo_id: newGroupId, usuario_id: userB },
+        ]);
+
+      if (membersError) {
+        log.warn('Failed to add members to new direct chat', {
+          error: membersError.message,
+          newGroupId,
+        });
+        // Group was created; surface it anyway so caller can retry membership.
+      }
+
+      return newGroupId;
+    } catch (err) {
+      log.error('obtenerOCrearChatDirecto failed', {
+        userA,
+        userB,
+        error: String(err),
+      });
+      return null;
+    }
+  }
+
   async enviarMensaje(datos: DatosCrearMensaje): Promise<MensajeChatData | null> {
     // Instrumentación 2026-04-23 (K.pre): los users reportaron "pueden leer
     // pero no responder". Sin logs info era imposible diagnosticar si fallaba
