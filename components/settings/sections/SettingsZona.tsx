@@ -3,7 +3,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Building2, Check, MapPin, Plus, RefreshCw, Send, Sparkles, XCircle, LayoutGrid, Circle, Hexagon, Eye, Trash2 } from 'lucide-react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { empresaRepository } from '@/core/infrastructure/adapters/EmpresaSupabaseRepository';
+import { membershipRepository } from '@/core/infrastructure/adapters/MembershipSupabaseRepository';
 import { useAuthSession } from '@/hooks/auth/useAuthSession';
 import type { AutorizacionEmpresa, ZonaEmpresa } from '@/types';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
@@ -226,43 +227,18 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
       setUsuarioId(idUsuario);
 
       if (idUsuario) {
-        const { data: miembroData } = await supabase
-          .from('miembros_espacio')
-          .select('empresa_id')
-          .eq('espacio_id', workspaceId)
-          .eq('usuario_id', idUsuario)
-          .maybeSingle();
-        setEmpresaUsuarioId(miembroData?.empresa_id ?? null);
+        setEmpresaUsuarioId(await membershipRepository.obtenerEmpresaDeUsuario(workspaceId, idUsuario));
       } else {
         setEmpresaUsuarioId(null);
       }
 
-      const { data: empresasData, error: empresasError } = await supabase
-        .from('empresas')
-        .select('id, nombre, logo_url')
-        .eq('espacio_id', workspaceId)
-        .order('nombre');
-
-      if (empresasError) {
-        throw empresasError;
-      }
-
-      // Contar miembros por empresa para el layout proporcional
-      const { data: miembrosCount } = await supabase
-        .from('miembros_espacio')
-        .select('empresa_id')
-        .eq('espacio_id', workspaceId)
-        .not('empresa_id', 'is', null);
-
-      const conteo: Record<string, number> = {};
-      (miembrosCount || []).forEach((m: { empresa_id: string | null }) => {
-        if (m.empresa_id) conteo[m.empresa_id] = (conteo[m.empresa_id] || 0) + 1;
-      });
+      const empresasData = await empresaRepository.cargarEmpresasDeEspacio(workspaceId);
+      const conteo = await membershipRepository.contarMiembrosPorEmpresa(workspaceId);
 
       setEmpresas(
-        (empresasData || []).map((e: { id: string; nombre: string; logo_url?: string | null }) => ({
+        empresasData.map((e) => ({
           ...e,
-          miembros_count: conteo[e.id] || 0,
+          miembros_count: conteo[e.id] ?? 0,
         }))
       );
 
