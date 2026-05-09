@@ -63,5 +63,15 @@ Cada vez que vayas a implementar/fixear algo que toque: React, R3F, Three, Drei,
 - MediaPipe legacy (`@mediapipe/hands`, `selfie_segmentation`, `camera_utils`, `drawing_utils`): descontinuado mar-2023, migrar a `@mediapipe/tasks-vision`.
 - Vite 6: `import.meta.env`, evitar `process.env` en cliente. Sass legacy API deprecated.
 
+## 6.1. Excepción `process.env` permitida (Vite 6)
+La regla "evitar `process.env` en cliente" aplica SOLO al código del bundle browser. Hay 4 contextos donde `process.env` es válido y esperado porque corren en runtime Node.js (no se procesan por Vite como cliente):
+
+- `vite.config.*` (config del propio Vite, ejecuta en Node al build)
+- `playwright.config.*` (corre en Node al ejecutar tests E2E)
+- `tests/**/scripts/*` (scripts de carga, k6, Node-side helpers)
+- `scripts/**` (scripts de migración, deploy, infra)
+
+En esos archivos: `process.env.X` está OK. Cliente browser: solo `import.meta.env`. Validado contra https://vite.dev/guide/env-and-mode.html.
+
 ## 7. Integración con clean-architecture-refactor
 Las dos skills se invocan juntas en cada cambio. Si alguna falla, el cambio no se aplica.

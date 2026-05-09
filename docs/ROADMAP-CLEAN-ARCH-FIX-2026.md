@@ -5,16 +5,59 @@
 - 21 findings: 5 P0 / 8 P1 / 5 P2 / 3 P3.
 - Migración legacy → src/ al ~26% (32.497 LoC en src/ vs 94.398 LoC en raíces legacy components/, hooks/, lib/, store/, services/).
 
-## Estado real al 2026-05-08 (auditoría exhaustiva)
-- TS: 0 errores. Vitest **191/191 PASS** en 4.22s (Windows MINGW64).
-- LoC `src/`: **35.037** (+2.540 vs snapshot original).
-- LoC legacy (components/+hooks/+lib/+store/+services/): **93.807** (−591).
-- Ratio migrado: **27,2%** (+1,2pp en 3 días). El delta vino mayormente de bugfixes tácticos sobre legacy y un sub-batch del ITEM 6, no de migración masiva.
-- **Repositories existentes en `src/core/infrastructure/adapters/`**: **35** archivos `*Repository|*Adapter`. El roadmap original decía "8" — desactualizado.
-- **ITEMs cerrados (5/21 = 24%)**: 1, 2, 3, 4, 5.
-- **ITEM en progreso**: 6 (sub-batch 1/N hecho — cargos + departamentos).
-- **ITEMs sin tocar**: 7 (parcial — split a sub-hooks pero target ≤100 líneas no alcanzado), 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21.
-- **Errores en el documento original detectados** durante auditoría: 10 paths incorrectos en ITEM 15, 5 paths incorrectos en ITEM 16. Corregidos en este update.
+## Estado real al 2026-05-08 (auditoría exhaustiva + research arquitectónico)
+- TS: 0 errores. Vitest **191/191 PASS** en cada commit.
+- **ITEMs cerrados (10/21 = ~48%)**: 1, 2, 3, 4, 5, 6 (sub-batches 1+2+3+3.5+4+5+6 cerrados, 7+8 deferidos a ITEM 15), 9, 13, 14, 21 P3-19.
+- **Carpetas legacy eliminadas**: `services/` ✓, `modules/` ✓.
+- **Reducción mayor**: `lib/autorizacionesEmpresa.ts` 715 → 84 líneas (-88%, fachada thin).
+- **Repositories nuevos creados**: ICargoRepository, IDepartamentoRepository, IZonaEmpresaRepository, IAutorizacionEmpresaRepository + adapters. Más AudioManager, GeminiService, MonicaContextService movidos a src/core/infrastructure/.
+- **Repositories existentes ampliados**: InvitacionRepository (+cancelarInvitacionPendiente), ChatRepository (+agregarMiembrosCanal, +obtenerOCrearChatDirecto), AvatarCatalogRepository (+obtenerAvatarPorId, +guardarConfiguracionAvatar), ProfileRepository (+actualizarEstadoDisponibilidad), RecordingRepository (+guardarResumenAI; NotificacionAnalisisData.tipo ampliado).
+- **Grupo 3 cerrados**: E1, E4 (services/), E7 (modules/), E8 (database.types).
+
+## Decisiones arquitectónicas 2026-05-08 (research oficial + clean-architecture-refactor)
+
+### ITEM 7 — corrección de enfoque
+El plan previo ("split en sub-hooks granulares") era incorrecto. **Doc oficial LiveKit NO endorsa fragmentar lifecycle**. Recomienda `<LiveKitRoom>` componente + hooks oficiales (`useRoom`, `useTracks`, `useLocalParticipant`, `useParticipants`).
+**Conclusión**: los 4 sub-hooks que violan ≤100 líneas (useLiveKitRemoteTracks 553, useLiveKitRoomLifecycle 438, useLiveKitRemoteSubscriptions 285, useLiveKitLocalPublishing 267) deben REDUCIRSE eliminando código redundante con hooks oficiales, NO fragmentarse más. Solo queda lo CUSTOM (proximidad selectiva, audio espacial, telemetría) en `infrastructure/livekit/`.
+
+### ITEM 8 — decisión validada con refinamiento
+Zustand README oficial recomienda slices pattern (no multi-store). PERO la decisión 2026-05-05 (multi-store) está respaldada por discussions oficiales cuando el justification es performance (scoped subscriptions = 30+ FPS objetivo).
+**Refinamiento**: mantener multi-store a nivel bounded context; DENTRO de cada store con sub-dominios usar slices pattern idiomático. Trabajo real = migrar 58 consumers de `useStore` legacy a bounded stores ya creados (strangler fig).
+
+### ITEM 10/11 — strangler fig file-by-file
+Patrón industrial estándar (AWS, Shopify). NO codemod automático porque cada archivo necesita decidir bounded context destino + refactor de deps legacy + verificación browser. Codemod aplicable SOLO al final para actualizar consumer imports en bulk.
+
+### ITEM 12 — mapping 2026-05-05 validado + archivos no mapeados
+Mapping rendering/gpu/ecs/spatial → r3f/, security → security/, monitoring/metrics → observability/, network/routing → network/ ✓ correcto. **Archivos no mapeados que requieren decisión**: lib/supabase.ts → infrastructure/supabase/SupabaseClient.ts; lib/logger.ts → infrastructure/observability/logger.ts; lib/userSettings.ts → application/user/UserSettings.ts; lib/i18n.ts → shared/i18n/; lib/env.ts → infrastructure/config/env.ts; lib/gamificacion.ts → application/gamificacion/ + Repository nuevo (9+ supabase calls).
+
+### ITEM 15-17 — extract use-cases pattern validado
+R3F oficial: "useFrame slim, never setState in there". Estrategia "Application use-case + adapter delgado" alineada. Por tipo: god-component R3F (lógica → Application, JSX → componente), god-component UI (sub-features → sub-componentes), god-hook (policies → Domain, hook adapter ≤100), god-repo en src/ (split por sub-bounded context).
+
+### ITEM 21 P3-20 — sin trabajo separado
+Imports `@/store/useStore` desde use-cases en src/: aceptable cuando son bounded stores (`useUserStore.getState()`). NO aceptable `useStore` legacy global. Después de ITEM 8, P3-20 se cumple naturalmente — no requiere fase dedicada.
+
+### ITEM 21 P3-21 — confirmado
+Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwright.config, scripts/, tests/scripts/). Cliente browser usa solo `import.meta.env`.
+
+## Plan ejecutable consolidado (2026-05-08)
+
+| Orden | ITEM | Esfuerzo | Riesgo | Notas |
+|---|---|---|---|---|
+| 1 | ITEM 21 P3-21 | XS | 0 | doc skill |
+| 2 | ITEM 8 batch 1 (auth flow consumers) | M | M | hojas primero |
+| 3 | ITEM 8 batch 2-N (resto) | L | M | strangler fig |
+| 4 | ITEM 12 hojas (security, monitoring, metrics) | M | L | aislados |
+| 5 | ITEM 7 fase A (auditoría redundancia + Application extraction) | L | H | NO fragmentar más |
+| 6 | ITEM 15 batch 1 (RecordingManagerV2) | L | M | desbloquea ITEM 6 batch 7 |
+| 7 | ITEM 6 batch 7 | S | M | requiere ITEM 15 batch 1 |
+| 8 | ITEM 15 batch 2 (SettingsZona) | L | M | desbloquea ITEM 6 batch 8 |
+| 9 | ITEM 6 batch 8 | S | M | requiere ITEM 15 batch 2 |
+| 10 | ITEM 12 resto (rendering, gpu, ecs, avatar3d) | L | H | post-hojas |
+| 11 | ITEM 16 (god-hooks split) | L | H | extract use-cases |
+| 12 | ITEM 10 (hooks/ migration) | L | H | strangler fig |
+| 13 | ITEM 11 (components/ migration) | XL | H | strangler fig, multi-sesión |
+| 14 | ITEM 17 (src/ god-files split) | L | M | repos por sub-bounded context |
+| 15 | ITEM 19 (cleanup carpetas legacy) | XS | 0 | post 10-12 |
 
 ## Update 2026-05-08 — ITEM 1 cerrado
 - Vitest 4.1.2 corre limpio en Windows MINGW64: **191/191 tests pasan en 4.94s**.
@@ -323,10 +366,10 @@
 
 ### FASE 7 — Cosmético
 
-#### ITEM 21 — P3-19, P3-20, P3-21 ⏸ SIN TOCAR
-- **P3-19** (verificado 2026-05-08): el comentario en `src/core/infrastructure/adapters/TextureAtlasCanvasAdapter.ts:20` aún dice `sRGBEncoding` (la línea 71 ya usa `SRGBColorSpace` en el código real, solo falta el comentario). Esfuerzo: 1 línea.
-- **P3-20**: tras ITEM 8, revertir imports `@/store/useStore` desde use-cases en src/.
-- **P3-21**: documentar excepción `process.env` permitido en `vite.config.*`, `playwright.config.*`, `tests/**/scripts/*`, `scripts/**` en la skill `official-docs-alignment`.
+#### ITEM 21 — P3-19, P3-20, P3-21 — 2/3 cerrados
+- **P3-19** ✅ CERRADO (`cf55c22`, 2026-05-08): comentario `sRGBEncoding` → `SRGBColorSpace` en `TextureAtlasCanvasAdapter.ts:20`.
+- **P3-20**: subsumido por ITEM 8. NO requiere trabajo separado — tras migrar consumers a bounded stores, los imports `@/store/useStore` desaparecen naturalmente. Validado contra Clean Arch (DI por Zustand singleton es semánticamente equivalente a Repository singleton).
+- **P3-21** ✅ CERRADO (2026-05-08): documentada excepción `process.env` en `.claude/skills/official-docs-alignment/SKILL.md` sección 6.1. Aplica a `vite.config.*`, `playwright.config.*`, `tests/**/scripts/*`, `scripts/**`. Validado contra Vite 6 env-and-mode docs.
 
 ## Cronograma sugerido
 - **Semana 1**: FASE 0 + FASE 1 (ITEMs 1-3).
