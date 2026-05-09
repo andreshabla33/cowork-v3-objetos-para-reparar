@@ -48,8 +48,8 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 | 3 | ITEM 8 batch 2-N (resto) | L | M | strangler fig |
 | 4 | ITEM 12 hojas (security, monitoring, metrics) | M | L | aislados |
 | ~~5~~ | ITEM 7 fase A ✅ CERRADO 2026-05-09 — auditoría concluyó "no hay redundancia"; espacio 3D fuera de `<LiveKitRoom>` por diseño | L | H | sin acción adicional |
-| 6 | ITEM 15 batch 1 (RecordingManagerV2) | L | M | desbloquea ITEM 6 batch 7 |
-| 7 | ITEM 6 batch 7 | S | M | requiere ITEM 15 batch 1 |
+| ~~6~~ | ITEM 15 batch 1 ✅ CERRADO 2026-05-09 (`33e40c2`) — split RecordingManagerV2 720L→138L | L | M | hook + 2 sub-UI + composition |
+| ~~7~~ | ITEM 6 batch 7 ✅ CERRADO 2026-05-09 (`216d86f`) — V2 supabase.from() → recordingRepository | S | M | port ya tenia los 7 metodos |
 | 8 | ITEM 15 batch 2 (SettingsZona) | L | M | desbloquea ITEM 6 batch 8 |
 | 9 | ITEM 6 batch 8 | S | M | requiere ITEM 15 batch 2 |
 | ~~10~~ | ITEM 12 resto ✅ CERRADO 2026-05-09 — lib/ ELIMINADA | L | H | 12 commits totales |
