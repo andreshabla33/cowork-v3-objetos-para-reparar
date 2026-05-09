@@ -9,7 +9,7 @@
  * concreto) y del port IFakeAvatarAdapter del Application layer.
  */
 
-import { avatarStore } from '@/lib/ecs/AvatarECS';
+import { avatarStore } from '@/core/infrastructure/r3f/ecs/AvatarECS';
 import type { IFakeAvatarAdapter } from '../application/BotSpawnerUseCase';
 import type { BotSpec } from '../domain/BotBehavior';
 

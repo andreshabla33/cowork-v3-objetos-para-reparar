@@ -54,7 +54,7 @@ import { logger } from '@/core/infrastructure/observability/logger';
 import {
   evaluarFrameRenderer,
   formatearMetricasParaLog,
-} from '@/lib/rendering/rendererMetricsMonitor';
+} from '@/core/infrastructure/r3f/rendering/rendererMetricsMonitor';
 import { OptimizarRenderizadoUseCase } from '@/core/application/usecases/OptimizarRenderizadoUseCase';
 import type {
   MuestraRenderizado,

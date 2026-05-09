@@ -41,19 +41,19 @@ import type { ModoEdicionObjeto, PlantillaZonaEnColocacion } from '@/store/slice
 import { FloorType, calcularNivelAnidamientoRectangulo, detectarSolapamientoSubzona, zonaDbAMundo, type RectanguloZona, resolverTipoSubsueloZona } from '@/src/core/domain/entities';
 import { DRAWING_MAX_ORBIT_DISTANCE } from '@/src/core/domain/entities/espacio3d/CameraFramingPolicy';
 import { obtenerPlantillaZona } from '@/src/core/domain/entities/plantillasEspacio';
-import { crearPropsMaterialSueloPbr } from '@/lib/rendering/textureRegistry';
+import { crearPropsMaterialSueloPbr } from '@/core/infrastructure/r3f/rendering/textureRegistry';
 import {
   getScaledBbox,
   getScaledBboxVersion,
   subscribeToScaledBbox,
-} from '@/lib/rendering/scaledBboxRegistry';
+} from '@/core/infrastructure/r3f/rendering/scaledBboxRegistry';
 import { SceneEnvironment } from './SceneEnvironment';
 import { SceneCamera } from './SceneCamera';
 import { SceneZonas } from './SceneZonas';
 // FASE 5: Geometry cache para eliminar fluctuación 312↔567 en renderer-metrics
-import { geoPlano, geoSueloRaycast, geoCajaUnitaria } from '@/lib/rendering/geometriaCache';
+import { geoPlano, geoSueloRaycast, geoCajaUnitaria } from '@/core/infrastructure/r3f/rendering/geometriaCache';
 import { type CameraSettings } from '@/modules/realtime-room';
-import { obtenerEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
+import { obtenerEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/core/infrastructure/r3f/ecs/espacioEcs';
 import { type JoystickInput } from '../3d/MobileJoystick';
 import { getSettingsSection } from '@/core/infrastructure/userSettings/userSettings';
 import {

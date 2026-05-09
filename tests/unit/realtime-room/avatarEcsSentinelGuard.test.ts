@@ -27,7 +27,7 @@ import { describe, expect, it, beforeEach, vi } from 'vitest';
 // AvatarECS imports a port from `@/src/core/domain/ports/IAvatarResourceDisposer`
 // which is purely type. No additional mocks needed.
 
-import { avatarStore } from '../../../lib/ecs/AvatarECS';
+import { avatarStore } from '@/core/infrastructure/r3f/ecs/AvatarECS';
 
 interface MinimalUser {
   id: string;

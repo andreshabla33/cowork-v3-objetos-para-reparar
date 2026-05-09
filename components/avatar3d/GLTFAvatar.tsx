@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { SkeletonUtils } from 'three-stdlib';
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { collectBoneData, remapAnimationTracks } from './rigUtils';
-import { getCachedRawClips } from '@/lib/avatar3d/universalAnimationsPreloader';
+import { getCachedRawClips } from '@/core/infrastructure/r3f/avatar3d/universalAnimationsPreloader';
 import {
   DEFAULT_MODEL_URL,
   EMBEDDED_NAME_MAP,

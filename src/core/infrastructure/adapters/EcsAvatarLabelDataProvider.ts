@@ -10,7 +10,7 @@
  * lived inside the AvatarLabels presentation component (PR-10).
  */
 
-import { avatarStore } from '@/lib/ecs/AvatarECS';
+import { avatarStore } from '@/core/infrastructure/r3f/ecs/AvatarECS';
 import type { AvatarLabelEntity, LabelPresenceStatus } from '../../domain/entities/espacio3d/AvatarLabelEntity';
 import type { IAvatarLabelDataProvider } from '../../domain/ports/IAvatarLabelDataProvider';
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AvatarRuntimeScheduler,
   resolveAvatarRuntimePolicy,
-} from '../../../lib/ecs/avatarRuntimeScheduler';
+} from '@/core/infrastructure/r3f/ecs/avatarRuntimeScheduler';
 
 describe('avatarRuntimeScheduler', () => {
   it('resolves aggressive policy when avatar count is high', () => {

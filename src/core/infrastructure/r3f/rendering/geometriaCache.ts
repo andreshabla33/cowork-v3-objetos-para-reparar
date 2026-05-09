@@ -21,7 +21,7 @@
  * USO:
  * @example
  * // En lugar de: new THREE.BoxGeometry(1, 1, 1)
- * import { obtenerGeometria } from '@/lib/rendering/geometriaCache';
+ * import { obtenerGeometria } from '@/core/infrastructure/r3f/rendering/geometriaCache';
  * const geo = obtenerGeometria('box:1:1:1');
  */
 

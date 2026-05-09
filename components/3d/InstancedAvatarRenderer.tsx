@@ -32,13 +32,13 @@ import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { logger } from '@/core/infrastructure/observability/logger';
-import { avatarStore } from '@/lib/ecs/AvatarECS';
+import { avatarStore } from '@/core/infrastructure/r3f/ecs/AvatarECS';
 import {
   createInstanceAnimationAttributes,
   updateInstanceAnimation,
   createInstancedSkinningMaterial,
-} from '@/lib/gpu/instancedSkinningShader';
-import { getOrBakeAnimations } from '@/lib/gpu/AnimationBaker';
+} from '@/core/infrastructure/r3f/gpu/instancedSkinningShader';
+import { getOrBakeAnimations } from '@/core/infrastructure/r3f/gpu/AnimationBaker';
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 

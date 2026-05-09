@@ -7,7 +7,7 @@
 import type { User, PresenceStatus, AutorizacionEmpresa, ZonaEmpresa, Workspace } from '@/types';
 import type { CameraSettings, AudioSettings } from '@/modules/realtime-room';
 import type { JoystickInput } from '@/components/3d/MobileJoystick';
-import type { EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
+import type { EstadoEcsEspacio } from '@/core/infrastructure/r3f/ecs/espacioEcs';
 import type { GpuInfo } from '@/core/infrastructure/r3f/gpuCapabilities';
 import type { UserSettings } from '@/core/infrastructure/userSettings/userSettings';
 import type { Room } from 'livekit-client';

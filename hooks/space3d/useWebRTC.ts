@@ -9,7 +9,7 @@ import type { User, Workspace } from '@/types';
 import type { Session } from '@supabase/supabase-js';
 import { obtenerChunk, obtenerChunksVecinos } from '@/core/infrastructure/r3f/chunkSystem';
 import { crearRealtimeChunkManager, type EventoRealtime, RealtimeChunkManager } from '@/core/infrastructure/r3f/realtimeChunkManager';
-import { actualizarEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
+import { actualizarEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/core/infrastructure/r3f/ecs/espacioEcs';
 import { logger } from '@/core/infrastructure/observability/logger';
 
 // ICE servers configuration for WebRTC peer connections

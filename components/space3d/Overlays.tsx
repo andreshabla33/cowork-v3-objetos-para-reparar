@@ -20,7 +20,7 @@ import { EmoteSync, useSyncEffects } from '../3d/EmoteSync';
 import { hapticFeedback, isMobileDevice } from '@/core/infrastructure/platform/mobileDetect';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { type CameraSettings } from '@/modules/realtime-room';
-import { obtenerEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
+import { obtenerEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/core/infrastructure/r3f/ecs/espacioEcs';
 import { type JoystickInput } from '../3d/MobileJoystick';
 import { getSettingsSection } from '@/core/infrastructure/userSettings/userSettings';
 import {

@@ -25,8 +25,8 @@ import type { Scene, WebGLRenderer } from 'three';
 import {
   OptimizarRenderizadoUseCase,
   UMBRALES_RENDERIZADO,
-} from '../../src/core/application/usecases/OptimizarRenderizadoUseCase';
-import type { MetricasRenderizado } from '../../src/core/domain/ports/IRenderingOptimizationService';
+} from '@/core/application/usecases/OptimizarRenderizadoUseCase';
+import type { MetricasRenderizado } from '@/core/domain/ports/IRenderingOptimizationService';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 

@@ -14,7 +14,7 @@ import {
   limpiarEstadoEcs,
   obtenerEstadoUsuarioEcs,
   sincronizarUsuariosEcs,
-} from '@/lib/ecs/espacioEcs';
+} from '@/core/infrastructure/r3f/ecs/espacioEcs';
 import { type DireccionAvatar, type UseChunkSystemReturn, type UseChunkSystemParams } from './types';
 
 export function useChunkSystem(params: UseChunkSystemParams): UseChunkSystemReturn {

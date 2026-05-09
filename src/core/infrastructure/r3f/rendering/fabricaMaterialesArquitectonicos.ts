@@ -7,7 +7,7 @@
  */
 
 import * as THREE from 'three';
-import type { TipoMaterialArquitectonico } from '../../src/core/domain/entities/objetosArquitectonicos';
+import type { TipoMaterialArquitectonico } from '@/core/domain/entities/objetosArquitectonicos';
 
 interface ConfiguracionMaterialArquitectonico {
   tamano_baldosa: number;

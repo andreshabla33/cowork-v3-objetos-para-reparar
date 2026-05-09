@@ -29,7 +29,7 @@ import type { Session } from '@supabase/supabase-js';
 import type { Room, RemoteParticipant, Track, TrackPublication } from 'livekit-client';
 import type { User, Workspace } from '@/types';
 import { logger } from '@/core/infrastructure/observability/logger';
-import { avatarStore } from '@/lib/ecs/AvatarECS';
+import { avatarStore } from '@/core/infrastructure/r3f/ecs/AvatarECS';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { crearSalaLivekitPorEspacio, obtenerTokenLivekitEspacio } from '@/core/infrastructure/livekit/livekitService';
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';

@@ -13,7 +13,7 @@
 import * as THREE from 'three';
 import type { ITextureFactory, TexturaAbstracta, PBRMaterialProps, ColorLineal } from '../../domain/ports/ITextureFactory';
 import type { FloorType } from '../../domain/entities';
-import { crearPropsMaterialSueloPbr } from '../../../../lib/rendering/textureRegistry';
+import { crearPropsMaterialSueloPbr } from '@/core/infrastructure/r3f/rendering/textureRegistry';
 
 // ─── Adaptación de tipos ──────────────────────────────────────────────────────
 

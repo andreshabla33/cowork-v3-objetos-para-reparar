@@ -10,7 +10,7 @@ import type { Session } from '@supabase/supabase-js';
 import type { UserSettings } from '@/core/infrastructure/userSettings/userSettings';
 import { obtenerChunk } from '@/core/infrastructure/r3f/chunkSystem';
 import type { AccionXP } from '@/core/infrastructure/adapters/gamificacion';
-import { actualizarEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
+import { actualizarEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/core/infrastructure/r3f/ecs/espacioEcs';
 import { getSettingsSection, sendDesktopNotification } from '@/core/infrastructure/userSettings/userSettings';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { audioManager } from '@/src/core/infrastructure/audio/AudioManagerAdapter';

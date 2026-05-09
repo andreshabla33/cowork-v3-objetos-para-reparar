@@ -32,7 +32,7 @@ import type { AvatarLabelEntity } from '@/src/core/domain/entities/espacio3d/Ava
 import { LABEL_CONFIG } from '@/src/core/domain/entities/espacio3d/AvatarLabelEntity';
 import { PrepararAvatarLabelsUseCase } from '@/src/core/application/usecases/PrepararAvatarLabelsUseCase';
 import { ecsAvatarLabelDataProvider } from '@/src/core/infrastructure/adapters/EcsAvatarLabelDataProvider';
-import { avatarStore } from '@/lib/ecs/AvatarECS';
+import { avatarStore } from '@/core/infrastructure/r3f/ecs/AvatarECS';
 import { statusColors, STATUS_LABELS } from '../space3d/spaceTypes';
 import type { PresenceStatus } from '@/types';
 

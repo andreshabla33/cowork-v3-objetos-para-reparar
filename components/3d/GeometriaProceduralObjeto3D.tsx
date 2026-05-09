@@ -19,7 +19,7 @@ import { resolverPerfilVisualArquitectonico } from '@/src/core/domain/entities/e
 import {
   crearMaterialMarcoArquitectonico,
   crearMaterialPBRArquitectonico,
-} from '@/lib/rendering/fabricaMaterialesArquitectonicos';
+} from '@/core/infrastructure/r3f/rendering/fabricaMaterialesArquitectonicos';
 import {
   normalizarAberturas,
   crearGeometriaPared,

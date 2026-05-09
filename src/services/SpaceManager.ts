@@ -14,7 +14,7 @@
 
 import * as THREE from 'three';
 import { Floor, Subfloor, FloorType } from '../core/domain/entities';
-import { getAlbedoTexture, TEXTURE_REGISTRY } from '../../lib/rendering/textureRegistry';
+import { getAlbedoTexture, TEXTURE_REGISTRY } from '@/core/infrastructure/r3f/rendering/textureRegistry';
 
 // ─── Tipos internos ──────────────────────────────────────────────────────────
 

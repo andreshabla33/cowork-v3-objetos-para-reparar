@@ -30,7 +30,7 @@ import { ObjetoEscena3D } from './ObjetoEscena3D';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
 import { logger } from '@/core/infrastructure/observability/logger';
-import { registerScaledBbox } from '@/lib/rendering/scaledBboxRegistry';
+import { registerScaledBbox } from '@/core/infrastructure/r3f/rendering/scaledBboxRegistry';
 
 const log = logger.child('ObjetosInstanciados');
 

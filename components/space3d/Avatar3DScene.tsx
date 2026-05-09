@@ -11,7 +11,7 @@ import { GhostAvatar } from '../3d/GhostAvatar';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { obtenerDimensionesObjetoRuntime } from './objetosRuntime';
-import { obtenerEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
+import { obtenerEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/core/infrastructure/r3f/ecs/espacioEcs';
 import { getSettingsSection, subscribeToSettings } from '@/core/infrastructure/userSettings/userSettings';
 import {
   AvatarLodLevel, DireccionAvatar,
@@ -25,8 +25,8 @@ import { VideoWithBackground } from '@/components/VideoWithBackground';
 import type { EffectType } from '@/src/core/domain/ports/IVideoTrackProcessor';
 
 // ECS imports (PR-6/7/9/10)
-import { avatarStore } from '@/lib/ecs/AvatarECS';
-import { movementSystem, cullingSystem, animationSystem } from '@/lib/ecs/AvatarSystems';
+import { avatarStore } from '@/core/infrastructure/r3f/ecs/AvatarECS';
+import { movementSystem, cullingSystem, animationSystem } from '@/core/infrastructure/r3f/ecs/AvatarSystems';
 
 // Shared singleton geometries — prevent geometry leak on re-render (DEBT-004)
 import {
@@ -36,10 +36,10 @@ import {
   teleportCylinderGeometry,
   teleportRingGeometry,
 } from '../3d/sharedGeometries';
-import { resolveAvatarRenderPolicy, resolveEffectiveGraphicsQuality } from '@/lib/ecs/avatarRenderPolicy';
+import { resolveAvatarRenderPolicy, resolveEffectiveGraphicsQuality } from '@/core/infrastructure/r3f/ecs/avatarRenderPolicy';
 import { getGpuInfoSync } from '@/core/infrastructure/r3f/gpuCapabilities';
-import { AvatarRuntimeScheduler, resolveAvatarRuntimePolicy } from '@/lib/ecs/avatarRuntimeScheduler';
-import { SpatialGrid } from '@/lib/spatial/SpatialGrid';
+import { AvatarRuntimeScheduler, resolveAvatarRuntimePolicy } from '@/core/infrastructure/r3f/ecs/avatarRuntimeScheduler';
+import { SpatialGrid } from '@/core/infrastructure/r3f/spatial/SpatialGrid';
 import { frameMetrics } from '@/core/infrastructure/observability/frameMetrics';
 import { AvatarLabels } from '../3d/AvatarLabels';
 import { CrowdInstances, type CrowdEntity } from './CrowdInstances';

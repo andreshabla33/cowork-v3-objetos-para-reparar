@@ -8,7 +8,7 @@ import './instrument';
 // Debe instalarse ANTES de que cualquier código importe @react-three/rapier
 // (lo hacemos aquí, antes de App y DIProvider). Ver el JSDoc del módulo
 // para el análisis upstream del warning.
-import { installSuppressRapierDeprecationWarning } from './lib/rendering/suppressRapierDeprecationWarning';
+import { installSuppressRapierDeprecationWarning } from '@/core/infrastructure/r3f/rendering/suppressRapierDeprecationWarning';
 
 installSuppressRapierDeprecationWarning();
 
@@ -17,7 +17,7 @@ installSuppressRapierDeprecationWarning();
 // soporten BVH. Sin overhead si la geometry no tiene árbol; con árbol
 // es ~100x más rápido — crítico para R3F event system en hardware bajo.
 // Ref: https://github.com/gkjohnson/three-mesh-bvh
-import { installAcceleratedRaycast } from './lib/rendering/installAcceleratedRaycast';
+import { installAcceleratedRaycast } from '@/core/infrastructure/r3f/rendering/installAcceleratedRaycast';
 
 installAcceleratedRaycast();
 

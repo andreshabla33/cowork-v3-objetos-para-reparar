@@ -11,7 +11,7 @@
  */
 
 import * as THREE from 'three';
-import { FloorType } from '../../src/core/domain/entities';
+import { FloorType } from '@/core/domain/entities';
 
 // ─── Tipos de la infraestructura ────────────────────────────────────────────
 

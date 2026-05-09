@@ -7,8 +7,8 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import type { User } from '@/types';
 import type { Session } from '@supabase/supabase-js';
-import type { EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
-import { obtenerEstadoUsuarioEcs } from '@/lib/ecs/espacioEcs';
+import type { EstadoEcsEspacio } from '@/core/infrastructure/r3f/ecs/espacioEcs';
+import { obtenerEstadoUsuarioEcs } from '@/core/infrastructure/r3f/ecs/espacioEcs';
 import { hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
 import type { PublishableDataPacketContract } from '@/modules/realtime-room';
 import type { AccionXP } from '@/core/infrastructure/adapters/gamificacion';

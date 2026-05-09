@@ -15,7 +15,7 @@ import { normalizarConfiguracionZonaEmpresa } from '@/src/core/domain/entities/c
 import { isMeetingZone } from '@/src/core/domain/entities/realtime/MeetingRoomAssignment';
 import { classifyZonasEmpresa } from '@/src/core/domain/entities/realtime/ZonaEmpresaKind';
 import { SpatialHashGrid } from '@/src/core/domain/services/SpatialHashGrid';
-import { avatarStore } from '@/lib/ecs/AvatarECS';
+import { avatarStore } from '@/core/infrastructure/r3f/ecs/AvatarECS';
 import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('useProximity');

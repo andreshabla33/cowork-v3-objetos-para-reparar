@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { SpatialGrid } from '@/lib/spatial/SpatialGrid';
+import { SpatialGrid } from '@/core/infrastructure/r3f/spatial/SpatialGrid';
 
 describe('SpatialGrid', () => {
   let grid: SpatialGrid<{ id: string }>;

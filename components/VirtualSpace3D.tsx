@@ -22,7 +22,7 @@ import type { LocalVideoTrack } from 'livekit-client';
 import { useRendererMetrics } from '@/hooks/space3d/useRendererMetrics';
 import { SpatialAudio } from './3d/SpatialAudio';
 import { AdaptivePerformanceMonitor } from './3d/AdaptivePerformanceMonitor';
-import { isAdaptivePerformanceEnabled } from '@/lib/ecs/avatarRenderPolicy';
+import { isAdaptivePerformanceEnabled } from '@/core/infrastructure/r3f/ecs/avatarRenderPolicy';
 import { type GpuInfo } from '@/core/infrastructure/r3f/gpuCapabilities';
 import { logger } from '@/core/infrastructure/observability/logger';
 import { MobileJoystick, type JoystickInput } from './3d/MobileJoystick';
@@ -37,7 +37,7 @@ import { useOcupacionAsientos } from '@/hooks/space3d/useOcupacionAsientos';
 import { useWebGLContextRecovery } from '@/hooks/space3d/useWebGLContextRecovery';
 import { useSpace3DKeyboardShortcuts } from '@/hooks/space3d/useSpace3DKeyboardShortcuts';
 import { useFloorClickHandlers } from '@/hooks/space3d/useFloorClickHandlers';
-import { obtenerEstadoUsuarioEcs } from '@/lib/ecs/espacioEcs';
+import { obtenerEstadoUsuarioEcs } from '@/core/infrastructure/r3f/ecs/espacioEcs';
 // `setBroadcastSoundFunctions` eliminado: useBroadcast recibe ISoundBus
 // por inyección via container (plan 328c3152 #3).
 import { XP_POR_ACCION } from '@/core/infrastructure/adapters/gamificacion';
