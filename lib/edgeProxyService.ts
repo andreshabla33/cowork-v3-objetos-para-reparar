@@ -11,7 +11,7 @@
  * reduciendo queries directas a la base de datos.
  */
 
-import { CONFIG_PUBLICA_APP } from './env';
+import { CONFIG_PUBLICA_APP } from '@/core/infrastructure/env/env';
 
 const SUPABASE_URL = CONFIG_PUBLICA_APP.urlSupabase;
 const EDGE_PROXY_URL = `${SUPABASE_URL}/functions/v1/edge-proxy-posiciones`;

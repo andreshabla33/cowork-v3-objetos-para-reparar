@@ -19,7 +19,7 @@ import { seleccionarBootstrapApp } from './store/selectores';
 import { ESPACIO_GLOBAL_ID } from './lib/constants';
 import { resolverRutaApp } from './src/core/infrastructure/routing/appRouter';
 import type { AppRouteKey } from './src/core/infrastructure/routing/appRouter';
-import './lib/i18n-config';
+import './src/core/infrastructure/i18n/i18n-config';
 import { LoginScreen } from './components/LoginScreen';
 import { PantallaAccesoRecuperacionContrasena } from './components/PantallaAccesoRecuperacionContrasena';
 import { ResetPasswordScreen } from './components/ResetPasswordScreen';

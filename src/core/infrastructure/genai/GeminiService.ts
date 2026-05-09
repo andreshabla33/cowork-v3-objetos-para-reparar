@@ -3,7 +3,7 @@
  * La Edge Function llama a OpenAI (sin CORS, key segura server-side)
  */
 
-import { CONFIG_PUBLICA_APP } from '@/lib/env';
+import { CONFIG_PUBLICA_APP } from '@/core/infrastructure/env/env';
 
 const SUPABASE_URL = CONFIG_PUBLICA_APP.urlSupabase;
 const SUPABASE_ANON_KEY = CONFIG_PUBLICA_APP.claveAnonSupabase;

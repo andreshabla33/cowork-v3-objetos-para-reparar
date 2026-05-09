@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { CONFIG_PUBLICA_APP, SERVIDORES_ICE_PUBLICOS } from '../../../lib/env';
+import { CONFIG_PUBLICA_APP, SERVIDORES_ICE_PUBLICOS } from '@/core/infrastructure/env/env';
 
 describe('Environment Configuration Module', () => {
   beforeEach(() => {
@@ -24,7 +24,7 @@ describe('Environment Configuration Module', () => {
       vi.stubEnv('VITE_SUPABASE_URL', '');
       vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'valid-key');
       vi.resetModules();
-      await expect(import('../../../lib/env')).rejects.toThrow(
+      await expect(import('@/core/infrastructure/env/env')).rejects.toThrow(
         'Falta la variable de entorno VITE_SUPABASE_URL'
       );
     });
@@ -33,7 +33,7 @@ describe('Environment Configuration Module', () => {
       vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co');
       vi.stubEnv('VITE_SUPABASE_ANON_KEY', '');
       vi.resetModules();
-      await expect(import('../../../lib/env')).rejects.toThrow(
+      await expect(import('@/core/infrastructure/env/env')).rejects.toThrow(
         'Falta la variable de entorno VITE_SUPABASE_ANON_KEY'
       );
     });

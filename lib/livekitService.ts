@@ -1,5 +1,5 @@
 import { detectBestRegion, getCachedRegion } from './regionDetector';
-import { CONFIG_PUBLICA_APP } from './env';
+import { CONFIG_PUBLICA_APP } from '@/core/infrastructure/env/env';
 import { logger } from './logger';
 
 const log = logger.child('livekit-service');

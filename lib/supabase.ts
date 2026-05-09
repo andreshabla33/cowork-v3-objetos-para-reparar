@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { CONFIG_PUBLICA_APP } from './env';
+import { CONFIG_PUBLICA_APP } from '@/core/infrastructure/env/env';
 import { runStartupSecurityChecks } from '@/core/infrastructure/security/validateEnvKeys';
 import { logger } from './logger';
 
