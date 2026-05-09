@@ -282,13 +282,27 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 - Subdirs: `3d/`, `agente/`, `avatar3d/`, `chat/`, `customizer/`, `games/`, `invitaciones/`, `invitation/`, `layout/`, `marketplace/`, `media/`, `meetings/`, `onboarding/`, `settings/`, `space3d/`, `ui/`, también archivos sueltos en raíz (`VirtualSpace.tsx`, `VirtualSpace3D.tsx`, `MeetingRooms.tsx`, `MiembrosView.tsx`, `ChatSidebar.tsx`, etc.).
 - Por feature: fragmentar god-files (ver FASE 5) en el camino.
 
-#### ITEM 12 — P2-18 lib/ → re-categorizar por adapter target ⏸ SIN TOCAR
+#### ITEM 12 — P2-18 lib/ → re-categorizar por adapter target 🟡 PARCIAL (5 subdirs cerrados)
 - Esfuerzo: M-L
-- **Estado real**: **12 subdirs** intactos en `lib/`: avatar3d/, ecs/, ecs/rendering/, gpu/, metrics/, monitoring/, network/, performance/, rendering/, routing/, security/, spatial/.
+- **Estado real (2026-05-09)**: 7 subdirs restantes en `lib/`: avatar3d/, ecs/, gpu/, performance/ (vacía), rendering/, spatial/. Más archivos sueltos (~30) en raíz.
 - Mapeo objetivo (decisión 2026-05-05):
-  - `rendering/`, `gpu/`, `ecs/`, `spatial/` → `src/core/infrastructure/r3f/`.
+  - `rendering/`, `gpu/`, `ecs/`, `spatial/`, `avatar3d/` → `src/core/infrastructure/r3f/`.
   - `security/validateEnvKeys`, `env`, `i18n-config` → `src/core/infrastructure/<aspect>/`.
   - `monitoring/`, `metrics/` → `src/core/infrastructure/observability/`.
+  - `network/`, `routing/` → `src/core/infrastructure/<aspect>/`.
+- **Hojas cerradas**:
+  - **hojas-1** (`b389e46`, 2026-05-08): security/, monitoring/, metrics/ → `src/core/infrastructure/{security,observability}/`.
+  - **hojas-2** (`59974ae`, 2026-05-09): network/, routing/ → `src/core/infrastructure/{network,routing}/`. 3 consumers (index.tsx, App.tsx, useLiveKitRoomLifecycle.ts).
+  - **hojas-3** (`15d540c`, 2026-05-09): env.ts + i18n-config.ts → `src/core/infrastructure/{env,i18n}/`. 7 consumers actualizados (incluye 4 archivos lib/ con imports relativos `./env` que se rompieron al mover; reemplazados por `@/core/infrastructure/env/env`).
+- **Pendiente (siguiente sesión)**:
+  - `lib/i18n.ts` — 21 consumers, mover a `src/core/infrastructure/i18n/`.
+  - `lib/logger.ts` — alto fanout, mover a `src/core/infrastructure/observability/`.
+  - `lib/supabase.ts` — singleton crítico, mover a `src/core/infrastructure/supabase/`.
+  - `lib/userSettings.ts` + `lib/theme.ts` + `lib/devLog.ts` + `lib/constants.ts` + `lib/mobileDetect.ts` + `lib/rtcConfig.ts` — sueltos.
+  - `lib/rendering/`, `lib/gpu/`, `lib/ecs/`, `lib/spatial/`, `lib/avatar3d/` → `src/core/infrastructure/r3f/`. Riesgo H (cruza con consumers VirtualSpace3D + Avatar3DScene).
+  - `lib/livekitService.ts`, `lib/regionDetector.ts`, `lib/edgeProxyService.ts` → `src/core/infrastructure/livekit/`.
+  - `lib/gamificacion.ts` (9+ supabase.from calls) → necesita `IGamificacionRepository` + adapter (cae bajo ITEM 6 batch nuevo).
+  - `lib/autorizacionesEmpresa.ts` (facade 84L) → mover el facade tras migrar consumers a usar singletons directo (`zonaEmpresaRepository`/`autorizacionEmpresaRepository`).
 - Riesgo: validar paridad con archivos ya en src/ (`src/core/infrastructure/textureRegistry.ts`, `src/core/infrastructure/fabricaMaterialesArquitectonicos.ts`) — duplicación latente.
 
 #### ITEM 13 — P2-15 lib/database.types.ts ✅ CERRADO (2026-05-08, eliminación directa)
