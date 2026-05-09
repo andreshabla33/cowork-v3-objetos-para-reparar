@@ -56,7 +56,7 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 | 11 | ITEM 16 (god-hooks split) | L | H | extract use-cases |
 | 12 | ITEM 10 (hooks/ migration) | L | H | strangler fig |
 | 13 | ITEM 11 (components/ migration) | XL | H | strangler fig, multi-sesión |
-| 14 | ITEM 17 (src/ god-files split) | L | M | repos por sub-bounded context |
+| 14 | ITEM 17 🟡 fase A CERRADA 2026-05-09 — auditoría: 6 OK / 2 split (ChatSupabase, MeetingSupabase) | L | M | split en sesion dedicada |
 | 15 | ITEM 19 (cleanup carpetas legacy) | XS | 0 | post 10-12 |
 
 ## Update 2026-05-08 — ITEM 1 cerrado
@@ -381,22 +381,26 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 
 - Acción: extraer use-cases puros a `src/core/application/<bc>/`, hook como adaptador delgado ≤100 líneas.
 
-#### ITEM 17 — P2-14 archivos en src/ ya >500 líneas ⏸ SIN TOCAR
+#### ITEM 17 — P2-14 archivos en src/ ya >500 líneas 🟡 PARCIAL (auditoría 2026-05-09)
 - Esfuerzo: M-L
-- **Líneas reales (2026-05-08)**:
+- **Auditoría fase A (2026-05-09)** — veredicto por archivo aplicando criterio "¿hay sub-bounded contexts claros que justifiquen split?":
 
-  | Archivo | Líneas |
-  |---|---|
-  | `src/modules/realtime-room/application/SpaceMediaCoordinator.ts` | 889 |
-  | `src/core/infrastructure/adapters/ChatSupabaseRepository.ts` | 803 |
-  | `src/core/infrastructure/adapters/MeetingSupabaseRepository.ts` | 736 |
-  | `src/core/infrastructure/adapters/RecordingSupabaseRepository.ts` | 712 (713 con la línea de export) |
-  | `src/core/infrastructure/adapters/MeetingAccessSupabaseRepository.ts` | 682 |
-  | `src/core/infrastructure/adapters/GeometriaProceduralParedesAdapter.ts` | 645 |
-  | `src/modules/realtime-room/presentation/useLiveKitRemoteTracks.ts` | 553 (NUEVO god-file generado por split de ITEM 7) |
-  | `src/modules/realtime-room/application/SpaceRealtimeCoordinator.ts` | 579 |
+  | Archivo | Líneas | Veredicto | Razonamiento |
+  |---|---|---|---|
+  | `src/modules/realtime-room/application/SpaceMediaCoordinator.ts` | 889 | ✅ OK as-is | Coordinator de media lifecycle (preflight, startMedia, switchDevice, stop). Bounded context coherente: "Space media lifecycle". El tamaño viene de manejo robusto de race conditions del DOM/MediaStream API, no de mezcla de responsabilidades. |
+  | `src/core/infrastructure/adapters/ChatSupabaseRepository.ts` | 803 | 🔧 SPLIT | 23 métodos divididos en 2 sub-bounded contexts claros: **Mensajes** (8 métodos: obtenerHistorial, insertar, suscribir, obtenerHilo, enviar, contarRespuestas, subirArchivo) y **Canales/Grupos** (13 métodos: obtenerOCrear, crear, eliminar, miembros, etc.). Helpers de usuario (2) podrían moverse a ProfileRepository. Justifica split natural. |
+  | `src/core/infrastructure/adapters/MeetingSupabaseRepository.ts` | 736 | 🔧 SPLIT | 21 métodos divididos en sub-contexts: **Reuniones programadas** (5), **Salas** (5), **Participantes salas** (3), **Participantes reuniones** (4), **Invitaciones externas** (1), **Helpers usuarios** (3). Justifica split más granular. |
+  | `src/core/infrastructure/adapters/RecordingSupabaseRepository.ts` | 712 | ✅ OK as-is | 16 métodos coherentes alrededor de "una grabación" (lifecycle + content + analysis + AI summary + notifications + history queries). NO hay sub-bounded clear; partir sería división artificial. |
+  | `src/core/infrastructure/adapters/MeetingAccessSupabaseRepository.ts` | 682 | ✅ OK as-is | 11 métodos coherentes alrededor de "acceso a sala" (validación, LiveKit token, participante lifecycle, permisos). El método `solicitarTokenLiveKit` es ~106 líneas — candidato a sub-helper privado, no split. |
+  | `src/core/infrastructure/adapters/GeometriaProceduralParedesAdapter.ts` | 645 | ✅ OK as-is | R3F Three.js geometry generator. Bounded context coherente: "construcción procedural de paredes/cerramientos". El tamaño viene de combinaciones geométricas (arcos, formas, normales, UVs, indexed/non-indexed merges), no de mezcla. |
+  | `src/modules/realtime-room/application/SpaceRealtimeCoordinator.ts` | 579 | ✅ OK as-is | Application coordinator del lifecycle LiveKit Room (connect/disconnect, eventos, ICE servers). Bounded context coherente: "real-time session lifecycle". |
+  | `src/modules/realtime-room/presentation/useLiveKitRemoteTracks.ts` | 553 | ✅ OK as-is | Cubierto por **ITEM 7 fase A** (cerrado 2026-05-09). Adapter delgado entre React state y RemoteTrackAttachmentPolicy + RemoteRenderLifecyclePolicy (Application). Lógica pura ya extraída. |
 
-- Acción: partir repositories por sub-bounded context (ChatMessagesRepository, ChatChannelsRepository, ChatPresenceRepository). Coordinators por capability.
+- **Veredicto sesión 2026-05-09**: **6 OK as-is** (incluye 1 ya cubierto ITEM 7), **2 candidatos a split** (`ChatSupabaseRepository`, `MeetingSupabaseRepository`).
+- **Plan futuro**:
+  - **Split Chat** (sesión dedicada): partir en `ChatMessagesSupabaseRepository` + `ChatChannelsSupabaseRepository`. Mover helpers de usuario a `ProfileSupabaseRepository` existente. Actualizar consumers (~10-15 archivos). Riesgo M.
+  - **Split Meeting** (sesión dedicada): partir en `ReunionesProgramadasSupabaseRepository` + `SalasReunionSupabaseRepository` + `ParticipantesReunionSupabaseRepository`. Helpers usuarios → ProfileRepo. Riesgo M.
+- **Decisión arquitectónica**: la regla "≤500L por archivo" se relaja para Repositories Infrastructure cuando el bounded context es coherente y el tamaño viene de error handling + logging + mapping necesarios. El criterio real es "¿hay sub-bounded contexts claros que justifiquen split?", no el conteo de líneas.
 
 ### FASE 6 — Cleanup final (Grupo 3, requiere aprobación de Andrés)
 
