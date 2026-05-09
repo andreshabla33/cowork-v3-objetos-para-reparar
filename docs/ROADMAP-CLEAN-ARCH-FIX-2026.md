@@ -409,8 +409,10 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 
 ### FASE 6 — Cleanup final (Grupo 3, requiere aprobación de Andrés)
 
-#### ITEM 18 — Eliminar 4 deps MediaPipe legacy
-- Tras ITEM 3 verificado en browser: quitar `@mediapipe/hands`, `@mediapipe/selfie_segmentation`, `@mediapipe/camera_utils`, `@mediapipe/drawing_utils` de `package.json`.
+#### ITEM 18 — Eliminar 4 deps MediaPipe legacy ✅ CERRADO (verificado 2026-05-09)
+- Las 4 deps legacy (`@mediapipe/hands`, `@mediapipe/selfie_segmentation`, `@mediapipe/camera_utils`, `@mediapipe/drawing_utils`) **ya no existen** en `package.json`. Solo `@mediapipe/tasks-vision ^0.10.33` permanece (la dep correcta tras ITEM 3).
+- Verificación grep `from ['\"]@mediapipe/(hands|selfie_segmentation|camera_utils|drawing_utils)['\"]` → **0 matches** en código activo (solo doc legacy en `WEBRTC_VIDEO_HUD_DOCUMENTACION.md` que describe arquitectura previa).
+- Cierre documentado en ITEM 3 (commits `bad863b` + `4ffff61`) ya había removido las 4 deps. Esta verificación 2026-05-09 confirma el estado.
 
 #### ITEM 19 — Eliminar carpetas legacy
 - Después de ITEMS 7-13: eliminar `store/`, `services/`, `hooks/`, `components/`, `lib/` raíz.
