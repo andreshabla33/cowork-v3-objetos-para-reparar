@@ -5,6 +5,7 @@
 
 import { useState, useCallback } from 'react';
 import { supabase } from '../../../lib/supabase';
+import { recordingRepository } from '@/src/core/infrastructure/adapters/RecordingSupabaseRepository';
 import { AISummary, AISummaryState, TranscriptionSegment, EmotionAnalysis, BehaviorInsight } from './types';
 
 interface UseAISummaryOptions {
@@ -80,7 +81,7 @@ export function useAISummary(options: UseAISummaryOptions) {
         created_at: new Date().toISOString(),
       };
 
-      await supabase.from('resumenes_ai').upsert({
+      await recordingRepository.guardarResumenAI({
         id: summary.id,
         grabacion_id: grabacionId,
         resumen_corto: summary.resumen_corto,
@@ -89,17 +90,17 @@ export function useAISummary(options: UseAISummaryOptions) {
         action_items: summary.action_items,
         sentimiento_general: summary.sentimiento_general,
         momentos_clave: summary.momentos_clave,
-        metricas_conductuales: summary.metricas_conductuales,
-        modelo_usado: summary.modelo_usado,
-        tokens_usados: summary.tokens_usados,
+        metricas_conductuales: (summary.metricas_conductuales as Record<string, unknown> | undefined) ?? null,
+        modelo_usado: summary.modelo_usado ?? 'gpt-4o-mini',
+        tokens_usados: summary.tokens_usados ?? 0,
       });
 
-      await supabase.from('notificaciones').insert({
+      await recordingRepository.crearNotificacionAnalisis({
         usuario_id: creadorId,
         espacio_id: espacioId,
         tipo: 'resumen_listo',
         titulo: '📝 Resumen de reunión listo',
-        mensaje: reunionTitulo 
+        mensaje: reunionTitulo
           ? `El resumen de "${reunionTitulo}" está disponible`
           : 'El resumen de tu reunión está disponible',
         entidad_tipo: 'grabacion',
@@ -120,7 +121,7 @@ export function useAISummary(options: UseAISummaryOptions) {
       const errorMsg = err.message || 'Error al generar resumen AI';
       setState(prev => ({ ...prev, isLoading: false, error: errorMsg }));
 
-      await supabase.from('notificaciones').insert({
+      await recordingRepository.crearNotificacionAnalisis({
         usuario_id: creadorId,
         espacio_id: espacioId,
         tipo: 'error_procesamiento',

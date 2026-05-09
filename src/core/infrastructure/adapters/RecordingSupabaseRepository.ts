@@ -27,6 +27,7 @@ import type {
   ErrorGrabacionData,
   GrabacionRecord,
   GenerarResumenAIData,
+  GuardarResumenAIPayload,
   IRecordingRepository,
   NotificacionAnalisisData,
   ParticipanteGrabacionRecord,
@@ -391,6 +392,25 @@ class RecordingSupabaseRepository implements IRecordingRepository {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       log.error('Error in generarResumenAI', { message, grabacionId: data.grabacion_id });
+      throw err;
+    }
+  }
+
+  async guardarResumenAI(payload: GuardarResumenAIPayload): Promise<void> {
+    try {
+      log.debug('Persisting AI summary', { grabacionId: payload.grabacion_id });
+      const { error } = await supabase.from('resumenes_ai').upsert(payload);
+      if (error) {
+        log.error('Failed to persist AI summary', {
+          error: error.message,
+          grabacionId: payload.grabacion_id,
+        });
+        throw new Error(`Failed to persist AI summary for ${payload.grabacion_id}: ${error.message}`);
+      }
+      log.info('AI summary persisted', { grabacionId: payload.grabacion_id });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      log.error('Error in guardarResumenAI', { message, grabacionId: payload.grabacion_id });
       throw err;
     }
   }

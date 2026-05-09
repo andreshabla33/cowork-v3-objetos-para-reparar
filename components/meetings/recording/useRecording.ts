@@ -5,6 +5,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
+import { recordingRepository } from '@/src/core/infrastructure/adapters/RecordingSupabaseRepository';
 import { RecordingState, RecordingStatus, RecordingConfig, RecordingMetadata } from './types';
 
 interface UseRecordingOptions {
@@ -114,7 +115,7 @@ export function useRecording(options: UseRecordingOptions) {
         inicio_grabacion: new Date().toISOString(),
       };
 
-      await supabase.from('grabaciones').insert(metadata);
+      await recordingRepository.crearGrabacion(metadata as unknown as Parameters<typeof recordingRepository.crearGrabacion>[0]);
 
       mediaRecorder.start(1000);
       updateStatus('recording');

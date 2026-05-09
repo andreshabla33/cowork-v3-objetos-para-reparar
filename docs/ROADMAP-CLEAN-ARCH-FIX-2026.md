@@ -67,7 +67,18 @@
   - Cero cambios en ports/adapters — el repository ya cubría las 2 operaciones.
   - **Out-of-scope intencional**: las otras calls de ScheduledMeetings (insert reuniones_programadas en línea 152, update reunion_participantes en 193, reads en 38/62/70/113) no se migraron — caen bajo ITEM 11/15 (god-file 762 líneas) o requieren extender repo con métodos adicionales.
   - tsc OK, vitest 191/191.
-- **Sub-batch 5 cerrado**: store/orchestrators (avatarLoader + userStore) — calls de mutación migradas.
+- **Sub-batch 6 cerrado**: Recording hooks (useRecording + useAISummary).
+  - Extendido `IRecordingRepository` + `RecordingSupabaseRepository` con:
+    - `guardarResumenAI(payload: GuardarResumenAIPayload)` — upsert resumenes_ai. Tipo `GuardarResumenAIPayload` añadido al port.
+    - `NotificacionAnalisisData.tipo` ampliado de literal `'analisis_listo'` a unión `'analisis_listo' | 'resumen_listo' | 'error_procesamiento'`. Añadido optional `datos_extra?: Record<string, unknown>`. RecordingManagerV2's existing usage sigue type-checking.
+  - Refactorizados:
+    - `useRecording.ts:117` (insert grabaciones) → `recordingRepository.crearGrabacion`. Cast por mismatch de literal `estado: 'recording'` (legacy) vs `'grabando'` (port) — comportamiento preservado, deuda tipada.
+    - `useAISummary.ts:83` (upsert resumenes_ai) → `recordingRepository.guardarResumenAI`.
+    - `useAISummary.ts:97` (insert notificacion success) → `recordingRepository.crearNotificacionAnalisis({tipo: 'resumen_listo', datos_extra})`.
+    - `useAISummary.ts:123` (insert notificacion error) → `recordingRepository.crearNotificacionAnalisis({tipo: 'error_procesamiento'})`.
+  - **Out-of-scope intencional**: `useRecording.ts:194-219` (storage upload + getPublicUrl + update grabaciones post-upload) y `useAISummary.ts:50` (functions invoke) y `:139` (resumenes_ai select single) NO se migraron — el strict grep no los capturaba (multi-línea), y requerirían 3 métodos adicionales (Storage API + obtener resumen). Caen bajo iteración futura.
+  - tsc OK, vitest 191/191.
+- **Sub-batch 5 cerrado** (`e58956d`): store/orchestrators (avatarLoader + userStore) — calls de mutación migradas.
   - Extendido `IAvatarCatalogRepository` + `AvatarCatalogSupabaseRepository` con:
     - `obtenerAvatarPorId(avatarId)` — single avatar by id (replaces avatarLoader línea 73).
     - `guardarConfiguracionAvatar(userId, config)` — upsert avatar_configuracion (replaces userStore línea 23).

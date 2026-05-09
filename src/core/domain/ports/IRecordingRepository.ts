@@ -174,17 +174,44 @@ export interface GenerarResumenAIData {
 }
 
 /**
- * Notification for completed analysis.
- * Data for creating a notification when analysis is complete.
+ * Notification payload tied to a recording-related event.
+ * Covers the recording lifecycle notifications used across the app:
+ *   - `analisis_listo` — emotion/behavior analysis processing finished
+ *   - `resumen_listo` — AI summary generation finished successfully
+ *   - `error_procesamiento` — summary or analysis pipeline errored out
+ *
+ * Optional `datos_extra` carries event-specific payload (e.g.
+ * action_items_count for resumen_listo). Stored verbatim in the
+ * `notificaciones.datos_extra` JSONB column.
  */
 export interface NotificacionAnalisisData {
   usuario_id: string;
   espacio_id: string;
-  tipo: 'analisis_listo';
+  tipo: 'analisis_listo' | 'resumen_listo' | 'error_procesamiento';
   titulo: string;
   mensaje: string;
   entidad_tipo: 'grabacion';
   entidad_id: string;
+  datos_extra?: Record<string, unknown>;
+}
+
+/**
+ * Payload for upserting an AI summary into `resumenes_ai`.
+ * Mirrors the columns the Edge Function returns plus a few derived
+ * fields the consumer is responsible for (id, modelo_usado, etc.).
+ */
+export interface GuardarResumenAIPayload {
+  id?: string;
+  grabacion_id: string;
+  resumen_corto: string;
+  resumen_detallado: string;
+  puntos_clave: unknown[];
+  action_items: unknown[];
+  sentimiento_general: string;
+  momentos_clave: unknown[];
+  metricas_conductuales: Record<string, unknown> | null;
+  modelo_usado: string;
+  tokens_usados: number;
 }
 
 /**
@@ -302,6 +329,14 @@ export interface IRecordingRepository {
    * @throws Error if insert fails or user not found
    */
   crearNotificacionAnalisis(data: NotificacionAnalisisData): Promise<void>;
+
+  /**
+   * Persist an AI summary into the `resumenes_ai` table.
+   * Upsert keyed by `id` (caller may pass a generated UUID or an existing one).
+   *
+   * @throws Error if the database write fails
+   */
+  guardarResumenAI(payload: GuardarResumenAIPayload): Promise<void>;
 
   /**
    * Fetch recordings created by user in a workspace.
