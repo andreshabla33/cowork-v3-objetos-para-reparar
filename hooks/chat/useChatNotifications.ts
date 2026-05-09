@@ -13,7 +13,7 @@ import { useStore } from '@/store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 import { logger } from '@/lib/logger';
 import { getSettingsSection } from '@/lib/userSettings';
-import { audioManager } from '@/services/audioManager';
+import { audioManager } from '@/src/core/infrastructure/audio/AudioManagerAdapter';
 import type { ToastNotification } from '@/components/ChatToast';
 import type { ChatRealtimeSubscription } from '@/src/core/domain/ports/IChatRealtimeService';
 

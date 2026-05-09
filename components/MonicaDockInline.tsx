@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { generateChatResponse, type ChatHistoryEntry } from '../services/geminiService';
+import { generateChatResponse, type ChatHistoryEntry } from '@/src/core/infrastructure/genai/GeminiService';
 import { useStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useAuthSession } from '../hooks/auth/useAuthSession';
@@ -19,7 +19,7 @@ import {
   loadProductivityContext,
   loadBehaviorContext,
   buildEnrichedPrompt,
-} from '../services/monicaContextService';
+} from '@/src/core/infrastructure/genai/MonicaContextService';
 
 interface Props {
   onClose: () => void;

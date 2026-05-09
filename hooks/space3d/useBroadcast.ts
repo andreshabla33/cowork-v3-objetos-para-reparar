@@ -13,7 +13,7 @@ import type { AccionXP } from '@/lib/gamificacion';
 import { actualizarEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
 import { getSettingsSection, sendDesktopNotification } from '@/lib/userSettings';
 import { useStore } from '@/store/useStore';
-import { audioManager } from '@/services/audioManager';
+import { audioManager } from '@/src/core/infrastructure/audio/AudioManagerAdapter';
 import { chatRepository } from '@/src/core/infrastructure/adapters/ChatSupabaseRepository';
 import {
   createChatDataPacket,

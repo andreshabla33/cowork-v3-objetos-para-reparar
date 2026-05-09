@@ -192,13 +192,14 @@
 - Skills: `clean-architecture-refactor` (Modules + state local). `official-docs-alignment` (Zustand slices pattern).
 - Riesgo: alto blast radius. 58 sitios consumen `useStore` legacy.
 
-#### ITEM 9 — P1-10 services/ → src/core/infrastructure ⏸ SIN TOCAR
-- Esfuerzo: M
-- **Estado real**: 4 archivos en `services/` intactos (audioManager.ts, chatService.ts, geminiService.ts, monicaContextService.ts).
-- Mapeo:
-  - `services/audioManager.ts` → `src/core/infrastructure/audio/AudioManagerAdapter.ts`.
-  - `services/chatService.ts` (usa `supabase.from`, parte del ITEM 6) → fusionar con `src/core/infrastructure/adapters/ChatSupabaseRepository.ts`. Auditar paridad antes (riesgo de duplicación).
-  - `services/geminiService.ts` y `services/monicaContextService.ts` → `src/core/infrastructure/genai/`.
+#### ITEM 9 — P1-10 services/ → src/core/infrastructure ✅ CERRADO (2026-05-08)
+- Esfuerzo real: M (terminado en una sesión).
+- chatService.ts: ya migrado en ITEM 6 sub-batch 3.5 (`2943fc3`).
+- audioManager.ts → `src/core/infrastructure/audio/AudioManagerAdapter.ts` (git mv preserva history). 3 consumers actualizados (useChatNotifications, useBroadcast, space3d/shared).
+- geminiService.ts → `src/core/infrastructure/genai/GeminiService.ts` (git mv). 2 consumers actualizados (VibenAssistant, MonicaDockInline). Imports relativos rotos `../lib/env` reescritos como `@/lib/env`.
+- monicaContextService.ts → `src/core/infrastructure/genai/MonicaContextService.ts` (git mv). 2 consumers actualizados. `../lib/supabase` → `@/lib/supabase`.
+- **Carpeta `services/` eliminada (rmdir vacío)**. E4 (Grupo 3) cerrado.
+- tsc OK, vitest 191/191.
 
 #### ITEM 10 — P1-11 hooks/ → src/modules/<feature>/presentation ⏸ SIN TOCAR
 - Esfuerzo: L
@@ -380,7 +381,7 @@
 - ~~**E1**: 4 deps `@mediapipe/{hands,selfie_segmentation,camera_utils,drawing_utils}`~~ — ✅ removidas (ver ITEM 3 cerrado).
 - **E2**: `hooks/space3d/useLiveKit.ts` (después de ITEM 7).
 - **E3**: Carpeta `store/` completa (después de ITEM 8).
-- **E4**: Carpeta `services/` completa (después de ITEM 9).
+- ~~**E4**: Carpeta `services/`~~ — ✅ removida (ver ITEM 9 cerrado).
 - **E5**: Carpeta `hooks/` completa (después de ITEM 10).
 - **E6**: Carpeta `components/` completa (después de ITEM 11).
 - ~~**E7**: Carpeta `modules/`~~ — ✅ removida (ver ITEM 14 cerrado).

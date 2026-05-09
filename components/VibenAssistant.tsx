@@ -1,12 +1,12 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { generateChatResponse, ChatHistoryEntry } from '../services/geminiService';
+import { generateChatResponse, ChatHistoryEntry } from '@/src/core/infrastructure/genai/GeminiService';
 import { useStore } from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 import { supabase } from '../lib/supabase';
 import { useAuthSession } from '../hooks/auth/useAuthSession';
 import { TaskStatus, Task } from '../types';
-import { loadProductivityContext, loadBehaviorContext, buildEnrichedPrompt, ProductivityContext, BehaviorContext } from '../services/monicaContextService';
+import { loadProductivityContext, loadBehaviorContext, buildEnrichedPrompt, ProductivityContext, BehaviorContext } from '@/src/core/infrastructure/genai/MonicaContextService';
 
 interface Message {
  role: 'user' | 'monica';

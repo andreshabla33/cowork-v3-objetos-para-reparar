@@ -6,7 +6,7 @@
 
 import React from 'react';
 import type { User, PresenceStatus } from '@/types';
-import { audioManager, type OpcionesSonidoEspacial } from '@/services/audioManager';
+import { audioManager, type OpcionesSonidoEspacial } from '@/src/core/infrastructure/audio/AudioManagerAdapter';
 
 // ========== Types ==========
 export type AvatarLodLevel = 'high' | 'mid' | 'low';
