@@ -1,6 +1,6 @@
 import type { User } from '@/types';
 import type { InviteDataPacket, NudgeDataPacket, Unsealed, WaveDataPacket } from '../domain/types';
-import type { AccionXP } from '@/lib/gamificacion';
+import type { AccionXP } from '@/core/infrastructure/adapters/gamificacion';
 
 export interface SpaceInteractionCoordinatorState {
   selectedRemoteUser: User | null;

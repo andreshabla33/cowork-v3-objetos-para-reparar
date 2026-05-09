@@ -13,7 +13,7 @@ import type { UserSettings } from '@/core/infrastructure/userSettings/userSettin
 import type { Room } from 'livekit-client';
 import type { Session } from '@supabase/supabase-js';
 import type { DataPacketContract, PublishableDataPacketContract, RealtimeEventBus, SpaceRealtimeCoordinator, SpaceRealtimeCoordinatorState } from '@/modules/realtime-room';
-import type { AccionXP } from '@/lib/gamificacion';
+import type { AccionXP } from '@/core/infrastructure/adapters/gamificacion';
 import type { SpaceMediaCoordinatorState } from '@/modules/realtime-room';
 
 // ========== Constantes globales ==========

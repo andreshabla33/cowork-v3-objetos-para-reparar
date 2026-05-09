@@ -13,7 +13,7 @@ import {
  type Logro,
  type LogroDesbloqueado,
  type ItemCosmetico,
-} from '@/lib/gamificacion';
+} from '@/core/infrastructure/adapters/gamificacion';
 
 interface GamificacionPanelProps {
  usuarioId: string;

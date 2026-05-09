@@ -5,7 +5,7 @@ import { OrthographicCamera, PerspectiveCamera, Grid, Text, OrbitControls, Html,
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { logger } from '@/core/infrastructure/observability/logger';
-import type { AccionXP } from '@/lib/gamificacion';
+import type { AccionXP } from '@/core/infrastructure/adapters/gamificacion';
 import { User, PresenceStatus, ZonaEmpresa } from '@/types';
 import { GLTFAvatar } from '../avatar3d/GLTFAvatar';
 import { useAvatarControls } from '../avatar3d/useAvatarControls';

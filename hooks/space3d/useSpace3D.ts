@@ -11,7 +11,7 @@ import { useShallow } from 'zustand/react/shallow';
 import type { User } from '@/types';
 import type { RealtimePositionEntry } from './types';
 import { isTouchDevice, hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
-import { registrarLoginDiario, otorgarXP, XP_POR_ACCION } from '@/lib/gamificacion';
+import { registrarLoginDiario, otorgarXP, XP_POR_ACCION } from '@/core/infrastructure/adapters/gamificacion';
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import type { JoystickInput } from '@/components/3d/MobileJoystick';
 import { saveCameraSettings, saveAudioSettings, type CameraSettings, type AudioSettings } from '@/modules/realtime-room';

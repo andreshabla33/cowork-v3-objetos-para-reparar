@@ -3,7 +3,7 @@ import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { logger } from '@/core/infrastructure/observability/logger';
 import { SUPABASE_URL } from '@/core/infrastructure/supabase/supabaseClient';
-import { otorgarXP, XP_POR_ACCION } from '@/lib/gamificacion';
+import { otorgarXP, XP_POR_ACCION } from '@/core/infrastructure/adapters/gamificacion';
 import { RealtimeSessionTelemetry } from '@/modules/realtime-room';
 import { meetingAccessRepository } from '@/src/core/infrastructure/adapters/MeetingAccessSupabaseRepository';
 import { ObtenerAccesoReunionUseCase } from '@/src/core/application/usecases/ObtenerAccesoReunionUseCase';

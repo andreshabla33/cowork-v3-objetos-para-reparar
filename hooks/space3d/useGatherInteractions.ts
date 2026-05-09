@@ -11,7 +11,7 @@ import type { EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
 import { obtenerEstadoUsuarioEcs } from '@/lib/ecs/espacioEcs';
 import { hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
 import type { PublishableDataPacketContract } from '@/modules/realtime-room';
-import type { AccionXP } from '@/lib/gamificacion';
+import type { AccionXP } from '@/core/infrastructure/adapters/gamificacion';
 import { SpaceInteractionCoordinator } from '@/modules/realtime-room';
 import { type UseGatherInteractionsReturn } from './types';
 
