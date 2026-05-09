@@ -174,135 +174,25 @@ export interface DatosCrearInvitacionExterna {
   expira_en: string;
 }
 
+import type { ISalasReunionRepository } from './ISalasReunionRepository';
+import type { IReunionesProgramadasRepository } from './IReunionesProgramadasRepository';
+import type { IMeetingHelpersRepository } from './IMeetingHelpersRepository';
+
 /**
- * Repository contract for meeting operations.
+ * Repository contract for meeting operations (composition of sub-ports).
+ *
+ * Split 2026-05-09 (ITEM 17 fase B):
+ *  - `ISalasReunionRepository` — salas + participantes_sala (8 métodos)
+ *  - `IReunionesProgramadasRepository` — calendario + participantes + invitaciones (10 métodos)
+ *  - `IMeetingHelpersRepository` — usuarios + cargo (3 métodos)
+ *
+ * `IMeetingRepository` se mantiene como union para compat con consumers
+ * existentes. Nuevos consumers que solo necesiten un sub-bounded pueden
+ * depender del sub-port específico.
+ *
  * All methods return typed data or null on failure (no exceptions thrown).
  */
-export interface IMeetingRepository {
-  /**
-   * Fetch all scheduled meetings for a workspace, ordered by start date.
-   */
-  obtenerReuniones(espacioId: string): Promise<ReunionProgramadaData[]>;
-
-  /**
-   * Create a new scheduled meeting.
-   */
-  crearReunion(datos: DatosCrearReunion): Promise<ReunionProgramadaData | null>;
-
-  /**
-   * Update a scheduled meeting (partial update).
-   */
-  actualizarReunion(
-    reunionId: string,
-    datos: Partial<ReunionProgramadaData>
-  ): Promise<boolean>;
-
-  /**
-   * Delete a scheduled meeting by ID.
-   */
-  eliminarReunion(reunionId: string): Promise<boolean>;
-
-  /**
-   * Fetch all meeting rooms for a workspace.
-   */
-  obtenerSalas(espacioId: string): Promise<SalaReunionData[]>;
-
-  /**
-   * Create a new meeting room.
-   */
-  crearSala(datos: DatosCrearSala): Promise<SalaReunionData | null>;
-
-  /**
-   * Delete a meeting room by ID.
-   */
-  eliminarSala(salaId: string): Promise<boolean>;
-
-  /**
-   * Fetch all participants in a room with user details.
-   */
-  obtenerParticipantesSala(salaId: string): Promise<ParticipanteSalaData[]>;
-
-  /**
-   * Add a participant to a room.
-   */
-  agregarParticipanteSala(
-    datos: DatosAgregarParticipanteSala
-  ): Promise<ParticipanteSalaData | null>;
-
-  /**
-   * Remove a participant from a room.
-   */
-  eliminarParticipanteSala(
-    salaId: string,
-    usuarioId: string
-  ): Promise<boolean>;
-
-  /**
-   * Add a participant to a meeting.
-   */
-  agregarParticipanteReunion(
-    datos: DatosAgregarParticipante
-  ): Promise<ParticipanteReunionData | null>;
-
-  /**
-   * Batch add participants to a meeting.
-   */
-  agregarParticipantesReunion(
-    reunionId: string,
-    participantes: Array<{ usuario_id: string; estado?: string }>
-  ): Promise<boolean>;
-
-  /**
-   * Update participant response status for a meeting.
-   */
-  actualizarRespuestaParticipante(
-    reunionId: string,
-    usuarioId: string,
-    estado: 'aceptado' | 'rechazado' | 'tentativo'
-  ): Promise<boolean>;
-
-  /**
-   * Mark all meeting participants as notified.
-   */
-  actualizarParticipantesNotificados(reunionId: string): Promise<boolean>;
-
-  /**
-   * Create an external invitation token for a meeting room.
-   */
-  crearInvitacionExterna(
-    datos: DatosCrearInvitacionExterna
-  ): Promise<{ id: string; token: string } | null>;
-
-  /**
-   * Fetch accepted workspace members.
-   */
-  obtenerMiembrosEspacio(espacioId: string): Promise<MiembroBasicoData[]>;
-
-  /**
-   * Fetch user info by IDs.
-   */
-  obtenerInfoUsuarios(userIds: string[]): Promise<MiembroBasicoData[]>;
-
-  /**
-   * Get a user's job title/role in a workspace.
-   */
-  obtenerCargoUsuario(
-    espacioId: string,
-    usuarioId: string
-  ): Promise<string | null>;
-
-  /**
-   * Update a room's active status.
-   */
-  actualizarSalaActiva(salaId: string, activa: boolean): Promise<boolean>;
-
-  /**
-   * Fetch a single scheduled meeting with all relations.
-   */
-  obtenerReunionPorId(reunionId: string): Promise<ReunionProgramadaData | null>;
-
-  /**
-   * Fetch a single room with all relations.
-   */
-  obtenerSalaPorId(salaId: string): Promise<SalaReunionData | null>;
-}
+export interface IMeetingRepository
+  extends ISalasReunionRepository,
+    IReunionesProgramadasRepository,
+    IMeetingHelpersRepository {}
