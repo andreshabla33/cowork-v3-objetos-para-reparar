@@ -87,6 +87,11 @@
   - Refactorizado `store/orchestrators/bootstrap/avatarLoader.ts`: línea 73 (select avatar by id) → `avatarCatalogRepository.obtenerAvatarPorId`. Línea 90 (update usuarios.avatar_3d_id) → `avatarCatalogRepository.cambiarAvatar` (método ya existente).
   - **Out-of-scope intencional**: las 4 reads adicionales de avatarLoader (avatar_configuracion select, avatares_3d fallback select, avatar_animaciones x2) NO se migraron — caen bajo ITEM 8 (mover el orchestrator entero a `src/core/application/<bc>/`).
   - tsc OK, vitest 191/191.
+- **Sub-batch 4 cerrado** (autorizacionesEmpresa completo migrado):
+  - **4a** (`be5ac86`): zona CRUD → `ZonaEmpresaSupabaseRepository` (port + adapter + 3 src/ adapters migrados a usar repo directo, cerrando 3 violaciones de no-legacy-consumption).
+  - **4b** (commit pendiente): autorizaciones workflow + queries → `AutorizacionEmpresaSupabaseRepository`.
+  - Resultado: `lib/autorizacionesEmpresa.ts` reducido de **715 → 84 líneas** (-88%). Es ahora una fachada de wrappers thin que delega a 2 repositorios. Ningún supabase.from() queda en el archivo.
+  - Cobertura completa de las 8 tablas del bounded context: actividades_log, zonas_empresa, autorizaciones_empresa, miembros_espacio, grupos_chat, miembros_grupo, empresas, notificaciones — todas internalizadas en los 2 repos.
 - **Sub-batch 4 (autorizacionesEmpresa) ⚠ RE-DIMENSIONADO** (auditoría 2026-05-08):
   - El plan original lo marcaba M ("mover archivo, 3 calls"). Reality check:
     - Archivo: **715 líneas, 13 funciones exportadas, 13+ supabase calls** sobre 8 tablas distintas (actividades_log, zonas_empresa, autorizaciones_empresa, miembros_espacio, grupos_chat, miembros_grupo, empresas, notificaciones).
