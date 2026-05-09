@@ -56,7 +56,7 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 | 11 | ITEM 16 🟡 fase A CERRADA 2026-05-09 — auditoría: 11 OK / 1 split (useMeetingRealtimeState 1224L) | L | H | sesion dedicada para split |
 | 12 | ITEM 10 (hooks/ migration) | L | H | strangler fig |
 | 13 | ITEM 11 (components/ migration) | XL | H | strangler fig, multi-sesión |
-| 14 | ITEM 17 🟡 fase A CERRADA 2026-05-09 — auditoría: 6 OK / 2 split (ChatSupabase, MeetingSupabase) | L | M | split en sesion dedicada |
+| ~~14~~ | ITEM 17 ✅ CERRADO 2026-05-09 — fase A audit + fase B Chat split (`56da072`) + fase B Meeting split (`b58c521`) | L | M | 5 sub-ports + 5 sub-adapters + 2 facades |
 | 15 | ITEM 19 (cleanup carpetas legacy) | XS | 0 | post 10-12 |
 
 ## Update 2026-05-08 — ITEM 1 cerrado
@@ -402,10 +402,10 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
   | `src/modules/realtime-room/presentation/useLiveKitRemoteTracks.ts` | 553 | ✅ OK as-is | Cubierto por **ITEM 7 fase A** (cerrado 2026-05-09). Adapter delgado entre React state y RemoteTrackAttachmentPolicy + RemoteRenderLifecyclePolicy (Application). Lógica pura ya extraída. |
 
 - **Veredicto sesión 2026-05-09**: **6 OK as-is** (incluye 1 ya cubierto ITEM 7), **2 candidatos a split** (`ChatSupabaseRepository`, `MeetingSupabaseRepository`).
-- **Plan futuro**:
-  - **Split Chat** (sesión dedicada): partir en `ChatMessagesSupabaseRepository` + `ChatChannelsSupabaseRepository`. Mover helpers de usuario a `ProfileSupabaseRepository` existente. Actualizar consumers (~10-15 archivos). Riesgo M.
-  - **Split Meeting** (sesión dedicada): partir en `ReunionesProgramadasSupabaseRepository` + `SalasReunionSupabaseRepository` + `ParticipantesReunionSupabaseRepository`. Helpers usuarios → ProfileRepo. Riesgo M.
-- **Decisión arquitectónica**: la regla "≤500L por archivo" se relaja para Repositories Infrastructure cuando el bounded context es coherente y el tamaño viene de error handling + logging + mapping necesarios. El criterio real es "¿hay sub-bounded contexts claros que justifiquen split?", no el conteo de líneas.
+- **Fase B ejecutada (2026-05-09 — mismos commits)**:
+  - **Chat split** (`56da072`): ChatSupabaseRepository 919L → 3 archivos (90L facade + 445L Space + 299L Meeting). 2 sub-ports nuevos (ISpaceChatRepository, IMeetingChatRepository) + IChatRepository as union. Singleton `chatRepository` compat preservado.
+  - **Meeting split** (`b58c521`): MeetingSupabaseRepository 736L → 4 archivos (99L facade + 221L Salas + 306L Reuniones + 105L Helpers). 3 sub-ports nuevos + IMeetingRepository as union. Singleton `meetingRepository` compat preservado.
+- **Decisión arquitectónica**: la regla "≤500L por archivo" se relaja para Repositories Infrastructure cuando el bounded context es coherente y el tamaño viene de error handling + logging + mapping necesarios. El criterio real es "¿hay sub-bounded contexts claros que justifiquen split?", no el conteo de líneas. Patrón validado: facade compositor con `Parameters<T>` preserva tipos exactos sin boilerplate manual.
 
 ### FASE 6 — Cleanup final (Grupo 3, requiere aprobación de Andrés)
 
