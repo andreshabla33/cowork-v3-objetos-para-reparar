@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Crown, X, Check, Clock, Swords } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 
 interface InvitacionJuego {
   id: string;

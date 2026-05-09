@@ -2,7 +2,7 @@
  * Sistema de gamificación — XP, niveles, misiones, logros
  * Tablas BD: gamificacion_usuarios, gamificacion_misiones, gamificacion_logros, gamificacion_logros_usuario, gamificacion_items
  */
-import { supabase } from './supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 
 // ========== CONSTANTES DE XP ==========
 export const XP_POR_ACCION = {

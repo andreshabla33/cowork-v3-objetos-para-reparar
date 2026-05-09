@@ -15,7 +15,7 @@
  * con 0 filas afectadas. Fix: pedir `count: 'exact'` y validar.
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { normalizarTipoSuelo } from '../../domain/entities';
 import type {
   ActualizarEstadoZonaInput,

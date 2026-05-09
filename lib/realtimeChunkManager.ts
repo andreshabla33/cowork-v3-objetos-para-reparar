@@ -12,7 +12,7 @@
  *   4. destruir() — cleanup
  */
 
-import { supabase } from './supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 export type EventoRealtime = 'movement' | 'offer' | 'answer' | 'ice-candidate' | 'reaction' | 'chat' | 'wave' | 'lock_conversation' | 'nudge' | 'invite';

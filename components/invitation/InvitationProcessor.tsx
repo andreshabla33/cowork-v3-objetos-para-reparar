@@ -24,7 +24,7 @@ import { VerificarInvitacionUseCase } from '../../src/core/application/usecases/
 import { AceptarInvitacionUseCase } from '../../src/core/application/usecases/AceptarInvitacionUseCase';
 // DI: Repository port resolved from React Context, not module-level singleton
 import { useDIUseCase } from '../../src/core/infrastructure/di/DIProvider';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 
 const log = logger.child('invitation');
 

@@ -7,7 +7,7 @@
  * Ref: Supabase JS v2 — signInWithPassword, signUp, signInAnonymously, signInWithOAuth.
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { logger } from '@/core/infrastructure/observability/logger';
 import { pickOneRelation } from '../../domain/utils/supabaseRelations';
 import type {

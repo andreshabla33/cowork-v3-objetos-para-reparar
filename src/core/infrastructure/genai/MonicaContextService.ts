@@ -9,7 +9,7 @@
  * SEGURIDAD: Todo filtrado por usuario_id del usuario autenticado
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 
 export interface MeetingSummary {
   grabacion_id: string;

@@ -15,7 +15,7 @@
  * Ref: https://supabase.com/docs/guides/troubleshooting/rls-performance-and-best-practices
  */
 
-import { supabase } from '../../../../lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { logger } from '@/core/infrastructure/observability/logger';
 import type {
   IWorkspaceBootstrapRepository,

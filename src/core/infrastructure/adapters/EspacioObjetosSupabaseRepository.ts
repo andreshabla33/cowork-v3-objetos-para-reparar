@@ -12,7 +12,7 @@
  *  - Supabase Realtime — `channel.on('postgres_changes', ...)`
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { logger } from '@/core/infrastructure/observability/logger';
 import type {
   IEspacioObjetosRepository,

@@ -5,7 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { SkeletonUtils } from 'three-stdlib';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { collectBoneData, remapAnimationTracks } from './rigUtils';
 import { getCachedRawClips } from '@/lib/avatar3d/universalAnimationsPreloader';
 import {

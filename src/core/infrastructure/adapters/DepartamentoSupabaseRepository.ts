@@ -8,7 +8,7 @@
  * Ref: Supabase JS v2 — PostgREST select/insert/update/delete.
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import type {
   Departamento,
   DepartamentoInput,

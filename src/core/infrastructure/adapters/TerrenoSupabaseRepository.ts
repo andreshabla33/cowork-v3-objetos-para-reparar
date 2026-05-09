@@ -10,7 +10,7 @@
  * Migración: supabase/migrations/20260504_terreno_rios.sql
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { logger } from '@/core/infrastructure/observability/logger';
 import type { ITerrenoRepository } from '@/src/core/domain/ports/ITerrenoRepository';
 import type {

@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { 
   TipoGrabacionDetallado, 
   CargoLaboral,

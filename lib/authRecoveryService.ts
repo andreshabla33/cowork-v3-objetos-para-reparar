@@ -9,7 +9,7 @@
  */
 
 import type { Session } from '@supabase/supabase-js';
-import { supabase, APP_URL } from './supabase';
+import { supabase, APP_URL } from '@/core/infrastructure/supabase/supabaseClient';
 
 // ─── Tipos de respuesta ────────────────────────────────────────────────────────
 

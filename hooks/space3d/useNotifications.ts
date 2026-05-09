@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { cargarAutorizacionesActivas, cargarSolicitudesEnviadas, cargarZonasEmpresa, solicitarAccesoEmpresa } from '@/lib/autorizacionesEmpresa';
 import type { AutorizacionEmpresa, ZonaEmpresa } from '@/types';
 import { ZONA_SOLICITUD_RADIO, type UseNotificationsReturn, type UseNotificationsParams } from './types';

@@ -10,7 +10,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { logger } from '@/core/infrastructure/observability/logger';
 import { getSettingsSection } from '@/lib/userSettings';
-import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/lib/supabase';
+import { SUPABASE_URL, SUPABASE_ANON_KEY } from '@/core/infrastructure/supabase/supabaseClient';
 import type { Session } from '@supabase/supabase-js';
 
 // Import use cases

@@ -12,7 +12,7 @@
 import type { AvatarConfig } from '../../../types';
 import type { Avatar3DConfig } from '../../../components/avatar3d/shared';
 import type { UserAvatarData } from './userDataLoader';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { avatarCatalogRepository } from '@/src/core/infrastructure/adapters/AvatarCatalogSupabaseRepository';
 import { logger } from '@/core/infrastructure/observability/logger';
 import { preloadUniversalAnimations } from '../../../lib/avatar3d/universalAnimationsPreloader';

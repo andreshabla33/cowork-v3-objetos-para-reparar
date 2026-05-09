@@ -2,7 +2,7 @@
  * Funciones para interactuar con terrenos_marketplace (Supabase)
  * Lectura pública (sin auth), escritura solo admin
  */
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import type { TerrenoMarketplace, ZonaEmpresa } from '@/types';
 
 export const cargarTerrenosPublicos = async (

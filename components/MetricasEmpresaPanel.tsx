@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 

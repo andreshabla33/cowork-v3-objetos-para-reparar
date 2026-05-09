@@ -13,7 +13,7 @@
  * Ref: Supabase JS v2 — .or chains, .in filters, .maybeSingle, .insert.
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import type {
   ActualizarAutorizacionInput,
   AprobarAutorizacionInput,

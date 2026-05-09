@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { useUserStore } from '@/modules/user/state/useUserStore';
 
 interface SolicitudConsentimiento {

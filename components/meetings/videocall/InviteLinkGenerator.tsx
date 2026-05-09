@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { logger } from '@/core/infrastructure/observability/logger';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 

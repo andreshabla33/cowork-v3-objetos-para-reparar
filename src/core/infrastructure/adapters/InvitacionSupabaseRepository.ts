@@ -7,7 +7,7 @@
  * Ref: Supabase JS v2 — typed .from().select() with JOIN syntax.
  */
 
-import { supabase } from '../../../../lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { logger } from '@/core/infrastructure/observability/logger';
 import { pickOneRelation } from '../../domain/utils/supabaseRelations';
 import type { IInvitacionRepository, AceptarInvitacionPayload } from '../../domain/ports/IInvitacionRepository';

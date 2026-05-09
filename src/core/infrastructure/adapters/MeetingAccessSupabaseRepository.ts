@@ -28,7 +28,7 @@ import type {
   ActualizarEstadoParticipanteData,
   CargoRolData,
 } from '@/core/domain/ports/IMeetingAccessRepository';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { logger } from '@/core/infrastructure/observability/logger';
 import { CONFIG_PUBLICA_APP } from '@/core/infrastructure/env/env';
 

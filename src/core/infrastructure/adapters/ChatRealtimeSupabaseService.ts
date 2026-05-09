@@ -37,7 +37,7 @@
  *    connection should live outside the component tree."
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { logger } from '@/core/infrastructure/observability/logger';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type {

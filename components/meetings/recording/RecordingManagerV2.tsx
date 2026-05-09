@@ -11,7 +11,7 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { useAuthSessionGetter } from '../../../hooks/auth/useAuthSession';
 import { useTranscription } from './useTranscription';
 import { useCombinedAnalysis, AnalisisResumenTiempoReal } from './useCombinedAnalysis';

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { meetingRepository } from '@/src/core/infrastructure/adapters/MeetingSupabaseRepository';
 import { ScheduledMeeting, MeetingParticipant } from '../../types';
 import { googleCalendar } from '../../lib/googleCalendar';

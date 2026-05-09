@@ -75,7 +75,7 @@ const MonicaDockInline: React.FC<Props> = ({ onClose }) => {
   useEffect(() => {
     const load = async () => {
       if (!activeWorkspace?.id || !currentUser?.id) return;
-      const { data } = await (await import('../lib/supabase')).supabase
+      const { data } = await (await import('@/core/infrastructure/supabase/supabaseClient')).supabase
         .from('grupos_chat')
         .select('nombre')
         .eq('espacio_id', activeWorkspace.id);

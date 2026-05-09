@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { generateChatResponse, ChatHistoryEntry } from '@/src/core/infrastructure/genai/GeminiService';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { useAuthSession } from '../hooks/auth/useAuthSession';
 import { TaskStatus, Task } from '../types';
 import { loadProductivityContext, loadBehaviorContext, buildEnrichedPrompt, ProductivityContext, BehaviorContext } from '@/src/core/infrastructure/genai/MonicaContextService';

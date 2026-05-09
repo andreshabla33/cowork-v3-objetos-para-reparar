@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { driver, type DriveStep, type Config } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import '../../styles/driver-tour.css';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 
 interface ProductTourProps {
   espacioId: string;

@@ -34,7 +34,7 @@ import type {
   ResumenAIRecord,
   TranscripcionRecord,
 } from '@/core/domain/ports/IRecordingRepository';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('recording-repository');

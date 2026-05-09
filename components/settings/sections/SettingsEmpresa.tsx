@@ -5,7 +5,7 @@ import {
   Building2, Globe, MapPin, Phone, Mail, FileText,
   Check, RefreshCw, Save, Plus, Users
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { useAuthSession, useAuthSessionGetter } from '@/hooks/auth/useAuthSession';
 
 const TAMANOS = [

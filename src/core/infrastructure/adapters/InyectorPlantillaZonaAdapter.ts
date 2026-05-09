@@ -8,7 +8,7 @@
  * Ref CLEAN-ARCH-F3 — legacy consolidation 2026-04-07
  */
 import { zonaEmpresaRepository } from './ZonaEmpresaSupabaseRepository';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import type { ZonaEmpresa } from '@/types';
 import type { IInyectorPlantillaZona } from '../../application/usecases/AplicarPlantillaZonaUseCase';
 import { normalizarConfiguracionZonaEmpresa } from '../../domain/entities/cerramientosZona';

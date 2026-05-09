@@ -10,7 +10,7 @@
 
 import { PresenceStatus } from '../../../types';
 import type { UserStatusData } from './userDataLoader';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('status-loader');

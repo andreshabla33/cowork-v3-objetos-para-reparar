@@ -25,7 +25,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import {
   MoveToMeetingRoomUseCase,
   ReturnToGlobalRoomUseCase,

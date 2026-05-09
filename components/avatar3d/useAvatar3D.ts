@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import type { Avatar3DConfig } from './shared';
 import { DEFAULT_MODEL_URL } from './shared';

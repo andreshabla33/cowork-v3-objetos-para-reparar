@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { invitacionRepository } from '@/src/core/infrastructure/adapters/InvitacionSupabaseRepository';
 import { Role } from '../types';
 import { ModalInvitarUsuario } from './invitaciones/ModalInvitarUsuario';

@@ -9,7 +9,7 @@
  * 3. RecordingManager lee via getMetricasCached (síncrono, desde cache)
  */
 
-import { supabase } from './supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 
 export type TipoAnalisis = 'rrhh_entrevista' | 'rrhh_one_to_one' | 'deals' | 'equipo';
 

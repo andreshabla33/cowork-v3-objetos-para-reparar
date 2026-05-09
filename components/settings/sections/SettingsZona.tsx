@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Building2, Check, MapPin, Plus, RefreshCw, Send, Sparkles, XCircle, LayoutGrid, Circle, Hexagon, Eye, Trash2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { useAuthSession } from '@/hooks/auth/useAuthSession';
 import type { AutorizacionEmpresa, ZonaEmpresa } from '@/types';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';

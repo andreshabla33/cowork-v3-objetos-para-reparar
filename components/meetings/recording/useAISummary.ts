@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { recordingRepository } from '@/src/core/infrastructure/adapters/RecordingSupabaseRepository';
 import { AISummary, AISummaryState, TranscriptionSegment, EmotionAnalysis, BehaviorInsight } from './types';
 

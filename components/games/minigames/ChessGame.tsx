@@ -9,7 +9,7 @@ import {
  ChevronLeft, ChevronRight, Cpu, User, Settings, Play,
  Sparkles, Timer, Zap
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 
 interface ChessGameProps {
  onClose: () => void;

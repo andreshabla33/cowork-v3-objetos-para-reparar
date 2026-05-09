@@ -16,7 +16,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { logger } from '@/core/infrastructure/observability/logger';
 import { getSettingsSection } from '@/lib/userSettings';
 import { googleCalendar, GoogleCalendarEvent } from '@/lib/googleCalendar';
-import { APP_URL } from '@/lib/supabase';
+import { APP_URL } from '@/core/infrastructure/supabase/supabaseClient';
 import type { ScheduledMeeting } from '@/types';
 import type {
   TipoReunionUnificado,

@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand';
 import type { StoreState } from '../state';
 import type { Role, Workspace } from '../../types';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { logger } from '@/core/infrastructure/observability/logger';
 import { toUndefined } from '../../src/core/domain/utils/nullSafe';
 

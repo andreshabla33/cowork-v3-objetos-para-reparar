@@ -4,7 +4,7 @@ import { SettingToggle } from '../components/SettingToggle';
 import { SettingDropdown } from '../components/SettingDropdown';
 import { SettingSection } from '../components/SettingSection';
 import { Language, getCurrentLanguage, setLanguage } from '../../../lib/i18n';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 

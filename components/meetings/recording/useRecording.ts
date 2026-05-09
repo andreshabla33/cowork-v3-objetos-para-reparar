@@ -4,7 +4,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { recordingRepository } from '@/src/core/infrastructure/adapters/RecordingSupabaseRepository';
 import { RecordingState, RecordingStatus, RecordingConfig, RecordingMetadata } from './types';
 

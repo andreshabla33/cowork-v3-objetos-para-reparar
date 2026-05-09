@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { SettingToggle } from '../components/SettingToggle';
 import { SettingDropdown } from '../components/SettingDropdown';
 import { SettingSection } from '../components/SettingSection';

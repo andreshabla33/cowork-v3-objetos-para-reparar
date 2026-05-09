@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { useUserStore } from '@/modules/user/state/useUserStore';
 import type { CargoLaboral } from '../components/onboarding/CargoSelector';
 

@@ -6,7 +6,7 @@
  * Clean Architecture: Infrastructure layer — depends on domain port.
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { logger } from '@/core/infrastructure/observability/logger';
 import type {
   IAvatarCatalogRepository,

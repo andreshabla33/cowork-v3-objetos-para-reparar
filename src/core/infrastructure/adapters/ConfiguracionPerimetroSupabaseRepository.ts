@@ -15,7 +15,7 @@
  * SELECT es abierto a miembros del espacio (aceptado=true).
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { logger } from '@/core/infrastructure/observability/logger';
 import type { IConfiguracionPerimetroRepository } from '@/src/core/domain/ports/IConfiguracionPerimetroRepository';
 import type { PerimeterPolicy } from '@/src/core/domain/entities/espacio3d/PerimeterPolicy';

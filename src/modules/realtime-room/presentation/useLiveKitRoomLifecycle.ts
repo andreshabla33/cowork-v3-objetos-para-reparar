@@ -32,7 +32,7 @@ import { logger } from '@/core/infrastructure/observability/logger';
 import { avatarStore } from '@/lib/ecs/AvatarECS';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { crearSalaLivekitPorEspacio, obtenerTokenLivekitEspacio } from '@/lib/livekitService';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { getTurnIceServers } from '@/core/infrastructure/network/turnCredentialsService';
 import {
   type SpaceRealtimeCoordinatorState,
