@@ -53,7 +53,7 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 | 8 | ITEM 15 batch 2 (SettingsZona split 1523L) | L | M | sesion dedicada con UX testing |
 | ~~9~~ | ITEM 6 batch 8 🟡 PARCIAL 2026-05-09 (`ba83c0e`) — adapter PlantillaEspacioCompleta extraido (3/6 calls) | S | M | restantes: necesitan EmpresaRepository + MembershipRepository |
 | ~~10~~ | ITEM 12 resto ✅ CERRADO 2026-05-09 — lib/ ELIMINADA | L | H | 12 commits totales |
-| 11 | ITEM 16 (god-hooks split) | L | H | extract use-cases |
+| 11 | ITEM 16 🟡 fase A CERRADA 2026-05-09 — auditoría: 11 OK / 1 split (useMeetingRealtimeState 1224L) | L | H | sesion dedicada para split |
 | 12 | ITEM 10 (hooks/ migration) | L | H | strangler fig |
 | 13 | ITEM 11 (components/ migration) | XL | H | strangler fig, multi-sesión |
 | 14 | ITEM 17 🟡 fase A CERRADA 2026-05-09 — auditoría: 6 OK / 2 split (ChatSupabase, MeetingSupabase) | L | M | split en sesion dedicada |
@@ -360,26 +360,31 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
   Total: 23 archivos (no 24 — `GrabacionesHistorial.tsx` listado originalmente con 1042 líneas no se encontró tras búsqueda; o fue renombrado o partido).
 - Acción: descomposición por responsabilidad. R3F: separar lógica declarativa de lógica de juego (use-cases en application). useFrame solo mover, no decidir.
 
-#### ITEM 16 — P1-08 hooks >100 líneas ⏸ SIN TOCAR
+#### ITEM 16 — P1-08 hooks >100 líneas 🟡 PARCIAL (auditoría 2026-05-09)
 - Esfuerzo: L
-- **Paths corregidos** (5 paths del doc original estaban en `components/meetings/{recording,videocall/hooks}/`, no en `hooks/meetings/`):
+- **Auditoría fase A (2026-05-09)** — veredicto por hook aplicando criterio "¿la lógica de negocio está mezclada en el hook o ya está extraída a Application/Domain?":
 
-  | Archivo (path real) | Líneas |
-  |---|---|
-  | `components/meetings/videocall/hooks/useMeetingRealtimeState.ts` | 1224 |
-  | `hooks/space3d/useLiveKit.ts` | 220 (era 1205, ya partido — ver ITEM 7) |
-  | `hooks/workspace/usePresenceChannels.ts` | 935 |
-  | `hooks/meetings/useCalendarPanel.ts` | 802 |
-  | `components/meetings/videocall/hooks/useMeetingMediaBridge.ts` | 753 |
-  | `hooks/space3d/useSpace3D.ts` | 721 |
-  | `components/meetings/recording/useAdvancedEmotionAnalysis.ts` | 713 |
-  | `components/meetings/recording/useCombinedAnalysis.ts` | 651 |
-  | `components/meetings/videocall/hooks/useMeetingAccess.ts` | 596 |
-  | `hooks/meetings/useRecordingManager.ts` | 590 |
-  | `hooks/space3d/useProximity.ts` | 544 |
-  | `hooks/space3d/useEspacioObjetos.ts` | 540 |
+  | Hook (path real) | Líneas | Veredicto | Razonamiento |
+  |---|---|---|---|
+  | `components/meetings/videocall/hooks/useMeetingRealtimeState.ts` | 1224 | 🔧 SPLIT | **Único candidato real**. Mezcla 4-5 sub-bounded contexts: chat (`useChat` + `chatRepository` + `GestionarChatReunionUseCase`), raise hand (`RaiseHandUseCase`), recording (`recordingRepository` + `GestionarGrabacionUseCase`), access (`meetingAccessRepository` + `ObtenerAccesoReunionUseCase`), telemetry (`RealtimeSessionTelemetry`). 16 useState + 21 useEffect + 16 useCallback. Sub-hooks plausibles: `useMeetingChatState`, `useMeetingRaiseHandState`, `useMeetingRecordingState`, `useMeetingAccessState`, `useMeetingTelemetryState`. |
+  | `hooks/workspace/usePresenceChannels.ts` | 935 | ✅ OK as-is | JSDoc explícito: "Application-layer policy (EvaluarPresenceSubscriptionUseCase) for subscription decisions — no business logic in this file". Adapter Supabase Realtime con adaptive radius + 3-layer same-company detection + race-free reconciliation. 0 useState. Lógica pura ya en Application. Tamaño viene del wiring inevitable de presence channels. |
+  | `hooks/meetings/useCalendarPanel.ts` | 802 | ✅ OK as-is | JSDoc: "extracts ALL business logic from CalendarPanel.tsx... Zero direct Supabase access — all data flows through repository ports." Facade hook que coordina UI state del panel completo (22 useState). Coherente con un panel con múltiples secciones (Google OAuth + meeting CRUD + invite externos). |
+  | `components/meetings/videocall/hooks/useMeetingMediaBridge.ts` | 753 | ✅ OK as-is | Bridge entre LiveKit Room y `SpaceMediaCoordinator` + `LocalVideoTrackFactory` + `PublicarLocalTrackUseCase`. Application layer ya consume use cases. Adapter delgado entre infrastructure + state React. |
+  | `hooks/space3d/useSpace3D.ts` | 721 | ✅ OK as-is | JSDoc: "facade que orquesta todos los domain hooks de Space3D". Coordina 7+ sub-hooks ya extraídos (useUserSettings, useRecording, useNotifications, useChunkSystem, useMediaStream, useLiveKit, useProximity). Facade legítimo en Clean Arch. |
+  | `components/meetings/recording/useAdvancedEmotionAnalysis.ts` | 713 | ✅ OK as-is | MediaPipe + Web Worker + microexpresiones + baseline + predicciones. Bounded context coherente. Solo 2 useState — el resto son refs y handlers de la pipeline. Optimización documentada (Web Worker, requestAnimationFrame). |
+  | `components/meetings/recording/useCombinedAnalysis.ts` | 651 | ✅ OK as-is | Combinador delgado de `useAdvancedEmotionAnalysis` + `useBodyLanguageAnalysis`. Genera métricas específicas por tipo (RRHH/Deals/Equipo). Bounded context coherente. |
+  | `components/meetings/videocall/hooks/useMeetingAccess.ts` | 596 | ✅ OK as-is | Wrapper de `ObtenerAccesoReunionUseCase` con heartbeat (60s) + token request timeout (15s) + invitado externo flow. Adapter Application + UI state del modal de acceso. |
+  | `hooks/meetings/useRecordingManager.ts` | 590 | ✅ OK as-is | JSDoc: "extracts all Supabase direct access from RecordingManager.tsx into a clean interface using application use cases. Zero direct Supabase access". 0 useState, 0 useEffect, 11 useCallback. Pure adapter — solo callbacks delegando al recordingRepository via use cases. **Hook adapter delgado perfecto**. |
+  | `hooks/space3d/useProximity.ts` | 544 | ✅ OK as-is | Lógica pura ya extraída: `ActiveSpeakerPolicy`, `GalleryPolicy`, `SpatialHashGrid`. Solo 5 useState (estados derivados de proximidad). Adapter delgado entre policies y React. |
+  | `hooks/space3d/useEspacioObjetos.ts` | 540 | ✅ OK as-is | DI + Repository pattern (`useDI`, `IEspacioObjetosRepository`) + `crearIndiceCatalogo` (Domain). Lógica pura ya en Domain. Solo 4 useState (UI state). |
+  | `hooks/space3d/useLiveKit.ts` | 220 | ✅ OK (cubierto ITEM 7) | Compat shim post-split del god-hook 1205L → 11 sub-hooks en `src/modules/realtime-room/presentation/`. Eliminación cae en ITEM 10. |
 
-- Acción: extraer use-cases puros a `src/core/application/<bc>/`, hook como adaptador delgado ≤100 líneas.
+- **Veredicto sesión 2026-05-09**: **11 OK as-is**, **1 SPLIT** (`useMeetingRealtimeState`).
+- **Plan futuro (sesión dedicada para `useMeetingRealtimeState` split)**:
+  - Crear sub-hooks por bounded context: `useMeetingChatState`, `useMeetingRaiseHandState`, `useMeetingRecordingState`, `useMeetingAccessState`, `useMeetingTelemetryState`.
+  - El hook `useMeetingRealtimeState` queda como facade delgado coordinando los 5 sub-hooks (≤100 líneas).
+  - Riesgo M-H (es el hook más complejo del módulo videocall — afecta producción crítica).
+- **Decisión arquitectónica**: regla "≤100L por hook" se relaja cuando (a) facade coordina sub-hooks ya extraídos, (b) consume exclusivamente Application use cases, (c) es adapter delgado a infrastructure compleja, o (d) el bounded context es coherente y el tamaño viene de optimización + race handling. Mismo criterio que ITEM 7 fase A.
 
 #### ITEM 17 — P2-14 archivos en src/ ya >500 líneas 🟡 PARCIAL (auditoría 2026-05-09)
 - Esfuerzo: M-L
