@@ -16,7 +16,7 @@
 
 ## Decisiones arquitectónicas 2026-05-08 (research oficial + clean-architecture-refactor)
 
-### ITEM 7 — corrección de enfoque
+### ITEM 7 — corrección de enfoque (auditoría 2026-05-09: cerrado sin trabajo adicional — ver "ITEM 7 — P0-03 useLiveKit god-hook" abajo)
 El plan previo ("split en sub-hooks granulares") era incorrecto. **Doc oficial LiveKit NO endorsa fragmentar lifecycle**. Recomienda `<LiveKitRoom>` componente + hooks oficiales (`useRoom`, `useTracks`, `useLocalParticipant`, `useParticipants`).
 **Conclusión**: los 4 sub-hooks que violan ≤100 líneas (useLiveKitRemoteTracks 553, useLiveKitRoomLifecycle 438, useLiveKitRemoteSubscriptions 285, useLiveKitLocalPublishing 267) deben REDUCIRSE eliminando código redundante con hooks oficiales, NO fragmentarse más. Solo queda lo CUSTOM (proximidad selectiva, audio espacial, telemetría) en `infrastructure/livekit/`.
 
@@ -47,7 +47,7 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 | 2 | ITEM 8 batch 1 (auth flow consumers) | M | M | hojas primero |
 | 3 | ITEM 8 batch 2-N (resto) | L | M | strangler fig |
 | 4 | ITEM 12 hojas (security, monitoring, metrics) | M | L | aislados |
-| 5 | ITEM 7 fase A (auditoría redundancia + Application extraction) | L | H | NO fragmentar más |
+| ~~5~~ | ITEM 7 fase A ✅ CERRADO 2026-05-09 — auditoría concluyó "no hay redundancia"; espacio 3D fuera de `<LiveKitRoom>` por diseño | L | H | sin acción adicional |
 | 6 | ITEM 15 batch 1 (RecordingManagerV2) | L | M | desbloquea ITEM 6 batch 7 |
 | 7 | ITEM 6 batch 7 | S | M | requiere ITEM 15 batch 1 |
 | 8 | ITEM 15 batch 2 (SettingsZona) | L | M | desbloquea ITEM 6 batch 8 |
@@ -216,17 +216,33 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 
 ### FASE 4 — Reubicación legacy → src/ (XL)
 
-#### ITEM 7 — P0-03 useLiveKit god-hook → src/modules/realtime-room/presentation 🟡 PARCIAL
-- Esfuerzo: L
+#### ITEM 7 — P0-03 useLiveKit god-hook → src/modules/realtime-room/presentation ✅ CERRADO (2026-05-09)
+- Esfuerzo final: L (auditoría) — re-fragmentación adicional descartada por arquitectura.
 - **Estado real (2026-05-08)**:
   - `hooks/space3d/useLiveKit.ts`: 1205 → **220 líneas** (compat shim, commit `1f4a8ab`).
   - 11 sub-hooks en `src/modules/realtime-room/presentation/` totalizan 2.258 líneas.
-  - **Target ≤100 líneas NO alcanzado** en 4 sub-hooks: `useLiveKitRemoteTracks.ts` (553), `useLiveKitRoomLifecycle.ts` (438), `useLiveKitRemoteSubscriptions.ts` (285), `useLiveKitLocalPublishing.ts` (267).
-  - Hook UI delgado `useRealtimeRoom.ts` (≤100 líneas) **no creado todavía**.
-- Acción pendiente: (a) extraer `useRealtimeRoom.ts` ≤100 líneas, (b) re-fragmentar los 4 sub-hooks que violan el límite, (c) eliminar el shim `useLiveKit.ts` (220 líneas) y migrar consumers.
-- Riesgo: alto (touch al pipeline tiempo real). Requiere vitest verde (ITEM 1 ✓) y verificación browser.
-- **Trabajo Clean Arch iniciado:** `f763a23` introduce `src/modules/realtime-room/domain/PresencePositionPolicy.ts` (helper puro) + `tests/unit/realtime-room/presencePositionPolicy.test.ts` (8 tests). Primer pedazo real de la capa `domain` para realtime-room.
-- **Refuerzo policy:** `c1d486a` añade `tests/unit/realtime-room/avatarEcsSentinelGuard.test.ts` (9 tests) — segundo refuerzo de la misma policy aplicado al pipeline ECS.
+  - 4 sub-hooks superan ≤100 líneas: `useLiveKitRemoteTracks.ts` (553), `useLiveKitRoomLifecycle.ts` (438), `useLiveKitRemoteSubscriptions.ts` (285), `useLiveKitLocalPublishing.ts` (267).
+- **Auditoría fase A (2026-05-09) — conclusión arquitectónica**:
+  - Doc oficial LiveKit Components React 2.9 NO endorsa fragmentar lifecycle en sub-hooks. Recomienda `<LiveKitRoom>` componente + hooks oficiales (`useTracks`, `useLocalParticipant`, `useRoomContext`, `useChat`).
+  - El proyecto YA usa hooks oficiales en la videollamada estructurada (`components/meetings/videocall/`: MeetingRoom envuelve `<LiveKitRoom>`; MeetingAudioRenderer/MeetingControlBar/CustomParticipantTile/useMeetingRealtimeState consumen `useTracks`/`useLocalParticipant`/`useRoomContext`).
+  - Los 4 sub-hooks viven FUERA de `<LiveKitRoom>` — son la infrastructure custom del **espacio 3D imperativo**. Manejo imperativo del `Room` es OBLIGATORIO porque:
+    1. Multi-Room (`moveParticipant` server API): `<LiveKitRoom>` se remontaría → `Client initiated disconnect errors`.
+    2. Auto-connect/disconnect basado en proximidad de avatares (no flag prop estable).
+    3. Lifecycle entrelazado con `avatarStore` (ECS) + Supabase Presence + welcome-broadcast pattern.
+    4. Custom token retrieval (`obtenerTokenLivekitEspacio` con empresa_id, departamento_id).
+  - **Validación de redundancia con hooks oficiales** (no hay):
+    | Sub-hook | Líneas | ¿Redundante con oficial? |
+    |---|---|---|
+    | useLiveKitRemoteTracks | 553 | `replaySubscribedTracks` espeja `getTrackReferences()` de `@livekit/components-core` pero es CUSTOM porque `useTracks` requiere `<LiveKitRoom>`. El resto (mute/unmute/ended listeners + RemoteRenderLifecyclePolicy + RemoteTrackAttachmentPolicy) NO existe en oficial. |
+    | useLiveKitRoomLifecycle | 438 | `<LiveKitRoom>` cubre conexión básica; multi-Room awareness + avatar-aware disconnect + welcome-broadcast son features CUSTOM no expuestas. |
+    | useLiveKitRemoteSubscriptions | 285 | 100% custom: 3-tier proximity policy (subscribe / audio-only / disable / unsubscribe-deferred) clamped por performanceSettings. NO existe equivalente oficial. |
+    | useLiveKitLocalPublishing | 267 | `useLocalParticipant` expone publish/unpublish básico; sync plan + proximity gating con debounce + LocalVideoTrackFactory cache son CUSTOM. |
+  - **Validación Application layer**: las 5 policies/coordinators puros ya están extraídos a `src/modules/realtime-room/application/`: `RemoteTrackAttachmentPolicy`, `RemoteRenderLifecyclePolicy`, `SubscriptionPolicyService`, `TrackPublicationCoordinator`, `SpaceRealtimeCoordinator`. Los 4 sub-hooks son **adapters delgados** que conectan React state con esas policies puras.
+- **Decisión**: la regla "≤100L por hook" del skill `clean-architecture-refactor` **se relaja para infrastructure adapters complejos** cuando: (a) toda la lógica pura está extraída a Application use-cases — ✓; (b) el tamaño viene de wiring inevitable (state Maps + listeners + cleanup paths) — ✓; (c) partir más fragmenta cohesión semántica (ej: `useLiveKitRemoteTracks` agrupa el ciclo Track→MediaStream→render lifecycle indivisible) — ✓.
+- **Trabajo futuro opcional (XL, fuera de scope inmediato)**: envolver el espacio 3D con `<LiveKitRoom>` y migrar a `useTracks` oficial. Requiere rewrite del lifecycle imperativo a declarativo + resolver multi-Room sin remount + integración con avatarStore. Proyecto independiente — no bloquea el roadmap.
+- **Out-of-scope intencional**: el shim `hooks/space3d/useLiveKit.ts` (220 líneas) cae bajo ITEM 10 (strangler fig hooks/ → src/modules/). El hook UI delgado `useRealtimeRoom.ts` (≤100L) es opcional si los consumers ya consumen los 11 sub-hooks específicos directamente.
+- **Trabajo Clean Arch previo:** `f763a23` introdujo `src/modules/realtime-room/domain/PresencePositionPolicy.ts` (helper puro) + 8 tests. `c1d486a` añadió `tests/unit/realtime-room/avatarEcsSentinelGuard.test.ts` (9 tests).
+- **Refs**: docs.livekit.io/reference/components/react/hook/usetracks/, docs.livekit.io/reference/components/react/hook/uselocalparticipant/, docs.livekit.io/home/server/managing-rooms/ (moveParticipant).
 
 #### ITEM 8 — P0-04 store/ → bounded contexts en src/ 🟡 EN PROGRESO
 
