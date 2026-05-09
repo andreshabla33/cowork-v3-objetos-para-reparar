@@ -172,10 +172,15 @@
 - Acción aplicada: `git rm lib/database.types.ts`. tsc OK, vitest 191/191. E8 cerrado.
 - Nota: si en el futuro se regenera tipos vía `supabase gen types`, el path canónico debe ser `src/core/infrastructure/supabase/types.gen.ts` (no recrear en `lib/`).
 
-#### ITEM 14 — P2-16 modules/ shim → eliminar tras alias ⏸ SIN TOCAR
-- Esfuerzo: S
-- **Estado real**: `modules/realtime-room/index.ts` sigue siendo el shim de 1 línea: `export * from '../../src/modules/realtime-room';`. No se aplicó alias `@modules/realtime-room`.
-- Acción: añadir alias en `tsconfig.json` + codemod ~30 imports + eliminar `modules/`.
+#### ITEM 14 — P2-16 modules/ shim → eliminar tras alias ✅ CERRADO (2026-05-08)
+- Esfuerzo real: XS (2 ediciones, 0 codemod requerido).
+- **Hallazgo de auditoría**: el alias `@/modules/*` ya estaba configurado en `tsconfig.json` y `vite.config.ts` apuntando a `./src/modules/*`. Todos los 30+ consumers ya usaban `@/modules/realtime-room` que resolvía directo a `src/modules/`. El shim `modules/realtime-room/index.ts` era **código muerto** — nunca se resolvía vía Vite.
+- Único riesgo encontrado: `vitest.config.ts` solo tenía el catch-all `'@'` sin los aliases específicos `@/core` y `@/modules`. Sin esos aliases vitest resolvía `@/modules/realtime-room` al shim legacy. Solución: sincronizar los 3 aliases en `vitest.config.ts` con los de `vite.config.ts`.
+- Acción aplicada:
+  1. Añadir `'@/core'` y `'@/modules'` a `vitest.config.ts:resolve.alias`.
+  2. `git rm modules/realtime-room/index.ts` (la carpeta `modules/` queda vacía y desaparece).
+- Verificación: tsc 0 errors, vitest 191/191 PASS, grep `from ['"]\.\./modules` → 0 matches.
+- E7 (Grupo 3) cerrado.
 
 ### FASE 5 — Descomposición de god-files en src/
 
@@ -324,7 +329,7 @@
 - **E4**: Carpeta `services/` completa (después de ITEM 9).
 - **E5**: Carpeta `hooks/` completa (después de ITEM 10).
 - **E6**: Carpeta `components/` completa (después de ITEM 11).
-- **E7**: Carpeta `modules/` (después de ITEM 14).
+- ~~**E7**: Carpeta `modules/`~~ — ✅ removida (ver ITEM 14 cerrado).
 - ~~**E8**: `lib/database.types.ts`~~ — ✅ removido (ver ITEM 13 cerrado).
 - **E9**: Carpeta `lib/` completa (después de ITEM 12).
 - **E10**: `node_modules` y `package-lock.json` LOCALES — refresh de instalación, no eliminación de código del producto. Si se opta por la opción destructiva del ITEM 1.
