@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { useStore } from '@/store/useStore';
+import { useUserStore } from '@/modules/user/state/useUserStore';
 import type { CargoLaboral } from '../components/onboarding/CargoSelector';
 
 interface OnboardingState {
@@ -24,7 +24,7 @@ interface UseOnboardingReturn extends OnboardingState {
  * en vez de llamar getUser() directamente → evita auth lock orphan.
  */
 export function useOnboarding(): UseOnboardingReturn {
-  const session = useStore((s) => s.session);
+  const session = useUserStore((s) => s.session);
   const userId = session?.user?.id ?? null;
   const userEmail = session?.user?.email ?? null;
 
@@ -44,8 +44,8 @@ export function useOnboarding(): UseOnboardingReturn {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
 
       // Leer userId del store (síncrono, sin lock)
-      const currentUserId = useStore.getState().session?.user?.id ?? null;
-      const currentEmail = useStore.getState().session?.user?.email ?? null;
+      const currentUserId = useUserStore.getState().session?.user?.id ?? null;
+      const currentEmail = useUserStore.getState().session?.user?.email ?? null;
 
       if (!currentUserId) {
         setState(prev => ({
@@ -160,7 +160,7 @@ export function useOnboarding(): UseOnboardingReturn {
       }
 
       // Marcar invitaciones como usadas (lee email del store, sin lock)
-      const currentEmail = useStore.getState().session?.user?.email;
+      const currentEmail = useUserStore.getState().session?.user?.email;
       if (currentEmail && state.espacioId) {
         await supabase
           .from('invitaciones_pendientes')

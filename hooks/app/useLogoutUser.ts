@@ -17,7 +17,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { useStore } from '@/store/useStore';
+import { useUserStore } from '@/modules/user/state/useUserStore';
 
 interface UseLogoutUserReturn {
   /** Ejecuta el cierre de sesión completo */
@@ -27,7 +27,7 @@ interface UseLogoutUserReturn {
 }
 
 export function useLogoutUser(): UseLogoutUserReturn {
-  const signOut = useStore((state) => state.signOut);
+  const signOut = useUserStore((state) => state.signOut);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const logout = useCallback(async () => {

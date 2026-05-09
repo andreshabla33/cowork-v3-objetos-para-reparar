@@ -228,7 +228,23 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 - **Trabajo Clean Arch iniciado:** `f763a23` introduce `src/modules/realtime-room/domain/PresencePositionPolicy.ts` (helper puro) + `tests/unit/realtime-room/presencePositionPolicy.test.ts` (8 tests). Primer pedazo real de la capa `domain` para realtime-room.
 - **Refuerzo policy:** `c1d486a` añade `tests/unit/realtime-room/avatarEcsSentinelGuard.test.ts` (9 tests) — segundo refuerzo de la misma policy aplicado al pipeline ECS.
 
-#### ITEM 8 — P0-04 store/ → bounded contexts en src/ ⏸ SIN TOCAR
+#### ITEM 8 — P0-04 store/ → bounded contexts en src/ 🟡 EN PROGRESO
+
+**Update 2026-05-09**: descubierto que `useStore` legacy ya es un compat shim de 1 línea apuntando a `src/modules/_state/composedStore.ts` (commit anterior no documentado). El composed store + bounded views (`createStoreView`) ES el patrón híbrido óptimo (slices internos + multi-store API). Migración real = solo cambiar imports de consumers.
+
+**Sub-batch 1 cerrado** (auth flow, 8 archivos):
+- `hooks/auth/useAuthSession.ts` → `useUserStore`
+- `hooks/auth/useLoginAuth.ts` → `useUserStore`
+- `hooks/app/useLogoutUser.ts` → `useUserStore`
+- `hooks/useOnboarding.ts` → `useUserStore`
+- `components/ResetPasswordScreen.tsx` → `useUserStore`
+- `hooks/app/useBootstrapAplicacion.ts` → `useComposedStore` (orchestrator multi-context)
+- `App.tsx` → `useComposedStore` (orchestrator)
+- `components/invitation/InvitationProcessor.tsx` → `useComposedStore` (multi-context)
+
+Reglas: consumers single-bounded-context → bounded store específico. Orchestrators multi-bounded → `useComposedStore` directo (acceso al store completo, OK arquitectónicamente porque está en src/, no en legacy).
+
+Pendientes: 56 archivos legacy con `useStore` (sub-batches futuros por feature).
 - Esfuerzo: L
 - **Estado real (2026-05-08)**: bounded-context stores **ya creados** en `src/modules/<feature>/state/` (useUserStore, useWorkspaceStore, useChatStore, useSpace3DStore, usePresenceStore, useUIStore). Pero **`store/` legacy intacto con 21 archivos** (slices, orchestrators, gameStore, useStore, etc.). Coexisten — la migración real (eliminar legacy) no comenzó.
 - Acción pendiente: migrar consumers que aún apuntan a `@/store/useStore` hacia los stores nuevos en `src/modules/`, luego eliminar `store/`.

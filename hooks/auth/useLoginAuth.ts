@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { useStore } from '@/store/useStore';
+import { useUserStore } from '@/modules/user/state/useUserStore';
 import { useShallow } from 'zustand/react/shallow';
 import type { InvitacionBannerData } from '@/src/core/domain/ports/IAuthRepository';
 import { authRepository } from '@/src/core/infrastructure/adapters/AuthSupabaseRepository';
@@ -59,7 +59,7 @@ export interface UseLoginAuthReturn {
  * Provides form state management and delegates to Clean Architecture use cases.
  */
 export function useLoginAuth(): UseLoginAuthReturn {
-  const { setSession, authFeedback, setAuthFeedback } = useStore(
+  const { setSession, authFeedback, setAuthFeedback } = useUserStore(
     useShallow(s => ({
       setSession: s.setSession,
       authFeedback: s.authFeedback,

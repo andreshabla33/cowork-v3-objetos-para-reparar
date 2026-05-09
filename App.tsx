@@ -11,7 +11,7 @@
  */
 
 import React, { lazy, Suspense, useMemo } from 'react';
-import { useStore } from './store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useBootstrapAplicacion } from './hooks/app/useBootstrapAplicacion';
 import { useRutasReunion } from './hooks/app/useRutasReunion';

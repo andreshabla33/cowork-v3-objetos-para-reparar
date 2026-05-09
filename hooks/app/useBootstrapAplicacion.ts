@@ -16,7 +16,7 @@ import { useEffect, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
-import { useStore } from '@/store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { logger } from '@/lib/logger';
 import { authRepository } from '@/src/core/infrastructure/adapters/AuthSupabaseRepository';
 import { ValidarSesionAlBootstrapUseCase } from '@/src/core/application/usecases/ValidarSesionAlBootstrapUseCase';

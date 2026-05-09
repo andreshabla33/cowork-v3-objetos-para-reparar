@@ -14,7 +14,7 @@
  * @see hooks/app/useBootstrapAplicacion.ts — suscripción a onAuthStateChange
  */
 
-import { useStore } from '@/store/useStore';
+import { useUserStore } from '@/modules/user/state/useUserStore';
 import { useCallback } from 'react';
 
 export interface AuthSessionData {
@@ -33,7 +33,7 @@ export interface AuthSessionData {
  * Lee directamente del store Zustand, que se actualiza vía onAuthStateChange.
  */
 export function useAuthSession(): AuthSessionData {
-  const session = useStore((s) => s.session);
+  const session = useUserStore((s) => s.session);
 
   return {
     userId: session?.user?.id ?? null,
@@ -52,7 +52,7 @@ export function useAuthSession(): AuthSessionData {
  */
 export function useAuthSessionGetter(): () => AuthSessionData {
   return useCallback(() => {
-    const { session } = useStore.getState();
+    const { session } = useUserStore.getState();
     return {
       userId: session?.user?.id ?? null,
       accessToken: session?.access_token ?? null,

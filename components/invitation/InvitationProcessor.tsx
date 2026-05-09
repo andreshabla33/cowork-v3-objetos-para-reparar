@@ -12,7 +12,7 @@
  */
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { useStore } from '../../store/useStore';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { hashToken } from '../../lib/security/hashToken';
 import { seleccionarProcesadorInvitacion } from '../../store/selectores';
