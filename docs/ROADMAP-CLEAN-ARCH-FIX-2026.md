@@ -208,7 +208,7 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 
 ### FASE 3 — Patrón Repository Supabase
 
-#### ITEM 6 — P1-06 Migrar `supabase.from()` directo a Repository pattern 🟡 PARCIAL (8 batches)
+#### ITEM 6 — P1-06 Migrar `supabase.from()` directo a Repository pattern ✅ CERRADO 2026-05-09 (todos los batches + deuda residual)
 - Esfuerzo: L (M por feature)
 - **Scope corregido**: 13 archivos consumidores únicos en legacy (no 18 — la cifra original contaba calls duplicadas). 2 migrados, 11 pendientes (ver "Update 2026-05-08 — ITEM 6 progreso real").
 - Skills: `clean-architecture-refactor` (Repository en `src/core/infrastructure/adapters/`), `official-docs-alignment` (Supabase JS v2 docs — uso correcto del client).
