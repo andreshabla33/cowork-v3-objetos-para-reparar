@@ -7,11 +7,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { User, Workspace } from '@/types';
 import type { Session } from '@supabase/supabase-js';
-import type { UserSettings } from '@/lib/userSettings';
+import type { UserSettings } from '@/core/infrastructure/userSettings/userSettings';
 import { obtenerChunk } from '@/core/infrastructure/r3f/chunkSystem';
 import type { AccionXP } from '@/lib/gamificacion';
 import { actualizarEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
-import { getSettingsSection, sendDesktopNotification } from '@/lib/userSettings';
+import { getSettingsSection, sendDesktopNotification } from '@/core/infrastructure/userSettings/userSettings';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { audioManager } from '@/src/core/infrastructure/audio/AudioManagerAdapter';
 import { chatRepository } from '@/src/core/infrastructure/adapters/ChatSupabaseRepository';

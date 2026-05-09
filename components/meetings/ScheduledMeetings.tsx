@@ -4,7 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { meetingRepository } from '@/src/core/infrastructure/adapters/MeetingSupabaseRepository';
 import { ScheduledMeeting, MeetingParticipant } from '../../types';
-import { googleCalendar } from '../../lib/googleCalendar';
+import { googleCalendar } from '@/core/infrastructure/googleCalendar/googleCalendarService';
 
 interface ScheduledMeetingsProps {
   onJoinMeeting?: (salaId: string) => void;

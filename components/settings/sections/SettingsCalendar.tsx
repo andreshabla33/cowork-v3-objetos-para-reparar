@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SettingToggle } from '../components/SettingToggle';
 import { SettingDropdown } from '../components/SettingDropdown';
 import { SettingSection } from '../components/SettingSection';
-import { googleCalendar } from '../../../lib/googleCalendar';
+import { googleCalendar } from '@/core/infrastructure/googleCalendar/googleCalendarService';
 import { Language, getCurrentLanguage, subscribeToLanguageChange } from '@/core/infrastructure/i18n/i18n';
 
 interface CalendarSettings {

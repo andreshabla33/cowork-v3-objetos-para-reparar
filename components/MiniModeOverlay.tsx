@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { getSettingsSection } from '../lib/userSettings';
+import { getSettingsSection } from '@/core/infrastructure/userSettings/userSettings';
 import { PresenceStatus } from '../types';
 
 const STATUS_OPTIONS = [

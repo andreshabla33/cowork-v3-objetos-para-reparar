@@ -5,7 +5,7 @@
  */
 
 import type { Workspace } from '../../../types';
-import { getSettingsSection } from '../../../lib/userSettings';
+import { getSettingsSection } from '@/core/infrastructure/userSettings/userSettings';
 import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('view-resolver');

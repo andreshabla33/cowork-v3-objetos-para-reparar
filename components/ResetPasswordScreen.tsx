@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { useUserStore } from '@/modules/user/state/useUserStore';
-import { confirmPasswordReset } from '../lib/authRecoveryService';
+import { confirmPasswordReset } from '@/core/infrastructure/auth/authRecoveryService';
 
 type ResetState = 'validating' | 'form' | 'success' | 'error_token';
 

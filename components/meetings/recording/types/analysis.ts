@@ -4,7 +4,7 @@
  * v2.1: Sistema de cargos laborales y permisos por rol
  */
 
-import { getMetricasCached } from '../../../../lib/metricasAnalisis';
+import { getMetricasCached } from '@/core/infrastructure/observability/metricasAnalisis';
 
 // ==================== CARGOS LABORALES Y PERMISOS ====================
 

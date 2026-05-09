@@ -10,7 +10,7 @@ import {
   getTodasMetricasCached,
   guardarMetricasEspacio,
   METRICAS_DEFAULT,
-} from '../../../lib/metricasAnalisis';
+} from '@/core/infrastructure/observability/metricasAnalisis';
 import {
   CargoLaboral,
   PERMISOS_ANALISIS,

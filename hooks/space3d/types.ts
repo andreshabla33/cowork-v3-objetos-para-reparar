@@ -9,7 +9,7 @@ import type { CameraSettings, AudioSettings } from '@/modules/realtime-room';
 import type { JoystickInput } from '@/components/3d/MobileJoystick';
 import type { EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
 import type { GpuInfo } from '@/core/infrastructure/r3f/gpuCapabilities';
-import type { UserSettings } from '@/lib/userSettings';
+import type { UserSettings } from '@/core/infrastructure/userSettings/userSettings';
 import type { Room } from 'livekit-client';
 import type { Session } from '@supabase/supabase-js';
 import type { DataPacketContract, PublishableDataPacketContract, RealtimeEventBus, SpaceRealtimeCoordinator, SpaceRealtimeCoordinatorState } from '@/modules/realtime-room';
@@ -69,10 +69,10 @@ export interface UseUserSettingsReturn {
   // colapsaba a la union de TODAS las secciones y rompía el narrowing
   // downstream. Usar `UserSettings['<section>']` directamente preserva
   // el tipo concreto de cada sección.
-  space3dSettings: import('@/lib/userSettings').UserSettings['space3d'];
-  meetingsSettings: import('@/lib/userSettings').UserSettings['meetings'];
-  notifSettings: import('@/lib/userSettings').UserSettings['notifications'];
-  performanceSettings: import('@/lib/userSettings').UserSettings['performance'];
+  space3dSettings: import('@/core/infrastructure/userSettings/userSettings').UserSettings['space3d'];
+  meetingsSettings: import('@/core/infrastructure/userSettings/userSettings').UserSettings['meetings'];
+  notifSettings: import('@/core/infrastructure/userSettings/userSettings').UserSettings['notifications'];
+  performanceSettings: import('@/core/infrastructure/userSettings/userSettings').UserSettings['performance'];
   gpuInfo: GpuInfo | null;
   gpuRenderConfig: ReturnType<typeof import('@/core/infrastructure/r3f/gpuCapabilities').adaptiveConfigFromTier> | null;
   radioInteresChunks: number;

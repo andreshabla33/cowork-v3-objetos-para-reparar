@@ -24,7 +24,7 @@ import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { type CameraSettings } from '@/modules/realtime-room';
 import { obtenerEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
 import { type JoystickInput } from '../3d/MobileJoystick';
-import { getSettingsSection } from '@/lib/userSettings';
+import { getSettingsSection } from '@/core/infrastructure/userSettings/userSettings';
 import {
   AvatarLodLevel, DireccionAvatar, themeColors,
   MOVE_SPEED, RUN_SPEED, WORLD_SIZE, TELEPORT_DISTANCE,

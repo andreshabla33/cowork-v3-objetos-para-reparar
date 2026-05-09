@@ -93,7 +93,7 @@ export async function confirmPasswordReset(
   // NO async getSession() — avoids orphaned Web Lock (gotrue-js issue #1594).
   // En flujo de recovery, onAuthStateChange ya disparó PASSWORD_RECOVERY
   // y la sesión está en el store.
-  const { useComposedStore } = await import('../src/modules/_state/composedStore');
+  const { useComposedStore } = await import('@/modules/_state/composedStore');
   const session = useComposedStore.getState().session;
 
   if (!session) {

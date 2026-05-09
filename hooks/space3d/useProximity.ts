@@ -7,7 +7,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import type { User } from '@/types';
 import type { Session } from '@supabase/supabase-js';
-import type { UserSettings } from '@/lib/userSettings';
+import type { UserSettings } from '@/core/infrastructure/userSettings/userSettings';
 import { AUDIO_SPATIAL_RADIUS_FACTOR, PROXIMITY_ACTIVATION_FACTOR, PROXIMITY_COORD_THRESHOLD, PROXIMITY_EXIT_FACTOR, type UseProximityReturn } from './types';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { ActiveSpeakerPolicy, GalleryPolicy } from '@/modules/realtime-room';

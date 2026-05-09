@@ -12,7 +12,7 @@ import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { obtenerDimensionesObjetoRuntime } from './objetosRuntime';
 import { obtenerEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
-import { getSettingsSection, subscribeToSettings } from '@/lib/userSettings';
+import { getSettingsSection, subscribeToSettings } from '@/core/infrastructure/userSettings/userSettings';
 import {
   AvatarLodLevel, DireccionAvatar,
   TELEPORT_DISTANCE, LOD_NEAR_DISTANCE, LOD_MID_DISTANCE, CULL_DISTANCE,

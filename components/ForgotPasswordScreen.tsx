@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { requestPasswordReset } from '../lib/authRecoveryService';
+import { requestPasswordReset } from '@/core/infrastructure/auth/authRecoveryService';
 
 interface ForgotPasswordScreenProps {
   onBack: () => void;

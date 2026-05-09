@@ -23,7 +23,7 @@ import { SettingsEmpresa } from './sections/SettingsEmpresa';
 import { SettingsZona } from './sections/SettingsZona';
 import { SettingsTerrenos } from './sections/SettingsTerrenos';
 import { loadCameraSettings } from '@/modules/realtime-room';
-import { createDefaultUserSettings, deepMergeSettings, type UserSettings } from '@/lib/userSettings';
+import { createDefaultUserSettings, deepMergeSettings, type UserSettings } from '@/core/infrastructure/userSettings/userSettings';
 
 type SettingsTab = 'general' | 'calendar' | 'minimode' | 'audio' | 'video' | 'meetings' | 'notifications' | 'privacy' | 'performance' | 'space3d' | 'members' | 'guests' | 'security' | 'cargos' | 'departamentos' | 'empresa' | 'zonas' | 'terrenos';
 

@@ -1,4 +1,4 @@
-import { getSettingsSection } from '@/lib/userSettings';
+import { getSettingsSection } from '@/core/infrastructure/userSettings/userSettings';
 
 export type PosicionAudio3D = {
   x: number;

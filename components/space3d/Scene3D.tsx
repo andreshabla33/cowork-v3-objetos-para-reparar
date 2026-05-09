@@ -55,7 +55,7 @@ import { geoPlano, geoSueloRaycast, geoCajaUnitaria } from '@/lib/rendering/geom
 import { type CameraSettings } from '@/modules/realtime-room';
 import { obtenerEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
 import { type JoystickInput } from '../3d/MobileJoystick';
-import { getSettingsSection } from '@/lib/userSettings';
+import { getSettingsSection } from '@/core/infrastructure/userSettings/userSettings';
 import {
   AvatarLodLevel, DireccionAvatar, themeColors, themeSkyColors,
   MOVE_SPEED, RUN_SPEED, WORLD_SIZE, TELEPORT_DISTANCE,

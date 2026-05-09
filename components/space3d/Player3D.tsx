@@ -28,7 +28,7 @@ import { normalizarConfiguracionZonaEmpresa } from '@/src/core/domain/entities/c
 import { isMeetingZone } from '@/src/core/domain/entities/realtime/MeetingRoomAssignment';
 import { classifyZonasPropiaActiva } from '@/src/core/domain/entities/realtime/ZonaEmpresaKind';
 import { type JoystickInput } from '../3d/MobileJoystick';
-import { getSettingsSection } from '@/lib/userSettings';
+import { getSettingsSection } from '@/core/infrastructure/userSettings/userSettings';
 import {
   AvatarLodLevel, DireccionAvatar, themeColors,
   MOVE_SPEED, RUN_SPEED, WORLD_SIZE, TELEPORT_DISTANCE,

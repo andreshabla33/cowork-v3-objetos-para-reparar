@@ -4,7 +4,7 @@ import React from 'react';
 import { LiveKitRoom } from '@livekit/components-react';
 import '@livekit/components-styles';
 import { crearOpcionesSalaLiveKit } from '@/modules/realtime-room';
-import { getMeetingJoinDefaults } from '@/lib/userSettings';
+import { getMeetingJoinDefaults } from '@/core/infrastructure/userSettings/userSettings';
 import { MeetingRoomContent } from './MeetingRoomContent';
 import { useMeetingAccess } from './hooks/useMeetingAccess';
 import type { MeetingRoomProps } from './meetingRoom.types';

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 
-import { activarRecuperacionConTokenHash } from '../lib/authRecoveryService';
+import { activarRecuperacionConTokenHash } from '@/core/infrastructure/auth/authRecoveryService';
 
 interface PantallaAccesoRecuperacionContrasenaProps {
  confirmationUrl?: string | null;

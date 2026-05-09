@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useChat, useLocalParticipant, useRoomContext, useTracks } from '@livekit/components-react';
 import { type Participant, RemoteTrackPublication, RoomEvent, Track } from 'livekit-client';
 import { logger } from '@/core/infrastructure/observability/logger';
-import { sendDesktopNotification } from '@/lib/userSettings';
+import { sendDesktopNotification } from '@/core/infrastructure/userSettings/userSettings';
 import { LiveKitRoomGateway, RaiseHandUseCase, RealtimeSessionTelemetry } from '@/modules/realtime-room';
 import { GestionarChatReunionUseCase } from '@/src/core/application/usecases/GestionarChatReunionUseCase';
 import { ObtenerAccesoReunionUseCase } from '@/src/core/application/usecases/ObtenerAccesoReunionUseCase';

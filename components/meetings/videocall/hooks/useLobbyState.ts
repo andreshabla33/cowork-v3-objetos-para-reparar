@@ -14,7 +14,7 @@
  */
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { getMeetingJoinDefaults } from '@/lib/userSettings';
+import { getMeetingJoinDefaults } from '@/core/infrastructure/userSettings/userSettings';
 import { meetingAccessRepository } from '@/src/core/infrastructure/adapters/MeetingAccessSupabaseRepository';
 import { ObtenerAccesoReunionUseCase } from '@/src/core/application/usecases/ObtenerAccesoReunionUseCase';
 import { evaluarEstadoLobby } from '@/src/core/application/usecases/EvaluarEstadoLobbyUseCase';
