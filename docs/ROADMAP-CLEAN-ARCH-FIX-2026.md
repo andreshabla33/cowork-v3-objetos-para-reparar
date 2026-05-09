@@ -67,7 +67,14 @@
   - Cero cambios en ports/adapters — el repository ya cubría las 2 operaciones.
   - **Out-of-scope intencional**: las otras calls de ScheduledMeetings (insert reuniones_programadas en línea 152, update reunion_participantes en 193, reads en 38/62/70/113) no se migraron — caen bajo ITEM 11/15 (god-file 762 líneas) o requieren extender repo con métodos adicionales.
   - tsc OK, vitest 191/191.
-- **Sub-batch 3.5 cerrado**: services/chatService.ts → fusionado con ChatSupabaseRepository + eliminado.
+- **Sub-batch 4 (autorizacionesEmpresa) ⚠ RE-DIMENSIONADO** (auditoría 2026-05-08):
+  - El plan original lo marcaba M ("mover archivo, 3 calls"). Reality check:
+    - Archivo: **715 líneas, 13 funciones exportadas, 13+ supabase calls** sobre 8 tablas distintas (actividades_log, zonas_empresa, autorizaciones_empresa, miembros_espacio, grupos_chat, miembros_grupo, empresas, notificaciones).
+    - **6 consumers**: `components/3d/AdminZoneHUD.tsx`, `components/settings/sections/SettingsZona.tsx` (god-file 1523 líneas), `hooks/space3d/useNotifications.ts`, **+ 3 archivos en `src/` que violan la regla no-legacy-consumption**: `InyectorPlantillaZonaAdapter`, `RepositorioPlantillaZonaSupabaseAdapter`, `RepositorioRegistroEmpresaSupabaseAdapter`.
+  - Re-clasificación: **L-XL real**, no M. Requiere descomposición en 3 sub-sub-batches por bounded-context: zona CRUD (5 fns), queries (3 fns), workflow autorizaciones (4 fns + side effects en tablas auxiliares).
+  - **Bloqueado por**: ITEM 15 (SettingsZona god-file split debe preceder, sino Batch 4 + ITEM 15 colisionan), eliminación previa de los 3 consumers ilegales en `src/` (auditar si esos adapters usan funciones realmente, o son imports muertos).
+  - **Acción provisional**: posponer Batch 4 hasta planning dedicado. Skips a Batch 5.
+- **Sub-batch 3.5 cerrado** (`2943fc3`): services/chatService.ts → fusionado con ChatSupabaseRepository + eliminado.
   - Extendido `IChatRepository` + `ChatSupabaseRepository` con `obtenerOCrearChatDirecto(userA, userB, espacioId)`. Lógica lifteada del método `getOrCreateDirectChat` legacy: lookup por nombre `userA|userB` → fallback intersección de miembros → create group + 2 memberships.
   - Refactorizado `hooks/space3d/useBroadcast.ts:322`: el call a `ChatService.sendMessage(...)` se compone como `obtenerOCrearChatDirecto + enviarMensaje` en un `Promise.all` sobre los recipients.
   - Eliminado `services/chatService.ts` (132 líneas). Único consumer (useBroadcast) ya migrado.
