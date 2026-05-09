@@ -3,7 +3,7 @@ import {
   Settings, Calendar, Layout, Mic, Video, Users2, Bell, Lock, Zap, 
   Gamepad2, UserPlus, ShieldCheck, X 
 } from 'lucide-react';
-import { Language, getCurrentLanguage, subscribeToLanguageChange, t } from '../../lib/i18n';
+import { Language, getCurrentLanguage, subscribeToLanguageChange, t } from '@/core/infrastructure/i18n/i18n';
 import { SettingsGeneral } from './sections/SettingsGeneral';
 import { SettingsCalendar } from './sections/SettingsCalendar';
 import { SettingsMiniMode } from './sections/SettingsMiniMode';

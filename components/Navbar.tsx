@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { ThemeType, AvatarConfig } from '../types';
-import { Language, getCurrentLanguage, subscribeToLanguageChange, t } from '../lib/i18n';
+import { Language, getCurrentLanguage, subscribeToLanguageChange, t } from '@/core/infrastructure/i18n/i18n';
 import { UserAvatar } from './UserAvatar';
 
 export const AvatarPreview: React.FC<{

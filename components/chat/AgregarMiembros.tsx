@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { chatRepository } from '@/src/core/infrastructure/adapters/ChatSupabaseRepository';
-import { Language, getCurrentLanguage, subscribeToLanguageChange, t } from '../../lib/i18n';
+import { Language, getCurrentLanguage, subscribeToLanguageChange, t } from '@/core/infrastructure/i18n/i18n';
 
 interface Props {
   grupoId: string;

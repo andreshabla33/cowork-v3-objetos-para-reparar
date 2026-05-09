@@ -15,8 +15,8 @@ import { UserAvatar } from '../UserAvatar';
 import type { ThemeStyleSet } from '@/core/infrastructure/theme/theme';
 import type { ThemeType, PresenceStatus } from '@/types';
 import type { SubTabType } from '@/types/workspace';
-import { t } from '@/lib/i18n';
-import type { Language } from '@/lib/i18n';
+import { t } from '@/core/infrastructure/i18n/i18n';
+import type { Language } from '@/core/infrastructure/i18n/i18n';
 
 interface NavItem {
   id: SubTabType;

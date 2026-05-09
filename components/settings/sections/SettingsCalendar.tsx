@@ -3,7 +3,7 @@ import { SettingToggle } from '../components/SettingToggle';
 import { SettingDropdown } from '../components/SettingDropdown';
 import { SettingSection } from '../components/SettingSection';
 import { googleCalendar } from '../../../lib/googleCalendar';
-import { Language, getCurrentLanguage, subscribeToLanguageChange } from '../../../lib/i18n';
+import { Language, getCurrentLanguage, subscribeToLanguageChange } from '@/core/infrastructure/i18n/i18n';
 
 interface CalendarSettings {
   googleConnected: boolean;

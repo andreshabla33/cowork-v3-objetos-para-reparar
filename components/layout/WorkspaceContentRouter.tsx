@@ -11,8 +11,8 @@ import React, { lazy, Suspense } from 'react';
 import type { ThemeStyleSet } from '@/core/infrastructure/theme/theme';
 import type { ThemeType } from '@/types';
 import type { SubTabType } from '@/types/workspace';
-import { t } from '@/lib/i18n';
-import type { Language } from '@/lib/i18n';
+import { t } from '@/core/infrastructure/i18n/i18n';
+import type { Language } from '@/core/infrastructure/i18n/i18n';
 
 const TaskBoard = lazy(() => import('../TaskBoard').then(module => ({ default: module.TaskBoard })));
 const MiembrosView = lazy(() => import('../MiembrosView').then(module => ({ default: module.MiembrosView })));

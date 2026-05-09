@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { SettingToggle } from '../components/SettingToggle';
 import { SettingSection } from '../components/SettingSection';
-import { t, Language, getCurrentLanguage, subscribeToLanguageChange } from '../../../lib/i18n';
+import { t, Language, getCurrentLanguage, subscribeToLanguageChange } from '@/core/infrastructure/i18n/i18n';
 
 interface NotificationSettings {
   desktopNotifications: boolean;

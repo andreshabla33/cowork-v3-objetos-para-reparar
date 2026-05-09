@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { SettingSection } from '../components/SettingSection';
-import { Language, getCurrentLanguage, subscribeToLanguageChange } from '../../../lib/i18n';
+import { Language, getCurrentLanguage, subscribeToLanguageChange } from '@/core/infrastructure/i18n/i18n';
 import { ModalInvitarUsuario } from '../../invitaciones/ModalInvitarUsuario';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 

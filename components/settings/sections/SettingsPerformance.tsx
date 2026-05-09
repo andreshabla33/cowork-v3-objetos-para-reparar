@@ -3,7 +3,7 @@ import { SettingToggle } from '../components/SettingToggle';
 import { SettingDropdown } from '../components/SettingDropdown';
 import { SettingSlider } from '../components/SettingSlider';
 import { SettingSection } from '../components/SettingSection';
-import { t, Language, getCurrentLanguage, subscribeToLanguageChange } from '../../../lib/i18n';
+import { t, Language, getCurrentLanguage, subscribeToLanguageChange } from '@/core/infrastructure/i18n/i18n';
 
 interface PerformanceSettings {
   graphicsQuality: string;

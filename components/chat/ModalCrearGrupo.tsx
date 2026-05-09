@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Language, getCurrentLanguage, subscribeToLanguageChange, t } from '../../lib/i18n';
+import { Language, getCurrentLanguage, subscribeToLanguageChange, t } from '@/core/infrastructure/i18n/i18n';
 
 interface Props {
   onClose: () => void;

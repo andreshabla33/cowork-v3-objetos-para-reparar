@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { SettingToggle } from '../components/SettingToggle';
 import { SettingDropdown } from '../components/SettingDropdown';
 import { SettingSection } from '../components/SettingSection';
-import { t, Language, getCurrentLanguage, subscribeToLanguageChange } from '../../../lib/i18n';
+import { t, Language, getCurrentLanguage, subscribeToLanguageChange } from '@/core/infrastructure/i18n/i18n';
 import { DeviceManager } from '@/modules/realtime-room';
 import type { DeviceInfo } from '@/modules/realtime-room';
 

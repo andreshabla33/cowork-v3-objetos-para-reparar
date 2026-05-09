@@ -25,7 +25,7 @@ import { ProductTour } from './onboarding/ProductTour';
 import { WorkspaceSidebar, MobileNavOverlay, WorkspaceContentRouter } from './layout';
 import { getSettingsSection } from '../lib/userSettings';
 import { cargarMetricasEspacio } from '../lib/metricasAnalisis';
-import { Language, getCurrentLanguage, subscribeToLanguageChange } from '../lib/i18n';
+import { Language, getCurrentLanguage, subscribeToLanguageChange } from '@/core/infrastructure/i18n/i18n';
 import { useIdleDetection } from '../hooks/useIdleDetection';
 import { useLogoutUser } from '../hooks/app/useLogoutUser';
 import { useWorkspaceData } from '../hooks/workspace/useWorkspaceData';

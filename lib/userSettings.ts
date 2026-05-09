@@ -2,7 +2,7 @@
 // Los settings se guardan en localStorage desde SettingsModal.
 // Esta utilidad permite a cualquier componente leer los settings sin importar SettingsModal.
 
-import type { Language } from './i18n';
+import type { Language } from '@/core/infrastructure/i18n/i18n';
 
 const STORAGE_KEY = 'user_settings';
 
