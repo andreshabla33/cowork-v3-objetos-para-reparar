@@ -5,9 +5,15 @@
 - 21 findings: 5 P0 / 8 P1 / 5 P2 / 3 P3.
 - Migración legacy → src/ al ~26% (32.497 LoC en src/ vs 94.398 LoC en raíces legacy components/, hooks/, lib/, store/, services/).
 
+## Update 2026-05-08 — ITEM 1 cerrado
+- Vitest 4.1.2 corre limpio en Windows MINGW64: **191/191 tests pasan en 4.94s**.
+- El bloqueo aplicaba a WSL/Linux re-usando node_modules del host Windows. En CI Linux (Vercel) un fresh `npm install` fetcha los bindings correctos automáticamente.
+- Workaround documentado para WSL local: `npm install @rollup/rollup-linux-x64-gnu --no-save` (no toca lockfile, no rompe Windows).
+- ITEM 1 deja de ser bloqueador. Refactors siguientes pueden validarse con `npm run test:unit`.
+
 ## Skills aplicadas
 - `clean-architecture-refactor` — criterios duros de performance (30+ FPS), 3 reglas de migración (no legacy / no duplicaciones / todo conectado), capas con paths concretos (Domain/Application/Infrastructure/Modules), patrones obligatorios (Repository, DI, Zustand selectores, R3F separation, LiveKit encapsulado), tamaños 500/200/50/100.
-- `official-docs-alignment` — validación contra docs oficiales con versiones reales: React 19.2.3, TypeScript 5.8, Vite 6.2, Three.js 0.182, R3F 9.5, Drei 10.7, Rapier 2.2, LiveKit Client 2.17, LiveKit Components 2.9, Supabase JS 2.47, Zustand 5.0.9, MediaPipe Tasks Vision 0.10, Sentry 10.47, Tailwind 3.4.
+- `official-docs-alignment` — validación contra docs oficiales con versiones reales: React 19.2.3, TypeScript 5.8, Vite 6.2, Three.js 0.182, R3F 9.5, Drei 10.7, Rapier 2.2, LiveKit Client 2.18.9, LiveKit Components 2.9, Supabase JS 2.47, Zustand 5.0.9, MediaPipe Tasks Vision 0.10, Sentry 10.47, Tailwind 3.4.
 
 ## Fases ordenadas
 
@@ -65,6 +71,8 @@
 - Esfuerzo: L
 - Acción: extraer hook UI delgado (≤100 líneas) en `src/modules/realtime-room/presentation/useRealtimeRoom.ts`. La orquestación pesada ya vive en `SpaceRealtimeCoordinator`, `RealtimeEventBus`, `RealtimeDataPublisher`.
 - Riesgo: alto (touch al pipeline tiempo real). Requiere vitest verde (ITEM 1) y verificación browser.
+- **Trabajo Clean Arch iniciado:** `f763a23` introduce `src/modules/realtime-room/domain/PresencePositionPolicy.ts` (helper puro) + `tests/unit/realtime-room/presencePositionPolicy.test.ts` (8 tests). Primer pedazo real de la capa `domain` para realtime-room.
+- **Refuerzo policy:** `c1d486a` añade `tests/unit/realtime-room/avatarEcsSentinelGuard.test.ts` (9 tests) — segundo refuerzo de la misma policy aplicado al pipeline ECS.
 
 #### ITEM 8 — P0-04 store/ → bounded contexts en src/
 - Esfuerzo: L
@@ -208,3 +216,24 @@
 - **Sin browser testing**: ITEMs que tocan UI (especialmente ITEM 3 HandController, ITEM 7 useLiveKit, ITEMs 11/15 god-components R3F) requieren verificación manual de Andrés tras merge.
 - **Vitest baseline**: dependencia transversal de ITEM 1. Cualquier refactor sin vitest verde es ciego.
 - **Cross-platform lockfile**: si Andrés desarrolla en Windows y CI/Vercel en Linux, el lockfile no debería regenerarse desde solo una plataforma.
+
+## Bugfixes tácticos 2026-05-07 / 2026-05-08 (deuda extra)
+
+| SHA | Subject | Archivo legacy tocado | ITEM relacionado |
+|---|---|---|---|
+| `e5d9d83` | fix limpiarLivekit identity | `hooks/space3d/useLiveKit.ts` + `src/modules/realtime-room/presentation/*` | 7 |
+| `c4ae8c9` | replay subscribed tracks | `hooks/space3d/useLiveKit.ts` + `src/modules/realtime-room/*` | 7 |
+| `8f3bfe4` | bump livekit-client 2.18.9 | `package.json` + `package-lock.json` | n/a (versions) |
+| `bef39f8` | movement packets siempre | `hooks/space3d/useBroadcast.ts`, `useSpace3D.ts` | 10 + 7 |
+| `4e52156` | auth (0,0) sentinel | `store/slices/authSlice.ts` | 8 |
+| `f763a23` | presence sentinel + force-sync | `hooks/workspace/usePresence*.ts`, `hooks/space3d/useChunkSystem.ts` + `src/modules/realtime-room/domain/*` (NEW) | 7/10 |
+| `4401657` | getPublishedVideoTrack identity | `src/modules/realtime-room/presentation/useLiveKitLocalPublishing.ts` | 7 |
+| `c1d486a` | unify remote-avatar position | `lib/ecs/AvatarECS.ts` | 12 |
+| `6e804d3` | socket recovery heartbeats | `lib/supabase.ts` | 12 |
+| `b685d1d` | preservar animStates | `lib/ecs/AvatarSystems.ts` | 12 |
+| `1cc2f2c` | stale-position on peer join | `hooks/space3d/useProximity.ts` + `src/modules/realtime-room/presentation/useLiveKitRoomLifecycle.ts` | 7 + 10 |
+| `04e667d` | delay 1s welcome-broadcast | `src/modules/realtime-room/presentation/useLiveKitRoomLifecycle.ts` | 7 |
+
+(Excluidos `379f97b` y `739031d` por ser revert chain sin impacto neto.)
+
+> **Lectura del impacto en migración:** ninguno de estos commits cierra un ITEM del roadmap; son parches tácticos sobre legacy mientras se prepara la migración a `src/`. Aumentan la superficie a migrar en `hooks/space3d/*`, `lib/ecs/*`, `store/slices/authSlice.ts` y `hooks/workspace/*`. Re-evaluar el effort estimado de los ITEMs 7, 8, 10 y 12 a la luz de esta deuda extra.
