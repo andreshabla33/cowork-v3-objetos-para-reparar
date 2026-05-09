@@ -12,7 +12,7 @@
  * - El hook/adapter se encarga de escuchar RoomEvent.ConnectionQualityChanged
  */
 
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 export type ConnectionQualityLevel = 'excellent' | 'good' | 'poor' | 'lost' | 'unknown';
 

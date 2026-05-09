@@ -11,7 +11,7 @@
  */
 
 import { Room } from 'livekit-client';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { DeviceInfo } from '../../domain/types';
 
 const log = logger.child('device-manager');

@@ -29,7 +29,7 @@ import type {
   CargoRolData,
 } from '@/core/domain/ports/IMeetingAccessRepository';
 import { supabase } from '@/lib/supabase';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { CONFIG_PUBLICA_APP } from '@/core/infrastructure/env/env';
 
 const log = logger.child('meeting-access-repository');

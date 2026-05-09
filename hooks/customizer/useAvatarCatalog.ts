@@ -12,7 +12,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { AvatarCatalogSupabaseRepository } from '@/src/core/infrastructure/adapters/AvatarCatalogSupabaseRepository';
 import { CargarCatalogosUseCase } from '@/src/core/application/usecases/CargarCatalogosUseCase';
 import { CambiarAvatarUseCase } from '@/src/core/application/usecases/CambiarAvatarUseCase';

@@ -17,7 +17,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { hashToken } from '@/core/infrastructure/security/hashToken';
 import { seleccionarProcesadorInvitacion } from '../../store/selectores';
 import type { InvitationState, InvitacionInfo } from '../../src/core/domain/entities/invitation';
-import { logger } from '../../lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 // Clean Architecture: Use Cases (Application Layer — no infrastructure imports)
 import { VerificarInvitacionUseCase } from '../../src/core/application/usecases/VerificarInvitacionUseCase';

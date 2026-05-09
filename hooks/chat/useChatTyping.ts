@@ -9,7 +9,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useUserStore } from '@/modules/user/state/useUserStore';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type { ChatRealtimeSubscription } from '@/src/core/domain/ports/IChatRealtimeService';
 
 import { chatRealtimeService } from '@/src/core/infrastructure/adapters/ChatRealtimeSupabaseService';

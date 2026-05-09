@@ -17,7 +17,7 @@ import type { Session } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { authRepository } from '@/src/core/infrastructure/adapters/AuthSupabaseRepository';
 import { ValidarSesionAlBootstrapUseCase } from '@/src/core/application/usecases/ValidarSesionAlBootstrapUseCase';
 

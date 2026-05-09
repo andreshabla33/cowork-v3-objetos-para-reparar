@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import type { User } from '@/types';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('SpatialAudio');
 

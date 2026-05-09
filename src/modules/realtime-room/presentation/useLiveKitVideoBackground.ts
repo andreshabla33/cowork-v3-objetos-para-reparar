@@ -42,7 +42,7 @@ import { GestionarBackgroundVideoUseCase } from '@/src/core/application/usecases
 import { getLiveKitBackgroundAdapter } from '@/src/core/infrastructure/adapters/LiveKitOfficialBackgroundAdapter';
 import { getBackgroundCapability } from '@/src/core/infrastructure/browser/BackgroundCapabilityDetector';
 import type { EffectType } from '@/src/core/domain/ports/IVideoTrackProcessor';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('useLiveKitVideoBackground');
 

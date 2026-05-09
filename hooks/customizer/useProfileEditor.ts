@@ -10,7 +10,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { ProfileSupabaseRepository } from '@/src/core/infrastructure/adapters/ProfileSupabaseRepository';
 import { GestionarPerfilUseCase } from '@/src/core/application/usecases/GestionarPerfilUseCase';
 

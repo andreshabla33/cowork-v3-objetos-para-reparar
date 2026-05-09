@@ -12,7 +12,7 @@ import {
   TERRENO_FLAT_DEFAULT,
   type TerrenoEntity,
 } from '../../domain/entities/espacio3d/TerrenoEntity';
-import { logger } from '../../../../lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('cargar-terreno');
 

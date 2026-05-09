@@ -11,7 +11,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type { CatalogoObjeto3D } from '@/src/core/domain/ports/ISpaceRepository';
 
 // Adapter (singleton instance)

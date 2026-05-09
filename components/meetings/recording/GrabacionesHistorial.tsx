@@ -13,7 +13,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { useGrabacionesHistorial } from '../../../hooks/meetings/useGrabacionesHistorial';
 import type {
   GrabacionConDatos,

@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { CONFIG_PUBLICA_APP } from '@/core/infrastructure/env/env';
 import { runStartupSecurityChecks } from '@/core/infrastructure/security/validateEnvKeys';
-import { logger } from './logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 export const APP_URL = CONFIG_PUBLICA_APP.urlApp;
 export const SUPABASE_URL = CONFIG_PUBLICA_APP.urlSupabase;

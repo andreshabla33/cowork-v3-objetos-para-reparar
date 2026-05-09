@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type { CatalogoObjeto3D } from '@/types/objetos3d';
 import { useDI } from '@/src/core/infrastructure/di/DIProvider';
 import type {

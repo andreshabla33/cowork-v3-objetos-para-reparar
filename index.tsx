@@ -42,7 +42,7 @@ import App from './App';
 import { AppErrorBoundary } from './components/ui/AppErrorBoundary';
 import { DIProvider } from './src/core/infrastructure/di/DIProvider';
 import { captureError } from '@/core/infrastructure/observability/sentryInit';
-import { registerSentryForwarder } from './lib/logger';
+import { registerSentryForwarder } from './src/core/infrastructure/observability/logger';
 
 // ─── Conectar logger.error() → Sentry.captureException() ──────────────────
 // El forwarder conecta el sistema de logging estructurado con Sentry

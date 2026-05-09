@@ -3,7 +3,7 @@
  * Extracted from useMediaStream logic to provide clean separation of concerns
  */
 
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { DeviceManager } from '../infrastructure/browser/DeviceManager';
 import { PermissionService } from '../infrastructure/browser/PermissionService';
 import {

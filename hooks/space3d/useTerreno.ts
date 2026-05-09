@@ -17,7 +17,7 @@ import {
   type TerrenoEntity,
 } from '@/src/core/domain/entities/espacio3d/TerrenoEntity';
 import { useDI } from '@/src/core/infrastructure/di/DIProvider';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('useTerreno');
 

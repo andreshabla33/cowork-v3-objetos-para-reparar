@@ -34,7 +34,7 @@
  */
 
 import { LocalVideoTrack } from 'livekit-client';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type { IVideoTrackPublishResolver, VideoPublishSource } from '../../domain/ports/IVideoTrackPublishResolver';
 
 const log = logger.child('LocalVideoTrackFactory');

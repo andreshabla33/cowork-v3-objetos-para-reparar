@@ -28,7 +28,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import type { Room, RemoteParticipant, Track, TrackPublication } from 'livekit-client';
 import type { User, Workspace } from '@/types';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { avatarStore } from '@/lib/ecs/AvatarECS';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { crearSalaLivekitPorEspacio, obtenerTokenLivekitEspacio } from '@/lib/livekitService';

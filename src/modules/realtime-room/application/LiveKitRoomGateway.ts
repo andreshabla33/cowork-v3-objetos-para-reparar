@@ -33,7 +33,7 @@ import {
 import { RealtimeEventBus } from './RealtimeEventBus';
 import { RealtimeDataPublisher } from './RealtimeDataPublisher';
 import { RealtimeEventParser } from './RealtimeEventParser';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('livekit-room-gateway');
 

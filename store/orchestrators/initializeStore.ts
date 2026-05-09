@@ -21,7 +21,7 @@
 import type { StateCreator } from 'zustand';
 import type { AvatarConfig } from '../../types';
 import type { StoreState } from '../state';
-import { logger } from '../../lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 // Atomic orchestrators
 import { ejecutarAuthBootstrap } from './bootstrap/authBootstrap';

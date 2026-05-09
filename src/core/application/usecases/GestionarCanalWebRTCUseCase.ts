@@ -7,7 +7,7 @@
  * Ref: Use Case pattern — single responsibility, testable.
  */
 
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type { ISpaceRepository, MensajeSeñalizacionWebRTC } from '../../domain/ports/ISpaceRepository';
 
 const log = logger.child('gestionar-canal-webrtc');

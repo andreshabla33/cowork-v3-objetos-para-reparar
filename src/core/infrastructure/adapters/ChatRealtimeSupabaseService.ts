@@ -38,7 +38,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import type {
   IChatRealtimeService,

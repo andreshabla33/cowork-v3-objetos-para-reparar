@@ -1,6 +1,6 @@
 import { detectBestRegion, getCachedRegion } from './regionDetector';
 import { CONFIG_PUBLICA_APP } from '@/core/infrastructure/env/env';
-import { logger } from './logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('livekit-service');
 const SUPABASE_URL = CONFIG_PUBLICA_APP.urlSupabase;

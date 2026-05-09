@@ -36,7 +36,7 @@
 import type * as THREE from 'three';
 import { GLTFLoader } from 'three-stdlib';
 import { supabase } from '@/lib/supabase';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('universal-anims-preloader');
 

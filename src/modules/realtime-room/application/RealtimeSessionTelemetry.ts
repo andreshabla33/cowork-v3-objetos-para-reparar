@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 export type RealtimeTelemetryCategory = 'remote_media' | 'subscription_policy' | 'meeting_access' | 'meeting_realtime' | 'meeting_quality' | 'space_realtime';
 export type RealtimeTelemetrySeverity = 'info' | 'warn' | 'error';

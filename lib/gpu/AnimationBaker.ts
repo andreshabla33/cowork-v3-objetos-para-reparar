@@ -20,7 +20,7 @@
  */
 
 import * as THREE from 'three';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { remapAnimationTracks } from '@/components/avatar3d/rigUtils';
 
 const log = logger.child('AnimationBaker');

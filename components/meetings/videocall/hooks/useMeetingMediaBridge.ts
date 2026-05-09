@@ -5,7 +5,7 @@ import { createProcessedAudioTrack, type ProcessedAudioTrackHandle } from '@/lib
 import { SpaceMediaCoordinator, type SpaceMediaCoordinatorState } from '@/modules/realtime-room';
 import { getLocalVideoTrackFactory } from '@/src/core/infrastructure/adapters/LocalVideoTrackFactory';
 import { PublicarLocalTrackUseCase } from '@/src/core/application/usecases/PublicarLocalTrackUseCase';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const publicarLocalTrackUseCase = new PublicarLocalTrackUseCase(getLocalVideoTrackFactory());
 

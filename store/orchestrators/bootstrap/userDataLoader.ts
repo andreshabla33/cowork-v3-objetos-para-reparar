@@ -19,7 +19,7 @@
  */
 
 import { supabase } from '../../../lib/supabase';
-import { logger } from '../../../lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('user-data-loader');
 

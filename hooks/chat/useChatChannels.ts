@@ -10,7 +10,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { getSettingsSection } from '@/lib/userSettings';
 import type { ChatGroup } from '@/types';
 import type {

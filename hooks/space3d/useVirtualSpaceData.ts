@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useRef, useCallback } from 'react';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type { MensajeSeñalizacionWebRTC } from '@/src/core/domain/ports/ISpaceRepository';
 
 // Adapter (singleton instance)

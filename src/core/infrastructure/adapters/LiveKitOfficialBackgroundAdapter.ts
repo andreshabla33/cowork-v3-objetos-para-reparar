@@ -52,7 +52,7 @@ import type {
   SwitchBackgroundProcessorOptions,
 } from '@livekit/track-processors';
 import type { LocalVideoTrack } from 'livekit-client';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type {
   IVideoTrackProcessor,
   VideoTrackProcessorConfig,

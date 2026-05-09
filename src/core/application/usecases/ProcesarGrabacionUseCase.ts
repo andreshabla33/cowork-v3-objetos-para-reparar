@@ -7,7 +7,7 @@
  * Ref: Use Case pattern — single responsibility, reusable across components.
  */
 
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type {
   IRecordingRepository,
   TranscripcionRecord,

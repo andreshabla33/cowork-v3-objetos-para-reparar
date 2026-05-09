@@ -30,7 +30,7 @@ import type {
   ActualizarConfiguracionPerimetroUseCase,
   SuscribirConfiguracionPerimetroUseCase,
 } from '@/src/core/application/usecases/ConfiguracionPerimetroUseCases';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('PerimetroPolicyStore');
 

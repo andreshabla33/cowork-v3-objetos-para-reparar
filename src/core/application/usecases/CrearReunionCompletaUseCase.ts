@@ -8,7 +8,7 @@
  * in a transaction-like flow. Encapsulates domain rules for meeting creation.
  */
 
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type {
   IMeetingRepository,
   ReunionProgramadaData,

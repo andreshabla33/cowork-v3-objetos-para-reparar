@@ -32,7 +32,7 @@
 import { useEffect, useState } from 'react';
 import type { LocalVideoTrack } from 'livekit-client';
 import { getLocalVideoTrackFactory } from '@/src/core/infrastructure/adapters/LocalVideoTrackFactory';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('useLocalCameraTrack');
 

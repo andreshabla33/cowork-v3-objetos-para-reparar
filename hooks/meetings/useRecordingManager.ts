@@ -11,7 +11,7 @@
  */
 
 import { useCallback } from 'react';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type {
   IRecordingRepository,
   CrearGrabacionData,

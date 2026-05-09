@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { SUPABASE_URL } from '@/lib/supabase';
 import { otorgarXP, XP_POR_ACCION } from '@/lib/gamificacion';
 import { RealtimeSessionTelemetry } from '@/modules/realtime-room';

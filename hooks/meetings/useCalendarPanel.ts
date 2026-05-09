@@ -13,7 +13,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { getSettingsSection } from '@/lib/userSettings';
 import { googleCalendar, GoogleCalendarEvent } from '@/lib/googleCalendar';
 import { APP_URL } from '@/lib/supabase';

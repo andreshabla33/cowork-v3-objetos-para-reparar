@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useEffect, useRef } from 'react';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('useLiveKit-zombie-cleanup');
 const ZOMBIE_GRACE_MS = 3000;

@@ -30,7 +30,7 @@ import {
   SuscribirConfiguracionPerimetroUseCase,
 } from '@/src/core/application/usecases/ConfiguracionPerimetroUseCases';
 import { useDI } from '@/src/core/infrastructure/di/DIProvider';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { PerimetroPolicyStore } from './PerimetroPolicyStore';
 
 const log = logger.child('useConfiguracionPerimetro');

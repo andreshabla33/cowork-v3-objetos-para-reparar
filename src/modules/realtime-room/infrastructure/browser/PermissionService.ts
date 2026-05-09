@@ -10,7 +10,7 @@
  * @see https://docs.livekit.io/client-sdk-js/functions/MediaDeviceFailure.getFailure.html
  */
 
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { PermissionState, PreflightError } from '../../domain/types';
 
 /**

@@ -31,7 +31,7 @@
  */
 
 import type { IAuthRepository } from '../../domain/ports/IAuthRepository';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('validar-sesion-bootstrap');
 

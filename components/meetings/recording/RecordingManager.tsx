@@ -11,7 +11,7 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type { RecordingDiagnosticsSnapshot } from '@/modules/realtime-room';
 import { useRecordingManager } from '@/hooks/meetings/useRecordingManager';
 import { useTranscription } from './useTranscription';

@@ -24,7 +24,7 @@ import { SpatialAudio } from './3d/SpatialAudio';
 import { AdaptivePerformanceMonitor } from './3d/AdaptivePerformanceMonitor';
 import { isAdaptivePerformanceEnabled } from '@/lib/ecs/avatarRenderPolicy';
 import { type GpuInfo } from '@/lib/gpuCapabilities';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { MobileJoystick, type JoystickInput } from './3d/MobileJoystick';
 import { EmoteWheel } from './3d/EmoteWheel';
 import { DayNightCycle } from './3d/DayNightCycle';

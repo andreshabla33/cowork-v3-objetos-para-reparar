@@ -7,7 +7,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type { IProfileRepository } from '../../domain/ports/IProfileRepository';
 
 const log = logger.child('profile-repo');

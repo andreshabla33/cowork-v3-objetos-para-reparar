@@ -50,7 +50,7 @@
 
 import { useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import {
   evaluarFrameRenderer,
   formatearMetricasParaLog,

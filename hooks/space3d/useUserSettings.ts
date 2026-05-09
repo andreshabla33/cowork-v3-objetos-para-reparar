@@ -10,7 +10,7 @@ import { detectGpuCapabilities, adaptiveConfigFromTier, type GpuInfo } from '@/l
 import { loadCameraSettings, saveCameraSettings, loadAudioSettings, saveAudioSettings, type CameraSettings, type AudioSettings } from '@/modules/realtime-room';
 import { MOVE_SPEED, RUN_SPEED, PROXIMITY_RADIUS, type UseUserSettingsReturn, type UseUserSettingsParams } from './types';
 import type { Room } from 'livekit-client';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('useUserSettings');
 

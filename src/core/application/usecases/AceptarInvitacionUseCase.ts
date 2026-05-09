@@ -7,7 +7,7 @@
 
 import type { IInvitacionRepository, AceptarInvitacionPayload } from '../../domain/ports/IInvitacionRepository';
 import type { InvitacionInfo } from '../../domain/entities/invitation';
-import { logger } from '../../../../lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('aceptar-invitacion');
 

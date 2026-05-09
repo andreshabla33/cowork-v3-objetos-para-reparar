@@ -28,7 +28,7 @@
  *   - https://github.com/mdn/dom-examples/tree/main/abort-api
  */
 
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import {
   type AssetLoadPolicy,
   isRetryableStatus,

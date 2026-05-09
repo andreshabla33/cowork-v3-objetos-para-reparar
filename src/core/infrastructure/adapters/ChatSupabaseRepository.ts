@@ -12,7 +12,7 @@
 
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type { ChatGroup } from '@/types';
 import type {
   IChatRepository,

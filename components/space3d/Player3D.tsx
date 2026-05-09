@@ -4,7 +4,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { OrthographicCamera, PerspectiveCamera, Grid, Text, Html, PerformanceMonitor, useGLTF } from '@react-three/drei';
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type { AccionXP } from '@/lib/gamificacion';
 import { getApplicationServices } from '@/src/core/application/ApplicationServicesContainer';
 import { User, PresenceStatus, ZonaEmpresa } from '@/types';

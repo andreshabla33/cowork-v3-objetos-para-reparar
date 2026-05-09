@@ -33,7 +33,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PerformanceMonitor, type PerformanceMonitorApi } from '@react-three/drei';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('adaptive-perf');
 

@@ -18,7 +18,7 @@ import {
   SharedMediaSettingsSheet,
 } from '@/components/media/SharedMediaDeviceControls';
 import { defaultAudioSettings, defaultCameraSettings, canShareScreenWithAudio, type CameraSettings, type AudioSettings, type PermissionState, type RecordingDiagnostics } from '@/modules/realtime-room';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('meeting-control-bar');
 const browserSupportsScreenShareAudio = canShareScreenWithAudio();

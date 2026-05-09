@@ -11,7 +11,7 @@
  */
 
 import type { RemoteParticipant } from 'livekit-client';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { type DataPacketContract, parseDataPacketContract } from '../domain/types';
 import type { RealtimeEventBus } from './RealtimeEventBus';
 

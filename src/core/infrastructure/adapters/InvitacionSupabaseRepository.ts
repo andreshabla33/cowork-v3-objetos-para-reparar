@@ -8,7 +8,7 @@
  */
 
 import { supabase } from '../../../../lib/supabase';
-import { logger } from '../../../../lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { pickOneRelation } from '../../domain/utils/supabaseRelations';
 import type { IInvitacionRepository, AceptarInvitacionPayload } from '../../domain/ports/IInvitacionRepository';
 import type {

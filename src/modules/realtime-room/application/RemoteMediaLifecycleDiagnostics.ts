@@ -1,4 +1,4 @@
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 export type RemoteMediaLifecycleEvent =
   | 'track_subscribed'

@@ -9,7 +9,7 @@
  */
 
 import { Room, RoomConnectOptions, RoomEvent, Track, TrackPublication, RemoteParticipant, LocalTrack, LocalTrackPublication, LocalVideoTrack } from 'livekit-client';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { PublicarLocalTrackUseCase } from '@/src/core/application/usecases/PublicarLocalTrackUseCase';
 import { getLocalVideoTrackFactory } from '@/src/core/infrastructure/adapters/LocalVideoTrackFactory';
 import {

@@ -1,7 +1,7 @@
 import type { User } from '../types';
 import { Role } from '../types';
 import { obtenerChunk, obtenerChunksVecinos } from './chunkSystem';
-import { logger } from './logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('interest-manager');
 

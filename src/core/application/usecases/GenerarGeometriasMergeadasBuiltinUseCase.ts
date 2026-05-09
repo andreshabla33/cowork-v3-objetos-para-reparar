@@ -16,7 +16,7 @@
  * Ref: Three.js r182 — BufferGeometryUtils.mergeGeometries
  */
 
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type {
   IBuiltinWallGeometryService,
   MaterialCategory,

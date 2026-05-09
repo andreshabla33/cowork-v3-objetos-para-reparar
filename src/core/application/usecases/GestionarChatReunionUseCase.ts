@@ -3,7 +3,7 @@
  * @description Use case for managing meeting chat lifecycle.
  * Handles group init, message history, message persistence, and realtime subscriptions.
  */
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type {
   IChatRepository,
   MensajeChatRecord,

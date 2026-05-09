@@ -32,7 +32,7 @@ import {
   type MoveToMeetingRoomResult,
 } from '@/src/core/application/usecases/MoveToMeetingRoomUseCase';
 import { LiveKitMoveParticipantSupabaseAdapter } from '@/src/core/infrastructure/adapters/LiveKitMoveParticipantSupabaseAdapter';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('useMeetingRoomTransition');
 

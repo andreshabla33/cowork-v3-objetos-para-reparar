@@ -11,7 +11,7 @@
  * Ref: Clean Architecture — Dependency Inversion Principle.
  */
 
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type { IChatRepository, NombreUsuario } from '../../domain/ports/IChatRepository';
 
 const log = logger.child('ProcesarNotificacionChat');

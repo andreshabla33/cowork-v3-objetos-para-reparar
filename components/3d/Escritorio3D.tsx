@@ -9,7 +9,7 @@ import React, { useRef, useState, useMemo, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';

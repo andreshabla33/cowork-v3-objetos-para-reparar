@@ -5,7 +5,7 @@
  * through repository port.
  */
 
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type { IMeetingRepository } from '../../domain/ports/IMeetingRepository';
 
 const log = logger.child('eliminar-reunion');

@@ -16,7 +16,7 @@
  */
 
 import type { Room } from 'livekit-client';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import {
   type DataPacketContract,
   type PublishableDataPacketContract,

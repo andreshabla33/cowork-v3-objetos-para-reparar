@@ -33,7 +33,7 @@ import type { LocalVideoTrack } from 'livekit-client';
 import type { LiveKitOfficialBackgroundAdapter } from '../../infrastructure/adapters/LiveKitOfficialBackgroundAdapter';
 import type { VideoTrackProcessorConfig } from '../../domain/ports/IVideoTrackProcessor';
 import { getBackgroundCapability } from '../../infrastructure/browser/BackgroundCapabilityDetector';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('GestionarBackgroundVideoUseCase');
 

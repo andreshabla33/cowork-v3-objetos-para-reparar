@@ -9,7 +9,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type { UseRecordingReturn } from './types';
 
 const log = logger.child('useEstadoGrabacion');

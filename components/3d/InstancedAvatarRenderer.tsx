@@ -31,7 +31,7 @@ import React, { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { avatarStore } from '@/lib/ecs/AvatarECS';
 import {
   createInstanceAnimationAttributes,

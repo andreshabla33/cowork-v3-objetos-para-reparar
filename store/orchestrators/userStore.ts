@@ -3,7 +3,7 @@ import type { StoreState } from '../state';
 import type { AvatarConfig, PresenceStatus } from '../../types';
 import { avatarCatalogRepository } from '@/src/core/infrastructure/adapters/AvatarCatalogSupabaseRepository';
 import { profileRepository } from '@/src/core/infrastructure/adapters/ProfileSupabaseRepository';
-import { logger } from '../../lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 type StoreSet = Parameters<StateCreator<StoreState>>[0];
 type StoreGet = Parameters<StateCreator<StoreState>>[1];

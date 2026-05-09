@@ -26,7 +26,7 @@ import type { CargoLaboral } from '@/components/meetings/recording/types/analysi
 import { ConsentimientoPendiente } from '@/components/meetings/recording/ConsentimientoPendiente';
 import { AvatarCustomizer3D } from '@/components/AvatarCustomizer3D';
 import type { CatalogoObjeto3D } from '@/types/objetos3d';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('VirtualSpace3DModals');
 

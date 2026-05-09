@@ -38,7 +38,7 @@ import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import type { SceneOptimizationServices } from '@/hooks/space3d/useSceneOptimization';
 import type { MultiBatchInstanceRef } from '@/src/core/domain/ports/IMultiBatchMeshService';
 import { obtenerDimensionesObjetoRuntime } from '../space3d/objetosRuntime';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('StaticObjectBatcher');
 

@@ -16,7 +16,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type { IConfiguracionPerimetroRepository } from '@/src/core/domain/ports/IConfiguracionPerimetroRepository';
 import type { PerimeterPolicy } from '@/src/core/domain/entities/espacio3d/PerimeterPolicy';
 

@@ -24,7 +24,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { LocalTrack, LocalVideoTrack, type Room } from 'livekit-client';
 import type { User } from '@/types';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import {
   type SpaceRealtimeCoordinator,
   type SpaceRealtimeCoordinatorState,

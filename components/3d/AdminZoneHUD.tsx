@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { guardarZonaEmpresa, eliminarZonaEmpresa } from '@/lib/autorizacionesEmpresa';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { FloorType, FLOOR_TYPE_LABELS, FLOOR_TYPE_CATEGORIES, normalizarTipoSuelo } from '../../src/core/domain/entities';
 import { normalizarConfiguracionZonaEmpresa, normalizarTipoSubsueloZona, type TipoSubsueloZona } from '../../src/core/domain/entities/cerramientosZona';
 import { TEXTURE_REGISTRY } from '../../lib/rendering/textureRegistry';

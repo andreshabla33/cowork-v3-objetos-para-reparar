@@ -16,7 +16,7 @@ import { isMeetingZone } from '@/src/core/domain/entities/realtime/MeetingRoomAs
 import { classifyZonasEmpresa } from '@/src/core/domain/entities/realtime/ZonaEmpresaKind';
 import { SpatialHashGrid } from '@/src/core/domain/services/SpatialHashGrid';
 import { avatarStore } from '@/lib/ecs/AvatarECS';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('useProximity');
 

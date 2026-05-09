@@ -25,7 +25,7 @@ import { GestionarMultiBatchMeshUseCase } from '@/src/core/application/usecases/
 import { GestionarTextureAtlasUseCase } from '@/src/core/application/usecases/GestionarTextureAtlasUseCase';
 import { GestionarGPUSkinnedInstanceUseCase } from '@/src/core/application/usecases/GestionarGPUSkinnedInstanceUseCase';
 import { GestionarPropiedadesMaterialBatchUseCase } from '@/src/core/application/usecases/GestionarPropiedadesMaterialBatchUseCase';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('scene-optimization');
 

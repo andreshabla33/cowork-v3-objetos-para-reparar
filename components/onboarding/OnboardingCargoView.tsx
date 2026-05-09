@@ -14,7 +14,7 @@
 import React, { useEffect, useState } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { logger } from '../../lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { CargoSelector } from './CargoSelector';
 import { OnboardingAvatarStep } from './OnboardingAvatarStep';
 import type { CargoLaboral, CargoDB } from './CargoSelector';

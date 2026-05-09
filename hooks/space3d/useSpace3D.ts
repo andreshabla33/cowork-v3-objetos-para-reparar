@@ -29,7 +29,7 @@ import { getApplicationServices } from '@/src/core/application/ApplicationServic
 import { useGatherInteractions } from './useGatherInteractions';
 import { Gatekeeper, PreflightSessionStore, SpaceMediaCoordinator, getPreflightFeedback, getPreflightFeedbackMessage } from '@/modules/realtime-room';
 import type { PreflightCheck, SpaceMediaCoordinatorState } from '@/modules/realtime-room';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('useSpace3D');
 

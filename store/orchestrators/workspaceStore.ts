@@ -2,7 +2,7 @@ import type { StateCreator } from 'zustand';
 import type { StoreState } from '../state';
 import type { Role, Workspace } from '../../types';
 import { supabase } from '../../lib/supabase';
-import { logger } from '../../lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { toUndefined } from '../../src/core/domain/utils/nullSafe';
 
 const log = logger.child('workspace-store');

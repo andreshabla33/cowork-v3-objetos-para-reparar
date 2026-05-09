@@ -14,7 +14,7 @@ import type { Avatar3DConfig } from '../../../components/avatar3d/shared';
 import type { UserAvatarData } from './userDataLoader';
 import { supabase } from '../../../lib/supabase';
 import { avatarCatalogRepository } from '@/src/core/infrastructure/adapters/AvatarCatalogSupabaseRepository';
-import { logger } from '../../../lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { preloadUniversalAnimations } from '../../../lib/avatar3d/universalAnimationsPreloader';
 
 const log = logger.child('avatar-loader');

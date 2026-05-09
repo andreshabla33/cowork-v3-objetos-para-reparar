@@ -4,7 +4,7 @@
  * Handles sala info lookup, invitation validation, LiveKit token provisioning,
  * heartbeat, participant status, moderation, and permissions.
  */
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import type {
   IMeetingAccessRepository,
   SalaInfoRecord,

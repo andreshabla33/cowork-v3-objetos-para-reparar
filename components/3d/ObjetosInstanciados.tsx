@@ -29,7 +29,7 @@ import { obtenerDimensionesObjetoRuntime } from '../space3d/objetosRuntime';
 import { ObjetoEscena3D } from './ObjetoEscena3D';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { registerScaledBbox } from '@/lib/rendering/scaledBboxRegistry';
 
 const log = logger.child('ObjetosInstanciados');

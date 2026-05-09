@@ -7,7 +7,7 @@
  * before they attempt to join a room.
  */
 
-import { logger } from '@/lib/logger';
+import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('browser-compatibility');
 
