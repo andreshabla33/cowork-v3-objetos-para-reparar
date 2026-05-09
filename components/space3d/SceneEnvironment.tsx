@@ -15,7 +15,7 @@ import { Sky, Environment } from '@react-three/drei';
 import { DayNightCycle } from '../3d/DayNightCycle';
 import { ParticulasClima } from '../3d/ParticulasClima';
 import { computeSunPosition } from '@/src/core/domain/entities/espacio3d/ScenePolicy';
-import type { AdaptiveRenderConfig } from '@/lib/gpuCapabilities';
+import type { AdaptiveRenderConfig } from '@/core/infrastructure/r3f/gpuCapabilities';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 

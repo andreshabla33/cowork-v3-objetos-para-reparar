@@ -37,7 +37,7 @@ import {
   teleportRingGeometry,
 } from '../3d/sharedGeometries';
 import { resolveAvatarRenderPolicy, resolveEffectiveGraphicsQuality } from '@/lib/ecs/avatarRenderPolicy';
-import { getGpuInfoSync } from '@/lib/gpuCapabilities';
+import { getGpuInfoSync } from '@/core/infrastructure/r3f/gpuCapabilities';
 import { AvatarRuntimeScheduler, resolveAvatarRuntimePolicy } from '@/lib/ecs/avatarRuntimeScheduler';
 import { SpatialGrid } from '@/lib/spatial/SpatialGrid';
 import { frameMetrics } from '@/core/infrastructure/observability/frameMetrics';
@@ -860,7 +860,7 @@ export const CameraFollow: React.FC<{
    * Config adaptativa por GPU tier. Gatea FOV dinámico (tier ≥ 2).
    * Cuando es undefined o `useDynamicFov=false`, FOV se mantiene fijo.
    */
-  gpuRenderConfig?: import('@/lib/gpuCapabilities').AdaptiveRenderConfig;
+  gpuRenderConfig?: import('@/core/infrastructure/r3f/gpuCapabilities').AdaptiveRenderConfig;
   /** OTS offset — 'left' | 'right' desplaza cámara lateralmente; 'center' = default. */
   cameraShoulderMode?: 'center' | 'left' | 'right';
   /**

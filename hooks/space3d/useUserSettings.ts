@@ -6,7 +6,7 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { getUserSettings, getSettingsSection, requestDesktopNotificationPermission } from '@/lib/userSettings';
-import { detectGpuCapabilities, adaptiveConfigFromTier, type GpuInfo } from '@/lib/gpuCapabilities';
+import { detectGpuCapabilities, adaptiveConfigFromTier, type GpuInfo } from '@/core/infrastructure/r3f/gpuCapabilities';
 import { loadCameraSettings, saveCameraSettings, loadAudioSettings, saveAudioSettings, type CameraSettings, type AudioSettings } from '@/modules/realtime-room';
 import { MOVE_SPEED, RUN_SPEED, PROXIMITY_RADIUS, type UseUserSettingsReturn, type UseUserSettingsParams } from './types';
 import type { Room } from 'livekit-client';

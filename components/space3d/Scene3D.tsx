@@ -187,7 +187,7 @@ export interface SceneProps {
    * drei `<Sky>`, `<Environment>` IBL, tone mapping ACES, FOV dinámico.
    * Ref doc: plan-tier-2-visual-upgrade-2026-04-20.
    */
-  gpuRenderConfig?: import('@/lib/gpuCapabilities').AdaptiveRenderConfig;
+  gpuRenderConfig?: import('@/core/infrastructure/r3f/gpuCapabilities').AdaptiveRenderConfig;
 }
 
 const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) * paso;

@@ -29,7 +29,7 @@ import { useCallback, useRef, useEffect, useMemo } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { logger } from '@/core/infrastructure/observability/logger';
-import { obtenerChunk } from '@/lib/chunkSystem';
+import { obtenerChunk } from '@/core/infrastructure/r3f/chunkSystem';
 import { getSettingsSection } from '@/lib/userSettings';
 import { EvaluarPresenceSubscriptionUseCase } from '@/src/core/application/usecases/EvaluarPresenceSubscriptionUseCase';
 import { extractPresencePosition } from '@/modules/realtime-room';

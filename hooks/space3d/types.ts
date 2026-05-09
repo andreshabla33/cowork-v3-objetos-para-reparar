@@ -8,7 +8,7 @@ import type { User, PresenceStatus, AutorizacionEmpresa, ZonaEmpresa, Workspace 
 import type { CameraSettings, AudioSettings } from '@/modules/realtime-room';
 import type { JoystickInput } from '@/components/3d/MobileJoystick';
 import type { EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
-import type { GpuInfo } from '@/lib/gpuCapabilities';
+import type { GpuInfo } from '@/core/infrastructure/r3f/gpuCapabilities';
 import type { UserSettings } from '@/lib/userSettings';
 import type { Room } from 'livekit-client';
 import type { Session } from '@supabase/supabase-js';
@@ -74,7 +74,7 @@ export interface UseUserSettingsReturn {
   notifSettings: import('@/lib/userSettings').UserSettings['notifications'];
   performanceSettings: import('@/lib/userSettings').UserSettings['performance'];
   gpuInfo: GpuInfo | null;
-  gpuRenderConfig: ReturnType<typeof import('@/lib/gpuCapabilities').adaptiveConfigFromTier> | null;
+  gpuRenderConfig: ReturnType<typeof import('@/core/infrastructure/r3f/gpuCapabilities').adaptiveConfigFromTier> | null;
   radioInteresChunks: number;
   userMoveSpeed: number;
   userRunSpeed: number;
@@ -134,7 +134,7 @@ export interface UseChunkSystemReturn {
   usuariosEnChunks: User[];
   usuariosParaConexion: User[];
   usuariosParaMinimapa: User[];
-  chunkActual: ReturnType<typeof import('@/lib/chunkSystem').obtenerChunk>;
+  chunkActual: ReturnType<typeof import('@/core/infrastructure/r3f/chunkSystem').obtenerChunk>;
   chunkVecinosRef: React.MutableRefObject<Set<string>>;
   usuariosVisiblesRef: React.MutableRefObject<Set<string>>;
   setPositionEcs: (x: number, y: number, direction?: string, isSitting?: boolean, isMoving?: boolean) => void;

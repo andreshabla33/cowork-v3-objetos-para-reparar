@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { obtenerChunk, obtenerChunksVecinos, ChunkInfo } from '../../../lib/chunkSystem';
+import { obtenerChunk, obtenerChunksVecinos, ChunkInfo } from '@/core/infrastructure/r3f/chunkSystem';
 
 describe('chunkSystem', () => {
   describe('obtenerChunk', () => {

@@ -31,7 +31,7 @@ import type { User, Workspace } from '@/types';
 import { logger } from '@/core/infrastructure/observability/logger';
 import { avatarStore } from '@/lib/ecs/AvatarECS';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
-import { crearSalaLivekitPorEspacio, obtenerTokenLivekitEspacio } from '@/lib/livekitService';
+import { crearSalaLivekitPorEspacio, obtenerTokenLivekitEspacio } from '@/core/infrastructure/livekit/livekitService';
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { getTurnIceServers } from '@/core/infrastructure/network/turnCredentialsService';
 import {

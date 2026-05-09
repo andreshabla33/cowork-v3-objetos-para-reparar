@@ -6,8 +6,8 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import type { User } from '@/types';
-import { obtenerChunk, obtenerChunksVecinos } from '@/lib/chunkSystem';
-import { filtrarUsuariosPorChunks, aplicarInteresEmpresa } from '@/lib/interestManager';
+import { obtenerChunk, obtenerChunksVecinos } from '@/core/infrastructure/r3f/chunkSystem';
+import { filtrarUsuariosPorChunks, aplicarInteresEmpresa } from '@/core/infrastructure/r3f/interestManager';
 import {
   actualizarEstadoUsuarioEcs,
   crearEstadoEcsEspacio,

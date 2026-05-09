@@ -1,5 +1,5 @@
-import type { User } from '../types';
-import { Role } from '../types';
+import type { User } from '@/types';
+import { Role } from '@/types';
 import { obtenerChunk, obtenerChunksVecinos } from './chunkSystem';
 import { logger } from '@/core/infrastructure/observability/logger';
 

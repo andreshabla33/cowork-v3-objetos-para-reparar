@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { CameraSettings, AudioSettings } from '@/modules/realtime-room';
-import { createProcessedAudioTrack, type ProcessedAudioTrackHandle } from '@/lib/audioProcessing';
+import { createProcessedAudioTrack, type ProcessedAudioTrackHandle } from '@/core/infrastructure/audio/audioProcessing';
 import { getVideoConstraints } from '@/lib/userSettings';
 import { logger } from '@/core/infrastructure/observability/logger';
 import { type UseMediaStreamReturn } from './types';

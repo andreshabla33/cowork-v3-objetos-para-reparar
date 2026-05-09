@@ -8,7 +8,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { User, Workspace } from '@/types';
 import type { Session } from '@supabase/supabase-js';
 import type { UserSettings } from '@/lib/userSettings';
-import { obtenerChunk } from '@/lib/chunkSystem';
+import { obtenerChunk } from '@/core/infrastructure/r3f/chunkSystem';
 import type { AccionXP } from '@/lib/gamificacion';
 import { actualizarEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
 import { getSettingsSection, sendDesktopNotification } from '@/lib/userSettings';

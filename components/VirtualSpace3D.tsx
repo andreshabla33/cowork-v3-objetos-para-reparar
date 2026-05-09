@@ -23,7 +23,7 @@ import { useRendererMetrics } from '@/hooks/space3d/useRendererMetrics';
 import { SpatialAudio } from './3d/SpatialAudio';
 import { AdaptivePerformanceMonitor } from './3d/AdaptivePerformanceMonitor';
 import { isAdaptivePerformanceEnabled } from '@/lib/ecs/avatarRenderPolicy';
-import { type GpuInfo } from '@/lib/gpuCapabilities';
+import { type GpuInfo } from '@/core/infrastructure/r3f/gpuCapabilities';
 import { logger } from '@/core/infrastructure/observability/logger';
 import { MobileJoystick, type JoystickInput } from './3d/MobileJoystick';
 import { EmoteWheel } from './3d/EmoteWheel';
