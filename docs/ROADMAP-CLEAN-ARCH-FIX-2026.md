@@ -11,6 +11,12 @@
 - Workaround documentado para WSL local: `npm install @rollup/rollup-linux-x64-gnu --no-save` (no toca lockfile, no rompe Windows).
 - ITEM 1 deja de ser bloqueador. Refactors siguientes pueden validarse con `npm run test:unit`.
 
+## Update 2026-05-08 — ITEM 2 cerrado
+- Commit `2151b39` (2026-05-05) ya había sustituido `process.env.NODE_ENV !== 'production'` por `import.meta.env.DEV` en `src/core/application/usecases/GenerarGeometriasMergeadasBuiltinUseCase.ts:163, :183`.
+- `import.meta.env.DEV` es funcionalmente equivalente a `!import.meta.env.PROD` (Vite 6 docs: "DEV — boolean indicating whether the app is running in development. Always opposite of import.meta.env.PROD"). Ambos se reemplazan estáticamente en build → tree-shaking efectivo.
+- Verificado: `grep -r "process.env" src/` → 0 matches. La capa Application ya no depende de `process.env` (residual técnico aceptado: `import.meta.env` sigue siendo bundler-specific; el ideal Clean Arch — verbose por DI — queda fuera de scope).
+- Deuda colateral detectada (no parte de ITEM 2): el archivo importa `@/lib/logger` (línea 19), legacy import. Se aborda en ITEM 12 (lib/ → re-categorizar por adapter target).
+
 ## Skills aplicadas
 - `clean-architecture-refactor` — criterios duros de performance (30+ FPS), 3 reglas de migración (no legacy / no duplicaciones / todo conectado), capas con paths concretos (Domain/Application/Infrastructure/Modules), patrones obligatorios (Repository, DI, Zustand selectores, R3F separation, LiveKit encapsulado), tamaños 500/200/50/100.
 - `official-docs-alignment` — validación contra docs oficiales con versiones reales: React 19.2.3, TypeScript 5.8, Vite 6.2, Three.js 0.182, R3F 9.5, Drei 10.7, Rapier 2.2, LiveKit Client 2.18.9, LiveKit Components 2.9, Supabase JS 2.47, Zustand 5.0.9, MediaPipe Tasks Vision 0.10, Sentry 10.47, Tailwind 3.4.
@@ -26,11 +32,12 @@
 - Riesgo: si se regenera lockfile, puede afectar dev en host Windows. Documentar.
 - Skills: `official-docs-alignment` (npm bug oficial https://github.com/npm/cli/issues/4828).
 
-#### ITEM 2 — P1-09 process.env → import.meta.env
+#### ITEM 2 — P1-09 process.env → import.meta.env ✅ CERRADO (`2151b39`, 2026-05-05)
 - Esfuerzo: S (2 líneas)
 - Archivo: `src/core/application/usecases/GenerarGeometriasMergeadasBuiltinUseCase.ts:163, :183`
-- Acción: reemplazar `process.env.NODE_ENV !== 'production'` por `!import.meta.env.PROD`.
-- Skills: `official-docs-alignment` (Vite 6 env-and-mode), `clean-architecture-refactor` (application layer no debería depender de bundler — ideal pasar verbose por DI, pragmáticamente alineamos con Vite).
+- Aplicado: `import.meta.env.DEV` (equivalente a `!import.meta.env.PROD` en Vite 6).
+- Skills aplicadas: `official-docs-alignment` (Vite 6 env-and-mode), `clean-architecture-refactor` (compromiso pragmático aceptado: Application sigue tocando bundler-specific API; refactor a verbose por DI fuera de scope).
+- Verificación: `grep -r "process.env" src/` → 0 matches.
 
 ### FASE 1 — Migración crítica (M-L, scope acotado)
 
