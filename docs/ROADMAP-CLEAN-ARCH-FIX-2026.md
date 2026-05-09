@@ -28,6 +28,12 @@
 - E1 (Grupo 3) cerrado por adelantado.
 - Pendiente: verificación browser manual de Andrés del flujo de gestos en marketplace.
 
+## Update 2026-05-08 — ITEMs 4 y 5 subsumidos
+- **ITEM 4 (P0-02 useStore() sin selector)** y **ITEM 5 (P2-17 subset goloso)** quedan subsumidos por la decisión arquitectónica del 2026-05-05 (múltiples stores por bounded context).
+- Verificación grep: `useStore()` (sin selector) → 1 match, en un comentario JSDoc (`components/ui/NotificationToast.tsx:10`), no es código real. `const { ... } = useStore()` → 0 matches.
+- Stores ya creados en `src/modules/<feature>/state/`: `useUserStore`, `useWorkspaceStore`, `useChatStore`, `useSpace3DStore`, `usePresenceStore`, `useUIStore`. La descomposición por contexto evitó la necesidad del barrido mecánico de `useShallow`.
+- Persisten 58 usos de `useStore` en código legacy (`hooks/`, `components/`, `store/orchestrators/*`). Esa migración cae bajo ITEMs 8/10/11 (legacy → src/), no requiere acción independiente.
+
 ## Skills aplicadas
 - `clean-architecture-refactor` — criterios duros de performance (30+ FPS), 3 reglas de migración (no legacy / no duplicaciones / todo conectado), capas con paths concretos (Domain/Application/Infrastructure/Modules), patrones obligatorios (Repository, DI, Zustand selectores, R3F separation, LiveKit encapsulado), tamaños 500/200/50/100.
 - `official-docs-alignment` — validación contra docs oficiales con versiones reales: React 19.2.3, TypeScript 5.8, Vite 6.2, Three.js 0.182, R3F 9.5, Drei 10.7, Rapier 2.2, LiveKit Client 2.18.9, LiveKit Components 2.9, Supabase JS 2.47, Zustand 5.0.9, MediaPipe Tasks Vision 0.10, Sentry 10.47, Tailwind 3.4.
@@ -64,16 +70,12 @@
 
 ### FASE 2 — Performance sistémica (L)
 
-#### ITEM 4 — P0-02 useStore() sin selector (40+ archivos)
-- Esfuerzo: L (mecánico, factible con codemod)
-- Acción: barrer 40+ sitios. Reemplazar `const { a, b, c } = useStore()` por `const { a, b, c } = useStore(useShallow(s => ({ a: s.a, b: s.b, c: s.c })))`. Single field: `useStore(s => s.x)`.
-- Skills: `official-docs-alignment` (Zustand 5 docs — selectors + useShallow), `clean-architecture-refactor` (patrón obligatorio).
-- Sub-decisión bloqueante: Andrés debe decidir single store global vs múltiples stores por bounded context (ver "Decisiones pendientes").
+#### ITEM 4 — P0-02 useStore() sin selector ✅ SUBSUMIDO (decisión 2026-05-05)
+- Decisión arquitectónica: bounded contexts en `src/modules/<feature>/state/` reemplazan al barrido global con `useShallow`.
+- Verificado 2026-05-08: `useStore()` (sin selector) → 0 usos reales (solo 1 comentario JSDoc). El consumo legacy de `useStore` cae en ITEMs 8/10/11.
 
-#### ITEM 5 — P2-17 Subset goloso de useStore (fallback si ITEM 4 no entra)
-- Esfuerzo: M (6-10 sitios prioritarios)
-- Top de impacto: `MiniModeOverlay.tsx:138` (7 campos), `WorkspaceLayout.tsx:64`, `Dashboard.tsx:24`, `MonicaDockInline.tsx:47`, `VibenAssistant.tsx:31`, `BottomControlBar.tsx:85`.
-- Justificación: si la migración total queda fuera de scope, atacar los multi-campo más costosos primero.
+#### ITEM 5 — P2-17 Subset goloso de useStore ✅ SUBSUMIDO (idem ITEM 4)
+- Fallback no necesario al haberse aplicado la decomposición por contexto.
 
 ### FASE 3 — Patrón Repository Supabase
 
