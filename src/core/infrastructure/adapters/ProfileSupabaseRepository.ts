@@ -90,6 +90,40 @@ export class ProfileSupabaseRepository implements IProfileRepository {
       return false;
     }
   }
+
+  async actualizarEstadoDisponibilidad(
+    userId: string,
+    status: string,
+    statusText?: string | null,
+  ): Promise<boolean> {
+    try {
+      const payload: Record<string, unknown> = {
+        estado_disponibilidad: status,
+        estado_actualizado_en: new Date().toISOString(),
+      };
+      if (statusText !== undefined) {
+        payload.estado_personalizado = statusText;
+      }
+      const { error } = await supabase
+        .from('usuarios')
+        .update(payload)
+        .eq('id', userId);
+
+      if (error) {
+        log.warn('Failed to persist availability status', {
+          error: error.message,
+          userId,
+          status,
+        });
+        return false;
+      }
+      return true;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      log.error('Exception persisting availability status', { error: message, userId });
+      return false;
+    }
+  }
 }
 
 export const profileRepository = new ProfileSupabaseRepository();

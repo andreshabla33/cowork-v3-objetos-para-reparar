@@ -13,6 +13,7 @@ import type { AvatarConfig } from '../../../types';
 import type { Avatar3DConfig } from '../../../components/avatar3d/shared';
 import type { UserAvatarData } from './userDataLoader';
 import { supabase } from '../../../lib/supabase';
+import { avatarCatalogRepository } from '@/src/core/infrastructure/adapters/AvatarCatalogSupabaseRepository';
 import { logger } from '../../../lib/logger';
 import { preloadUniversalAnimations } from '../../../lib/avatar3d/universalAnimationsPreloader';
 
@@ -69,9 +70,8 @@ export async function cargarAvatar(
     }
 
     if (avatarId) {
-      let avatar3D = (
-        await supabase.from('avatares_3d').select('*').eq('id', avatarId).maybeSingle()
-      ).data;
+      let avatar3D: Record<string, unknown> | null =
+        (await avatarCatalogRepository.obtenerAvatarPorId(avatarId)) as Record<string, unknown> | null;
 
       // Fallback: assigned avatar doesn't exist in DB
       if (!avatar3D) {
@@ -86,9 +86,9 @@ export async function cargarAvatar(
 
         if (fallbackAvatar) {
           avatar3D = fallbackAvatar;
-          avatarId = fallbackAvatar.id;
-          await supabase.from('usuarios').update({ avatar_3d_id: fallbackAvatar.id }).eq('id', userId);
-          log.info('Avatar reset to fallback', { nombre: fallbackAvatar.nombre });
+          avatarId = (fallbackAvatar as { id: string }).id;
+          await avatarCatalogRepository.cambiarAvatar(userId, (fallbackAvatar as { id: string }).id);
+          log.info('Avatar reset to fallback', { nombre: (fallbackAvatar as { nombre?: string }).nombre });
         }
       }
 

@@ -14,6 +14,7 @@ import type {
   AnimacionAvatarData,
 } from '../../domain/ports/IAvatarCatalogRepository';
 import type { CatalogoObjeto3D } from '@/types/objetos3d';
+import type { AvatarConfig } from '@/types';
 
 const log = logger.child('avatar-catalog-repo');
 
@@ -70,6 +71,51 @@ export class AvatarCatalogSupabaseRepository implements IAvatarCatalogRepository
       const message = err instanceof Error ? err.message : String(err);
       log.error('Exception loading objects', { error: message });
       return [];
+    }
+  }
+
+  async obtenerAvatarPorId(avatarId: string): Promise<AvatarModelData | null> {
+    try {
+      const { data, error } = await supabase
+        .from('avatares_3d')
+        .select(
+          `id, nombre, descripcion, modelo_url, textura_url, thumbnail_url, escala`,
+        )
+        .eq('id', avatarId)
+        .maybeSingle();
+
+      if (error) {
+        log.warn('Failed to load avatar by id', { error: error.message, avatarId });
+        return null;
+      }
+
+      return (data ?? null) as AvatarModelData | null;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      log.error('Exception loading avatar by id', { error: message, avatarId });
+      return null;
+    }
+  }
+
+  async guardarConfiguracionAvatar(userId: string, config: AvatarConfig): Promise<void> {
+    try {
+      const { error } = await supabase.from('avatar_configuracion').upsert(
+        {
+          usuario_id: userId,
+          configuracion: config,
+          actualizado_en: new Date().toISOString(),
+        },
+        { onConflict: 'usuario_id' },
+      );
+
+      if (error) {
+        log.warn('Failed to persist avatar config', { userId, error: error.message });
+        throw error;
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      log.error('Exception persisting avatar config', { error: message, userId });
+      throw err;
     }
   }
 

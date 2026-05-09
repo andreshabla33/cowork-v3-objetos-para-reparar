@@ -1,7 +1,8 @@
 import type { StateCreator } from 'zustand';
 import type { StoreState } from '../state';
 import type { AvatarConfig, PresenceStatus } from '../../types';
-import { supabase } from '../../lib/supabase';
+import { avatarCatalogRepository } from '@/src/core/infrastructure/adapters/AvatarCatalogSupabaseRepository';
+import { profileRepository } from '@/src/core/infrastructure/adapters/ProfileSupabaseRepository';
 import { logger } from '../../lib/logger';
 
 type StoreSet = Parameters<StateCreator<StoreState>>[0];
@@ -20,17 +21,13 @@ export const createUpdateAvatarAction = (
     const { session } = get();
     if (!session?.user?.id) return;
 
-    const { error } = await supabase.from('avatar_configuracion').upsert(
-      {
-        usuario_id: session.user.id,
-        configuracion: config,
-        actualizado_en: new Date().toISOString(),
-      },
-      { onConflict: 'usuario_id' },
-    );
-
-    if (error) {
-      log.error('Failed to persist avatar config', { userId: session.user.id, error: error.message });
+    try {
+      await avatarCatalogRepository.guardarConfiguracionAvatar(session.user.id, config);
+    } catch (err) {
+      log.error('Failed to persist avatar config', {
+        userId: session.user.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   };
 };
@@ -52,17 +49,13 @@ export const createUpdateStatusAction = (
     const { session } = get();
     if (!session?.user?.id) return;
 
-    const { error } = await supabase
-      .from('usuarios')
-      .update({
-        estado_disponibilidad: status,
-        estado_personalizado: statusText || null,
-        estado_actualizado_en: new Date().toISOString(),
-      })
-      .eq('id', session.user.id);
-
-    if (error) {
-      log.error('Failed to persist status', { userId: session.user.id, status, error: error.message });
+    const ok = await profileRepository.actualizarEstadoDisponibilidad(
+      session.user.id,
+      status,
+      statusText !== undefined ? (statusText || null) : undefined,
+    );
+    if (!ok) {
+      log.error('Failed to persist status', { userId: session.user.id, status });
     }
   };
 };

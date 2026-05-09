@@ -25,4 +25,16 @@ export interface IProfileRepository {
    * Save the user's display name.
    */
   guardarNombre(userId: string, nombre: string): Promise<boolean>;
+
+  /**
+   * Persist the user's availability status and optional custom text.
+   * Updates `usuarios.estado_disponibilidad`, `estado_personalizado`,
+   * `estado_actualizado_en`. Pass `statusText: null` to clear the custom
+   * text; pass `undefined` to leave it unchanged.
+   */
+  actualizarEstadoDisponibilidad(
+    userId: string,
+    status: string,
+    statusText?: string | null,
+  ): Promise<boolean>;
 }

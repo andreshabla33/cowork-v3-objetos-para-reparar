@@ -67,6 +67,15 @@
   - Cero cambios en ports/adapters — el repository ya cubría las 2 operaciones.
   - **Out-of-scope intencional**: las otras calls de ScheduledMeetings (insert reuniones_programadas en línea 152, update reunion_participantes en 193, reads en 38/62/70/113) no se migraron — caen bajo ITEM 11/15 (god-file 762 líneas) o requieren extender repo con métodos adicionales.
   - tsc OK, vitest 191/191.
+- **Sub-batch 5 cerrado**: store/orchestrators (avatarLoader + userStore) — calls de mutación migradas.
+  - Extendido `IAvatarCatalogRepository` + `AvatarCatalogSupabaseRepository` con:
+    - `obtenerAvatarPorId(avatarId)` — single avatar by id (replaces avatarLoader línea 73).
+    - `guardarConfiguracionAvatar(userId, config)` — upsert avatar_configuracion (replaces userStore línea 23).
+  - Extendido `IProfileRepository` + `ProfileSupabaseRepository` con `actualizarEstadoDisponibilidad(userId, status, statusText?)` (replaces userStore línea 55-62).
+  - Refactorizado `store/orchestrators/userStore.ts`: 2 calls → 2 repo methods. Cero supabase directo.
+  - Refactorizado `store/orchestrators/bootstrap/avatarLoader.ts`: línea 73 (select avatar by id) → `avatarCatalogRepository.obtenerAvatarPorId`. Línea 90 (update usuarios.avatar_3d_id) → `avatarCatalogRepository.cambiarAvatar` (método ya existente).
+  - **Out-of-scope intencional**: las 4 reads adicionales de avatarLoader (avatar_configuracion select, avatares_3d fallback select, avatar_animaciones x2) NO se migraron — caen bajo ITEM 8 (mover el orchestrator entero a `src/core/application/<bc>/`).
+  - tsc OK, vitest 191/191.
 - **Sub-batch 4 (autorizacionesEmpresa) ⚠ RE-DIMENSIONADO** (auditoría 2026-05-08):
   - El plan original lo marcaba M ("mover archivo, 3 calls"). Reality check:
     - Archivo: **715 líneas, 13 funciones exportadas, 13+ supabase calls** sobre 8 tablas distintas (actividades_log, zonas_empresa, autorizaciones_empresa, miembros_espacio, grupos_chat, miembros_grupo, empresas, notificaciones).

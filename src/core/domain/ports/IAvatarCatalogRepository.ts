@@ -8,6 +8,7 @@
  */
 
 import type { CatalogoObjeto3D } from '@/types/objetos3d';
+import type { AvatarConfig } from '@/types';
 
 /**
  * Columnas reales de la tabla `avatares_3d` en Supabase — verificado 2026-04-08.
@@ -55,6 +56,17 @@ export interface IAvatarCatalogRepository {
    * Get the currently equipped avatar for a user.
    */
   obtenerAvatarEquipado(userId: string): Promise<string | null>;
+
+  /**
+   * Load a single avatar model by id (full row, used by avatar loader).
+   * Returns null if not found.
+   */
+  obtenerAvatarPorId(avatarId: string): Promise<AvatarModelData | null>;
+
+  /**
+   * Persist the user's 2D avatar configuration (upsert keyed by usuario_id).
+   */
+  guardarConfiguracionAvatar(userId: string, config: AvatarConfig): Promise<void>;
 
   /**
    * Load animations specific to an avatar.
