@@ -17,7 +17,7 @@
  * Atlas layout:
  *   - Max size: 4096×4096 (universally supported on all GPU tiers)
  *   - Packing: simple shelf/row algorithm (left-to-right, top-to-bottom)
- *   - Format: CanvasTexture → sRGBEncoding for PBR materials
+ *   - Format: CanvasTexture → SRGBColorSpace for PBR materials
  *
  * Ref: Three.js r152+ — texture.channel (multi-UV support)
  *   https://threejs.org/docs/#api/en/textures/Texture.channel
