@@ -33,7 +33,7 @@ import { avatarStore } from '@/lib/ecs/AvatarECS';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { crearSalaLivekitPorEspacio, obtenerTokenLivekitEspacio } from '@/lib/livekitService';
 import { supabase } from '@/lib/supabase';
-import { getTurnIceServers } from '@/lib/network/turnCredentialsService';
+import { getTurnIceServers } from '@/core/infrastructure/network/turnCredentialsService';
 import {
   type SpaceRealtimeCoordinatorState,
   type RealtimeEventBus,

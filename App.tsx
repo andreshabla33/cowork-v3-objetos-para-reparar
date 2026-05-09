@@ -4,7 +4,7 @@
  * Refactored from imperative if/else chain to priority-ordered route table.
  *
  * Architecture:
- * - Declarative router: lib/routing/appRouter.ts
+ * - Declarative router: src/core/infrastructure/routing/appRouter.ts
  * - URL state: memoized with useMemo (ARC-005)
  * - ThankYouScreen: extracted component (ARC-007)
  * - Clean Architecture: zero business logic in this file
@@ -17,8 +17,8 @@ import { useBootstrapAplicacion } from './hooks/app/useBootstrapAplicacion';
 import { useRutasReunion } from './hooks/app/useRutasReunion';
 import { seleccionarBootstrapApp } from './store/selectores';
 import { ESPACIO_GLOBAL_ID } from './lib/constants';
-import { resolverRutaApp } from './lib/routing/appRouter';
-import type { AppRouteKey } from './lib/routing/appRouter';
+import { resolverRutaApp } from './src/core/infrastructure/routing/appRouter';
+import type { AppRouteKey } from './src/core/infrastructure/routing/appRouter';
 import './lib/i18n-config';
 import { LoginScreen } from './components/LoginScreen';
 import { PantallaAccesoRecuperacionContrasena } from './components/PantallaAccesoRecuperacionContrasena';

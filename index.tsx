@@ -28,7 +28,7 @@ installAcceleratedRaycast();
 // El wrapper aplica retry exponencial + jitter transparentemente SOLO a URLs
 // que matchean /supabase\.co\/storage\/v1\/object\// — otras URLs pasan
 // sin modificar (livekit, auth, realtime siguen igual).
-import { installRetryFetch } from './lib/network/retryFetch';
+import { installRetryFetch } from './src/core/infrastructure/network/retryFetch';
 import { SUPABASE_STORAGE_POLICY } from './src/core/domain/ports/IAssetLoadPolicy';
 
 installRetryFetch(SUPABASE_STORAGE_POLICY);

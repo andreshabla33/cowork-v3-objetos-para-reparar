@@ -13,7 +13,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { logger } from '../logger'
+import { logger } from '@/lib/logger'
 
 const log = logger.child('turn-credentials')
 
