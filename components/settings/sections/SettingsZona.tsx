@@ -10,10 +10,11 @@ import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { obtenerPlantillaZona, PLANTILLAS_ZONA_OFICINA, type PlantillaZonaId } from '@/src/core/domain/entities/plantillasEspacio';
 import { normalizarConfiguracionZonaEmpresa } from '@/src/core/domain/entities/cerramientosZona';
-import { AplicarPlantillaEspacioCompletaUseCase, type IRepositorioPlantillaEspacioCompleta } from '@/src/core/application/usecases/AplicarPlantillaEspacioCompletaUseCase';
+import { AplicarPlantillaEspacioCompletaUseCase } from '@/src/core/application/usecases/AplicarPlantillaEspacioCompletaUseCase';
 import { AplicarPlantillaZonaUseCase } from '@/src/core/application/usecases/AplicarPlantillaZonaUseCase';
 import { RepositorioPlantillaZonaSupabase } from '@/src/core/infrastructure/adapters/RepositorioPlantillaZonaSupabaseAdapter';
 import { InyectorPlantillaZona } from '@/src/core/infrastructure/adapters/InyectorPlantillaZonaAdapter';
+import { crearRepositorioPlantillaEspacioCompletaSupabase } from '@/core/infrastructure/adapters/RepositorioPlantillaEspacioCompletaSupabase';
 import { PLANTILLAS_ESPACIO_COMPLETAS } from '@/src/core/domain/entities/plantillasEspacio';
 import {
   cargarAutorizacionesActivas,
@@ -347,46 +348,16 @@ export const SettingsZona: React.FC<SettingsZonaProps> = ({ workspaceId, isAdmin
     setAplicandoPlantillaCompleta(true);
     setProgresoPlantilla('Limpiando espacio...');
     try {
-      const repositorio: IRepositorioPlantillaEspacioCompleta = {
-        limpiarEspacio: async (espacioId: string, empresaId: string) => {
-          await supabase.from('espacio_objetos').delete().eq('espacio_id', espacioId);
-          await supabase.from('zonas_empresa').delete().eq('espacio_id', espacioId).eq('empresa_id', empresaId);
-        },
-        crearZonaBase: async (params) => {
-          const { data, error } = await supabase
-            .from('zonas_empresa')
-            .insert({
-              espacio_id: params.espacioId,
-              empresa_id: params.empresaId,
-              nombre_zona: params.nombre,
-              ancho: params.ancho,
-              alto: params.alto,
-              posicion_x: params.posicion_x,
-              posicion_y: params.posicion_y,
-              color: params.color,
-              estado: 'activa',
-              es_comun: false,
-              tipo_suelo: params.tipo_suelo,
-              configuracion: { plantilla_zona: { id: params.plantillaId } }
-            })
-            .select()
-            .single();
-
-          if (error) throw error;
-          return data as ZonaEmpresa;
-        },
-        eliminarZona: async (zonaId: string) => {
-          await supabase.from('zonas_empresa').delete().eq('id', zonaId);
-        },
-        notificarRecargaEspacio: async (espacioId: string) => {
+      const repositorio = crearRepositorioPlantillaEspacioCompletaSupabase(
+        async (espacioId: string) => {
           const nuevasZonas = await cargarZonasEmpresa(espacioId);
           setZonas(nuevasZonas);
           setMostrarGeneradorCompleto(false);
           setPlantillaCompletaSeleccionada('');
           setConfirmarPlantilla(false);
           setTimeout(() => { window.location.reload(); }, 2500);
-        }
-      };
+        },
+      );
 
       const useCase = new AplicarPlantillaEspacioCompletaUseCase(
         repositorio,
