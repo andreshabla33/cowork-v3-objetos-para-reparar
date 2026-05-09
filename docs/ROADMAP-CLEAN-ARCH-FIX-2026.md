@@ -34,6 +34,19 @@
 - Stores ya creados en `src/modules/<feature>/state/`: `useUserStore`, `useWorkspaceStore`, `useChatStore`, `useSpace3DStore`, `usePresenceStore`, `useUIStore`. La descomposición por contexto evitó la necesidad del barrido mecánico de `useShallow`.
 - Persisten 58 usos de `useStore` en código legacy (`hooks/`, `components/`, `store/orchestrators/*`). Esa migración cae bajo ITEMs 8/10/11 (legacy → src/), no requiere acción independiente.
 
+## Update 2026-05-08 — ITEM 6 progreso parcial (2/14)
+- **Sub-batch 1 cerrado** (`c84b987`): cargos + departamentos.
+  - Nuevos: `src/core/domain/ports/{ICargoRepository,IDepartamentoRepository}.ts` + `src/core/infrastructure/adapters/{Cargo,Departamento}SupabaseRepository.ts`.
+  - Refactorizados: `components/settings/sections/Settings{Cargos,Departamentos}.tsx` consumen singleton del adapter.
+  - tsc OK, vitest 191/191.
+- **Sub-batches pendientes** (12 sitios restantes):
+  - **Recording hooks** (3): `RecordingManagerV2.tsx` (722 líneas, god-file → tocar con ITEM 15), `useRecording.ts`, `useAISummary.ts`. Necesita extender `IRecordingRepository` con Storage API + `resumenes_ai` upsert/select. **Existe ya `recordingRepository`** — auditar paridad antes de migrar.
+  - **Meetings** (2): `ScheduledMeetings.tsx`, `AgregarMiembros.tsx`.
+  - **Members** (2): `MiembrosView.tsx`, `lib/autorizacionesEmpresa.ts`.
+  - **Settings god-file**: `SettingsZona.tsx` (1523 líneas, defer hasta ITEM 15 split).
+  - **Store orchestrators** (3): `bootstrap/avatarLoader`, `bootstrap/userDataLoader`, `userStore` — coordinar con ITEM 8.
+  - **Services** (1): `services/chatService.ts` — fusionar con `ChatSupabaseRepository` ya existente (riesgo de duplicación).
+
 ## Skills aplicadas
 - `clean-architecture-refactor` — criterios duros de performance (30+ FPS), 3 reglas de migración (no legacy / no duplicaciones / todo conectado), capas con paths concretos (Domain/Application/Infrastructure/Modules), patrones obligatorios (Repository, DI, Zustand selectores, R3F separation, LiveKit encapsulado), tamaños 500/200/50/100.
 - `official-docs-alignment` — validación contra docs oficiales con versiones reales: React 19.2.3, TypeScript 5.8, Vite 6.2, Three.js 0.182, R3F 9.5, Drei 10.7, Rapier 2.2, LiveKit Client 2.18.9, LiveKit Components 2.9, Supabase JS 2.47, Zustand 5.0.9, MediaPipe Tasks Vision 0.10, Sentry 10.47, Tailwind 3.4.
