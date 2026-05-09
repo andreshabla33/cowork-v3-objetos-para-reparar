@@ -7,7 +7,7 @@
  *
  * Ref CLEAN-ARCH-F3 — legacy consolidation 2026-04-07
  */
-import { guardarZonaEmpresa } from '@/lib/autorizacionesEmpresa';
+import { zonaEmpresaRepository } from './ZonaEmpresaSupabaseRepository';
 import { supabase } from '@/lib/supabase';
 import type { ZonaEmpresa } from '@/types';
 import type { IInyectorPlantillaZona } from '../../application/usecases/AplicarPlantillaZonaUseCase';
@@ -163,7 +163,7 @@ export class InyectorPlantillaZona implements IInyectorPlantillaZona {
       const posicionX = clamp(centroX * 16 + subzona.offset_x * 16, limiteMinX, limiteMaxX);
       const posicionY = clamp(centroZ * 16 + subzona.offset_z * 16, limiteMinY, limiteMaxY);
 
-      const subzonaCreada = await guardarZonaEmpresa({
+      const subzonaCreada = await zonaEmpresaRepository.guardar({
         espacioId: params.espacioId,
         empresaId: params.zona.es_comun ? null : params.zona.empresa_id ?? null,
         esComun: params.zona.es_comun ?? false,

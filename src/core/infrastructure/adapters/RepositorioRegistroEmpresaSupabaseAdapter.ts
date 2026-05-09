@@ -8,7 +8,7 @@
  * Ref CLEAN-ARCH-F3 — legacy consolidation 2026-04-07
  */
 import { supabase } from '@/lib/supabase';
-import { guardarZonaEmpresa } from '@/lib/autorizacionesEmpresa';
+import { zonaEmpresaRepository } from './ZonaEmpresaSupabaseRepository';
 import type { ZonaEmpresa } from '@/types';
 import type { PlantillaEspacio } from '../../domain/entities/plantillasEspacio';
 import type { IRegistroEmpresaRepositorio } from '../../application/usecases/RegistrarEmpresaConPlantillaUseCase';
@@ -218,7 +218,7 @@ export class RepositorioRegistroEmpresaSupabase implements IRegistroEmpresaRepos
     if (zonaPorEmpresa) {
       const spawnX = Number(zonaPorEmpresa.spawn_x) || Number(zonaPorEmpresa.posicion_x);
       const spawnY = Number(zonaPorEmpresa.spawn_y) || Number(zonaPorEmpresa.posicion_y);
-      const actualizada = await guardarZonaEmpresa({
+      const actualizada = await zonaEmpresaRepository.guardar({
         zonaId: zonaPorEmpresa.id,
         espacioId: params.espacioId,
         empresaId: params.empresaId,
@@ -246,7 +246,7 @@ export class RepositorioRegistroEmpresaSupabase implements IRegistroEmpresaRepos
     if (zonaPorNombre) {
       const spawnX = Number(zonaPorNombre.spawn_x) || Number(zonaPorNombre.posicion_x);
       const spawnY = Number(zonaPorNombre.spawn_y) || Number(zonaPorNombre.posicion_y);
-      const adoptada = await guardarZonaEmpresa({
+      const adoptada = await zonaEmpresaRepository.guardar({
         zonaId: zonaPorNombre.id,
         espacioId: params.espacioId,
         empresaId: params.empresaId,
@@ -277,7 +277,7 @@ export class RepositorioRegistroEmpresaSupabase implements IRegistroEmpresaRepos
       throw new Error('No se encontró un área libre suficiente para ubicar la oficina inicial.');
     }
 
-    const creada = await guardarZonaEmpresa({
+    const creada = await zonaEmpresaRepository.guardar({
       espacioId: params.espacioId,
       empresaId: params.empresaId,
       nombreZona: params.nombreEmpresa,

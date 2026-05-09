@@ -1,7 +1,13 @@
 import { supabase } from './supabase';
 import type { AutorizacionEmpresa, ZonaEmpresa } from '../types';
 import type { ConfiguracionZonaEmpresa } from '../src/core/domain/entities/cerramientosZona';
-import { normalizarTipoSuelo } from '../src/core/domain/entities';
+import { zonaEmpresaRepository } from '../src/core/infrastructure/adapters/ZonaEmpresaSupabaseRepository';
+import type {
+  ActualizarEstadoZonaInput,
+  AplicarLayoutInput,
+  EliminarZonaInput,
+  GuardarZonaInput,
+} from '../src/core/domain/ports/IZonaEmpresaRepository';
 
 const registrarActividad = async (payload: {
   usuario_id: string | null;
@@ -29,313 +35,32 @@ const registrarActividad = async (payload: {
   }
 };
 
-export const cargarZonasEmpresa = async (espacioId: string): Promise<ZonaEmpresa[]> => {
-  const { data, error } = await supabase
-    .from('zonas_empresa')
-    .select('id, empresa_id, espacio_id, nombre_zona, posicion_x, posicion_y, ancho, alto, color, estado, es_comun, spawn_x, spawn_y, modelo_url, tipo_suelo, configuracion, empresa:empresas(nombre, logo_url)')
-    .eq('espacio_id', espacioId)
-    .order('creado_en', { ascending: true });
+// ── Zona CRUD wrappers (delegan a ZonaEmpresaSupabaseRepository) ──────────────
+// Mantenidos como funciones exportadas para no romper consumidores legacy
+// (SettingsZona, AdminZoneHUD, useNotifications). Migración progresiva: nuevos
+// consumers deben importar `zonaEmpresaRepository` directamente desde
+// `@/src/core/infrastructure/adapters/ZonaEmpresaSupabaseRepository`.
 
-  if (error) {
-    console.warn('Error cargando zonas empresa:', error.message);
-    return [];
-  }
+export const cargarZonasEmpresa = (espacioId: string): Promise<ZonaEmpresa[]> =>
+  zonaEmpresaRepository.cargarZonas(espacioId);
 
-  return ((data || []) as ZonaEmpresa[])
-    .filter((zona) => {
-      const conf = zona.configuracion as Record<string, unknown> | null | undefined;
-      if (!conf || typeof conf !== 'object') return true;
-      if (conf.plantilla_zona_hija) return false;
-      if (conf.tipo_subsuelo === 'decorativo') return false;
-      return true;
-    })
-    .map((zona) => ({
-      ...zona,
-      tipo_suelo: normalizarTipoSuelo(zona.tipo_suelo),
-    }));
-};
-
-export const cargarZonaEmpresaActual = async (
+export const cargarZonaEmpresaActual = (
   espacioId: string,
-  empresaId: string
-): Promise<ZonaEmpresa | null> => {
-  const { data, error } = await supabase
-    .from('zonas_empresa')
-    .select('id, empresa_id, espacio_id, nombre_zona, posicion_x, posicion_y, ancho, alto, color, estado, spawn_x, spawn_y, modelo_url, tipo_suelo, configuracion')
-    .eq('espacio_id', espacioId)
-    .eq('empresa_id', empresaId)
-    .maybeSingle();
+  empresaId: string,
+): Promise<ZonaEmpresa | null> => zonaEmpresaRepository.cargarZonaActual(espacioId, empresaId);
 
-  if (error) {
-    console.warn('Error cargando zona actual:', error.message);
-    return null;
-  }
+export const actualizarEstadoZonaEmpresa = (payload: ActualizarEstadoZonaInput): Promise<boolean> =>
+  zonaEmpresaRepository.actualizarEstado(payload);
 
-  if (!data) {
-    return null;
-  }
+export const eliminarZonaEmpresa = (payload: EliminarZonaInput): Promise<boolean> =>
+  zonaEmpresaRepository.eliminar(payload);
 
-  return {
-    ...(data as ZonaEmpresa),
-    tipo_suelo: normalizarTipoSuelo((data as ZonaEmpresa).tipo_suelo),
-  };
-};
+export const guardarZonaEmpresa = (
+  payload: GuardarZonaInput & { configuracion?: ConfiguracionZonaEmpresa | null },
+): Promise<ZonaEmpresa | null> => zonaEmpresaRepository.guardar(payload);
 
-export const actualizarEstadoZonaEmpresa = async (payload: {
-  zonaId: string;
-  estado: 'activa' | 'inactiva';
-  usuarioId?: string | null;
-  empresaId?: string | null;
-  espacioId: string;
-}): Promise<boolean> => {
-  const { error } = await supabase
-    .from('zonas_empresa')
-    .update({
-      estado: payload.estado,
-      actualizado_en: new Date().toISOString(),
-    })
-    .eq('id', payload.zonaId);
-
-  if (error) {
-    console.warn('Error actualizando estado de zona:', error.message);
-    return false;
-  }
-
-  const accion = payload.estado === 'activa' ? 'zona_empresa_reactivada' : 'zona_empresa_inactivada';
-
-  await registrarActividad({
-    usuario_id: payload.usuarioId ?? null,
-    empresa_id: payload.empresaId ?? null,
-    espacio_id: payload.espacioId,
-    accion,
-    entidad: 'zonas_empresa',
-    entidad_id: payload.zonaId,
-    descripcion: payload.estado === 'activa' ? 'Zona reactivada' : 'Zona inactivada',
-  });
-
-  return true;
-};
-
-export const eliminarZonaEmpresa = async (payload: {
-  zonaId: string;
-  espacioId: string;
-  usuarioId?: string | null;
-  empresaId?: string | null;
-}): Promise<boolean> => {
-  // Bug histórico (fix 2026-04-21): Supabase .delete() NO devuelve error HTTP
-  // cuando una política RLS USING filtra la fila — devuelve `{ error: null }`
-  // con 0 filas afectadas. Resultado: el UI pensaba que el DELETE funcionó
-  // pero la fila seguía en DB. Fix: pedir `count: 'exact'` y validar.
-  // Ref: https://supabase.com/docs/reference/javascript/delete
-  const { error, count } = await supabase
-    .from('zonas_empresa')
-    .delete({ count: 'exact' })
-    .eq('id', payload.zonaId);
-
-  if (error) {
-    console.warn('Error eliminando zona:', error.message);
-    return false;
-  }
-
-  if (!count || count === 0) {
-    // RLS la filtró o la fila ya no existe. Informamos al caller con false
-    // para que el handler UI muestre un feedback real, no un éxito falso.
-    console.warn('Zona no eliminada: 0 filas afectadas (RLS policy o id inexistente)', {
-      zonaId: payload.zonaId,
-      espacioId: payload.espacioId,
-    });
-    return false;
-  }
-
-  await registrarActividad({
-    usuario_id: payload.usuarioId ?? null,
-    empresa_id: payload.empresaId ?? null,
-    espacio_id: payload.espacioId,
-    accion: 'zona_empresa_eliminada',
-    entidad: 'zonas_empresa',
-    entidad_id: payload.zonaId,
-    descripcion: 'Zona de empresa eliminada',
-  });
-
-  return true;
-};
-
-export const guardarZonaEmpresa = async (payload: {
-  zonaId?: string | null;
-  espacioId: string;
-  empresaId?: string | null;
-  esComun?: boolean;
-  nombreZona?: string | null;
-  posicionX: number;
-  posicionY: number;
-  ancho: number;
-  alto: number;
-  color?: string | null;
-  estado?: string;
-  usuarioId?: string | null;
-  spawnX?: number;
-  spawnY?: number;
-  modeloUrl?: string | null;
-  tipoSuelo?: string | null;
-  configuracion?: ConfiguracionZonaEmpresa | null;
-}): Promise<ZonaEmpresa | null> => {
-  if (!(payload.esComun ?? false) && !payload.empresaId) {
-    console.warn('Error guardando zona: una zona privada requiere empresa_id');
-    return null;
-  }
-
-  const tipoSueloNormalizado = payload.tipoSuelo == null
-    ? undefined
-    : normalizarTipoSuelo(payload.tipoSuelo);
-
-  const { data, error } = await supabase
-    .from('zonas_empresa')
-    .upsert({
-      id: payload.zonaId || undefined,
-      espacio_id: payload.espacioId,
-      empresa_id: payload.esComun ? null : payload.empresaId ?? null,
-      nombre_zona: payload.nombreZona ?? null,
-      posicion_x: payload.posicionX,
-      posicion_y: payload.posicionY,
-      ancho: payload.ancho,
-      alto: payload.alto,
-      color: payload.color ?? null,
-      estado: payload.estado ?? 'activa',
-      es_comun: payload.esComun ?? false,
-      spawn_x: payload.spawnX ?? 0,
-      spawn_y: payload.spawnY ?? 0,
-      modelo_url: payload.modeloUrl ?? null,
-      configuracion: payload.configuracion ?? undefined,
-      ...(tipoSueloNormalizado ? { tipo_suelo: tipoSueloNormalizado } : {}),
-      actualizado_en: new Date().toISOString(),
-    })
-    .select('id, empresa_id, espacio_id, nombre_zona, posicion_x, posicion_y, ancho, alto, color, estado, es_comun, spawn_x, spawn_y, modelo_url, tipo_suelo, configuracion')
-    .single();
-
-  if (error) {
-    console.warn('Error guardando zona:', error.message);
-    return null;
-  }
-
-  await registrarActividad({
-    usuario_id: payload.usuarioId ?? null,
-    empresa_id: payload.empresaId ?? null,
-    espacio_id: payload.espacioId,
-    accion: payload.zonaId ? 'zona_empresa_actualizada' : 'zona_empresa_creada',
-    entidad: 'zonas_empresa',
-    entidad_id: data?.id ?? null,
-    descripcion: payload.zonaId ? 'Zona de empresa actualizada' : 'Zona de empresa creada',
-    datos_extra: {
-      nombre_zona: payload.nombreZona,
-      ancho: payload.ancho,
-      alto: payload.alto,
-      color: payload.color,
-      es_comun: payload.esComun ?? false,
-    },
-  });
-
-  if (!data) {
-    return null;
-  }
-
-  return {
-    ...(data as ZonaEmpresa),
-    tipo_suelo: normalizarTipoSuelo((data as ZonaEmpresa).tipo_suelo),
-  };
-};
-
-export const aplicarLayoutMasivo = async (payload: {
-  espacioId: string;
-  zonas: Array<{
-    empresa_id: string | null;
-    nombre_zona: string;
-    posicion_x: number;
-    posicion_y: number;
-    ancho: number;
-    alto: number;
-    color: string;
-    es_comun: boolean;
-    spawn_x: number;
-    spawn_y: number;
-  }>;
-  eliminarExistentes?: boolean;
-  usuarioId?: string | null;
-  algoritmo?: string;
-}): Promise<boolean> => {
-  try {
-    // Si se pide, eliminar zonas existentes del espacio
-    if (payload.eliminarExistentes) {
-      // Mismo patrón que eliminarZonaEmpresa: RLS puede filtrar silenciosamente.
-      // Si el user no es admin pero pide `eliminarExistentes=true`, el DELETE
-      // no corre y el INSERT posterior duplicaría zonas. Con `count:'exact'`
-      // detectamos el caso y abortamos el flujo.
-      const { error: delError, count: delCount } = await supabase
-        .from('zonas_empresa')
-        .delete({ count: 'exact' })
-        .eq('espacio_id', payload.espacioId);
-
-      if (delError) {
-        console.warn('Error eliminando zonas existentes:', delError.message);
-        return false;
-      }
-
-      // delCount === 0 es válido (no había zonas). Solo fallamos si había pero
-      // la RLS impidió el DELETE. Para distinguir: comparamos contra un SELECT
-      // previo sería más caro; preferimos aceptar 0 como no-op y confiar en
-      // que si había filas y RLS las bloqueó, el INSERT siguiente fallará con
-      // un error claro (violación de constraint). En consola queda el log.
-      if (delCount === null) {
-        console.warn('No se pudo determinar filas afectadas al limpiar zonas previas.');
-      }
-    }
-
-    // Insertar todas las zonas nuevas en batch
-    const filas = payload.zonas.map((zona) => ({
-      espacio_id: payload.espacioId,
-      empresa_id: zona.empresa_id,
-      nombre_zona: zona.nombre_zona,
-      posicion_x: zona.posicion_x,
-      posicion_y: zona.posicion_y,
-      ancho: zona.ancho,
-      alto: zona.alto,
-      color: zona.color,
-      estado: 'activa' as const,
-      es_comun: zona.es_comun,
-      spawn_x: zona.spawn_x,
-      spawn_y: zona.spawn_y,
-      actualizado_en: new Date().toISOString(),
-    }));
-
-    const { error: insertError } = await supabase
-      .from('zonas_empresa')
-      .insert(filas);
-
-    if (insertError) {
-      console.warn('Error insertando zonas masivas:', insertError.message);
-      return false;
-    }
-
-    await registrarActividad({
-      usuario_id: payload.usuarioId ?? null,
-      empresa_id: null,
-      espacio_id: payload.espacioId,
-      accion: 'layout_zonas_generado',
-      entidad: 'zonas_empresa',
-      descripcion: `Layout automático generado: ${payload.zonas.length} zonas (algoritmo: ${payload.algoritmo || 'auto'})`,
-      datos_extra: {
-        total_zonas: payload.zonas.length,
-        algoritmo: payload.algoritmo,
-        empresas_count: payload.zonas.filter((z) => !z.es_comun).length,
-        zona_comun: payload.zonas.some((z) => z.es_comun),
-      },
-    });
-
-    return true;
-  } catch (error: any) {
-    console.error('Error en aplicarLayoutMasivo:', error);
-    return false;
-  }
-};
+export const aplicarLayoutMasivo = (payload: AplicarLayoutInput): Promise<boolean> =>
+  zonaEmpresaRepository.aplicarLayout(payload);
 
 export const cargarSolicitudesPendientes = async (
   espacioId: string,

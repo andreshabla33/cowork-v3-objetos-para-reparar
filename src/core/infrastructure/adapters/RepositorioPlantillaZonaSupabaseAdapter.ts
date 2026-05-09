@@ -8,7 +8,7 @@
  *
  * Ref CLEAN-ARCH-F3 — legacy consolidation 2026-04-07
  */
-import { guardarZonaEmpresa } from '@/lib/autorizacionesEmpresa';
+import { zonaEmpresaRepository } from './ZonaEmpresaSupabaseRepository';
 import { supabase } from '@/lib/supabase';
 import type { ZonaEmpresa } from '@/types';
 import type { IRepositorioPlantillaZona } from '../../application/usecases/AplicarPlantillaZonaUseCase';
@@ -94,7 +94,7 @@ export class RepositorioPlantillaZonaSupabase implements IRepositorioPlantillaZo
     const aplicadaEn = new Date().toISOString();
     const tipoSueloOriginal = await this.resolverTipoSueloOriginalZona(params.zona);
 
-    const zonaActualizada = await guardarZonaEmpresa({
+    const zonaActualizada = await zonaEmpresaRepository.guardar({
       zonaId: params.zona.id,
       espacioId: params.zona.espacio_id,
       empresaId: params.zona.es_comun ? null : params.zona.empresa_id ?? null,
@@ -232,7 +232,7 @@ export class RepositorioPlantillaZonaSupabase implements IRepositorioPlantillaZo
       subzonasEliminadas = subzonasIds.length;
     }
 
-    const zonaActualizada = await guardarZonaEmpresa({
+    const zonaActualizada = await zonaEmpresaRepository.guardar({
       zonaId: params.zona.id,
       espacioId: params.zona.espacio_id,
       empresaId: params.zona.es_comun ? null : params.zona.empresa_id ?? null,
