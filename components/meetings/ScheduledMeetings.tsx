@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useStore } from '../../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 import { supabase } from '../../lib/supabase';
+import { meetingRepository } from '@/src/core/infrastructure/adapters/MeetingSupabaseRepository';
 import { ScheduledMeeting, MeetingParticipant } from '../../types';
 import { googleCalendar } from '../../lib/googleCalendar';
 
@@ -167,12 +168,10 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
 
     if (!error && meeting) {
       if (newMeeting.participantes.length > 0) {
-        const participantesData = newMeeting.participantes.map(uid => ({
-          reunion_id: meeting.id,
-          usuario_id: uid,
-          estado: 'pendiente'
-        }));
-        await supabase.from('reunion_participantes').insert(participantesData);
+        await meetingRepository.agregarParticipantesReunion(
+          meeting.id,
+          newMeeting.participantes.map(uid => ({ usuario_id: uid, estado: 'pendiente' })),
+        );
       }
 
       setShowScheduleModal(false);
@@ -210,7 +209,7 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
     }
     
     // Eliminar de Supabase
-    await supabase.from('reuniones_programadas').delete().eq('id', meetingId);
+    await meetingRepository.eliminarReunion(meetingId);
     loadMeetings();
   };
 
