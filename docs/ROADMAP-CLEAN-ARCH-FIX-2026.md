@@ -284,21 +284,22 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 
 #### ITEM 12 — P2-18 lib/ → re-categorizar por adapter target 🟡 PARCIAL (5 subdirs cerrados)
 - Esfuerzo: M-L
-- **Estado real (2026-05-09)**: 7 subdirs restantes en `lib/`: avatar3d/, ecs/, gpu/, performance/ (vacía), rendering/, spatial/. Más archivos sueltos (~30) en raíz.
+- **Estado real (2026-05-09 final sesión)**: 6 subdirs restantes en `lib/`: avatar3d/, ecs/, ecs/rendering/, gpu/, performance/ (vacía), rendering/, spatial/. **18 archivos sueltos** restantes en raíz (de los ~30 originales): agonesClient, audioProcessing, authRecoveryService, autorizacionesEmpresa (facade), chunkSystem, edgeProxyService, gamificacion, googleCalendar, gpuCapabilities, i18n.ts, interestManager, livekitService, metricasAnalisis, realtimeChunkManager, regionDetector, terrenosMarketplace, userSettings, zonaLayoutEngine.
 - Mapeo objetivo (decisión 2026-05-05):
   - `rendering/`, `gpu/`, `ecs/`, `spatial/`, `avatar3d/` → `src/core/infrastructure/r3f/`.
   - `security/validateEnvKeys`, `env`, `i18n-config` → `src/core/infrastructure/<aspect>/`.
   - `monitoring/`, `metrics/` → `src/core/infrastructure/observability/`.
   - `network/`, `routing/` → `src/core/infrastructure/<aspect>/`.
-- **Hojas cerradas**:
+- **Hojas/fanout cerrados**:
   - **hojas-1** (`b389e46`, 2026-05-08): security/, monitoring/, metrics/ → `src/core/infrastructure/{security,observability}/`.
-  - **hojas-2** (`59974ae`, 2026-05-09): network/, routing/ → `src/core/infrastructure/{network,routing}/`. 3 consumers (index.tsx, App.tsx, useLiveKitRoomLifecycle.ts).
-  - **hojas-3** (`15d540c`, 2026-05-09): env.ts + i18n-config.ts → `src/core/infrastructure/{env,i18n}/`. 7 consumers actualizados (incluye 4 archivos lib/ con imports relativos `./env` que se rompieron al mover; reemplazados por `@/core/infrastructure/env/env`).
+  - **hojas-2** (`59974ae`, 2026-05-09): network/, routing/ → `src/core/infrastructure/{network,routing}/`. 3 consumers.
+  - **hojas-3** (`15d540c`, 2026-05-09): env.ts + i18n-config.ts → `src/core/infrastructure/{env,i18n}/`. 7 consumers (incluye 4 archivos lib/ con imports relativos `./env` reparados a absolutos).
+  - **hojas-4** (`852cf8b`, 2026-05-09): devLog.ts (`git rm` huérfano), mobileDetect.ts → `src/core/infrastructure/platform/`, rtcConfig.ts → `src/core/infrastructure/livekit/`, theme.ts → `src/core/infrastructure/theme/`, constants.ts → `src/core/domain/` (regla de negocio: ESPACIO_GLOBAL_ID). 20 imports actualizados.
+  - **fanout-1** (`4574eb8`, 2026-05-09): logger.ts → `src/core/infrastructure/observability/logger.ts`. **134 archivos**, 133 imports (113 absolutos + 20 relativos + 1 special index.tsx). Operación bulk con sed; tsc + vitest 191/191 verde.
+  - **fanout-2** (`53bbb56`, 2026-05-09): supabase.ts → `src/core/infrastructure/supabase/supabaseClient.ts`. **79 archivos**, 77 imports (73 absolutos + 4 relativos + 1 dynamic + 1 vi.mock). Renombrado a `supabaseClient.ts` (no `supabase.ts`) por convención: directorio ya se llama `supabase/`.
 - **Pendiente (siguiente sesión)**:
   - `lib/i18n.ts` — 21 consumers, mover a `src/core/infrastructure/i18n/`.
-  - `lib/logger.ts` — alto fanout, mover a `src/core/infrastructure/observability/`.
-  - `lib/supabase.ts` — singleton crítico, mover a `src/core/infrastructure/supabase/`.
-  - `lib/userSettings.ts` + `lib/theme.ts` + `lib/devLog.ts` + `lib/constants.ts` + `lib/mobileDetect.ts` + `lib/rtcConfig.ts` — sueltos.
+  - `lib/userSettings.ts` — sueltos.
   - `lib/rendering/`, `lib/gpu/`, `lib/ecs/`, `lib/spatial/`, `lib/avatar3d/` → `src/core/infrastructure/r3f/`. Riesgo H (cruza con consumers VirtualSpace3D + Avatar3DScene).
   - `lib/livekitService.ts`, `lib/regionDetector.ts`, `lib/edgeProxyService.ts` → `src/core/infrastructure/livekit/`.
   - `lib/gamificacion.ts` (9+ supabase.from calls) → necesita `IGamificacionRepository` + adapter (cae bajo ITEM 6 batch nuevo).
