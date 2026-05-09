@@ -3,7 +3,7 @@ import {
   validateSupabaseKey,
   validateTurnCredentials,
   runStartupSecurityChecks,
-} from '../../../lib/security/validateEnvKeys';
+} from '@/core/infrastructure/security/validateEnvKeys';
 
 // Helper: create a fake JWT with a given payload
 function createFakeJwt(payload: Record<string, unknown>): string {

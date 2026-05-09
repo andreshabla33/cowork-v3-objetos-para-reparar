@@ -14,7 +14,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { hashToken } from '../../lib/security/hashToken';
+import { hashToken } from '@/core/infrastructure/security/hashToken';
 import { seleccionarProcesadorInvitacion } from '../../store/selectores';
 import type { InvitationState, InvitacionInfo } from '../../src/core/domain/entities/invitation';
 import { logger } from '../../lib/logger';

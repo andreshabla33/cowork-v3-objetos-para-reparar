@@ -41,7 +41,7 @@ import './styles/login-theme.css';
 import App from './App';
 import { AppErrorBoundary } from './components/ui/AppErrorBoundary';
 import { DIProvider } from './src/core/infrastructure/di/DIProvider';
-import { captureError } from './lib/monitoring/sentryInit';
+import { captureError } from '@/core/infrastructure/observability/sentryInit';
 import { registerSentryForwarder } from './lib/logger';
 
 // ─── Conectar logger.error() → Sentry.captureException() ──────────────────

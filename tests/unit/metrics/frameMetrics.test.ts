@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { FrameMetrics } from '@/lib/metrics/frameMetrics';
+import { FrameMetrics } from '@/core/infrastructure/observability/frameMetrics';
 
 describe('FrameMetrics', () => {
   let metrics: FrameMetrics;

@@ -40,7 +40,7 @@ import { resolveAvatarRenderPolicy, resolveEffectiveGraphicsQuality } from '@/li
 import { getGpuInfoSync } from '@/lib/gpuCapabilities';
 import { AvatarRuntimeScheduler, resolveAvatarRuntimePolicy } from '@/lib/ecs/avatarRuntimeScheduler';
 import { SpatialGrid } from '@/lib/spatial/SpatialGrid';
-import { frameMetrics } from '@/lib/metrics/frameMetrics';
+import { frameMetrics } from '@/core/infrastructure/observability/frameMetrics';
 import { AvatarLabels } from '../3d/AvatarLabels';
 import { CrowdInstances, type CrowdEntity } from './CrowdInstances';
 import { MidLodInstances, type MidLodEntity } from './MidLodInstances';

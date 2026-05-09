@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hashToken } from '../../../lib/security/hashToken';
+import { hashToken } from '@/core/infrastructure/security/hashToken';
 
 describe('hashToken', () => {
   describe('output format', () => {
