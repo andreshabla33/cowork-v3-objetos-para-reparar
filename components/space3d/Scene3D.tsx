@@ -35,7 +35,7 @@ import { useConfiguracionPerimetro } from '@/hooks/space3d/useConfiguracionPerim
 import { useTerreno } from '@/hooks/space3d/useTerreno';
 import { Terrain3D } from './Terrain3D';
 import { EmoteSync, useSyncEffects } from '../3d/EmoteSync';
-import { hapticFeedback, isMobileDevice } from '@/lib/mobileDetect';
+import { hapticFeedback, isMobileDevice } from '@/core/infrastructure/platform/mobileDetect';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import type { ModoEdicionObjeto, PlantillaZonaEnColocacion } from '@/store/slices';
 import { FloorType, calcularNivelAnidamientoRectangulo, detectarSolapamientoSubzona, zonaDbAMundo, type RectanguloZona, resolverTipoSubsueloZona } from '@/src/core/domain/entities';

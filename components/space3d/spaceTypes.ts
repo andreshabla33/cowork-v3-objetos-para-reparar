@@ -5,7 +5,7 @@
  */
 
 import { PresenceStatus } from '@/types';
-import { ICE_SERVERS as ICE_SERVERS_COMPARTIDOS } from '@/lib/rtcConfig';
+import { ICE_SERVERS as ICE_SERVERS_COMPARTIDOS } from '@/core/infrastructure/livekit/rtcConfig';
 
 // Colores de estado
 export const statusColors: Record<PresenceStatus, string> = {

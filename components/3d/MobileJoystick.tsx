@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useState, useEffect } from 'react';
-import { hapticFeedback } from '@/lib/mobileDetect';
+import { hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
 
 export interface JoystickInput {
   dx: number; // -1 a 1 (izquierda/derecha)

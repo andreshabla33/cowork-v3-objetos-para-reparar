@@ -21,7 +21,7 @@
 
 import { useCallback } from 'react';
 import type * as THREE from 'three';
-import { hapticFeedback } from '@/lib/mobileDetect';
+import { hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
 
 // ─── Contrato público ─────────────────────────────────────────────────────────
 

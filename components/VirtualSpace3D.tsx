@@ -28,7 +28,7 @@ import { logger } from '@/lib/logger';
 import { MobileJoystick, type JoystickInput } from './3d/MobileJoystick';
 import { EmoteWheel } from './3d/EmoteWheel';
 import { DayNightCycle } from './3d/DayNightCycle';
-import { hapticFeedback } from '@/lib/mobileDetect';
+import { hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
 import { GamificacionPanel } from './GamificacionPanel';
 import { useSpace3D, useSpaceVideoHudLayoutSnapshot } from '@/hooks/space3d';
 import { useEspacioObjetos, type EspacioObjeto, type TransformacionObjetoInput } from '@/hooks/space3d/useEspacioObjetos';

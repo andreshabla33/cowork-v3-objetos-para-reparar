@@ -8,7 +8,7 @@
  */
 
 import React, { useCallback } from 'react';
-import type { ThemeStyleSet } from '@/lib/theme';
+import type { ThemeStyleSet } from '@/core/infrastructure/theme/theme';
 import type { ThemeType } from '@/types';
 import type { SubTabType } from '@/types/workspace';
 

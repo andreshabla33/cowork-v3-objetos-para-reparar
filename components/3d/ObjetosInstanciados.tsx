@@ -28,7 +28,7 @@ import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import { obtenerDimensionesObjetoRuntime } from '../space3d/objetosRuntime';
 import { ObjetoEscena3D } from './ObjetoEscena3D';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
-import { hapticFeedback } from '@/lib/mobileDetect';
+import { hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
 import { logger } from '@/lib/logger';
 import { registerScaledBbox } from '@/lib/rendering/scaledBboxRegistry';
 

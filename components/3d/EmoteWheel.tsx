@@ -1,5 +1,5 @@
 import React, { useRef, useState, useCallback } from 'react';
-import { hapticFeedback } from '@/lib/mobileDetect';
+import { hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
 
 interface EmoteOption {
   id: string;

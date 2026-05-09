@@ -9,7 +9,7 @@ import type { User } from '@/types';
 import type { Session } from '@supabase/supabase-js';
 import type { EstadoEcsEspacio } from '@/lib/ecs/espacioEcs';
 import { obtenerEstadoUsuarioEcs } from '@/lib/ecs/espacioEcs';
-import { hapticFeedback } from '@/lib/mobileDetect';
+import { hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
 import type { PublishableDataPacketContract } from '@/modules/realtime-room';
 import type { AccionXP } from '@/lib/gamificacion';
 import { SpaceInteractionCoordinator } from '@/modules/realtime-room';

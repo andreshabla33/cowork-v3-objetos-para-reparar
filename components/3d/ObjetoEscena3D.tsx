@@ -5,7 +5,7 @@ import { Html, useGLTF } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
-import { hapticFeedback } from '@/lib/mobileDetect';
+import { hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
 import { logger } from '@/lib/logger';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import type { ObjetoPreview3D } from '@/types/objetos3d';

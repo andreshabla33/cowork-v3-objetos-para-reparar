@@ -10,7 +10,7 @@ import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import type { User } from '@/types';
 import type { RealtimePositionEntry } from './types';
-import { isTouchDevice, hapticFeedback } from '@/lib/mobileDetect';
+import { isTouchDevice, hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
 import { registrarLoginDiario, otorgarXP, XP_POR_ACCION } from '@/lib/gamificacion';
 import { supabase } from '@/lib/supabase';
 import type { JoystickInput } from '@/components/3d/MobileJoystick';

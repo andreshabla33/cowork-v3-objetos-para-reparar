@@ -16,7 +16,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useBootstrapAplicacion } from './hooks/app/useBootstrapAplicacion';
 import { useRutasReunion } from './hooks/app/useRutasReunion';
 import { seleccionarBootstrapApp } from './store/selectores';
-import { ESPACIO_GLOBAL_ID } from './lib/constants';
+import { ESPACIO_GLOBAL_ID } from './src/core/domain/constants';
 import { resolverRutaApp } from './src/core/infrastructure/routing/appRouter';
 import type { AppRouteKey } from './src/core/infrastructure/routing/appRouter';
 import './src/core/infrastructure/i18n/i18n-config';

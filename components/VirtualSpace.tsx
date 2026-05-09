@@ -21,7 +21,7 @@ import Phaser from 'phaser';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { User, Role, PresenceStatus } from '../types';
-import { ICE_SERVERS } from '../lib/rtcConfig';
+import { ICE_SERVERS } from '@/core/infrastructure/livekit/rtcConfig';
 import { seleccionarEspacioVirtual2D } from '../store/selectores';
 import { getVideoConstraints } from '../lib/userSettings';
 import { useVirtualSpaceData } from '../hooks/space3d/useVirtualSpaceData';

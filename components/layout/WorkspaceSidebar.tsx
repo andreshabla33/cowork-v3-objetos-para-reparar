@@ -12,7 +12,7 @@
 
 import React from 'react';
 import { UserAvatar } from '../UserAvatar';
-import type { ThemeStyleSet } from '@/lib/theme';
+import type { ThemeStyleSet } from '@/core/infrastructure/theme/theme';
 import type { ThemeType, PresenceStatus } from '@/types';
 import type { SubTabType } from '@/types/workspace';
 import { t } from '@/lib/i18n';
