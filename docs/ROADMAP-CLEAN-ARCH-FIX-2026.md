@@ -1,9 +1,20 @@
-# Roadmap Clean Arch + Bug Fixes — Cowork V3.7 (2026-05-05)
+# Roadmap Clean Arch + Bug Fixes — Cowork V3.7 (2026-05-05, auditado 2026-05-08)
 
-## Estado al 2026-05-05
+## Estado al 2026-05-05 (snapshot original)
 - TS: 0 errores. Bundle: ok. Vitest: bloqueado por env (WSL/Linux con node_modules instalados desde Windows host).
 - 21 findings: 5 P0 / 8 P1 / 5 P2 / 3 P3.
 - Migración legacy → src/ al ~26% (32.497 LoC en src/ vs 94.398 LoC en raíces legacy components/, hooks/, lib/, store/, services/).
+
+## Estado real al 2026-05-08 (auditoría exhaustiva)
+- TS: 0 errores. Vitest **191/191 PASS** en 4.22s (Windows MINGW64).
+- LoC `src/`: **35.037** (+2.540 vs snapshot original).
+- LoC legacy (components/+hooks/+lib/+store/+services/): **93.807** (−591).
+- Ratio migrado: **27,2%** (+1,2pp en 3 días). El delta vino mayormente de bugfixes tácticos sobre legacy y un sub-batch del ITEM 6, no de migración masiva.
+- **Repositories existentes en `src/core/infrastructure/adapters/`**: **35** archivos `*Repository|*Adapter`. El roadmap original decía "8" — desactualizado.
+- **ITEMs cerrados (5/21 = 24%)**: 1, 2, 3, 4, 5.
+- **ITEM en progreso**: 6 (sub-batch 1/N hecho — cargos + departamentos).
+- **ITEMs sin tocar**: 7 (parcial — split a sub-hooks pero target ≤100 líneas no alcanzado), 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21.
+- **Errores en el documento original detectados** durante auditoría: 10 paths incorrectos en ITEM 15, 5 paths incorrectos en ITEM 16. Corregidos en este update.
 
 ## Update 2026-05-08 — ITEM 1 cerrado
 - Vitest 4.1.2 corre limpio en Windows MINGW64: **191/191 tests pasan en 4.94s**.
@@ -34,18 +45,26 @@
 - Stores ya creados en `src/modules/<feature>/state/`: `useUserStore`, `useWorkspaceStore`, `useChatStore`, `useSpace3DStore`, `usePresenceStore`, `useUIStore`. La descomposición por contexto evitó la necesidad del barrido mecánico de `useShallow`.
 - Persisten 58 usos de `useStore` en código legacy (`hooks/`, `components/`, `store/orchestrators/*`). Esa migración cae bajo ITEMs 8/10/11 (legacy → src/), no requiere acción independiente.
 
-## Update 2026-05-08 — ITEM 6 progreso parcial (2/14)
+## Update 2026-05-08 — ITEM 6 progreso real (2/13 archivos = 15%)
+- **Corrección de scope**: el roadmap original decía "18 sitios". Auditoría con `grep "supabase.from("` muestra **13 archivos consumidores únicos en legacy** (excluyendo edge functions server-side y los nuevos repositorios en `src/`). Algunos archivos contienen múltiples calls; el conteo de calls totales es ~25.
 - **Sub-batch 1 cerrado** (`c84b987`): cargos + departamentos.
   - Nuevos: `src/core/domain/ports/{ICargoRepository,IDepartamentoRepository}.ts` + `src/core/infrastructure/adapters/{Cargo,Departamento}SupabaseRepository.ts`.
   - Refactorizados: `components/settings/sections/Settings{Cargos,Departamentos}.tsx` consumen singleton del adapter.
   - tsc OK, vitest 191/191.
-- **Sub-batches pendientes** (12 sitios restantes):
-  - **Recording hooks** (3): `RecordingManagerV2.tsx` (722 líneas, god-file → tocar con ITEM 15), `useRecording.ts`, `useAISummary.ts`. Necesita extender `IRecordingRepository` con Storage API + `resumenes_ai` upsert/select. **Existe ya `recordingRepository`** — auditar paridad antes de migrar.
-  - **Meetings** (2): `ScheduledMeetings.tsx`, `AgregarMiembros.tsx`.
-  - **Members** (2): `MiembrosView.tsx`, `lib/autorizacionesEmpresa.ts`.
-  - **Settings god-file**: `SettingsZona.tsx` (1523 líneas, defer hasta ITEM 15 split).
-  - **Store orchestrators** (3): `bootstrap/avatarLoader`, `bootstrap/userDataLoader`, `userStore` — coordinar con ITEM 8.
-  - **Services** (1): `services/chatService.ts` — fusionar con `ChatSupabaseRepository` ya existente (riesgo de duplicación).
+- **11 archivos pendientes** (con calls verificadas):
+  | Archivo | calls | Notas |
+  |---|---|---|
+  | `lib/autorizacionesEmpresa.ts` | 3 | tabla `actividades_log`, `notificaciones`, `miembros_grupo` |
+  | `components/MiembrosView.tsx` | 1 | tabla `invitaciones_pendientes` |
+  | `components/chat/AgregarMiembros.tsx` | 1 | tabla `miembros_grupo` |
+  | `components/meetings/recording/RecordingManagerV2.tsx` | 5 | god-file 722 líneas → coordinar con ITEM 15 |
+  | `components/meetings/ScheduledMeetings.tsx` | 2 | tablas `reunion_participantes`, `reuniones_programadas` |
+  | `components/meetings/recording/useRecording.ts` | 1 | tabla `grabaciones` (existe `recordingRepository.crearGrabacion`) |
+  | `components/meetings/recording/useAISummary.ts` | 3 | `resumenes_ai` upsert/select + `notificaciones`. Falta extender `IRecordingRepository` |
+  | `components/settings/sections/SettingsZona.tsx` | 3 | god-file 1523 líneas → coordinar con ITEM 15 |
+  | `services/chatService.ts` | 2 | fusionar con `ChatSupabaseRepository` ya existente (riesgo de duplicación) |
+  | `store/orchestrators/userStore.ts` | 1 | `avatar_configuracion` upsert |
+  | `store/orchestrators/bootstrap/avatarLoader.ts` | 2 | `avatares_3d`, `usuarios` — coordinar con ITEM 8 |
 
 ## Skills aplicadas
 - `clean-architecture-refactor` — criterios duros de performance (30+ FPS), 3 reglas de migración (no legacy / no duplicaciones / todo conectado), capas con paths concretos (Domain/Application/Infrastructure/Modules), patrones obligatorios (Repository, DI, Zustand selectores, R3F separation, LiveKit encapsulado), tamaños 500/200/50/100.
@@ -92,76 +111,142 @@
 
 ### FASE 3 — Patrón Repository Supabase
 
-#### ITEM 6 — P1-06 Migrar 18 sitios con `supabase.from()` directo
+#### ITEM 6 — P1-06 Migrar `supabase.from()` directo a Repository pattern 🟡 PARCIAL (2/13)
 - Esfuerzo: L (M por feature)
-- Archivos clave: `components/settings/sections/SettingsZona.tsx`, `SettingsDepartamentos.tsx`, `SettingsCargos.tsx`, `components/meetings/recording/RecordingManagerV2.tsx`, `components/meetings/ScheduledMeetings.tsx`, `components/chat/AgregarMiembros.tsx`, `components/MiembrosView.tsx`, `lib/autorizacionesEmpresa.ts`, `store/orchestrators/bootstrap/avatarLoader.ts`, `store/orchestrators/bootstrap/userDataLoader.ts`, `store/orchestrators/userStore.ts`, `services/chatService.ts`, `components/meetings/recording/useRecording.ts`, `components/meetings/recording/useAISummary.ts`.
+- **Scope corregido**: 13 archivos consumidores únicos en legacy (no 18 — la cifra original contaba calls duplicadas). 2 migrados, 11 pendientes (ver "Update 2026-05-08 — ITEM 6 progreso real").
 - Skills: `clean-architecture-refactor` (Repository en `src/core/infrastructure/adapters/`), `official-docs-alignment` (Supabase JS v2 docs — uso correcto del client).
-- Modelo a seguir: ya existen 8 repositories en src/ (ProfileSupabaseRepository, ChatSupabaseRepository, etc.) — extender el patrón.
+- Modelo a seguir: **35 repositories/adapters** ya existen en `src/core/infrastructure/adapters/` (no 8 como decía el doc original) — extender el patrón. Antes de crear uno nuevo, grep si ya existe.
 
 ### FASE 4 — Reubicación legacy → src/ (XL)
 
-#### ITEM 7 — P0-03 useLiveKit god-hook → src/modules/realtime-room/presentation
+#### ITEM 7 — P0-03 useLiveKit god-hook → src/modules/realtime-room/presentation 🟡 PARCIAL
 - Esfuerzo: L
-- Acción: extraer hook UI delgado (≤100 líneas) en `src/modules/realtime-room/presentation/useRealtimeRoom.ts`. La orquestación pesada ya vive en `SpaceRealtimeCoordinator`, `RealtimeEventBus`, `RealtimeDataPublisher`.
-- Riesgo: alto (touch al pipeline tiempo real). Requiere vitest verde (ITEM 1) y verificación browser.
+- **Estado real (2026-05-08)**:
+  - `hooks/space3d/useLiveKit.ts`: 1205 → **220 líneas** (compat shim, commit `1f4a8ab`).
+  - 11 sub-hooks en `src/modules/realtime-room/presentation/` totalizan 2.258 líneas.
+  - **Target ≤100 líneas NO alcanzado** en 4 sub-hooks: `useLiveKitRemoteTracks.ts` (553), `useLiveKitRoomLifecycle.ts` (438), `useLiveKitRemoteSubscriptions.ts` (285), `useLiveKitLocalPublishing.ts` (267).
+  - Hook UI delgado `useRealtimeRoom.ts` (≤100 líneas) **no creado todavía**.
+- Acción pendiente: (a) extraer `useRealtimeRoom.ts` ≤100 líneas, (b) re-fragmentar los 4 sub-hooks que violan el límite, (c) eliminar el shim `useLiveKit.ts` (220 líneas) y migrar consumers.
+- Riesgo: alto (touch al pipeline tiempo real). Requiere vitest verde (ITEM 1 ✓) y verificación browser.
 - **Trabajo Clean Arch iniciado:** `f763a23` introduce `src/modules/realtime-room/domain/PresencePositionPolicy.ts` (helper puro) + `tests/unit/realtime-room/presencePositionPolicy.test.ts` (8 tests). Primer pedazo real de la capa `domain` para realtime-room.
 - **Refuerzo policy:** `c1d486a` añade `tests/unit/realtime-room/avatarEcsSentinelGuard.test.ts` (9 tests) — segundo refuerzo de la misma policy aplicado al pipeline ECS.
 
-#### ITEM 8 — P0-04 store/ → bounded contexts en src/
+#### ITEM 8 — P0-04 store/ → bounded contexts en src/ ⏸ SIN TOCAR
 - Esfuerzo: L
-- Acción: descomponer `useStore` global en stores por bounded context (`useUserStore`, `useWorkspaceStore`, `useChatStore`, `useEditorStore`) en `src/modules/<feature>/state/`. Mantener re-export compat en `store/useStore.ts` durante migración.
+- **Estado real (2026-05-08)**: bounded-context stores **ya creados** en `src/modules/<feature>/state/` (useUserStore, useWorkspaceStore, useChatStore, useSpace3DStore, usePresenceStore, useUIStore). Pero **`store/` legacy intacto con 21 archivos** (slices, orchestrators, gameStore, useStore, etc.). Coexisten — la migración real (eliminar legacy) no comenzó.
+- Acción pendiente: migrar consumers que aún apuntan a `@/store/useStore` hacia los stores nuevos en `src/modules/`, luego eliminar `store/`.
 - Skills: `clean-architecture-refactor` (Modules + state local). `official-docs-alignment` (Zustand slices pattern).
-- Riesgo: alto blast radius. Decisión arquitectónica de Andrés requerida.
+- Riesgo: alto blast radius. 58 sitios consumen `useStore` legacy.
 
-#### ITEM 9 — P1-10 services/ → src/core/infrastructure
+#### ITEM 9 — P1-10 services/ → src/core/infrastructure ⏸ SIN TOCAR
 - Esfuerzo: M
+- **Estado real**: 4 archivos en `services/` intactos (audioManager.ts, chatService.ts, geminiService.ts, monicaContextService.ts).
 - Mapeo:
-  - `services/audioManager.ts` (370) → `src/core/infrastructure/audio/AudioManagerAdapter.ts`.
-  - `services/chatService.ts` (131, usa `supabase.from`) → fusionar con `src/core/infrastructure/adapters/ChatSupabaseRepository.ts`. Auditar paridad antes (riesgo de duplicación).
-  - `services/geminiService.ts` (128) y `services/monicaContextService.ts` (230) → `src/core/infrastructure/genai/`.
+  - `services/audioManager.ts` → `src/core/infrastructure/audio/AudioManagerAdapter.ts`.
+  - `services/chatService.ts` (usa `supabase.from`, parte del ITEM 6) → fusionar con `src/core/infrastructure/adapters/ChatSupabaseRepository.ts`. Auditar paridad antes (riesgo de duplicación).
+  - `services/geminiService.ts` y `services/monicaContextService.ts` → `src/core/infrastructure/genai/`.
 
-#### ITEM 10 — P1-11 hooks/ → src/modules/<feature>/presentation
+#### ITEM 10 — P1-11 hooks/ → src/modules/<feature>/presentation ⏸ SIN TOCAR
 - Esfuerzo: L
-- Subdirs: `app/`, `auth/`, `chat/`, `customizer/`, `meetings/`, `space3d/`, `workspace/`. Decenas de hooks.
+- **Estado real**: **54 archivos** en `hooks/` legacy. Subdirs: `app/`, `auth/`, `chat/`, `customizer/`, `meetings/`, `space3d/`, `workspace/`.
 - Modelo: cada hook → `src/modules/<feature>/presentation/useX.ts` (≤100 líneas), use-case puro en `src/core/application/<bc>/`.
 
-#### ITEM 11 — P1-12 components/ → src/modules/<feature>/presentation (XL)
-- Esfuerzo: XL (~70k+ LoC, mayor parte del legacy)
-- Subdirs: `3d/`, `agente/`, `avatar3d/`, `chat/`, `customizer/`, `games/`, `invitaciones/`, `invitation/`, `layout/`, `marketplace/`, `media/`, `meetings/`, `onboarding/`, `settings/`, `space3d/`, `ui/`.
+#### ITEM 11 — P1-12 components/ → src/modules/<feature>/presentation (XL) ⏸ SIN TOCAR
+- Esfuerzo: XL
+- **Estado real**: **231 archivos** en `components/` legacy.
+- Subdirs: `3d/`, `agente/`, `avatar3d/`, `chat/`, `customizer/`, `games/`, `invitaciones/`, `invitation/`, `layout/`, `marketplace/`, `media/`, `meetings/`, `onboarding/`, `settings/`, `space3d/`, `ui/`, también archivos sueltos en raíz (`VirtualSpace.tsx`, `VirtualSpace3D.tsx`, `MeetingRooms.tsx`, `MiembrosView.tsx`, `ChatSidebar.tsx`, etc.).
 - Por feature: fragmentar god-files (ver FASE 5) en el camino.
 
-#### ITEM 12 — P2-18 lib/ → re-categorizar por adapter target
+#### ITEM 12 — P2-18 lib/ → re-categorizar por adapter target ⏸ SIN TOCAR
 - Esfuerzo: M-L
-- Subdirs: `avatar3d/`, `ecs/`, `gpu/`, `metrics/`, `monitoring/`, `network/`, `performance/`, `rendering/`, `routing/`, `security/`, `spatial/`.
-- Mapeo objetivo:
+- **Estado real**: **12 subdirs** intactos en `lib/`: avatar3d/, ecs/, ecs/rendering/, gpu/, metrics/, monitoring/, network/, performance/, rendering/, routing/, security/, spatial/.
+- Mapeo objetivo (decisión 2026-05-05):
   - `rendering/`, `gpu/`, `ecs/`, `spatial/` → `src/core/infrastructure/r3f/`.
   - `security/validateEnvKeys`, `env`, `i18n-config` → `src/core/infrastructure/<aspect>/`.
   - `monitoring/`, `metrics/` → `src/core/infrastructure/observability/`.
 - Riesgo: validar paridad con archivos ya en src/ (`src/core/infrastructure/textureRegistry.ts`, `src/core/infrastructure/fabricaMaterialesArquitectonicos.ts`) — duplicación latente.
 
-#### ITEM 13 — P2-15 lib/database.types.ts → src/core/infrastructure/supabase
+#### ITEM 13 — P2-15 lib/database.types.ts → src/core/infrastructure/supabase ⏸ SIN TOCAR
 - Esfuerzo: S
-- Acción: mover `lib/database.types.ts` (3283 LoC autogenerado) a `src/core/infrastructure/supabase/types.gen.ts`. Actualizar comando `supabase gen types` y referencias.
+- **Estado real**: `lib/database.types.ts` sigue presente (≈101 KB, autogenerado). Carpeta `src/core/infrastructure/supabase/` **no existe**.
+- Acción: crear `src/core/infrastructure/supabase/`, mover archivo a `types.gen.ts`, actualizar comando `supabase gen types` y reescribir todos los imports `from '@/lib/database.types'`.
 
-#### ITEM 14 — P2-16 modules/ shim → eliminar tras alias
+#### ITEM 14 — P2-16 modules/ shim → eliminar tras alias ⏸ SIN TOCAR
 - Esfuerzo: S
-- Acción: `modules/realtime-room/index.ts` es un shim re-export. Después de migrar imports a un alias `@modules/realtime-room` apuntando a `src/modules/realtime-room/index.ts`, el shim se elimina.
+- **Estado real**: `modules/realtime-room/index.ts` sigue siendo el shim de 1 línea: `export * from '../../src/modules/realtime-room';`. No se aplicó alias `@modules/realtime-room`.
+- Acción: añadir alias en `tsconfig.json` + codemod ~30 imports + eliminar `modules/`.
 
 ### FASE 5 — Descomposición de god-files en src/
 
-#### ITEM 15 — P1-07 24 componentes >500 líneas
+#### ITEM 15 — P1-07 god-components >500 líneas ⏸ SIN TOCAR
 - Esfuerzo: L
-- Top: `ChessGame.tsx` 1603, `Scene3D.tsx` 1547, `SettingsZona.tsx` 1514, `VirtualSpace3D.tsx` 1423, `Avatar3DScene.tsx` 1413, `Player3D.tsx` 1279, `GrabacionesHistorial.tsx` 1042, `CalendarPanel.tsx` 1013, `RecordingManager.tsx` 990, `StaticObjectBatcher.tsx` 913, `GLTFAvatar.tsx` 883, `VirtualSpace.tsx` 852, `SharedMediaDeviceControls.tsx` 843, `AnalysisDashboard.tsx` 780, `ObjetoEscena3D.tsx` 766, `OnboardingCreador.tsx` 762, `ScheduledMeetings.tsx` 759, `RecordingManagerV2.tsx` 722, `PlacementHUD.tsx` 694, `MeetingControlBar.tsx` 686, `ExploradorPublico3D.tsx` 620, `MeetingReactionParticleLayer.tsx` 558, `MeetingRooms.tsx` 514, `MeetingRoomContent.tsx` 511.
-- Acción: descomposición por responsabilidad. R3F: separar lógica declarativa de lógica de juego (use-cases en application). UseFrame solo mover, no decidir.
+- **Paths corregidos** (auditoría 2026-05-08 — el doc original tenía 10 paths erróneos):
 
-#### ITEM 16 — P1-08 18+ hooks >100 líneas
+  | Archivo (path real) | Líneas |
+  |---|---|
+  | `components/games/minigames/ChessGame.tsx` | 1603 |
+  | `components/space3d/Scene3D.tsx` | 1547 |
+  | `components/settings/sections/SettingsZona.tsx` | 1523 |
+  | `components/space3d/Avatar3DScene.tsx` | 1433 |
+  | `components/VirtualSpace3D.tsx` | 1423 |
+  | `components/space3d/Player3D.tsx` | 1279 |
+  | `components/meetings/CalendarPanel.tsx` | 1013 |
+  | `components/meetings/recording/RecordingManager.tsx` | 990 |
+  | `components/3d/StaticObjectBatcher.tsx` | 913 |
+  | `components/avatar3d/GLTFAvatar.tsx` | 883 |
+  | `components/VirtualSpace.tsx` | 852 |
+  | `components/media/SharedMediaDeviceControls.tsx` | 843 |
+  | `components/meetings/recording/AnalysisDashboard.tsx` | 780 |
+  | `components/3d/ObjetoEscena3D.tsx` | 766 |
+  | `components/onboarding/OnboardingCreador.tsx` | 765 |
+  | `components/meetings/ScheduledMeetings.tsx` | 762 |
+  | `components/meetings/recording/RecordingManagerV2.tsx` | 722 |
+  | `components/3d/PlacementHUD.tsx` | 694 |
+  | `components/meetings/videocall/MeetingControlBar.tsx` | 686 |
+  | `components/marketplace/ExploradorPublico3D.tsx` | 620 |
+  | `components/meetings/videocall/MeetingReactionParticleLayer.tsx` | 558 |
+  | `components/MeetingRooms.tsx` | 514 |
+  | `components/meetings/videocall/MeetingRoomContent.tsx` | 511 |
+
+  Total: 23 archivos (no 24 — `GrabacionesHistorial.tsx` listado originalmente con 1042 líneas no se encontró tras búsqueda; o fue renombrado o partido).
+- Acción: descomposición por responsabilidad. R3F: separar lógica declarativa de lógica de juego (use-cases en application). useFrame solo mover, no decidir.
+
+#### ITEM 16 — P1-08 hooks >100 líneas ⏸ SIN TOCAR
 - Esfuerzo: L
-- Top: `useMeetingRealtimeState.ts` 1224, `useLiveKit.ts` 1205, `usePresenceChannels.ts` 921, `useCalendarPanel.ts` 794, `useMeetingMediaBridge.ts` 753, `useSpace3D.ts` 722, `useAdvancedEmotionAnalysis.ts` 713, `useCombinedAnalysis.ts` 651, `useRecordingManager.ts` 590, `useMeetingAccess.ts` 588, `useEspacioObjetos.ts` 540, `useProximity.ts` 525.
-- Acción: extraer use-cases puros a `src/core/application/<bc>/`, hook como adaptador delgado.
+- **Paths corregidos** (5 paths del doc original estaban en `components/meetings/{recording,videocall/hooks}/`, no en `hooks/meetings/`):
 
-#### ITEM 17 — P2-14 archivos en src/ ya >500 líneas
+  | Archivo (path real) | Líneas |
+  |---|---|
+  | `components/meetings/videocall/hooks/useMeetingRealtimeState.ts` | 1224 |
+  | `hooks/space3d/useLiveKit.ts` | 220 (era 1205, ya partido — ver ITEM 7) |
+  | `hooks/workspace/usePresenceChannels.ts` | 935 |
+  | `hooks/meetings/useCalendarPanel.ts` | 802 |
+  | `components/meetings/videocall/hooks/useMeetingMediaBridge.ts` | 753 |
+  | `hooks/space3d/useSpace3D.ts` | 721 |
+  | `components/meetings/recording/useAdvancedEmotionAnalysis.ts` | 713 |
+  | `components/meetings/recording/useCombinedAnalysis.ts` | 651 |
+  | `components/meetings/videocall/hooks/useMeetingAccess.ts` | 596 |
+  | `hooks/meetings/useRecordingManager.ts` | 590 |
+  | `hooks/space3d/useProximity.ts` | 544 |
+  | `hooks/space3d/useEspacioObjetos.ts` | 540 |
+
+- Acción: extraer use-cases puros a `src/core/application/<bc>/`, hook como adaptador delgado ≤100 líneas.
+
+#### ITEM 17 — P2-14 archivos en src/ ya >500 líneas ⏸ SIN TOCAR
 - Esfuerzo: M-L
-- Lista: `src/modules/realtime-room/application/SpaceMediaCoordinator.ts` (889), `src/core/infrastructure/adapters/ChatSupabaseRepository.ts` (803), `MeetingSupabaseRepository.ts` (736), `RecordingSupabaseRepository.ts` (712), `MeetingAccessSupabaseRepository.ts` (682), `GeometriaProceduralParedesAdapter.ts` (645), `SpaceRealtimeCoordinator.ts` (579).
+- **Líneas reales (2026-05-08)**:
+
+  | Archivo | Líneas |
+  |---|---|
+  | `src/modules/realtime-room/application/SpaceMediaCoordinator.ts` | 889 |
+  | `src/core/infrastructure/adapters/ChatSupabaseRepository.ts` | 803 |
+  | `src/core/infrastructure/adapters/MeetingSupabaseRepository.ts` | 736 |
+  | `src/core/infrastructure/adapters/RecordingSupabaseRepository.ts` | 712 (713 con la línea de export) |
+  | `src/core/infrastructure/adapters/MeetingAccessSupabaseRepository.ts` | 682 |
+  | `src/core/infrastructure/adapters/GeometriaProceduralParedesAdapter.ts` | 645 |
+  | `src/modules/realtime-room/presentation/useLiveKitRemoteTracks.ts` | 553 (NUEVO god-file generado por split de ITEM 7) |
+  | `src/modules/realtime-room/application/SpaceRealtimeCoordinator.ts` | 579 |
+
 - Acción: partir repositories por sub-bounded context (ChatMessagesRepository, ChatChannelsRepository, ChatPresenceRepository). Coordinators por capability.
 
 ### FASE 6 — Cleanup final (Grupo 3, requiere aprobación de Andrés)
@@ -177,10 +262,10 @@
 
 ### FASE 7 — Cosmético
 
-#### ITEM 21 — P3-19, P3-20, P3-21
-- P3-19: actualizar comentario `sRGBEncoding` → `SRGBColorSpace` en `src/core/infrastructure/adapters/TextureAtlasCanvasAdapter.ts:20`.
-- P3-20: tras ITEM 8, revertir imports `@/store/useStore` desde use-cases en src/.
-- P3-21: documentar excepción `process.env` permitido en `vite.config.*`, `playwright.config.*`, `tests/**/scripts/*`, `scripts/**` en la skill `official-docs-alignment`.
+#### ITEM 21 — P3-19, P3-20, P3-21 ⏸ SIN TOCAR
+- **P3-19** (verificado 2026-05-08): el comentario en `src/core/infrastructure/adapters/TextureAtlasCanvasAdapter.ts:20` aún dice `sRGBEncoding` (la línea 71 ya usa `SRGBColorSpace` en el código real, solo falta el comentario). Esfuerzo: 1 línea.
+- **P3-20**: tras ITEM 8, revertir imports `@/store/useStore` desde use-cases en src/.
+- **P3-21**: documentar excepción `process.env` permitido en `vite.config.*`, `playwright.config.*`, `tests/**/scripts/*`, `scripts/**` en la skill `official-docs-alignment`.
 
 ## Cronograma sugerido
 - **Semana 1**: FASE 0 + FASE 1 (ITEMs 1-3).
