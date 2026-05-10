@@ -360,10 +360,23 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 - **Carpeta `services/` eliminada (rmdir vacío)**. E4 (Grupo 3) cerrado.
 - tsc OK, vitest 191/191.
 
-#### ITEM 10 — P1-11 hooks/ → src/modules/<feature>/presentation ⏸ SIN TOCAR
+#### ITEM 10 — P1-11 hooks/ → src/modules/<feature>/presentation 🟡 EN CURSO — Batch 1 cerrado 2026-05-09
 - Esfuerzo: L
 - **Estado real**: **54 archivos** en `hooks/` legacy. Subdirs: `app/`, `auth/`, `chat/`, `customizer/`, `meetings/`, `space3d/`, `workspace/`.
 - Modelo: cada hook → `src/modules/<feature>/presentation/useX.ts` (≤100 líneas), use-case puro en `src/core/application/<bc>/`.
+
+##### ITEM 10 — Progreso por batch
+
+| Batch | Archivos | Decisión | Bounded context | Commits | tsc | vitest |
+|---|---|---|---|---|---|---|
+| Batch 1 | 3 hooks sueltos top-level (`useAvatarIK.ts`, `useIdleDetection.ts`, `useOnboarding.ts`) | 1 migrado as-is + 2 STOP huérfanos | `presence/` (1) | `5534b42` | 0 errors | 191/191 |
+
+**Detalle Batch 1 (2026-05-09)**:
+- `hooks/useIdleDetection.ts` (84L) → `src/modules/presence/presentation/useIdleDetection.ts`. Decisión (a) Move as-is + compat shim. 1 consumer (`components/WorkspaceLayout.tsx`) sigue importando vía shim hasta ITEM 11. Validación oficial: React 19.2 useEffect/useRef/useCallback, Zustand 5 selector + getState() en non-react context, DOM addEventListener `{passive:true}`.
+- `hooks/useAvatarIK.ts` (254L) → 🛑 STOP huérfano. 0 consumers en todo el repo (grep `useAvatarIK|findSkinnedMesh|calculateSitPosition|CCDIKSolver` → solo el archivo). Algoritmo IK Three.js + helpers, sin uso. Reversibilidad: `git restore`. Pendiente autorización externa para `git rm`.
+- `hooks/useOnboarding.ts` (204L) → 🛑 STOP huérfano. 0 consumers reales: `OnboardingCreador.tsx` declara su propia función local `completarOnboarding` (línea 162), no importa el hook. La lógica de membresía + cargo ya está canónica en `src/core/domain/ports/IOnboardingRepository.ts` + `OnboardingSupabaseRepository.ts` + `CompletarOnboardingUseCase.ts`. Reversibilidad: `git restore`. Pendiente autorización externa para `git rm`.
+
+**Próximo Batch sugerido**: `hooks/auth/` — riesgo bajo (auth flow ya tiene Application/UseCases en `src/core/application/auth/`), dependencias acotadas, fácil verificar contra los repositories existentes.
 
 #### ITEM 11 — P1-12 components/ → src/modules/<feature>/presentation (XL) ⏸ SIN TOCAR
 - Esfuerzo: XL
