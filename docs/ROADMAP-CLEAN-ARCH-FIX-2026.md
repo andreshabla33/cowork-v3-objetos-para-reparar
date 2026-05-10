@@ -53,7 +53,7 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 | 8 | ITEM 15 batch 2 (SettingsZona split 1523L) | L | M | sesion dedicada con UX testing |
 | ~~9~~ | ITEM 6 batch 8 🟡 PARCIAL 2026-05-09 (`ba83c0e`) — adapter PlantillaEspacioCompleta extraido (3/6 calls) | S | M | restantes: necesitan EmpresaRepository + MembershipRepository |
 | ~~10~~ | ITEM 12 resto ✅ CERRADO 2026-05-09 — lib/ ELIMINADA | L | H | 12 commits totales |
-| 11 | ITEM 16 🟡 fase A CERRADA 2026-05-09 — auditoría: 11 OK / 1 split (useMeetingRealtimeState 1224L) | L | H | sesion dedicada para split |
+| ~~11~~ | ITEM 16 ✅ CERRADO 2026-05-09 — fase A audit + fase B audit revisado (12 hooks OK as-is, 0 split necesario) | L | H | acoplamiento intencional documentado |
 | 12 | ITEM 10 (hooks/ migration) | L | H | strangler fig |
 | 13 | ITEM 11 (components/ migration) | XL | H | strangler fig, multi-sesión |
 | ~~14~~ | ITEM 17 ✅ CERRADO 2026-05-09 — fase A audit + fase B Chat split (`56da072`) + fase B Meeting split (`b58c521`) | L | M | 5 sub-ports + 5 sub-adapters + 2 facades |
@@ -366,7 +366,7 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 
   | Hook (path real) | Líneas | Veredicto | Razonamiento |
   |---|---|---|---|
-  | `components/meetings/videocall/hooks/useMeetingRealtimeState.ts` | 1224 | 🔧 SPLIT | **Único candidato real**. Mezcla 4-5 sub-bounded contexts: chat (`useChat` + `chatRepository` + `GestionarChatReunionUseCase`), raise hand (`RaiseHandUseCase`), recording (`recordingRepository` + `GestionarGrabacionUseCase`), access (`meetingAccessRepository` + `ObtenerAccesoReunionUseCase`), telemetry (`RealtimeSessionTelemetry`). 16 useState + 21 useEffect + 16 useCallback. Sub-hooks plausibles: `useMeetingChatState`, `useMeetingRaiseHandState`, `useMeetingRecordingState`, `useMeetingAccessState`, `useMeetingTelemetryState`. |
+  | `components/meetings/videocall/hooks/useMeetingRealtimeState.ts` | 1224 | ✅ **Auditoría revisada 2026-05-09 (post-lectura full)**: OK as-is | Lectura completa del archivo reveló que el state está **intencionalmente acoplado** por design. `meetingGatewayRef` = 1 instancia compartida (DataChannel sender). `eventBus` = 1 listener consolidated (recording_status + reaction + consent_request/response + pin + raise_hand + moderation en 1 useEffect, cleanup atómico). `telemetryRef` = 1 sesión telemetry. `room` + `localParticipant` consumidos transversalmente. Partir forzaría N instancias gateway/telemetry, listeners separados (más memoria + cleanups), ref passing extensivo. Anti-pattern. **Mismo caso ITEM 7 fase A**: tamaño viene de wiring inevitable alrededor de Room state compartido, no de mezcla de responsabilidades. |
   | `hooks/workspace/usePresenceChannels.ts` | 935 | ✅ OK as-is | JSDoc explícito: "Application-layer policy (EvaluarPresenceSubscriptionUseCase) for subscription decisions — no business logic in this file". Adapter Supabase Realtime con adaptive radius + 3-layer same-company detection + race-free reconciliation. 0 useState. Lógica pura ya en Application. Tamaño viene del wiring inevitable de presence channels. |
   | `hooks/meetings/useCalendarPanel.ts` | 802 | ✅ OK as-is | JSDoc: "extracts ALL business logic from CalendarPanel.tsx... Zero direct Supabase access — all data flows through repository ports." Facade hook que coordina UI state del panel completo (22 useState). Coherente con un panel con múltiples secciones (Google OAuth + meeting CRUD + invite externos). |
   | `components/meetings/videocall/hooks/useMeetingMediaBridge.ts` | 753 | ✅ OK as-is | Bridge entre LiveKit Room y `SpaceMediaCoordinator` + `LocalVideoTrackFactory` + `PublicarLocalTrackUseCase`. Application layer ya consume use cases. Adapter delgado entre infrastructure + state React. |
@@ -379,8 +379,8 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
   | `hooks/space3d/useEspacioObjetos.ts` | 540 | ✅ OK as-is | DI + Repository pattern (`useDI`, `IEspacioObjetosRepository`) + `crearIndiceCatalogo` (Domain). Lógica pura ya en Domain. Solo 4 useState (UI state). |
   | `hooks/space3d/useLiveKit.ts` | 220 | ✅ OK (cubierto ITEM 7) | Compat shim post-split del god-hook 1205L → 11 sub-hooks en `src/modules/realtime-room/presentation/`. Eliminación cae en ITEM 10. |
 
-- **Veredicto sesión 2026-05-09**: **11 OK as-is**, **1 SPLIT** (`useMeetingRealtimeState`).
-- **Plan ejecutable detallado para `useMeetingRealtimeState` split** (preparado 2026-05-09 tras audit del archivo completo):
+- **Veredicto final 2026-05-09 (post-lectura completa de useMeetingRealtimeState)**: **12 OK as-is**, **0 SPLIT requerido**. La auditoría inicial fase A había marcado useMeetingRealtimeState como SPLIT por conteo de useState/useEffect, pero la lectura completa reveló acoplamiento intencional que hace el split contraproducente (ver razonamiento detallado en tabla arriba). ITEM 16 fase B **CERRADO sin trabajo adicional**.
+- **Plan obsoleto (descartado tras audit revisado)** — referencia histórica del intento de split en 6 sub-hooks:
   - **Sub-hook 1: `useMeetingChatState`** (~400L) — extrae:
     - State: `meetingGroupId`, `persistedMessages`, `chatNotifications`, refs `processedChatMessageIdsRef`, `chatMessagesReadyRef`, `persistedMessageIdsRef`.
     - Hooks oficiales: `useChat({ room })` con `chatMessages`, `send`, `isSending`.
