@@ -369,12 +369,12 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 
 | Batch | Archivos | Decisión | Bounded context | Commits | tsc | vitest |
 |---|---|---|---|---|---|---|
-| Batch 1 | 3 hooks sueltos top-level (`useAvatarIK.ts`, `useIdleDetection.ts`, `useOnboarding.ts`) | 1 migrado as-is + 2 STOP huérfanos | `presence/` (1) | `5534b42` | 0 errors | 191/191 |
+| Batch 1 | 3 hooks sueltos top-level (`useAvatarIK.ts`, `useIdleDetection.ts`, `useOnboarding.ts`) | 1 migrado as-is + 2 STOP ✅ EJECUTADOS | `presence/` (1) | `5534b42`, `8006f15`, `cd98047` | 0 errors | 191/191 |
 
 **Detalle Batch 1 (2026-05-09)**:
 - `hooks/useIdleDetection.ts` (84L) → `src/modules/presence/presentation/useIdleDetection.ts`. Decisión (a) Move as-is + compat shim. 1 consumer (`components/WorkspaceLayout.tsx`) sigue importando vía shim hasta ITEM 11. Validación oficial: React 19.2 useEffect/useRef/useCallback, Zustand 5 selector + getState() en non-react context, DOM addEventListener `{passive:true}`.
-- `hooks/useAvatarIK.ts` (254L) → 🛑 STOP huérfano. 0 consumers en todo el repo (grep `useAvatarIK|findSkinnedMesh|calculateSitPosition|CCDIKSolver` → solo el archivo). Algoritmo IK Three.js + helpers, sin uso. Reversibilidad: `git restore`. Pendiente autorización externa para `git rm`.
-- `hooks/useOnboarding.ts` (204L) → 🛑 STOP huérfano. 0 consumers reales: `OnboardingCreador.tsx` declara su propia función local `completarOnboarding` (línea 162), no importa el hook. La lógica de membresía + cargo ya está canónica en `src/core/domain/ports/IOnboardingRepository.ts` + `OnboardingSupabaseRepository.ts` + `CompletarOnboardingUseCase.ts`. Reversibilidad: `git restore`. Pendiente autorización externa para `git rm`.
+- `hooks/useAvatarIK.ts` (254L) → 🛑 STOP huérfano ✅ **EJECUTADO** 2026-05-09 (`8006f15`). 0 consumers en todo el repo (grep `useAvatarIK|findSkinnedMesh|calculateSitPosition|CCDIKSolver` → solo el archivo). Algoritmo IK Three.js + helpers, sin uso. `git rm` autorizado por mi lord Andrés. tsc 0 / vitest 191/191 / bundle-budget OK post-eliminación.
+- `hooks/useOnboarding.ts` (204L) → 🛑 STOP huérfano ✅ **EJECUTADO** 2026-05-09 (`cd98047`). 0 consumers reales: `OnboardingCreador.tsx` declaraba su propia función local `completarOnboarding` (línea 162), nunca importó el hook. La lógica de membresía + cargo ya está canónica en `src/core/domain/ports/IOnboardingRepository.ts` + `OnboardingSupabaseRepository.ts` + `CompletarOnboardingUseCase.ts`. `git rm` autorizado por mi lord Andrés. tsc 0 / vitest 191/191 / bundle-budget OK post-eliminación.
 
 **Próximo Batch sugerido**: `hooks/auth/` — riesgo bajo (auth flow ya tiene Application/UseCases en `src/core/application/auth/`), dependencias acotadas, fácil verificar contra los repositories existentes.
 
