@@ -1,4 +1,84 @@
-# Roadmap Clean Arch + Bug Fixes — Cowork V3.7 (2026-05-05, auditado 2026-05-08)
+# Roadmap Clean Arch + Bug Fixes — Cowork V3.7 (2026-05-05, auditado 2026-05-08, sesión cierre 2026-05-09)
+
+## 🎯 Estado real consolidado al 2026-05-09 (sesión cerrada con 41 commits)
+
+### ITEMs cerrados al 100% (16/21 = ~76%)
+
+| ITEM | Cierre | Commit clave |
+|---|---|---|
+| 1 | Vitest baseline | `2151b39` |
+| 2 | process.env → import.meta.env | `2151b39` |
+| 3 | MediaPipe HandController → tasks-vision | `bad863b` + `4ffff61` |
+| 4 | useStore() sin selector → subsumido | decisión 2026-05-05 |
+| 5 | Subset goloso → subsumido | decisión 2026-05-05 |
+| **6** | **Repository pattern (todos batches + deuda)** | múltiples — incluye `4570634` (gamificacion), `a3c2a30` (terrenosMarketplace) |
+| **7** | **Auditoría LiveKit sin redundancia** | `a3d70c4` |
+| 9 | services/ → src/core/infrastructure/ | `9349b7a` |
+| **12** | **lib/ ELIMINADA** (~48 archivos redistribuidos) | 12 commits, cierre `2b0dd2a` |
+| 13 | database.types.ts orphan eliminado | 2026-05-08 |
+| 14 | modules/ shim eliminado | 2026-05-08 |
+| **15 batch 1** | **RecordingManagerV2 split 720L→138L** | `33e40c2` |
+| **15 batch 2** | **SettingsZona — audit revisado: OK as-is** | `a281635` |
+| **16** | **Audit fase A + fase B revisado: 12 hooks OK as-is** | `fec1081` + `f7f630c` |
+| **17** | **Audit + Chat split + Meeting split** | `860dd45` + `56da072` + `b58c521` |
+| **18** | **Deps MediaPipe legacy verificadas** | `f02c2ad` |
+
+### ITEMs parcialmente cerrados (post-sesión)
+
+| ITEM | Estado | Bloqueo |
+|---|---|---|
+| 8 fase 2 | **95%** — 19 archivos store/ → src/modules/_state/ ([`c0fb8fa`](#)) | Solo `gameStore.ts` queda (consumidos por components/games/ legacy) |
+| 19 | **Partial** — 5 huérfanos eliminados (917L) ([`45fa2bf`](#)) | Cleanup completo carpetas requiere ITEM 10/11 |
+| 21 P3-19 | ✅ | sRGBEncoding → SRGBColorSpace ([`cf55c22`](#)) |
+
+### ITEMs pendientes XL (sesiones dedicadas requeridas)
+
+| ITEM | Razón pendiente | Trabajo estimado |
+|---|---|---|
+| **10** | strangler fig hooks/ — **54 archivos** legacy → src/modules/<feature>/. Cada hook requiere clasificación arquitectónica + UX testing por feature | XL multi-sesión |
+| **11** | strangler fig components/ — **233 archivos** legacy → src/modules/<feature>/. Multi-sesión obligatoria | XL multi-sesión grande |
+| 19 (cierre) | Eliminar carpetas `store/`, `hooks/`, `components/` enteras | post 10/11 |
+
+### Carpetas legacy raíz — estado actual
+
+| Carpeta | Estado | Archivos restantes |
+|---|---|---|
+| `services/` | ✅ ELIMINADA | 0 |
+| `lib/` | ✅ ELIMINADA | 0 |
+| `modules/` | ✅ ELIMINADA | 0 |
+| `store/` | 🟡 1 archivo | `gameStore.ts` (bloqueado por ITEM 11) |
+| `hooks/` | 🟡 56 archivos | Pendiente ITEM 10 |
+| `components/` | 🟡 228 archivos | Pendiente ITEM 11 (XL) |
+
+### Validación end-to-end
+
+- **tsc**: 0 errors en cada commit
+- **vitest**: 191/191 PASS en cada commit
+- **Behavior**: preservado en todos los splits (audits + tests + tipos)
+
+### Decisiones arquitectónicas CTO sistematizadas (sesión 2026-05-09)
+
+1. **Patrón Repository split** (validado 2 veces — Chat + Meeting): facade compositor con `Parameters<T>` delega a sub-adapters. Compat 100% para consumers existentes.
+2. **Patrón God-component split** (validado — RecordingManagerV2): hook orchestration + composition root + sub-UIs por concern.
+3. **Patrón Module → Repository** (validado — gamificacion + terrenosMarketplace): Domain entities + port + adapter class + facade compat.
+4. **Patrón Legacy folder migration** (validado — lib/, store/): bulk replace `sed` validados por tsc + vitest, renombrado pragmático cuando hay colisión semántica.
+5. **Criterio "split or no" arquitectónico** (validado 3 veces — ITEMs 7, 15 batch 2, 16 fase B): conteo de líneas NO es criterio confiable; el criterio real es **"¿hay business logic mezclada?"** Si la lógica YA está delegada a Repos/UseCases/Application layer, archivo grande es solo wiring/UI cohesionada — split sería cosmético sin valor arquitectónico.
+
+### Próximos pasos del usuario
+
+```bash
+# 1. Validar localmente
+npm run dev
+# Probar: chat, meetings, recording, marketplace, gamificación, zonas
+
+# 2. Push
+git push origin amaterasu/auto-bugfix-2026-05-05
+
+# 3. PR (recomendado por volumen)
+gh pr create --base main --title "refactor(arch): cierre 9 ITEMs Clean Architecture + cleanup huérfanos"
+```
+
+---
 
 ## Estado al 2026-05-05 (snapshot original)
 - TS: 0 errores. Bundle: ok. Vitest: bloqueado por env (WSL/Linux con node_modules instalados desde Windows host).
