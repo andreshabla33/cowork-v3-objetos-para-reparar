@@ -8,7 +8,7 @@
  * Backed by the composed store; type-narrowed view (P0-04 transition).
  */
 
-import type { UsersSlice } from '../../../../store/slices/usersSlice';
+import type { UsersSlice } from '@/modules/_state/slices/usersSlice';
 import { useComposedStore } from '../../_state/composedStore';
 import { createStoreView } from '../../_state/createStoreView';
 

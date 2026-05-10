@@ -37,7 +37,7 @@ import { Terrain3D } from './Terrain3D';
 import { EmoteSync, useSyncEffects } from '../3d/EmoteSync';
 import { hapticFeedback, isMobileDevice } from '@/core/infrastructure/platform/mobileDetect';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
-import type { ModoEdicionObjeto, PlantillaZonaEnColocacion } from '@/store/slices';
+import type { ModoEdicionObjeto, PlantillaZonaEnColocacion } from '@/modules/_state/slices';
 import { FloorType, calcularNivelAnidamientoRectangulo, detectarSolapamientoSubzona, zonaDbAMundo, type RectanguloZona, resolverTipoSubsueloZona } from '@/src/core/domain/entities';
 import { DRAWING_MAX_ORBIT_DISTANCE } from '@/src/core/domain/entities/espacio3d/CameraFramingPolicy';
 import { obtenerPlantillaZona } from '@/src/core/domain/entities/plantillasEspacio';

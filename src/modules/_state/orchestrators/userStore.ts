@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand';
-import type { StoreState } from '../state';
-import type { AvatarConfig, PresenceStatus } from '../../types';
+import type { StoreState } from '../storeState';
+import type { AvatarConfig, PresenceStatus } from '@/types';
 import { avatarCatalogRepository } from '@/src/core/infrastructure/adapters/AvatarCatalogSupabaseRepository';
 import { profileRepository } from '@/src/core/infrastructure/adapters/ProfileSupabaseRepository';
 import { logger } from '@/core/infrastructure/observability/logger';

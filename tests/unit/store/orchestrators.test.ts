@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createSignOutAction } from '../../../store/orchestrators/authStore';
-import { createFetchWorkspacesAction } from '../../../store/orchestrators/workspaceStore';
-import { createInitializeAction } from '../../../store/orchestrators/initializeStore';
+import { createSignOutAction } from '@/modules/_state/orchestrators/authStore';
+import { createFetchWorkspacesAction } from '@/modules/_state/orchestrators/workspaceStore';
+import { createInitializeAction } from '@/modules/_state/orchestrators/initializeStore';
 
 const { mockSupabase } = vi.hoisted(() => ({
   mockSupabase: {

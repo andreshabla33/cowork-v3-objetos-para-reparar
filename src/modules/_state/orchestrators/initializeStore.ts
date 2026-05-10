@@ -19,8 +19,8 @@
  */
 
 import type { StateCreator } from 'zustand';
-import type { AvatarConfig } from '../../types';
-import type { StoreState } from '../state';
+import type { AvatarConfig } from '@/types';
+import type { StoreState } from '../storeState';
 import { logger } from '@/core/infrastructure/observability/logger';
 
 // Atomic orchestrators

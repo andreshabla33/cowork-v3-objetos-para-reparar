@@ -22,7 +22,7 @@ import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { User, Role, PresenceStatus } from '../types';
 import { ICE_SERVERS } from '@/core/infrastructure/livekit/rtcConfig';
-import { seleccionarEspacioVirtual2D } from '../store/selectores';
+import { seleccionarEspacioVirtual2D } from '@/modules/_state/selectores';
 import { getVideoConstraints } from '@/core/infrastructure/userSettings/userSettings';
 import { useVirtualSpaceData } from '../hooks/space3d/useVirtualSpaceData';
 import { logger } from '@/core/infrastructure/observability/logger';

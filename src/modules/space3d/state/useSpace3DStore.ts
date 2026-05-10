@@ -9,8 +9,8 @@
  * type-narrowed view (P0-04 transition).
  */
 
-import type { EditorSlice } from '../../../../store/slices/editorSlice';
-import type { AvatarSlice } from '../../../../store/slices/avatarSlice';
+import type { EditorSlice } from '@/modules/_state/slices/editorSlice';
+import type { AvatarSlice } from '@/modules/_state/slices/avatarSlice';
 import { useComposedStore } from '../../_state/composedStore';
 import { createStoreView } from '../../_state/createStoreView';
 

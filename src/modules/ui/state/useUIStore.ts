@@ -6,7 +6,7 @@
  * Backed by the composed store; type-narrowed view (P0-04 transition).
  */
 
-import type { UISlice } from '../../../../store/slices/uiSlice';
+import type { UISlice } from '@/modules/_state/slices/uiSlice';
 import { useComposedStore } from '../../_state/composedStore';
 import { createStoreView } from '../../_state/createStoreView';
 

@@ -9,8 +9,8 @@
  * Ref: Supabase JS v2 — .maybeSingle() for optional rows, avoids throwing on 0 results.
  */
 
-import type { AvatarConfig } from '../../../types';
-import type { Avatar3DConfig } from '../../../components/avatar3d/shared';
+import type { AvatarConfig } from '@/types';
+import type { Avatar3DConfig } from '@/components/avatar3d/shared';
 import type { UserAvatarData } from './userDataLoader';
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { avatarCatalogRepository } from '@/src/core/infrastructure/adapters/AvatarCatalogSupabaseRepository';

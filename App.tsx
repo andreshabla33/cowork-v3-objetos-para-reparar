@@ -15,7 +15,7 @@ import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useBootstrapAplicacion } from './hooks/app/useBootstrapAplicacion';
 import { useRutasReunion } from './hooks/app/useRutasReunion';
-import { seleccionarBootstrapApp } from './store/selectores';
+import { seleccionarBootstrapApp } from '@/modules/_state/selectores';
 import { ESPACIO_GLOBAL_ID } from './src/core/domain/constants';
 import { resolverRutaApp } from './src/core/infrastructure/routing/appRouter';
 import type { AppRouteKey } from './src/core/infrastructure/routing/appRouter';

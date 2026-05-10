@@ -15,7 +15,7 @@ import { registrarLoginDiario, otorgarXP, XP_POR_ACCION } from '@/core/infrastru
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import type { JoystickInput } from '@/components/3d/MobileJoystick';
 import { saveCameraSettings, saveAudioSettings, type CameraSettings, type AudioSettings } from '@/modules/realtime-room';
-import { seleccionarSpace3DBase } from '@/store/selectores';
+import { seleccionarSpace3DBase } from '@/modules/_state/selectores';
 import { useUserSettings } from './useUserSettings';
 import { useRecording } from './useRecording';
 import { useNotifications } from './useNotifications';

@@ -10,7 +10,7 @@
  * type-narrowed view exposed under a feature-scoped name.
  */
 
-import type { AuthSlice } from '../../../../store/slices/authSlice';
+import type { AuthSlice } from '@/modules/_state/slices/authSlice';
 import { useComposedStore } from '../../_state/composedStore';
 import { createStoreView } from '../../_state/createStoreView';
 

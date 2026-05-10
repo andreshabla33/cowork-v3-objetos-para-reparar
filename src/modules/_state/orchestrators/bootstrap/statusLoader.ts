@@ -8,7 +8,7 @@
  * Falls back to a direct query if pre-fetched data is not provided.
  */
 
-import { PresenceStatus } from '../../../types';
+import { PresenceStatus } from '@/types';
 import type { UserStatusData } from './userDataLoader';
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { logger } from '@/core/infrastructure/observability/logger';

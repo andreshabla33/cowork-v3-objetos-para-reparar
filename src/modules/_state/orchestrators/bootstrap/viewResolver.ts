@@ -4,7 +4,7 @@
  * Atomic orchestrator — pure routing logic, no Supabase calls.
  */
 
-import type { Workspace } from '../../../types';
+import type { Workspace } from '@/types';
 import { getSettingsSection } from '@/core/infrastructure/userSettings/userSettings';
 import { logger } from '@/core/infrastructure/observability/logger';
 

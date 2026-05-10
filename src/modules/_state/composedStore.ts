@@ -16,11 +16,11 @@
 
 import { create } from 'zustand';
 import type { AvatarConfig } from '../../../types';
-import type { StoreState } from '../../../store/state';
-import { createInitializeAction } from '../../../store/orchestrators/initializeStore';
-import { createFetchWorkspacesAction } from '../../../store/orchestrators/workspaceStore';
-import { createSignOutAction } from '../../../store/orchestrators/authStore';
-import { createUpdateAvatarAction, createUpdateStatusAction } from '../../../store/orchestrators/userStore';
+import type { StoreState } from '@/modules/_state/storeState';
+import { createInitializeAction } from '@/modules/_state/orchestrators/initializeStore';
+import { createFetchWorkspacesAction } from '@/modules/_state/orchestrators/workspaceStore';
+import { createSignOutAction } from '@/modules/_state/orchestrators/authStore';
+import { createUpdateAvatarAction, createUpdateStatusAction } from '@/modules/_state/orchestrators/userStore';
 import {
   createAuthSlice,
   createUISlice,
@@ -29,7 +29,7 @@ import {
   createEditorSlice,
   createUsersSlice,
   createAvatarSlice,
-} from '../../../store/slices';
+} from '@/modules/_state/slices';
 
 const initialAvatar: AvatarConfig = {
   skinColor: '#fcd34d',

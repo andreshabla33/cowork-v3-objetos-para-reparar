@@ -5,7 +5,7 @@
  *   Mantener mientras se migran los consumidores (App.tsx, VirtualSpace.tsx,
  *   InvitationProcessor.tsx, hooks/space3d/useSpace3D.ts).
  */
-import type { StoreState } from './state';
+import type { StoreState } from './storeState';
 
 export const seleccionarBootstrapApp = (state: StoreState) => ({
   session: state.session,

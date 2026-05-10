@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand';
-import type { StoreState } from '../state';
+import type { StoreState } from '../storeState';
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { logger } from '@/core/infrastructure/observability/logger';
 

@@ -1,9 +1,9 @@
 import type { StateCreator } from 'zustand';
-import type { StoreState } from '../state';
-import type { Role, Workspace } from '../../types';
+import type { StoreState } from '../storeState';
+import type { Role, Workspace } from '@/types';
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { logger } from '@/core/infrastructure/observability/logger';
-import { toUndefined } from '../../src/core/domain/utils/nullSafe';
+import { toUndefined } from '@/core/domain/utils/nullSafe';
 
 const log = logger.child('workspace-store');
 

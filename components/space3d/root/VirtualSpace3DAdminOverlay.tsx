@@ -24,7 +24,7 @@ import { EditModeHUD, InspectorEdicionObjeto, PlacementHUD } from '@/components/
 import { BuildModePanel } from '@/components/3d/BuildModePanel';
 import type { CatalogoObjeto3D, ObjetoPreview3D } from '@/types/objetos3d';
 import type { EspacioObjeto, TransformacionObjetoInput } from '@/hooks/space3d/useEspacioObjetos';
-import type { ModoEdicionObjeto } from '@/store/slices/editorSlice';
+import type { ModoEdicionObjeto } from '@/modules/_state/slices/editorSlice';
 
 // ─── Contrato público ─────────────────────────────────────────────────────────
 

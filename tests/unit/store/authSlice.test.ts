@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { PresenceStatus } from '@/types';
 
-import { createAuthSlice, type AuthSlice } from '@/store/slices/authSlice';
+import { createAuthSlice, type AuthSlice } from '@/modules/_state/slices/authSlice';
 
 function createTestStore(): AuthSlice {
   let state: AuthSlice;

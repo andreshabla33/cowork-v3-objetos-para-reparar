@@ -9,7 +9,7 @@
  * for behavior parity.
  */
 
-import type { ChatSlice } from '../../../../store/slices/chatSlice';
+import type { ChatSlice } from '@/modules/_state/slices/chatSlice';
 import { useComposedStore } from '../../_state/composedStore';
 import { createStoreView } from '../../_state/createStoreView';
 

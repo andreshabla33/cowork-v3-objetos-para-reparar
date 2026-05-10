@@ -7,7 +7,7 @@
  * Backed by the composed store; type-narrowed view (P0-04 transition).
  */
 
-import type { WorkspaceSlice } from '../../../../store/slices/workspaceSlice';
+import type { WorkspaceSlice } from '@/modules/_state/slices/workspaceSlice';
 import { useComposedStore } from '../../_state/composedStore';
 import { createStoreView } from '../../_state/createStoreView';
 
