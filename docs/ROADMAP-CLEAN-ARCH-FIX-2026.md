@@ -57,7 +57,7 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 | 12 | ITEM 10 (hooks/ migration) | L | H | strangler fig |
 | 13 | ITEM 11 (components/ migration) | XL | H | strangler fig, multi-sesión |
 | ~~14~~ | ITEM 17 ✅ CERRADO 2026-05-09 — fase A audit + fase B Chat split (`56da072`) + fase B Meeting split (`b58c521`) | L | M | 5 sub-ports + 5 sub-adapters + 2 facades |
-| 15 | ITEM 19 (cleanup carpetas legacy) | XS | 0 | post 10-12 |
+| 15 | ITEM 19 🟡 PARCIAL 2026-05-09 (`45fa2bf`) — 5 huérfanos eliminados (917L). Cleanup completo de carpetas requiere ITEM 10/11 previos | XS | 0 | post 10-12 |
 
 ## Update 2026-05-08 — ITEM 1 cerrado
 - Vitest 4.1.2 corre limpio en Windows MINGW64: **191/191 tests pasan en 4.94s**.
