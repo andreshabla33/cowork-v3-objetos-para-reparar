@@ -244,7 +244,16 @@ Vite 6 docs: `process.env` permitido en archivos NO-cliente (vite.config, playwr
 - **Trabajo Clean Arch previo:** `f763a23` introdujo `src/modules/realtime-room/domain/PresencePositionPolicy.ts` (helper puro) + 8 tests. `c1d486a` añadió `tests/unit/realtime-room/avatarEcsSentinelGuard.test.ts` (9 tests).
 - **Refs**: docs.livekit.io/reference/components/react/hook/usetracks/, docs.livekit.io/reference/components/react/hook/uselocalparticipant/, docs.livekit.io/home/server/managing-rooms/ (moveParticipant).
 
-#### ITEM 8 — P0-04 store/ → bounded contexts en src/ 🟡 EN PROGRESO
+#### ITEM 8 — P0-04 store/ → bounded contexts en src/ 🟡 95% CERRADO (2026-05-09)
+- **Fase 2 ejecutada (commit `c0fb8fa`)**: 19 archivos movidos de `store/` a `src/modules/_state/`:
+  - `orchestrators/` (4 + 5 bootstrap) → `src/modules/_state/orchestrators/`
+  - `slices/` (8 archivos) → `src/modules/_state/slices/`
+  - `state.ts` → `src/modules/_state/storeState.ts` (renombrado)
+  - `selectores.ts` → `src/modules/_state/selectores.ts`
+- **Pendiente final**: `store/gameStore.ts` (2 consumers en `components/games/` legacy) — caerá con ITEM 11 strangler fig de components/.
+- ~25 imports actualizados en consumers (App, InvitationProcessor, VirtualSpace, useSpace3D, PlacementHUD, Scene3D, AdminOverlay, 6 stores bounded en src/, 2 tests). Imports relativos rotos en archivos movidos reparados a absolutos.
+
+
 
 **Update 2026-05-09**: descubierto que `useStore` legacy ya es un compat shim de 1 línea apuntando a `src/modules/_state/composedStore.ts` (commit anterior no documentado). El composed store + bounded views (`createStoreView`) ES el patrón híbrido óptimo (slices internos + multi-store API). Migración real = solo cambiar imports de consumers.
 
