@@ -35,7 +35,7 @@ import type { ThemeType } from '../types';
 import type { GameInvitationData, PendingGameInvitation } from '../types/workspace';
 
 const VirtualSpace3D = lazy(() => import('./VirtualSpace3D'));
-const ChatPanel = lazy(() => import('./ChatPanel').then(m => ({ default: m.ChatPanel })));
+const ChatPanel = lazy(() => import('@/modules/chat/presentation/ChatPanel').then(m => ({ default: m.ChatPanel })));
 const MonicaDockInline = lazy(() => import('./MonicaDockInline'));
 const GameHub = lazy(() => import('@/modules/games/presentation').then(m => ({ default: m.GameHub })));
 const GameInvitationNotification = lazy(() => import('@/modules/games/presentation').then(m => ({ default: m.GameInvitationNotification })));

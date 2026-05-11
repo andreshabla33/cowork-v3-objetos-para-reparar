@@ -10,15 +10,15 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useChatPanel } from '../hooks/chat/useChatPanel';
+import { useChatPanel } from '@/hooks/chat/useChatPanel';
 import { ChatSidebarContent } from '@/modules/chat/presentation/ChatSidebarContent';
 import { ChatThreadPanel } from '@/modules/chat/presentation/ChatThreadPanel';
 import { ChatMembersPanel } from '@/modules/chat/presentation/ChatMembersPanel';
 import { MessageContent } from '@/modules/chat/presentation/MessageContent';
 import { AgregarMiembros } from '@/modules/chat/presentation/AgregarMiembros';
-import { ChatToast } from './ChatToast';
-import { UserAvatar } from './UserAvatar';
-import type { ChatGroup } from '../types';
+import { ChatToast } from '@/components/ChatToast';
+import { UserAvatar } from '@/components/UserAvatar';
+import type { ChatGroup } from '@/types';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 
