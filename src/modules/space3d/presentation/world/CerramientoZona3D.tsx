@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import { GeometriaProceduralObjeto3D } from './GeometriaProceduralObjeto3D';
-import { obtenerDimensionesObjetoRuntime } from '@/components/space3d/objetosRuntime';
+import { obtenerDimensionesObjetoRuntime } from '@/modules/space3d/presentation/scene/objetosRuntime';
 
 interface CerramientoZona3DProps {
   objeto: EspacioObjeto;

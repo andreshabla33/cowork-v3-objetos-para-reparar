@@ -7,8 +7,8 @@
 import { useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import type { AnimationState } from '@/modules/avatar3d/presentation/shared';
-import { resolverAsientoUsuario, type AsientoRuntime3D } from '@/components/space3d/asientosRuntime';
-import { ANIMATION_SIT_DOWN_DURATION } from '@/components/space3d/shared';
+import { resolverAsientoUsuario, type AsientoRuntime3D } from '@/modules/space3d/presentation/scene/asientosRuntime';
+import { ANIMATION_SIT_DOWN_DURATION } from '@/modules/space3d/presentation/scene/shared';
 
 export interface UseSeatDetectionParams {
   animationStateRef: React.MutableRefObject<AnimationState>;

@@ -24,7 +24,7 @@ import {
   playInviteSound,
   playTeleportSound,
   playObjectInteractionSound,
-} from '@/components/space3d/shared';
+} from '@/modules/space3d/presentation/scene/shared';
 import type {
   ISoundBus,
   PlaySoundOptions,

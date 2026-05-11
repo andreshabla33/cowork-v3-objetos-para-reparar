@@ -12,11 +12,11 @@ import { FloorType } from '../src/core/domain/entities';
 import type { CargoLaboral } from './meetings/recording/types/analysis';
 import { BottomControlBar } from './BottomControlBar';
 import { StressFase1Panel } from '@/tests/stress/fase1-local/presentation/StressFase1Panel';
-import { VirtualSpace3DModals } from './space3d/root/VirtualSpace3DModals';
-import { VirtualSpace3DAdminOverlay } from './space3d/root/VirtualSpace3DAdminOverlay';
-import { VirtualSpace3DStatusBanners } from './space3d/root/VirtualSpace3DStatusBanners';
-import { MovingToRoomBanner } from './space3d/root/MovingToRoomBanner';
-import { VirtualSpace3DStatusOverlays } from './space3d/root/VirtualSpace3DStatusOverlays';
+import { VirtualSpace3DModals } from '@/modules/space3d/presentation/scene/root/VirtualSpace3DModals';
+import { VirtualSpace3DAdminOverlay } from '@/modules/space3d/presentation/scene/root/VirtualSpace3DAdminOverlay';
+import { VirtualSpace3DStatusBanners } from '@/modules/space3d/presentation/scene/root/VirtualSpace3DStatusBanners';
+import { MovingToRoomBanner } from '@/modules/space3d/presentation/scene/root/MovingToRoomBanner';
+import { VirtualSpace3DStatusOverlays } from '@/modules/space3d/presentation/scene/root/VirtualSpace3DStatusOverlays';
 import { useLiveKitVideoBackground, useLocalCameraTrack } from '@/modules/realtime-room';
 import type { LocalVideoTrack } from 'livekit-client';
 import { useRendererMetrics } from '@/hooks/space3d/useRendererMetrics';
@@ -52,21 +52,21 @@ import type { InteraccionObjetoAccion } from '@/src/core/application/usecases/In
 import { EditModeToast, PlacementToast, ToastContainer } from '@/modules/space3d/presentation/world/PlacementHUD';
 import { AdminZoneHUD } from '@/modules/space3d/presentation/world/AdminZoneHUD';
 import type { CatalogoObjeto3D, ObjetoPreview3D } from '@/types/objetos3d';
-import type { AsientoRuntime3D } from './space3d/asientosRuntime';
+import type { AsientoRuntime3D } from '@/modules/space3d/presentation/scene/asientosRuntime';
 // `normalizarInteraccionConfigObjeto` / `resolverDisplayObjeto` / `resolverUseObjeto`
 // ya no se importan aquí: son detalles de dominio consumidos por
 // `InteraccionObjetoUseCase`. Solo mantenemos el tipo `DisplayRuntimeNormalizado3D`
 // que sigue siendo el param de `ejecutarDestinoVisual`.
-import type { DisplayRuntimeNormalizado3D } from './space3d/interaccionesObjetosRuntime';
+import type { DisplayRuntimeNormalizado3D } from '@/modules/space3d/presentation/scene/interaccionesObjetosRuntime';
 
 // Los efectos de sonido se consumen via `services.sounds.play(...)` del
 // container (`useApplicationServices`). Los helpers globales `playXxxSound`
 // ya no se importan en este componente — la migración al port ISoundBus se
 // cerró en `328c3152` #3.
-import { themeColors, TELEPORT_DISTANCE } from './space3d/shared';
+import { themeColors, TELEPORT_DISTANCE } from '@/modules/space3d/presentation/scene/shared';
 
-import { Minimap, StableVideo, Avatar, RemoteUsers, CameraFollow, AvatarScreenProjector, TeleportEffect, Player, Scene, AdaptiveFrameloop, VideoHUD, ScreenSpaceProfileCard, statusColors, type VirtualSpace3DProps } from './space3d/InternalComponents';
-import { Precompile } from './space3d/Precompile';
+import { Minimap, StableVideo, Avatar, RemoteUsers, CameraFollow, AvatarScreenProjector, TeleportEffect, Player, Scene, AdaptiveFrameloop, VideoHUD, ScreenSpaceProfileCard, statusColors, type VirtualSpace3DProps } from '@/modules/space3d/presentation/scene/InternalComponents';
+import { Precompile } from '@/modules/space3d/presentation/scene/Precompile';
 
 // SceneFallback — fondo plano durante la descarga del GLTF del terreno.
 // ANTES: incluía un <Grid infiniteGrid> cuyos colores (cellColor indigo /

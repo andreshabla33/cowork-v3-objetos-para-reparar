@@ -33,7 +33,7 @@ import { LABEL_CONFIG } from '@/src/core/domain/entities/espacio3d/AvatarLabelEn
 import { PrepararAvatarLabelsUseCase } from '@/src/core/application/usecases/PrepararAvatarLabelsUseCase';
 import { ecsAvatarLabelDataProvider } from '@/src/core/infrastructure/adapters/EcsAvatarLabelDataProvider';
 import { avatarStore } from '@/core/infrastructure/r3f/ecs/AvatarECS';
-import { statusColors, STATUS_LABELS } from '@/components/space3d/spaceTypes';
+import { statusColors, STATUS_LABELS } from '@/modules/space3d/presentation/scene/spaceTypes';
 import type { PresenceStatus } from '@/types';
 
 // ─── Singleton use case instance ────────────────────────────────────────────

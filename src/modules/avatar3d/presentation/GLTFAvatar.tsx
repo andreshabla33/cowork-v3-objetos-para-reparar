@@ -18,7 +18,7 @@ import {
   type AnimationState,
   type Avatar3DConfig,
 } from './shared';
-import { ALTURA_AVATAR_ESTANDAR } from '@/components/space3d/shared';
+import { ALTURA_AVATAR_ESTANDAR } from '@/modules/space3d/presentation/scene/shared';
 
 export interface GLTFAvatarProps {
   avatarConfig?: Avatar3DConfig | null;

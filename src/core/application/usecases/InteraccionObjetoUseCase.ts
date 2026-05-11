@@ -24,7 +24,7 @@
  */
 
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
-import type { AsientoRuntime3D } from '@/components/space3d/asientosRuntime';
+import type { AsientoRuntime3D } from '@/modules/space3d/presentation/scene/asientosRuntime';
 import {
   normalizarInteraccionConfig,
   resolverDestinoTeleport,

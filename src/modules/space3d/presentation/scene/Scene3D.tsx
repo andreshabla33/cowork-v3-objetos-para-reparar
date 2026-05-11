@@ -10,7 +10,7 @@ import { User, PresenceStatus, ZonaEmpresa } from '@/types';
 import { GLTFAvatar } from '@/modules/avatar3d/presentation/GLTFAvatar';
 import { useAvatarControls } from '@/modules/avatar3d/presentation/useAvatarControls';
 import type { AnimationState } from '@/modules/avatar3d/presentation/shared';
-import { VideoWithBackground } from '../VideoWithBackground';
+import { VideoWithBackground } from '@/components/VideoWithBackground';
 import { GhostAvatar } from '@/modules/space3d/presentation/world/GhostAvatar';
 import { CerramientoZona3D } from '@/modules/space3d/presentation/world/CerramientoZona3D';
 import { ZonaEmpresa as ZonaEmpresa3D } from '@/modules/space3d/presentation/world/ZonaEmpresa';
