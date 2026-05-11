@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { driver, type DriveStep, type Config } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import '../../styles/driver-tour.css';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { miembrosEspacioRepository } from '@/core/infrastructure/adapters/MiembrosEspacioSupabaseRepository';
 
 interface ProductTourProps {
   espacioId: string;
@@ -149,24 +149,12 @@ export const ProductTour: React.FC<ProductTourProps> = ({
 
   const isAdmin = rol === 'super_admin' || rol === 'admin';
 
-  // Cargar estado del tour desde Supabase
+  // Cargar estado del tour desde Repository
   const cargarEstado = useCallback(async () => {
     try {
-      const { data } = await supabase
-        .from('miembros_espacio')
-        .select('id, tour_completado, tour_veces_mostrado, tour_no_mostrar')
-        .eq('espacio_id', espacioId)
-        .eq('usuario_id', userId)
-        .single();
-
-      if (data) {
-        const nuevoEstado = {
-          tour_completado: data.tour_completado ?? false,
-          tour_veces_mostrado: data.tour_veces_mostrado ?? 0,
-          tour_no_mostrar: data.tour_no_mostrar ?? false,
-        };
+      const nuevoEstado = await miembrosEspacioRepository.obtenerEstadoTour(userId, espacioId);
+      if (nuevoEstado) {
         setTourState(nuevoEstado);
-        // Si el tour fue reseteado (completado=false, veces=0), permitir re-disparo
         if (!nuevoEstado.tour_completado && nuevoEstado.tour_veces_mostrado === 0) {
           setTourStarted(false);
         }
@@ -187,46 +175,22 @@ export const ProductTour: React.FC<ProductTourProps> = ({
   // Escuchar cambios en miembros_espacio (reset desde settings)
   useEffect(() => {
     if (!espacioId || !userId) return;
-
-    const channel = supabase
-      .channel(`tour-reset-${userId}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'miembros_espacio',
-        filter: `usuario_id=eq.${userId}`,
-      }, (payload) => {
-        const nuevo = payload.new as any;
-        const viejo = payload.old as any;
-        if (nuevo.espacio_id !== espacioId) return;
-        // Detecta reset real: tour_completado transita de true → false.
-        // Antes disparaba en CUALQUIER UPDATE donde new.tour_completado=false
-        // (ej. heartbeats, cambios de rol), causando spam + reloads innecesarios.
-        // payload.old solo trae el valor previo de columnas cambiadas si la
-        // tabla tiene REPLICA IDENTITY FULL; si no, caemos al ref local.
-        const previamenteCompletado = viejo?.tour_completado === true
-          ? true
-          : tourStateRef.current?.tour_completado === true;
-        if (previamenteCompletado && nuevo.tour_completado === false) {
-          console.log('ProductTour: Tour reseteado desde settings, recargando...');
-          cargarEstado();
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return miembrosEspacioRepository.suscribirCambiosTourUsuario(userId, (payload) => {
+      if (payload.espacio_id !== espacioId) return;
+      const previamenteCompletado = payload.tour_completado_anterior === true
+        ? true
+        : tourStateRef.current?.tour_completado === true;
+      if (previamenteCompletado && payload.tour_completado_nuevo === false) {
+        console.log('ProductTour: Tour reseteado desde settings, recargando...');
+        cargarEstado();
+      }
+    });
   }, [espacioId, userId, cargarEstado]);
 
-  // Actualizar estado en Supabase
+  // Actualizar estado en Repository
   const actualizarEstado = useCallback(async (updates: Partial<TourState>) => {
     try {
-      await supabase
-        .from('miembros_espacio')
-        .update(updates)
-        .eq('espacio_id', espacioId)
-        .eq('usuario_id', userId);
+      await miembrosEspacioRepository.actualizarEstadoTour(userId, espacioId, updates);
     } catch (err) {
       console.warn('ProductTour: Error actualizando estado', err);
     }

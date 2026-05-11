@@ -96,3 +96,5 @@ export class EnviarInvitacionSupabaseRepository implements IEnviarInvitacionRepo
     }
   }
 }
+
+export const enviarInvitacionRepository: IEnviarInvitacionRepository = new EnviarInvitacionSupabaseRepository();

@@ -14,6 +14,9 @@ import type {
   RegistroConexion,
   MiembroAdminEspacio,
   CambioMiembroCallback,
+  EstadoTour,
+  UpdateTour,
+  CambioTourPayload,
 } from '@/core/domain/ports/IMiembrosEspacioRepository';
 
 export class MiembrosEspacioSupabaseRepository implements IMiembrosEspacioRepository {
@@ -104,6 +107,51 @@ export class MiembrosEspacioSupabaseRepository implements IMiembrosEspacioReposi
       .channel(`settings_members:${espacioId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'miembros_espacio', filter: `espacio_id=eq.${espacioId}` }, callback)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'invitaciones_pendientes', filter: `espacio_id=eq.${espacioId}` }, callback)
+      .subscribe();
+    return () => { supabase.removeChannel(canal); };
+  }
+
+  async obtenerEstadoTour(usuarioId: string, espacioId: string): Promise<EstadoTour | null> {
+    const { data } = await supabase
+      .from('miembros_espacio')
+      .select('id, tour_completado, tour_veces_mostrado, tour_no_mostrar')
+      .eq('espacio_id', espacioId)
+      .eq('usuario_id', usuarioId)
+      .single();
+    if (!data) return null;
+    return {
+      tour_completado: data.tour_completado ?? false,
+      tour_veces_mostrado: data.tour_veces_mostrado ?? 0,
+      tour_no_mostrar: data.tour_no_mostrar ?? false,
+    };
+  }
+
+  async actualizarEstadoTour(usuarioId: string, espacioId: string, updates: UpdateTour): Promise<void> {
+    const { error } = await supabase
+      .from('miembros_espacio')
+      .update(updates)
+      .eq('espacio_id', espacioId)
+      .eq('usuario_id', usuarioId);
+    if (error) throw error;
+  }
+
+  suscribirCambiosTourUsuario(usuarioId: string, callback: (payload: CambioTourPayload) => void): () => void {
+    const canal = supabase
+      .channel(`tour-reset-${usuarioId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'miembros_espacio',
+        filter: `usuario_id=eq.${usuarioId}`,
+      }, (payload) => {
+        const nuevo = payload.new as { espacio_id: string; tour_completado?: boolean | null };
+        const viejo = payload.old as { tour_completado?: boolean | null };
+        callback({
+          espacio_id: nuevo.espacio_id,
+          tour_completado_anterior: viejo?.tour_completado ?? null,
+          tour_completado_nuevo: nuevo?.tour_completado ?? null,
+        });
+      })
       .subscribe();
     return () => { supabase.removeChannel(canal); };
   }

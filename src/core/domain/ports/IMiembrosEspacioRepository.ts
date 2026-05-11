@@ -45,6 +45,24 @@ export interface MiembroAdminEspacio {
 
 export type CambioMiembroCallback = () => void;
 
+export interface EstadoTour {
+  tour_completado: boolean;
+  tour_veces_mostrado: number;
+  tour_no_mostrar: boolean;
+}
+
+export interface UpdateTour {
+  tour_completado?: boolean;
+  tour_veces_mostrado?: number;
+  tour_no_mostrar?: boolean;
+}
+
+export interface CambioTourPayload {
+  espacio_id: string;
+  tour_completado_anterior: boolean | null;
+  tour_completado_nuevo: boolean | null;
+}
+
 export interface IMiembrosEspacioRepository {
   listarMiembrosAceptados(espacioId: string): Promise<MiembroEspacio[]>;
   listarInvitacionesPendientes(espacioId: string): Promise<InvitacionPendiente[]>;
@@ -55,4 +73,7 @@ export interface IMiembrosEspacioRepository {
   obtenerCargoClave(usuarioId: string, espacioId: string): Promise<string | null>;
   cancelarInvitacionConCount(invitacionId: string): Promise<{ count: number }>;
   suscribirCambiosMiembros(espacioId: string, callback: CambioMiembroCallback): () => void;
+  obtenerEstadoTour(usuarioId: string, espacioId: string): Promise<EstadoTour | null>;
+  actualizarEstadoTour(usuarioId: string, espacioId: string, updates: UpdateTour): Promise<void>;
+  suscribirCambiosTourUsuario(usuarioId: string, callback: (payload: CambioTourPayload) => void): () => void;
 }

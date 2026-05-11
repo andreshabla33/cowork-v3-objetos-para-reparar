@@ -25,6 +25,11 @@ export interface DatosOnboarding {
   invitadorNombre: string;
 }
 
+export interface MiembroResumen {
+  rol: string;
+  espacio_id: string;
+}
+
 export interface IOnboardingRepository {
   /**
    * Find the most recent pending onboarding membership for a user.
@@ -32,6 +37,11 @@ export interface IOnboardingRepository {
    *                     membresías de otros workspaces con rol diferente — ROLE-MISMATCH-001).
    */
   obtenerMiembroPendiente(userId: string, espacioId?: string): Promise<MiembroOnboarding | null>;
+
+  /**
+   * Find the most recent accepted membership (cualquier estado de onboarding) for guard de rol.
+   */
+  obtenerMiembroMasReciente(userId: string): Promise<MiembroResumen | null>;
 
   /**
    * Fetch departments, roles/cargos, and invitation data for onboarding.
@@ -46,6 +56,21 @@ export interface IOnboardingRepository {
     cargoSugerido: string | null;
     invitadorNombre: string;
   }>;
+
+  /**
+   * Load only active cargos for a given workspace (Onboarding Creador flow).
+   */
+  obtenerCargosActivos(espacioId: string): Promise<CargoDB[]>;
+
+  /**
+   * Resolve a member's id in a given workspace.
+   */
+  obtenerIdMiembro(userId: string, espacioId: string): Promise<string | null>;
+
+  /**
+   * Mark `onboarding_completado=true` por id de miembro (sin cargo update).
+   */
+  marcarOnboardingCompleto(miembroId: string): Promise<void>;
 
   /**
    * Complete onboarding by updating member's cargo and optionally department.

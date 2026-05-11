@@ -12,7 +12,8 @@ import {
  X,
  Plus
 } from 'lucide-react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { onboardingRepository } from '@/core/infrastructure/adapters/OnboardingSupabaseRepository';
+import { enviarInvitacionRepository } from '@/core/infrastructure/adapters/EnviarInvitacionSupabaseRepository';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { CargoSelector } from './CargoSelector';
@@ -87,15 +88,7 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
 
  // Guard 3: Verificar rol en la membresía más reciente.
  // Si no es admin/super_admin, redirigir al onboarding de miembro.
- const { data: miembro } = await supabase
- .from('miembros_espacio')
- .select('rol, espacio_id')
- .eq('usuario_id', userId)
- .eq('aceptado', true)
- .order('aceptado_en', { ascending: false, nullsFirst: false })
- .limit(1)
- .maybeSingle();
-
+ const miembro = await onboardingRepository.obtenerMiembroMasReciente(userId);
  if (miembro && miembro.rol !== 'admin' && miembro.rol !== 'super_admin') {
  // Setear el espacioId para que OnboardingCargoView filtre correctamente
  useStore.getState().setPendingOnboardingEspacioId(miembro.espacio_id);
@@ -135,19 +128,8 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
  if (!espacioCreado) {
  throw new Error('Espacio global no disponible');
  }
-
- const { data: cargosData, error: cargosError } = await supabase
- .from('cargos')
- .select('id, nombre, clave, descripcion, categoria, icono, orden, activo, tiene_analisis_avanzado, analisis_disponibles, solo_admin')
- .eq('espacio_id', espacioCreado.id)
- .eq('activo', true)
- .order('orden');
-
- if (cargosError) {
- throw cargosError;
- }
-
- setCargosDB((cargosData || []) as CargoDB[]);
+ const cargosData = await onboardingRepository.obtenerCargosActivos(espacioCreado.id);
+ setCargosDB(cargosData);
  };
 
  const handleSelectCargo = (cargo: CargoLaboral) => {
@@ -167,17 +149,10 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
  let targetMiembroId = miembroId;
 
  if (!targetMiembroId) {
- const { data: miembroData, error: miembroError } = await supabase
- .from('miembros_espacio')
- .select('id')
- .eq('espacio_id', espacioCreado.id)
- .eq('usuario_id', userId)
- .maybeSingle();
-
- if (miembroError) throw miembroError;
- if (miembroData?.id) {
- targetMiembroId = miembroData.id;
- setMiembroId(miembroData.id);
+ const resolvedId = await onboardingRepository.obtenerIdMiembro(userId, espacioCreado.id);
+ if (resolvedId) {
+ targetMiembroId = resolvedId;
+ setMiembroId(resolvedId);
  }
  }
 
@@ -185,12 +160,7 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
  throw new Error('No se encontró la membresía');
  }
 
- const { error: updateError } = await supabase
- .from('miembros_espacio')
- .update({ onboarding_completado: true })
- .eq('id', targetMiembroId);
-
- if (updateError) throw updateError;
+ await onboardingRepository.marcarOnboardingCompleto(targetMiembroId);
  };
 
  const finalizarOnboarding = async () => {
@@ -312,19 +282,14 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
  setError(null);
 
  try {
- // Enviar invitaciones usando la Edge Function
+ // Enviar invitaciones usando el Repository (encapsula edge function)
  for (const email of emailsValidos) {
- const { data, error: fnError } = await supabase.functions.invoke('enviar-invitacion', {
- body: {
+ const result = await enviarInvitacionRepository.enviar({
  email,
- espacio_id: espacioCreado!.id,
+ espacioId: espacioCreado!.id,
  rol: 'miembro',
- invitador_id: userId
- }
  });
-
- if (fnError) throw new Error(fnError.message || 'Error al enviar la invitación');
- if (data?.error) throw new Error(data.error);
+ if (!result.exito) throw new Error(result.mensaje || 'Error al enviar la invitación');
  }
 
  await finalizarOnboarding();

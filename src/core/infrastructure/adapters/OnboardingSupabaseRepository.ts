@@ -12,6 +12,7 @@ import { pickOneRelation } from '../../domain/utils/supabaseRelations';
 import type {
   IOnboardingRepository,
   MiembroOnboarding,
+  MiembroResumen,
 } from '../../domain/ports/IOnboardingRepository';
 import type { Departamento, MiembroEspacioData, OnboardingInvitadorData, CargoDB } from '../../domain/entities/onboarding';
 
@@ -124,4 +125,48 @@ export class OnboardingSupabaseRepository implements IOnboardingRepository {
 
     if (error) throw error;
   }
+
+  async obtenerMiembroMasReciente(userId: string): Promise<MiembroResumen | null> {
+    const { data } = await supabase
+      .from('miembros_espacio')
+      .select('rol, espacio_id')
+      .eq('usuario_id', userId)
+      .eq('aceptado', true)
+      .order('aceptado_en', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+    return (data as MiembroResumen | null) ?? null;
+  }
+
+  async obtenerCargosActivos(espacioId: string): Promise<CargoDB[]> {
+    const { data, error } = await supabase
+      .from('cargos')
+      .select('id, nombre, clave, descripcion, categoria, icono, orden, activo, tiene_analisis_avanzado, analisis_disponibles, solo_admin')
+      .eq('espacio_id', espacioId)
+      .eq('activo', true)
+      .order('orden');
+    if (error) throw error;
+    return (data ?? []) as CargoDB[];
+  }
+
+  async obtenerIdMiembro(userId: string, espacioId: string): Promise<string | null> {
+    const { data, error } = await supabase
+      .from('miembros_espacio')
+      .select('id')
+      .eq('espacio_id', espacioId)
+      .eq('usuario_id', userId)
+      .maybeSingle();
+    if (error) throw error;
+    return (data?.id as string | null) ?? null;
+  }
+
+  async marcarOnboardingCompleto(miembroId: string): Promise<void> {
+    const { error } = await supabase
+      .from('miembros_espacio')
+      .update({ onboarding_completado: true })
+      .eq('id', miembroId);
+    if (error) throw error;
+  }
 }
+
+export const onboardingRepository: IOnboardingRepository = new OnboardingSupabaseRepository();
