@@ -18,7 +18,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { Role } from '../types';
+import { Role } from '@/types';
 import { AICopilotSlot } from '@/modules/ui/presentation/AICopilotSlot';
 
 export const Dashboard: React.FC = () => {

@@ -28,7 +28,7 @@ import { OnboardingCargoView } from '@/modules/onboarding/presentation/Onboardin
 import { ThankYouScreen } from '@/modules/meetings/presentation/ThankYouScreen';
 
 // ─── Lazy-loaded routes ─────────────────────────────────────────────────
-const Dashboard = lazy(() => import('./components/Dashboard').then((m) => ({ default: m.Dashboard })));
+const Dashboard = lazy(() => import('@/modules/workspace/presentation/Dashboard').then((m) => ({ default: m.Dashboard })));
 const WorkspaceLayout = lazy(() => import('./components/WorkspaceLayout').then((m) => ({ default: m.WorkspaceLayout })));
 const OnboardingCreador = lazy(() => import('@/modules/onboarding/presentation/OnboardingCreador').then((m) => ({ default: m.OnboardingCreador })));
 const MeetingLobby = lazy(() => import('@/modules/meetings/presentation/videocall/MeetingLobby').then((m) => ({ default: m.MeetingLobby })));

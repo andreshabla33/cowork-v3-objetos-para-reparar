@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { TaskStatus, Task, Attachment } from '../types';
+import { TaskStatus, Task, Attachment } from '@/types';
 
 export const TaskBoard: React.FC = () => {
  const { tasks, updateTaskStatus, addTask } = useStore(

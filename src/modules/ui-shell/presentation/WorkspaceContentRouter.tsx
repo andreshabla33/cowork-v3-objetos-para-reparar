@@ -14,13 +14,13 @@ import type { SubTabType } from '@/types/workspace';
 import { t } from '@/core/infrastructure/i18n/i18n';
 import type { Language } from '@/core/infrastructure/i18n/i18n';
 
-const TaskBoard = lazy(() => import('@/components/TaskBoard').then(module => ({ default: module.TaskBoard })));
+const TaskBoard = lazy(() => import('@/modules/workspace/presentation/TaskBoard').then(module => ({ default: module.TaskBoard })));
 const MiembrosView = lazy(() => import('@/components/MiembrosView').then(module => ({ default: module.MiembrosView })));
 const AvatarCustomizer3D = lazy(() => import('@/modules/customizer/presentation/AvatarCustomizer3D'));
 const ChatPanel = lazy(() => import('@/modules/chat/presentation/ChatPanel').then(module => ({ default: module.ChatPanel })));
 const CalendarPanel = lazy(() => import('@/modules/meetings/presentation/CalendarPanel'));
 const GrabacionesHistorial = lazy(() => import('@/modules/meetings/presentation/recording/GrabacionesHistorial'));
-const MetricasEmpresaPanel = lazy(() => import('@/components/MetricasEmpresaPanel'));
+const MetricasEmpresaPanel = lazy(() => import('@/modules/workspace/presentation/MetricasEmpresaPanel'));
 
 const FallbackPanel = () => (
   <div className="flex h-full w-full items-center justify-center">
