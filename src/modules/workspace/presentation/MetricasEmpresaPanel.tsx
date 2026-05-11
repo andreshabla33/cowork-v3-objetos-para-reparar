@@ -1,35 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { metricasEmpresaRepository } from '@/core/infrastructure/adapters/MetricasEmpresaSupabaseRepository';
+import type { MetricaDiaria, EmpresaMetrica } from '@/core/domain/ports/IMetricasEmpresaRepository';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-
-// ============== TIPOS ==============
-interface MetricaDiaria {
-  id: string;
-  espacio_id: string;
-  empresa_id: string;
-  fecha: string;
-  conexiones: number;
-  desconexiones: number;
-  usuarios_activos: number;
-  reuniones_creadas: number;
-  reuniones_asistidas: number;
-  minutos_reunion: number;
-  mensajes_chat: number;
-  emotes_enviados: number;
-  saludos_wave: number;
-  teleports: number;
-  xp_ganado: number;
-  nivel_promedio: number;
-  racha_promedio: number;
-}
-
-interface Empresa {
-  id: string;
-  nombre: string;
-}
 
 interface MetricasAgregadas {
   conexiones: number;
@@ -137,7 +112,7 @@ export const MetricasEmpresaPanel: React.FC = () => {
     useShallow(s => ({ activeWorkspace: s.activeWorkspace, theme: s.theme }))
   );
   const [metricas, setMetricas] = useState<MetricaDiaria[]>([]);
-  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [empresas, setEmpresas] = useState<EmpresaMetrica[]>([]);
   const [loading, setLoading] = useState(true);
   const [periodo, setPeriodo] = useState<Periodo>('7d');
   const [empresaSeleccionada, setEmpresaSeleccionada] = useState<string | 'todas'>('todas');
@@ -147,32 +122,12 @@ export const MetricasEmpresaPanel: React.FC = () => {
   const cargarDatos = useCallback(async () => {
     if (!activeWorkspace?.id) return;
     setLoading(true);
-
-    const fechaDesde = new Date();
-    fechaDesde.setDate(fechaDesde.getDate() - diasPeriodo);
-
-    const [metricasRes, empresasRes] = await Promise.all([
-      supabase
-        .from('metricas_empresa')
-        .select('*')
-        .eq('espacio_id', activeWorkspace.id)
-        .gte('fecha', fechaDesde.toISOString().split('T')[0])
-        .order('fecha', { ascending: true }),
-      supabase
-        .from('empresas')
-        .select('id, nombre')
-        .in('id',
-          (await supabase
-            .from('miembros_espacio')
-            .select('empresa_id')
-            .eq('espacio_id', activeWorkspace.id)
-            .not('empresa_id', 'is', null)
-          ).data?.map((m: any) => m.empresa_id).filter(Boolean) || []
-        ),
+    const [metricasData, empresasData] = await Promise.all([
+      metricasEmpresaRepository.obtenerMetricasPorEspacio(activeWorkspace.id, diasPeriodo),
+      metricasEmpresaRepository.obtenerEmpresasDelEspacio(activeWorkspace.id),
     ]);
-
-    if (metricasRes.data) setMetricas(metricasRes.data);
-    if (empresasRes.data) setEmpresas(empresasRes.data);
+    setMetricas(metricasData);
+    setEmpresas(empresasData);
     setLoading(false);
   }, [activeWorkspace?.id, diasPeriodo]);
 
