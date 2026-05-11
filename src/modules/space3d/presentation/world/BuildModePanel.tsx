@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import type { CatalogoObjeto3D } from '@/types/objetos3d';
-import { ObjectCard } from '@/components/ObjectCard';
+import { ObjectCard } from '@/modules/customizer/presentation/ObjectCard';
 import { useBuildMode } from '@/hooks/space3d/useBuildMode';
 
 interface BuildModePanelProps {

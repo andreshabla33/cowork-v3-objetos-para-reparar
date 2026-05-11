@@ -6,7 +6,7 @@ import { Canvas } from '@react-three/fiber';
 import { Loader } from '@react-three/drei';
 import { Room, Track } from 'livekit-client';
 import { User, PresenceStatus, Role, ZonaEmpresa } from '@/types';
-import { FloorType } from '../src/core/domain/entities';
+import { FloorType } from '@/src/core/domain/entities';
 // RecordingManager, ConsentimientoPendiente y AvatarCustomizer3D ya no
 // se importan aquí: viven dentro de <VirtualSpace3DModals> (root).
 import type { CargoLaboral } from '@/modules/meetings/presentation/recording/types/analysis';
@@ -29,7 +29,7 @@ import { MobileJoystick, type JoystickInput } from '@/modules/space3d/presentati
 import { EmoteWheel } from '@/modules/space3d/presentation/world/EmoteWheel';
 import { DayNightCycle } from '@/modules/space3d/presentation/world/DayNightCycle';
 import { hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
-import { GamificacionPanel } from './GamificacionPanel';
+import { GamificacionPanel } from '@/modules/games/presentation/GamificacionPanel';
 import { useSpace3D, useSpaceVideoHudLayoutSnapshot } from '@/hooks/space3d';
 import { useEspacioObjetos, type EspacioObjeto, type TransformacionObjetoInput } from '@/hooks/space3d/useEspacioObjetos';
 import { useHistorialEdicion } from '@/hooks/space3d/useHistorialEdicion';

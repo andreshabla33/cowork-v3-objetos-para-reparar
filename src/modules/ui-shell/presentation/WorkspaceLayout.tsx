@@ -15,7 +15,7 @@
  */
 
 import React, { lazy, Suspense, useEffect, useState, useCallback } from 'react';
-import type { User } from '../types';
+import type { User } from '@/types';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { getThemeStyles } from '@/core/infrastructure/theme/theme';
@@ -26,15 +26,15 @@ import { WorkspaceSidebar, MobileNavOverlay, WorkspaceContentRouter } from '@/mo
 import { getSettingsSection } from '@/core/infrastructure/userSettings/userSettings';
 import { cargarMetricasEspacio } from '@/core/infrastructure/observability/metricasAnalisis';
 import { Language, getCurrentLanguage, subscribeToLanguageChange } from '@/core/infrastructure/i18n/i18n';
-import { useIdleDetection } from '../hooks/useIdleDetection';
-import { useLogoutUser } from '../hooks/app/useLogoutUser';
-import { useWorkspaceData } from '../hooks/workspace/useWorkspaceData';
-import { usePresenceChannels } from '../hooks/workspace/usePresenceChannels';
-import { usePresenceLifecycle } from '../hooks/workspace/usePresenceLifecycle';
-import type { ThemeType } from '../types';
-import type { GameInvitationData, PendingGameInvitation } from '../types/workspace';
+import { useIdleDetection } from '@/modules/presence/presentation/useIdleDetection';
+import { useLogoutUser } from '@/hooks/app/useLogoutUser';
+import { useWorkspaceData } from '@/hooks/workspace/useWorkspaceData';
+import { usePresenceChannels } from '@/hooks/workspace/usePresenceChannels';
+import { usePresenceLifecycle } from '@/hooks/workspace/usePresenceLifecycle';
+import type { ThemeType } from '@/types';
+import type { GameInvitationData, PendingGameInvitation } from '@/types/workspace';
 
-const VirtualSpace3D = lazy(() => import('./VirtualSpace3D'));
+const VirtualSpace3D = lazy(() => import('@/modules/space3d/presentation/VirtualSpace3D'));
 const ChatPanel = lazy(() => import('@/modules/chat/presentation/ChatPanel').then(m => ({ default: m.ChatPanel })));
 const MonicaDockInline = lazy(() => import('./MonicaDockInline'));
 const GameHub = lazy(() => import('@/modules/games/presentation').then(m => ({ default: m.GameHub })));

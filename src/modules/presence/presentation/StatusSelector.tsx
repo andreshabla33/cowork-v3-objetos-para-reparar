@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { PresenceStatus } from '../types';
+import { PresenceStatus } from '@/types';
 
 const STATUS_OPTIONS = [
  { value: PresenceStatus.AVAILABLE, label: 'Disponible', color: 'bg-green-500', icon: '🟢' },

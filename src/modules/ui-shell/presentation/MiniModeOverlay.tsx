@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { getSettingsSection } from '@/core/infrastructure/userSettings/userSettings';
-import { PresenceStatus } from '../types';
+import { PresenceStatus } from '@/types';
 
 const STATUS_OPTIONS = [
  { value: PresenceStatus.AVAILABLE, label: 'Disponible', color: 'bg-green-500' },

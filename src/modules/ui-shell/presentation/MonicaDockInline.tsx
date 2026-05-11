@@ -13,8 +13,8 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { generateChatResponse, type ChatHistoryEntry } from '@/src/core/infrastructure/genai/GeminiService';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { useAuthSession } from '../hooks/auth/useAuthSession';
-import { TaskStatus, type Task } from '../types';
+import { useAuthSession } from '@/hooks/auth/useAuthSession';
+import { TaskStatus, type Task } from '@/types';
 import {
   loadProductivityContext,
   loadBehaviorContext,
