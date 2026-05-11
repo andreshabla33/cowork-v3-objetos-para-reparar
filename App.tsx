@@ -23,7 +23,7 @@ import './src/core/infrastructure/i18n/i18n-config';
 import { LoginScreen } from '@/modules/user/presentation/LoginScreen';
 import { PantallaAccesoRecuperacionContrasena } from '@/modules/user/presentation/PantallaAccesoRecuperacionContrasena';
 import { ResetPasswordScreen } from '@/modules/user/presentation/ResetPasswordScreen';
-import { InvitationProcessor } from './components/invitation/InvitationProcessor';
+import { InvitationProcessor } from '@/modules/invitation/presentation/InvitationProcessor';
 import { OnboardingCargoView } from './components/onboarding/OnboardingCargoView';
 import { ThankYouScreen } from './components/meetings/ThankYouScreen';
 

@@ -16,14 +16,14 @@ import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { hashToken } from '@/core/infrastructure/security/hashToken';
 import { seleccionarProcesadorInvitacion } from '@/modules/_state/selectores';
-import type { InvitationState, InvitacionInfo } from '../../src/core/domain/entities/invitation';
+import type { InvitationState, InvitacionInfo } from '@/core/domain/entities/invitation';
 import { logger } from '@/core/infrastructure/observability/logger';
 
 // Clean Architecture: Use Cases (Application Layer — no infrastructure imports)
-import { VerificarInvitacionUseCase } from '../../src/core/application/usecases/VerificarInvitacionUseCase';
-import { AceptarInvitacionUseCase } from '../../src/core/application/usecases/AceptarInvitacionUseCase';
+import { VerificarInvitacionUseCase } from '@/core/application/usecases/VerificarInvitacionUseCase';
+import { AceptarInvitacionUseCase } from '@/core/application/usecases/AceptarInvitacionUseCase';
 // DI: Repository port resolved from React Context, not module-level singleton
-import { useDIUseCase } from '../../src/core/infrastructure/di/DIProvider';
+import { useDIUseCase } from '@/core/infrastructure/di/DIProvider';
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 
 const log = logger.child('invitation');

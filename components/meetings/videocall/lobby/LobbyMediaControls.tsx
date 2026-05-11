@@ -13,7 +13,7 @@ import React from 'react';
 import {
   SharedAudioDeviceControl,
   SharedCameraDeviceControl,
-} from '@/components/media/SharedMediaDeviceControls';
+} from '@/modules/realtime-room/presentation/devices/SharedMediaDeviceControls';
 import {
   defaultAudioSettings,
   defaultCameraSettings,

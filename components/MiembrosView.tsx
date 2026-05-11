@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { invitacionRepository } from '@/src/core/infrastructure/adapters/InvitacionSupabaseRepository';
 import { Role } from '../types';
-import { ModalInvitarUsuario } from './invitaciones/ModalInvitarUsuario';
+import { ModalInvitarUsuario } from '@/modules/invitation/presentation/ModalInvitarUsuario';
 import { UserAvatar } from './UserAvatar';
 
 export const MiembrosView: React.FC = () => {

@@ -10,13 +10,13 @@
  */
 import React, { useState } from 'react';
 import { Mail, User, Shield, Users, Crown, X, Send, CheckCircle, AlertTriangle } from 'lucide-react';
-import { Modal } from '../ui/Modal';
-import { Input } from '../ui/Input';
-import { Button } from '../ui/Button';
-import { EnviarInvitacionUseCase } from '../../src/core/application/usecases/EnviarInvitacionUseCase';
+import { Modal } from '@/components/ui/Modal';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import { EnviarInvitacionUseCase } from '@/core/application/usecases/EnviarInvitacionUseCase';
 // DI: Repository port resolved from React Context, not module-level singleton
-import { useDIUseCase } from '../../src/core/infrastructure/di/DIProvider';
-import type { RolInvitacion } from '../../src/core/domain/ports/IEnviarInvitacionRepository';
+import { useDIUseCase } from '@/core/infrastructure/di/DIProvider';
+import type { RolInvitacion } from '@/core/domain/ports/IEnviarInvitacionRepository';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 

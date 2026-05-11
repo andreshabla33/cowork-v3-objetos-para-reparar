@@ -16,7 +16,7 @@ import {
   SharedAudioDeviceControl,
   SharedCameraDeviceControl,
   SharedMediaSettingsSheet,
-} from '@/components/media/SharedMediaDeviceControls';
+} from '@/modules/realtime-room/presentation/devices/SharedMediaDeviceControls';
 import { defaultAudioSettings, defaultCameraSettings, canShareScreenWithAudio, type CameraSettings, type AudioSettings, type PermissionState, type RecordingDiagnostics } from '@/modules/realtime-room';
 import { logger } from '@/core/infrastructure/observability/logger';
 
