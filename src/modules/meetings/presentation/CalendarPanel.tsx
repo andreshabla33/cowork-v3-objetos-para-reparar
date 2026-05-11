@@ -9,7 +9,7 @@ import {
   InvitadoExterno,
   validarInvitadoExterno,
 } from '@/types/meeting-types';
-import { useCalendarPanel } from '@/hooks/meetings/useCalendarPanel';
+import { useCalendarPanel } from '@/modules/meetings/presentation/hooks/useCalendarPanel';
 
 interface CalendarPanelProps {
   onJoinMeeting?: (salaId: string) => void;

@@ -13,7 +13,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { logger } from '@/core/infrastructure/observability/logger';
 import type { RecordingDiagnosticsSnapshot } from '@/modules/realtime-room';
-import { useRecordingManager } from '@/hooks/meetings/useRecordingManager';
+import { useRecordingManager } from '@/modules/meetings/presentation/hooks/useRecordingManager';
 import { useTranscription } from './useTranscription';
 import { useCombinedAnalysis, AnalisisResumenTiempoReal } from './useCombinedAnalysis';
 import { RecordingTypeSelectorV2 } from './RecordingTypeSelectorV2';

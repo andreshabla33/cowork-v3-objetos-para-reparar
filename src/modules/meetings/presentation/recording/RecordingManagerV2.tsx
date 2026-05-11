@@ -23,7 +23,7 @@
  */
 
 import React from 'react';
-import { useRecordingV2 } from '@/hooks/meetings/useRecordingV2';
+import { useRecordingV2 } from '@/modules/meetings/presentation/hooks/useRecordingV2';
 import { RecordingTypeSelectorV2 } from './RecordingTypeSelectorV2';
 import { AnalysisDashboard } from './AnalysisDashboard';
 import {

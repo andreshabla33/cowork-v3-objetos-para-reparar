@@ -10,7 +10,7 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useChatPanel } from '@/hooks/chat/useChatPanel';
+import { useChatPanel } from '@/modules/chat/presentation/hooks/useChatPanel';
 import { ChatSidebarContent } from '@/modules/chat/presentation/ChatSidebarContent';
 import { ChatThreadPanel } from '@/modules/chat/presentation/ChatThreadPanel';
 import { ChatMembersPanel } from '@/modules/chat/presentation/ChatMembersPanel';

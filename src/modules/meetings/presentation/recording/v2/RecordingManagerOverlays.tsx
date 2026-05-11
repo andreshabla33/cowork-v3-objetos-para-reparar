@@ -9,7 +9,7 @@
  */
 
 import React from 'react';
-import type { ProcessingState } from '@/hooks/meetings/useRecordingV2';
+import type { ProcessingState } from '@/modules/meetings/presentation/hooks/useRecordingV2';
 
 interface ProcessingModalProps {
   step: ProcessingState['step'];
