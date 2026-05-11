@@ -9,7 +9,7 @@
  */
 
 import React from 'react';
-import { PresenceStatus } from '../types';
+import { PresenceStatus } from '@/types';
 
 interface UserAvatarProps {
   name: string;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { UserAvatar } from './UserAvatar';
+import { UserAvatar } from '@/modules/user/presentation/UserAvatar';
 import { AvatarConfig, PresenceStatus } from '../types';
 import { SharedAudioDeviceControl, SharedCameraDeviceControl } from '@/modules/realtime-room/presentation/devices/SharedMediaDeviceControls';
 import { loadAudioSettings, loadCameraSettings, saveAudioSettings, saveCameraSettings, type AudioSettings, type CameraSettings } from '@/modules/realtime-room';

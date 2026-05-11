@@ -17,7 +17,7 @@ import { ChatMembersPanel } from '@/modules/chat/presentation/ChatMembersPanel';
 import { MessageContent } from '@/modules/chat/presentation/MessageContent';
 import { AgregarMiembros } from '@/modules/chat/presentation/AgregarMiembros';
 import { ChatToast } from '@/components/ChatToast';
-import { UserAvatar } from '@/components/UserAvatar';
+import { UserAvatar } from '@/modules/user/presentation/UserAvatar';
 import type { ChatGroup } from '@/types';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';

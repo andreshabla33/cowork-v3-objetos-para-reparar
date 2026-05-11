@@ -20,7 +20,7 @@ import { useAvatar3D } from '@/modules/avatar3d/presentation/useAvatar3D';
 import { useAvatarCatalog } from '@/hooks/customizer/useAvatarCatalog';
 import { useProfileEditor } from '@/hooks/customizer/useProfileEditor';
 import { glass } from '@/styles/design-tokens';
-import { UserAvatar } from '@/components/UserAvatar';
+import { UserAvatar } from '@/modules/user/presentation/UserAvatar';
 import { CATEGORY_LABELS, CATEGORY_ICONS } from './shared/customizerConstants';
 
 // ─── Extracted sub-modules ──────────────────────────────────────────────────

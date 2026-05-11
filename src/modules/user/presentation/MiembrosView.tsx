@@ -4,9 +4,9 @@ import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { invitacionRepository } from '@/src/core/infrastructure/adapters/InvitacionSupabaseRepository';
-import { Role } from '../types';
+import { Role } from '@/types';
 import { ModalInvitarUsuario } from '@/modules/invitation/presentation/ModalInvitarUsuario';
-import { UserAvatar } from './UserAvatar';
+import { UserAvatar } from '@/modules/user/presentation/UserAvatar';
 
 export const MiembrosView: React.FC = () => {
  const { activeWorkspace, userRoleInActiveWorkspace, theme, session } = useStore(
