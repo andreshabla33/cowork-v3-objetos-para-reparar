@@ -5,7 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { SkeletonUtils } from 'three-stdlib';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { avatarCatalogRepository } from '@/core/infrastructure/adapters/AvatarCatalogSupabaseRepository';
 import { collectBoneData, remapAnimationTracks } from './rigUtils';
 import { getCachedRawClips } from '@/core/infrastructure/r3f/avatar3d/universalAnimationsPreloader';
 import {
@@ -399,25 +399,14 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
       }
 
       if (!animaciones || animaciones.length === 0) {
-        let anims: any[] | null = null;
+        let anims: Array<{ id: string; nombre: string; url: string; loop: boolean; orden: number; strip_root_motion: boolean }> = [];
 
         if (avatarId) {
-          const { data } = await supabase
-            .from('avatar_animaciones')
-            .select('id, nombre, url, loop, orden, strip_root_motion')
-            .eq('avatar_id', avatarId)
-            .eq('activo', true)
-            .order('orden', { ascending: true });
-          anims = data;
+          anims = await avatarCatalogRepository.obtenerAnimacionesAvatar(avatarId);
         }
 
         if (!anims || anims.length === 0) {
-          const { data: universalAnims } = await supabase
-            .from('avatar_animaciones')
-            .select('id, nombre, url, loop, orden, strip_root_motion')
-            .eq('es_universal', true)
-            .eq('activo', true)
-            .order('orden', { ascending: true });
+          const universalAnims = await avatarCatalogRepository.obtenerAnimacionesUniversales();
           if (universalAnims && universalAnims.length > 0) {
             anims = universalAnims;
             isCrossSkeleton = true;
@@ -425,7 +414,7 @@ const GLTFAvatarInner: React.FC<GLTFAvatarProps> = ({
         }
 
         if (!anims || anims.length === 0) return;
-        animaciones = anims.map((anim: any) => ({
+        animaciones = anims.map((anim) => ({
           id: anim.id,
           nombre: anim.nombre,
           url: anim.url,

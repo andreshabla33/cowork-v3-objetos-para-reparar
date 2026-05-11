@@ -12,8 +12,7 @@
 import type { AvatarConfig } from '@/types';
 import type { Avatar3DConfig } from '@/modules/avatar3d/presentation/shared';
 import type { UserAvatarData } from './userDataLoader';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
-import { avatarCatalogRepository } from '@/src/core/infrastructure/adapters/AvatarCatalogSupabaseRepository';
+import { avatarCatalogRepository } from '@/core/infrastructure/adapters/AvatarCatalogSupabaseRepository';
 import { logger } from '@/core/infrastructure/observability/logger';
 import { preloadUniversalAnimations } from '@/core/infrastructure/r3f/avatar3d/universalAnimationsPreloader';
 
@@ -42,12 +41,8 @@ export async function cargarAvatar(
 
   // 1. Load 2D avatar config
   try {
-    const { data: avatarConfigData } = await supabase
-      .from('avatar_configuracion')
-      .select('configuracion')
-      .eq('usuario_id', userId)
-      .maybeSingle();
-    if (avatarConfigData?.configuracion) avatarConfig = avatarConfigData.configuracion;
+    const avatarConfigData = await avatarCatalogRepository.obtenerConfiguracionAvatar(userId);
+    if (avatarConfigData) avatarConfig = avatarConfigData;
   } catch (error: unknown) {
     log.warn('Could not load avatar config', { error: error instanceof Error ? error.message : String(error) });
   }
@@ -59,13 +54,7 @@ export async function cargarAvatar(
 
     // Fallback: if no avatar assigned, pick the first active one
     if (!avatarId) {
-      const { data: defaultAv } = await supabase
-        .from('avatares_3d')
-        .select('id')
-        .eq('activo', true)
-        .order('orden', { ascending: true })
-        .limit(1)
-        .maybeSingle();
+      const defaultAv = await avatarCatalogRepository.obtenerAvatarPorDefecto();
       avatarId = defaultAv?.id || null;
     }
 
@@ -76,38 +65,21 @@ export async function cargarAvatar(
       // Fallback: assigned avatar doesn't exist in DB
       if (!avatar3D) {
         log.warn('Assigned avatar not found in DB, finding fallback');
-        const { data: fallbackAvatar } = await supabase
-          .from('avatares_3d')
-          .select('*')
-          .eq('activo', true)
-          .order('orden', { ascending: true })
-          .limit(1)
-          .maybeSingle();
-
+        const fallbackAvatar = await avatarCatalogRepository.obtenerAvatarPorDefecto();
         if (fallbackAvatar) {
-          avatar3D = fallbackAvatar;
-          avatarId = (fallbackAvatar as { id: string }).id;
-          await avatarCatalogRepository.cambiarAvatar(userId, (fallbackAvatar as { id: string }).id);
-          log.info('Avatar reset to fallback', { nombre: (fallbackAvatar as { nombre?: string }).nombre });
+          avatar3D = fallbackAvatar as unknown as Record<string, unknown>;
+          avatarId = fallbackAvatar.id;
+          await avatarCatalogRepository.cambiarAvatar(userId, fallbackAvatar.id);
+          log.info('Avatar reset to fallback', { nombre: fallbackAvatar.nombre });
         }
       }
 
       if (avatar3D) {
-        let { data: anims } = await supabase
-          .from('avatar_animaciones')
-          .select('id, nombre, url, loop, orden, strip_root_motion, avatar_id')
-          .eq('avatar_id', avatarId)
-          .eq('activo', true)
-          .order('orden', { ascending: true });
+        let anims = await avatarCatalogRepository.obtenerAnimacionesAvatar(avatarId);
 
         let isFallback = false;
         if (!anims || anims.length === 0) {
-          const { data: universalAnims } = await supabase
-            .from('avatar_animaciones')
-            .select('id, nombre, url, loop, orden, strip_root_motion, avatar_id')
-            .eq('es_universal', true)
-            .eq('activo', true)
-            .order('orden', { ascending: true });
+          const universalAnims = await avatarCatalogRepository.obtenerAnimacionesUniversales();
           if (universalAnims && universalAnims.length > 0) {
             anims = universalAnims;
             isFallback = true;
@@ -119,12 +91,12 @@ export async function cargarAvatar(
           textura_url: avatar3D.textura_url || null,
           animaciones:
             anims?.map((animation) => ({
-              id: animation.id as string,
-              nombre: animation.nombre as string,
-              url: animation.url as string,
-              loop: (animation.loop as boolean) ?? false,
-              orden: (animation.orden as number) ?? 0,
-              strip_root_motion: (animation.strip_root_motion as boolean) ?? false,
+              id: animation.id,
+              nombre: animation.nombre,
+              url: animation.url,
+              loop: animation.loop ?? false,
+              orden: animation.orden ?? 0,
+              strip_root_motion: animation.strip_root_motion ?? false,
               es_fallback: isFallback,
             })) || [],
         } as Avatar3DConfig;

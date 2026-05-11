@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { avatarCatalogRepository } from '@/core/infrastructure/adapters/AvatarCatalogSupabaseRepository';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import type { Avatar3DConfig } from './shared';
 import { DEFAULT_MODEL_URL } from './shared';
@@ -35,23 +35,10 @@ export const useAvatar3D = (userId?: string) => {
           return;
         }
 
-        const { data: usuario } = await supabase
-          .from('usuarios')
-          .select('avatar_3d_id')
-          .eq('id', targetUserId)
-          .maybeSingle();
-
-        let avatarId = usuario?.avatar_3d_id;
+        let avatarId = await avatarCatalogRepository.obtenerAvatarIdDeUsuario(targetUserId);
 
         if (!avatarId) {
-          const { data: defaultAvatar } = await supabase
-            .from('avatares_3d')
-            .select('id')
-            .eq('activo', true)
-            .order('orden', { ascending: true })
-            .limit(1)
-            .maybeSingle();
-
+          const defaultAvatar = await avatarCatalogRepository.obtenerAvatarPorDefecto();
           if (defaultAvatar) {
             avatarId = defaultAvatar.id;
           } else {
@@ -68,30 +55,16 @@ export const useAvatar3D = (userId?: string) => {
           }
         }
 
-        let { data: avatar } = await supabase
-          .from('avatares_3d')
-          .select('*')
-          .eq('id', avatarId)
-          .maybeSingle();
+        let avatar = await avatarCatalogRepository.obtenerAvatarPorId(avatarId);
 
         if (!avatar) {
           console.warn('⚠️ Avatar asignado no existe en BD (eliminado). Buscando fallback...');
-          const { data: fallbackAvatar } = await supabase
-            .from('avatares_3d')
-            .select('*')
-            .eq('activo', true)
-            .order('orden', { ascending: true })
-            .limit(1)
-            .maybeSingle();
-
+          const fallbackAvatar = await avatarCatalogRepository.obtenerAvatarPorDefecto();
           if (fallbackAvatar) {
             avatar = fallbackAvatar;
             avatarId = fallbackAvatar.id;
             if (targetUserId) {
-              await supabase
-                .from('usuarios')
-                .update({ avatar_3d_id: fallbackAvatar.id })
-                .eq('id', targetUserId);
+              await avatarCatalogRepository.cambiarAvatar(targetUserId, fallbackAvatar.id);
               console.log('✅ Avatar reseteado a fallback:', fallbackAvatar.nombre);
             }
           } else {
@@ -109,12 +82,7 @@ export const useAvatar3D = (userId?: string) => {
         }
 
         if (avatar) {
-          let { data: anims } = await supabase
-            .from('avatar_animaciones')
-            .select('id, nombre, url, loop, orden, strip_root_motion, avatar_id')
-            .eq('avatar_id', avatarId)
-            .eq('activo', true)
-            .order('orden', { ascending: true });
+          let anims = await avatarCatalogRepository.obtenerAnimacionesAvatar(avatarId);
 
           let isFallback = false;
           if (!anims || anims.length === 0) {
@@ -122,12 +90,7 @@ export const useAvatar3D = (userId?: string) => {
             if (!fallbackUniversalLogRef.current[fallbackKey]) {
               console.log(`⚠️ ${avatar.nombre}: sin anims propias, buscando universales...`);
             }
-            const { data: universalAnims } = await supabase
-              .from('avatar_animaciones')
-              .select('id, nombre, url, loop, orden, strip_root_motion, avatar_id')
-              .eq('es_universal', true)
-              .eq('activo', true)
-              .order('orden', { ascending: true });
+            const universalAnims = await avatarCatalogRepository.obtenerAnimacionesUniversales();
             if (universalAnims && universalAnims.length > 0) {
               anims = universalAnims;
               isFallback = true;
@@ -142,7 +105,7 @@ export const useAvatar3D = (userId?: string) => {
             id: avatar.id,
             nombre: avatar.nombre,
             modelo_url: avatar.modelo_url || DEFAULT_MODEL_URL,
-            escala: avatar.escala || 1,
+            escala: Number(avatar.escala) || 1,
             textura_url: avatar.textura_url || null,
             modelo_url_medium: avatar.modelo_url_medium || null,
             modelo_url_low: avatar.modelo_url_low || null,

@@ -58,6 +58,18 @@ export interface IAvatarCatalogRepository {
   obtenerAvatarEquipado(userId: string): Promise<string | null>;
 
   /**
+   * Get the avatar_3d_id for a user (raw column from `usuarios`).
+   * Returns null if user has no avatar assigned or doesn't exist.
+   */
+  obtenerAvatarIdDeUsuario(userId: string): Promise<string | null>;
+
+  /**
+   * Find the first active avatar (sorted by `orden`).
+   * Used as fallback when user has no avatar assigned or the assigned one is missing.
+   */
+  obtenerAvatarPorDefecto(): Promise<AvatarModelData | null>;
+
+  /**
    * Load a single avatar model by id (full row, used by avatar loader).
    * Returns null if not found.
    */
@@ -67,6 +79,11 @@ export interface IAvatarCatalogRepository {
    * Persist the user's 2D avatar configuration (upsert keyed by usuario_id).
    */
   guardarConfiguracionAvatar(userId: string, config: AvatarConfig): Promise<void>;
+
+  /**
+   * Load the user's saved 2D avatar configuration. Returns null if not set.
+   */
+  obtenerConfiguracionAvatar(userId: string): Promise<AvatarConfig | null>;
 
   /**
    * Load animations specific to an avatar.

@@ -119,6 +119,16 @@ export class AvatarCatalogSupabaseRepository implements IAvatarCatalogRepository
     }
   }
 
+  async obtenerConfiguracionAvatar(userId: string): Promise<AvatarConfig | null> {
+    const { data, error } = await supabase
+      .from('avatar_configuracion')
+      .select('configuracion')
+      .eq('usuario_id', userId)
+      .maybeSingle();
+    if (error) return null;
+    return (data?.configuracion as AvatarConfig | null) ?? null;
+  }
+
   async obtenerAvatarEquipado(userId: string): Promise<string | null> {
     try {
       const { data, error } = await supabase
@@ -138,6 +148,31 @@ export class AvatarCatalogSupabaseRepository implements IAvatarCatalogRepository
       log.error('Exception loading equipped avatar', { error: message, userId });
       return null;
     }
+  }
+
+  async obtenerAvatarIdDeUsuario(userId: string): Promise<string | null> {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('avatar_3d_id')
+      .eq('id', userId)
+      .maybeSingle();
+    if (error) return null;
+    return (data?.avatar_3d_id as string | null) ?? null;
+  }
+
+  async obtenerAvatarPorDefecto(): Promise<AvatarModelData | null> {
+    const { data, error } = await supabase
+      .from('avatares_3d')
+      .select('*')
+      .eq('activo', true)
+      .order('orden', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      log.warn('Failed to fetch default avatar', { error: error.message });
+      return null;
+    }
+    return (data as AvatarModelData | null) ?? null;
   }
 
   async obtenerAnimacionesAvatar(avatarId: string): Promise<AnimacionAvatarData[]> {
