@@ -13,6 +13,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { supabase as defaultSupabaseClient } from '@/core/infrastructure/supabase/supabaseClient'
 import { logger } from '@/core/infrastructure/observability/logger'
 
 const log = logger.child('turn-credentials')
@@ -117,4 +118,13 @@ export async function getTurnIceServers(supabase: SupabaseClient): Promise<RTCIc
  */
 export function invalidateTurnCredentialsCache(): void {
   _cache = null
+}
+
+/**
+ * Variante sin DI que usa el singleton supabase del proyecto.
+ * Diseñada para hooks UI que no deben importar el client directamente
+ * (Clean Architecture regla #4 — repos encapsulan supabase).
+ */
+export async function getTurnIceServersDefault(): Promise<RTCIceServer[]> {
+  return getTurnIceServers(defaultSupabaseClient)
 }

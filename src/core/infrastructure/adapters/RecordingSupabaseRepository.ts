@@ -32,6 +32,7 @@ import type {
   NotificacionAnalisisData,
   ParticipanteGrabacionRecord,
   ResumenAIRecord,
+  ResumenAIEdgeResponse,
   TranscripcionRecord,
 } from '@/core/domain/ports/IRecordingRepository';
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
@@ -796,6 +797,58 @@ class RecordingSupabaseRepository implements IRecordingRepository {
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
+  }
+
+  // ── Storage + metadata (useRecording) ──────────────────────────────────────
+
+  async subirArchivoGrabacion(filePath: string, blob: Blob): Promise<{ publicUrl: string }> {
+    const { error: uploadError } = await supabase.storage
+      .from('grabaciones')
+      .upload(filePath, blob, {
+        contentType: blob.type,
+        upsert: true,
+      });
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage.from('grabaciones').getPublicUrl(filePath);
+    return { publicUrl: data.publicUrl };
+  }
+
+  async actualizarMetadataGrabacion(grabacionId: string, updates: Partial<GrabacionRecord>): Promise<void> {
+    const { error } = await supabase
+      .from('grabaciones')
+      .update(updates)
+      .eq('id', grabacionId);
+    if (error) throw error;
+  }
+
+  // ── AI Summary con respuesta (useAISummary) ────────────────────────────────
+
+  async invocarResumenAI(data: GenerarResumenAIData): Promise<ResumenAIEdgeResponse> {
+    const { useComposedStore } = await import('../../../modules/_state/composedStore');
+    const token = useComposedStore.getState().session?.access_token;
+    if (!token) throw new Error('No authentication token available for AI summary generation');
+
+    const { data: result, error } = await supabase.functions.invoke<ResumenAIEdgeResponse>(
+      'generar-resumen-ai',
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        body: data,
+      },
+    );
+    if (error) throw error;
+    if (!result) throw new Error('Edge function returned empty payload');
+    return result;
+  }
+
+  async obtenerResumenExistente(grabacionId: string): Promise<ResumenAIRecord | null> {
+    const { data, error } = await supabase
+      .from('resumenes_ai')
+      .select('*')
+      .eq('grabacion_id', grabacionId)
+      .single();
+    if (error) return null;
+    return data as ResumenAIRecord;
   }
 }
 

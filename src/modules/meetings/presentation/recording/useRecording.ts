@@ -4,8 +4,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
-import { recordingRepository } from '@/src/core/infrastructure/adapters/RecordingSupabaseRepository';
+import { recordingRepository } from '@/core/infrastructure/adapters/RecordingSupabaseRepository';
 import { RecordingState, RecordingStatus, RecordingConfig, RecordingMetadata } from './types';
 
 interface UseRecordingOptions {
@@ -192,18 +191,7 @@ export function useRecording(options: UseRecordingOptions) {
       const fileName = `${metadata.id}.webm`;
       const filePath = `${espacioId}/${fileName}`;
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('grabaciones')
-        .upload(filePath, blob, {
-          contentType: blob.type,
-          upsert: true,
-        });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('grabaciones')
-        .getPublicUrl(filePath);
+      const { publicUrl } = await recordingRepository.subirArchivoGrabacion(filePath, blob);
 
       const updatedMetadata: Partial<RecordingMetadata> = {
         archivo_url: publicUrl,
@@ -214,10 +202,7 @@ export function useRecording(options: UseRecordingOptions) {
         fin_grabacion: new Date().toISOString(),
       };
 
-      await supabase
-        .from('grabaciones')
-        .update(updatedMetadata)
-        .eq('id', metadata.id);
+      await recordingRepository.actualizarMetadataGrabacion(metadata.id, updatedMetadata as Partial<import('@/core/domain/ports/IRecordingRepository').GrabacionRecord>);
 
       setState(prev => ({
         ...prev,

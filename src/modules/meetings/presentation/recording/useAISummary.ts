@@ -4,8 +4,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
-import { recordingRepository } from '@/src/core/infrastructure/adapters/RecordingSupabaseRepository';
+import { recordingRepository } from '@/core/infrastructure/adapters/RecordingSupabaseRepository';
 import { AISummary, AISummaryState, TranscriptionSegment, EmotionAnalysis, BehaviorInsight } from './types';
 
 interface UseAISummaryOptions {
@@ -48,36 +47,39 @@ export function useAISummary(options: UseAISummaryOptions) {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
 
-      const { data, error } = await supabase.functions.invoke('generar-resumen-ai', {
-        body: {
-          grabacion_id: grabacionId,
-          espacio_id: espacioId,
-          creador_id: creadorId,
-          transcripcion,
-          emociones: emociones?.slice(-50),
-          insights,
-          duracion_segundos: duracionSegundos,
-          participantes,
-          reunion_titulo: reunionTitulo,
-        },
+      const data = await recordingRepository.invocarResumenAI({
+        grabacion_id: grabacionId,
+        espacio_id: espacioId,
+        creador_id: creadorId,
+        transcripcion,
+        emociones: (emociones?.slice(-50) ?? []).map((e) => ({
+          timestamp_segundos: (e as { timestamp_segundos?: number }).timestamp_segundos ?? 0,
+          emocion_dominante: (e as { emocion_dominante?: string }).emocion_dominante ?? '',
+          engagement_score: (e as { engagement_score?: number }).engagement_score ?? 0,
+        })),
+        duracion_segundos: duracionSegundos,
+        participantes: participantes ?? [],
+        reunion_titulo: reunionTitulo,
+        tipo_grabacion: null,
+        metricas_adicionales: { insights: insights ?? [] },
       });
 
-      if (error) throw error;
-
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const d = data as any;
       const summary: AISummary = {
-        id: data.id || crypto.randomUUID(),
+        id: d.id || crypto.randomUUID(),
         grabacion_id: grabacionId,
-        resumen_corto: data.resumen_corto,
-        resumen_detallado: data.resumen_detallado,
-        puntos_clave: data.puntos_clave || [],
-        action_items: data.action_items || [],
-        sentimiento_general: data.sentimiento_general || 'neutral',
+        resumen_corto: d.resumen_corto,
+        resumen_detallado: d.resumen_detallado,
+        puntos_clave: d.puntos_clave || [],
+        action_items: d.action_items || [],
+        sentimiento_general: d.sentimiento_general || 'neutral',
         duracion_reunion: duracionSegundos,
         participantes_activos: participantes?.length || 0,
-        momentos_clave: data.momentos_clave || insights || [],
-        metricas_conductuales: data.metricas_conductuales,
-        modelo_usado: data.modelo_usado || 'gpt-4o-mini',
-        tokens_usados: data.tokens_usados || 0,
+        momentos_clave: d.momentos_clave || insights || [],
+        metricas_conductuales: d.metricas_conductuales ?? undefined,
+        modelo_usado: d.modelo_usado || 'gpt-4o-mini',
+        tokens_usados: d.tokens_usados || 0,
         created_at: new Date().toISOString(),
       };
 
@@ -137,29 +139,26 @@ export function useAISummary(options: UseAISummaryOptions) {
 
   const loadExistingSummary = useCallback(async (): Promise<AISummary | null> => {
     try {
-      const { data, error } = await supabase
-        .from('resumenes_ai')
-        .select('*')
-        .eq('grabacion_id', grabacionId)
-        .single();
+      const data = await recordingRepository.obtenerResumenExistente(grabacionId);
+      if (!data) return null;
 
-      if (error || !data) return null;
-
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const d = data as any;
       const summary: AISummary = {
-        id: data.id,
-        grabacion_id: data.grabacion_id,
-        resumen_corto: data.resumen_corto,
-        resumen_detallado: data.resumen_detallado,
-        puntos_clave: data.puntos_clave || [],
-        action_items: data.action_items || [],
-        sentimiento_general: data.sentimiento_general,
+        id: d.id,
+        grabacion_id: d.grabacion_id,
+        resumen_corto: d.resumen_corto,
+        resumen_detallado: d.resumen_detallado,
+        puntos_clave: d.puntos_clave || [],
+        action_items: d.action_items || [],
+        sentimiento_general: d.sentimiento_general,
         duracion_reunion: 0,
         participantes_activos: 0,
-        momentos_clave: data.momentos_clave || [],
-        metricas_conductuales: data.metricas_conductuales,
-        modelo_usado: data.modelo_usado,
-        tokens_usados: data.tokens_usados,
-        created_at: data.created_at,
+        momentos_clave: d.momentos_clave || [],
+        metricas_conductuales: d.metricas_conductuales ?? undefined,
+        modelo_usado: d.modelo_usado,
+        tokens_usados: d.tokens_usados,
+        created_at: d.created_at,
       };
 
       setState(prev => ({ ...prev, summary }));

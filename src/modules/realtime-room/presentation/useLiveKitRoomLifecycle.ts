@@ -32,8 +32,7 @@ import { logger } from '@/core/infrastructure/observability/logger';
 import { avatarStore } from '@/core/infrastructure/r3f/ecs/AvatarECS';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { crearSalaLivekitPorEspacio, obtenerTokenLivekitEspacio } from '@/core/infrastructure/livekit/livekitService';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
-import { getTurnIceServers } from '@/core/infrastructure/network/turnCredentialsService';
+import { getTurnIceServersDefault } from '@/core/infrastructure/network/turnCredentialsService';
 import {
   type SpaceRealtimeCoordinatorState,
   type RealtimeEventBus,
@@ -203,7 +202,7 @@ export function useLiveKitRoomLifecycle(
       const coordinator = new SpaceRealtimeCoordinator({
         serverUrl: tokenData.url,
         token: tokenData.token,
-        iceServerProvider: () => getTurnIceServers(supabase),
+        iceServerProvider: getTurnIceServersDefault,
         onConnectionChange: (connected) => {
           setLivekitConnected(connected);
           if (!connected) {

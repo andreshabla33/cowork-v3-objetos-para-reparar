@@ -403,4 +403,57 @@ export interface IRecordingRepository {
    * @throws Error if query fails
    */
   obtenerCargoYRol(userId: string, espacioId: string): Promise<CargoYRolUsuario>;
+
+  /**
+   * Subir blob de grabación a Storage y devolver publicUrl.
+   *
+   * @param filePath - Ruta destino (incluye espacio_id/file.webm)
+   * @param blob - Binary blob de la grabación
+   * @throws Error si upload falla
+   */
+  subirArchivoGrabacion(filePath: string, blob: Blob): Promise<{ publicUrl: string }>;
+
+  /**
+   * UPDATE metadata de una fila `grabaciones` (post-upload).
+   *
+   * @param grabacionId - ID de la grabación
+   * @param updates - Campos a actualizar
+   */
+  actualizarMetadataGrabacion(grabacionId: string, updates: Partial<GrabacionRecord>): Promise<void>;
+
+  /**
+   * Invocar Edge Function `generar-resumen-ai` con respuesta tipada.
+   * Variante que retorna el payload de la edge function para que el consumer
+   * pueda construir el objeto AISummary. Diferenciada de `generarResumenAI`
+   * (void) que se usa en flujos fire-and-forget.
+   *
+   * @param data - Input para la edge function
+   * @returns payload con resumen + metadata
+   */
+  invocarResumenAI(data: GenerarResumenAIData): Promise<ResumenAIEdgeResponse>;
+
+  /**
+   * Cargar resumen AI existente de la tabla `resumenes_ai`.
+   *
+   * @param grabacionId - ID de la grabación
+   * @returns Resumen existente o null si no hay
+   */
+  obtenerResumenExistente(grabacionId: string): Promise<ResumenAIRecord | null>;
+}
+
+/**
+ * Payload retornado por la Edge Function `generar-resumen-ai`.
+ * Variante "completa" del response usado por useAISummary.
+ */
+export interface ResumenAIEdgeResponse {
+  id?: string;
+  resumen_corto: string;
+  resumen_detallado: string;
+  puntos_clave?: unknown[];
+  action_items?: unknown[];
+  sentimiento_general?: string;
+  momentos_clave?: unknown[];
+  metricas_conductuales?: Record<string, unknown> | null;
+  modelo_usado?: string;
+  tokens_usados?: number;
 }
