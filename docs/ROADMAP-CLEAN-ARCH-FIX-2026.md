@@ -4,7 +4,21 @@
 
 ITEMs 10 + 11 cerrados al 100% (`hooks/`, `components/`, `store/`, `services/`, `lib/`, `modules/` legacy = 0 archivos).
 
-Path B (Repository pattern) — 5 sub-batches ejecutados (B.1 MetricasEmpresaPanel, B.2 MiembrosView, B.3 Settings ×5, B.4 Onboarding ×2, B.5a Auth/Chat/Invitation ×3). 11 archivos restantes con `supabase` directo en `presentation/` (games ×2, avatar3d ×2, meetings ×5, realtime-room ×1, avatarLoader bootstrap ×1) — deferidos a sesión dedicada por complejidad LiveKit/recording flow.
+Path B (Repository pattern) — 8 sub-batches ejecutados (2026-05-11):
+- B.1 MetricasEmpresaPanel (421L) — MetricasEmpresaRepository
+- B.2 MiembrosView — MiembrosEspacioRepository
+- B.3 Settings ×5 (Empresa/General/Guests/Meetings/Members) — 3 repos
+- B.4 Onboarding (ProductTour + OnboardingCreador) — repos extendidos
+- B.5a Auth/Chat/Invitation (ResetPasswordScreen, InvitationProcessor, AgregarMiembros)
+- B.5b meetings ×4 (InviteLinkGenerator, ScheduledMeetings, ConsentimientoPendiente, RecordingTypeSelectorV2)
+- B.5c avatar3d ×3 (GLTFAvatar, useAvatar3D, avatarLoader)
+- B.5d games ×2 (GameInvitationNotification, ChessGame 640L) — JuegosRepository nuevo
+
+Total: **9 repos creados/extendidos** con port + adapter + singleton. Archivos refactorizados: 23.
+
+**Archivos restantes con `supabase` en presentation/** (~10): casi todos hooks/ migrados a presentation/ durante ITEM 10 que tenían supabase pre-existente (useRecording, useAISummary, useBootstrapAplicacion, usePresenceChannels, useEstadoGrabacion, useMeetingRoomTransition, useNotifications, useOcupacionAsientos, useSpace3D, useLiveKitRoomLifecycle). Refactor de cada hook = sesión dedicada por riesgo (LiveKit lifecycle, recording flow, space3d hooks 3D state).
+
+**Diferido formalmente (B.5e)**: useRecording + useAISummary + useLiveKitRoomLifecycle por regla dura LiveKit dual ("NO remount LiveKitRoom"). Requiere sesión con livekit-transport-master agent.
 
 ### ITEMs cerrados al 100% (16/21 = ~76%)
 
