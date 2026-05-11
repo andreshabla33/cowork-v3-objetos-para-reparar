@@ -33,7 +33,7 @@ const WorkspaceLayout = lazy(() => import('./components/WorkspaceLayout').then((
 const OnboardingCreador = lazy(() => import('@/modules/onboarding/presentation/OnboardingCreador').then((m) => ({ default: m.OnboardingCreador })));
 const MeetingLobby = lazy(() => import('./components/meetings/videocall/MeetingLobby').then((m) => ({ default: m.MeetingLobby })));
 const MeetingRoom = lazy(() => import('./components/meetings/videocall/MeetingRoom'));
-const ExploradorPublico3D = lazy(() => import('./components/marketplace/ExploradorPublico3D').then((m) => ({ default: m.ExploradorPublico3D })));
+const ExploradorPublico3D = lazy(() => import('@/modules/marketplace/presentation/ExploradorPublico3D').then((m) => ({ default: m.ExploradorPublico3D })));
 
 // ─── Shared loading fallback ────────────────────────────────────────────
 const FallbackPantalla = () => (
