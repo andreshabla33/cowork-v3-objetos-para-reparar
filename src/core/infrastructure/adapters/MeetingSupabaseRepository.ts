@@ -82,6 +82,18 @@ export class MeetingSupabaseRepository implements IMeetingRepository {
     this.reuniones.actualizarParticipantesNotificados(...args);
   crearInvitacionExterna = (...args: Parameters<ReunionesProgramadasSupabaseRepository['crearInvitacionExterna']>) =>
     this.reuniones.crearInvitacionExterna(...args);
+  obtenerReunionesActivas = (...args: Parameters<ReunionesProgramadasSupabaseRepository['obtenerReunionesActivas']>) =>
+    this.reuniones.obtenerReunionesActivas(...args);
+  suscribirCambiosReuniones = (...args: Parameters<ReunionesProgramadasSupabaseRepository['suscribirCambiosReuniones']>) =>
+    this.reuniones.suscribirCambiosReuniones(...args);
+  actualizarMiEstadoReunion = (...args: Parameters<ReunionesProgramadasSupabaseRepository['actualizarMiEstadoReunion']>) =>
+    this.reuniones.actualizarMiEstadoReunion(...args);
+  obtenerInvitacionGeneralActiva = (...args: Parameters<ReunionesProgramadasSupabaseRepository['obtenerInvitacionGeneralActiva']>) =>
+    this.reuniones.obtenerInvitacionGeneralActiva(...args);
+  actualizarTipoInvitadoGeneral = (...args: Parameters<ReunionesProgramadasSupabaseRepository['actualizarTipoInvitadoGeneral']>) =>
+    this.reuniones.actualizarTipoInvitadoGeneral(...args);
+  crearInvitacionGeneral = (...args: Parameters<ReunionesProgramadasSupabaseRepository['crearInvitacionGeneral']>) =>
+    this.reuniones.crearInvitacionGeneral(...args);
 
   // ── IMeetingHelpersRepository ───────────────────────────────────────────────
   obtenerMiembrosEspacio = (...args: Parameters<MeetingHelpersSupabaseRepository['obtenerMiembrosEspacio']>) =>

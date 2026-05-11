@@ -20,6 +20,15 @@ export interface IReunionesProgramadasRepository {
   /** Fetch all scheduled meetings for a workspace, ordered by start date. */
   obtenerReuniones(espacioId: string): Promise<ReunionProgramadaData[]>;
 
+  /** Fetch only active (fecha_fin >= now) meetings for a workspace. */
+  obtenerReunionesActivas(espacioId: string): Promise<ReunionProgramadaData[]>;
+
+  /** Subscribe to postgres_changes on reuniones_programadas filtered by espacio. Returns unsubscribe. */
+  suscribirCambiosReuniones(espacioId: string, callback: () => void): () => void;
+
+  /** Actualizar `estado` de participación del usuario actual en una reunión. */
+  actualizarMiEstadoReunion(reunionId: string, usuarioId: string, estado: 'aceptado' | 'rechazado' | 'tentativo'): Promise<void>;
+
   /** Create a new scheduled meeting. */
   crearReunion(datos: DatosCrearReunion): Promise<ReunionProgramadaData | null>;
 
@@ -55,4 +64,28 @@ export interface IReunionesProgramadasRepository {
   crearInvitacionExterna(
     datos: DatosCrearInvitacionExterna,
   ): Promise<{ id: string; token: string } | null>;
+
+  /**
+   * General (anonymous) invitation link for a sala — participante_id IS NULL.
+   * Returns most recent non-expired one, or null.
+   */
+  obtenerInvitacionGeneralActiva(
+    salaId: string,
+  ): Promise<{ id: string; token_unico: string; expira_en: string | null; nombre: string | null; tipo_invitado: string | null } | null>;
+
+  /** Update tipo_invitado on an existing general invitation. */
+  actualizarTipoInvitadoGeneral(
+    invitacionId: string,
+    tipoInvitado: string,
+  ): Promise<void>;
+
+  /**
+   * Crea una invitación general (participante_id null) y devuelve token_unico.
+   */
+  crearInvitacionGeneral(input: {
+    sala_id: string;
+    tipo_invitado: string;
+    creado_por: string | null;
+    expira_en: string;
+  }): Promise<{ token_unico: string } | null>;
 }

@@ -722,6 +722,81 @@ class RecordingSupabaseRepository implements IRecordingRepository {
       throw err;
     }
   }
+
+  // ── Consentimiento (UI ConsentimientoPendiente) ───────────────────────────
+
+  async listarSolicitudesConsentimientoPendientes(
+    usuarioId: string,
+  ): Promise<Array<{
+    id: string;
+    entidad_id: string;
+    espacio_id: string;
+    titulo: string | null;
+    datos_extra: { tipo_grabacion?: string; creador_id?: string; creador_nombre?: string } | null;
+  }>> {
+    const { data, error } = await supabase
+      .from('notificaciones')
+      .select('id, entidad_id, espacio_id, titulo, datos_extra')
+      .eq('usuario_id', usuarioId)
+      .eq('tipo', 'consentimiento_grabacion')
+      .eq('leida', false)
+      .order('creado_en', { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    return (data ?? []) as Array<{
+      id: string;
+      entidad_id: string;
+      espacio_id: string;
+      titulo: string | null;
+      datos_extra: { tipo_grabacion?: string; creador_id?: string; creador_nombre?: string } | null;
+    }>;
+  }
+
+  async obtenerEstadoConsentimientoGrabacion(
+    grabacionId: string,
+  ): Promise<{ consentimiento_evaluado: boolean | null; estado?: string | null } | null> {
+    const { data } = await supabase
+      .from('grabaciones')
+      .select('id, consentimiento_evaluado, estado')
+      .eq('id', grabacionId)
+      .single();
+    return (data as { consentimiento_evaluado: boolean | null; estado?: string | null } | null) ?? null;
+  }
+
+  async responderConsentimientoGrabacion(grabacionId: string, acepta: boolean): Promise<void> {
+    const { error } = await supabase.rpc('responder_consentimiento_grabacion', {
+      p_grabacion_id: grabacionId,
+      p_acepta: acepta,
+    });
+    if (error) throw error;
+  }
+
+  async marcarNotificacionConsentimientoLeida(grabacionId: string): Promise<void> {
+    const { error } = await supabase
+      .from('notificaciones')
+      .update({ leida: true })
+      .eq('entidad_id', grabacionId)
+      .eq('tipo', 'consentimiento_grabacion');
+    if (error) throw error;
+  }
+
+  suscribirNotificacionesUsuario(
+    usuarioId: string,
+    callback: (notif: { tipo: string; leida: boolean; entidad_id: string; espacio_id: string; titulo: string | null; datos_extra: unknown }) => void,
+  ): () => void {
+    const channel = supabase
+      .channel(`consentimiento_${usuarioId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'notificaciones',
+        filter: `usuario_id=eq.${usuarioId}`,
+      }, (payload) => {
+        callback(payload.new as { tipo: string; leida: boolean; entidad_id: string; espacio_id: string; titulo: string | null; datos_extra: unknown });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }
 }
 
 /**

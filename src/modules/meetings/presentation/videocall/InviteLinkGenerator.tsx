@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { logger } from '@/core/infrastructure/observability/logger';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { reunionesProgramadasRepository } from '@/core/infrastructure/adapters/ReunionesProgramadasSupabaseRepository';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -46,18 +46,7 @@ export const InviteLinkGenerator: React.FC<InviteLinkGeneratorProps> = ({
       const etiqueta = nombreNormalizado || 'Link general';
       const ahoraIso = new Date().toISOString();
 
-      const { data: invitacionExistente, error: invitacionExistenteError } = await supabase
-        .from('invitaciones_reunion')
-        .select('id, token_unico, expira_en, nombre, tipo_invitado')
-        .eq('sala_id', salaId)
-        .is('participante_id', null)
-        .order('creado_en', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (invitacionExistenteError) {
-        throw invitacionExistenteError;
-      }
+      const invitacionExistente = await reunionesProgramadasRepository.obtenerInvitacionGeneralActiva(salaId);
 
       const invitacionActiva = invitacionExistente && (!invitacionExistente.expira_en || invitacionExistente.expira_en > ahoraIso)
         ? invitacionExistente
@@ -66,39 +55,19 @@ export const InviteLinkGenerator: React.FC<InviteLinkGeneratorProps> = ({
       let tokenUnico = invitacionActiva?.token_unico;
 
       if (invitacionActiva) {
-        const { error: actualizacionError } = await supabase
-          .from('invitaciones_reunion')
-          .update({
-            tipo_invitado: tipoInvitado,
-            nombre: null,
-            email: null,
-          })
-          .eq('id', invitacionActiva.id);
-
-        if (actualizacionError) {
-          throw actualizacionError;
-        }
+        await reunionesProgramadasRepository.actualizarTipoInvitadoGeneral(invitacionActiva.id, tipoInvitado);
       }
 
       if (!tokenUnico) {
-        const { data: invitacionNueva, error: invitacionNuevaError } = await supabase
-          .from('invitaciones_reunion')
-          .insert({
-            sala_id: salaId,
-            participante_id: null,
-            email: null,
-            nombre: null,
-            tipo_invitado: tipoInvitado,
-            creado_por: currentUser?.id,
-            expira_en: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          })
-          .select('token_unico')
-          .single();
-
-        if (invitacionNuevaError || !invitacionNueva?.token_unico) {
-          throw invitacionNuevaError || new Error('No se pudo generar el link general');
+        const invitacionNueva = await reunionesProgramadasRepository.crearInvitacionGeneral({
+          sala_id: salaId,
+          tipo_invitado: tipoInvitado,
+          creado_por: currentUser?.id ?? null,
+          expira_en: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        });
+        if (!invitacionNueva?.token_unico) {
+          throw new Error('No se pudo generar el link general');
         }
-
         tokenUnico = invitacionNueva.token_unico;
       }
 

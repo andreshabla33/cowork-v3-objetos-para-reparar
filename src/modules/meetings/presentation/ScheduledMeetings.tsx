@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { meetingRepository } from '@/src/core/infrastructure/adapters/MeetingSupabaseRepository';
+import { miembrosEspacioRepository } from '@/core/infrastructure/adapters/MiembrosEspacioSupabaseRepository';
 import { ScheduledMeeting, MeetingParticipant } from '@/types';
 import { googleCalendar } from '@/core/infrastructure/googleCalendar/googleCalendarService';
 
@@ -35,64 +35,26 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
   const loadMeetings = useCallback(async () => {
     if (!activeWorkspace?.id) return;
     setLoading(true);
-
-    const { data, error } = await supabase
-      .from('reuniones_programadas')
-      .select(`
-        *,
-        creador:usuarios!reuniones_programadas_creado_por_usuarios_fkey(id, nombre),
-        sala:salas_reunion(id, nombre),
-        participantes:reunion_participantes(
-          id, usuario_id, estado, notificado,
-          usuario:usuarios(id, nombre)
-        )
-      `)
-      .eq('espacio_id', activeWorkspace.id)
-      .gte('fecha_fin', new Date().toISOString())
-      .order('fecha_inicio', { ascending: true });
-
-    if (!error && data) {
-      setMeetings(data);
+    try {
+      const data = await meetingRepository.obtenerReunionesActivas(activeWorkspace.id);
+      setMeetings(data as unknown as ScheduledMeeting[]);
+    } catch (err) {
+      console.error('Error cargando reuniones', err);
     }
     setLoading(false);
   }, [activeWorkspace?.id]);
 
   const loadMiembros = useCallback(async () => {
     if (!activeWorkspace?.id) return;
-    
-    const { data } = await supabase
-      .from('miembros_espacio')
-      .select('usuario_id')
-      .eq('espacio_id', activeWorkspace.id)
-      .eq('aceptado', true);
-
-    if (data) {
-      const ids = data.map((m: any) => m.usuario_id);
-      const { data: usuarios } = await supabase
-        .from('usuarios')
-        .select('id, nombre')
-        .in('id', ids);
-      
-      if (usuarios) setMiembrosEspacio(usuarios);
-    }
+    const usuarios = await miembrosEspacioRepository.listarUsuariosAceptadosDeEspacio(activeWorkspace.id);
+    setMiembrosEspacio(usuarios);
   }, [activeWorkspace?.id]);
 
   useEffect(() => {
     loadMeetings();
     loadMiembros();
-
     if (!activeWorkspace?.id) return;
-    
-    const channel = supabase.channel(`meetings_${activeWorkspace.id}`)
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'reuniones_programadas',
-        filter: `espacio_id=eq.${activeWorkspace.id}`
-      }, () => loadMeetings())
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+    return meetingRepository.suscribirCambiosReuniones(activeWorkspace.id, () => loadMeetings());
   }, [activeWorkspace?.id, loadMeetings, loadMiembros]);
 
   const createMeeting = async () => {
@@ -111,16 +73,10 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
     // Obtener emails de participantes para invitaciones
     let participantesEmails: string[] = [];
     if (newMeeting.participantes.length > 0) {
-      const { data: usuariosData } = await supabase
-        .from('usuarios')
-        .select('id, email')
-        .in('id', newMeeting.participantes);
-      
-      if (usuariosData) {
-        participantesEmails = usuariosData
-          .map((u: any) => u.email)
-          .filter((email: any): email is string => !!email);
-      }
+      const usuariosData = await meetingRepository.obtenerInfoUsuarios(newMeeting.participantes);
+      participantesEmails = usuariosData
+        .map((u) => u.email)
+        .filter((email): email is string => !!email);
     }
 
     // Crear evento en Google Calendar si está conectado
@@ -150,23 +106,19 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
       }
     }
 
-    const { data: meeting, error } = await supabase
-      .from('reuniones_programadas')
-      .insert({
-        espacio_id: activeWorkspace.id,
-        titulo: newMeeting.titulo.trim(),
-        descripcion: newMeeting.descripcion.trim() || null,
-        fecha_inicio: fechaInicio.toISOString(),
-        fecha_fin: fechaFin.toISOString(),
-        creado_por: currentUser.id,
-        recordatorio_minutos: newMeeting.recordatorio_minutos,
-        meeting_link: meetingLink,
-        google_event_id: googleEventId
-      })
-      .select()
-      .single();
+    const meeting = await meetingRepository.crearReunion({
+      espacio_id: activeWorkspace.id,
+      titulo: newMeeting.titulo.trim(),
+      descripcion: newMeeting.descripcion.trim() || null,
+      fecha_inicio: fechaInicio.toISOString(),
+      fecha_fin: fechaFin.toISOString(),
+      creado_por: currentUser.id,
+      recordatorio_minutos: newMeeting.recordatorio_minutos,
+      meeting_link: meetingLink,
+      google_event_id: googleEventId,
+    });
 
-    if (!error && meeting) {
+    if (meeting) {
       if (newMeeting.participantes.length > 0) {
         await meetingRepository.agregarParticipantesReunion(
           meeting.id,
@@ -189,12 +141,7 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
   };
 
   const respondToMeeting = async (meetingId: string, estado: 'aceptado' | 'rechazado' | 'tentativo') => {
-    await supabase
-      .from('reunion_participantes')
-      .update({ estado })
-      .eq('reunion_id', meetingId)
-      .eq('usuario_id', currentUser.id);
-    
+    await meetingRepository.actualizarMiEstadoReunion(meetingId, currentUser.id, estado);
     loadMeetings();
   };
 

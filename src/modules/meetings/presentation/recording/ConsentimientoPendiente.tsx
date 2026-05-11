@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { recordingRepository } from '@/core/infrastructure/adapters/RecordingSupabaseRepository';
 import { useUserStore } from '@/modules/user/state/useUserStore';
 
 interface SolicitudConsentimiento {
@@ -65,46 +65,30 @@ export const ConsentimientoPendiente: React.FC<ConsentimientoPendienteProps> = (
       isFetchingRef.current = true;
 
       try {
-        const { data: notificaciones, error } = await supabase
-          .from('notificaciones')
-          .select('*')
-          .eq('usuario_id', session.user.id)
-          .eq('tipo', 'consentimiento_grabacion')
-          .eq('leida', false)
-          .order('creado_en', { ascending: false })
-          .limit(1);
+        const notificaciones = await recordingRepository.listarSolicitudesConsentimientoPendientes(session.user.id);
+        if (notificaciones.length === 0) return;
 
-        if (error) {
-          console.warn('[Consentimiento] Query error:', error.message);
+        const notif = notificaciones[0];
+        if (solicitudRef.current?.grabacion_id === notif.entidad_id || lastSolicitudIdRef.current === notif.entidad_id) {
           return;
         }
 
-        if (notificaciones && notificaciones.length > 0) {
-          const notif = notificaciones[0];
-          if (solicitudRef.current?.grabacion_id === notif.entidad_id || lastSolicitudIdRef.current === notif.entidad_id) {
-            return;
-          }
+        const datos = notif.datos_extra;
+        const grabacion = await recordingRepository.obtenerEstadoConsentimientoGrabacion(notif.entidad_id);
 
-          const datos = notif.datos_extra as any;
-
-          const { data: grabacion } = await supabase
-            .from('grabaciones')
-            .select('id, consentimiento_evaluado, estado')
-            .eq('id', notif.entidad_id)
-            .single();
-
-          if (grabacion && !grabacion.consentimiento_evaluado) {
-            lastSolicitudIdRef.current = notif.entidad_id;
-            setSolicitud({
-              grabacion_id: notif.entidad_id,
-              tipo_grabacion: datos?.tipo_grabacion || 'rrhh_entrevista',
-              creador_id: datos?.creador_id || '',
-              creador_nombre: datos?.creador_nombre || 'Alguien',
-              espacio_id: notif.espacio_id,
-              titulo: notif.titulo,
-            });
-          }
+        if (grabacion && !grabacion.consentimiento_evaluado) {
+          lastSolicitudIdRef.current = notif.entidad_id;
+          setSolicitud({
+            grabacion_id: notif.entidad_id,
+            tipo_grabacion: datos?.tipo_grabacion || 'rrhh_entrevista',
+            creador_id: datos?.creador_id || '',
+            creador_nombre: datos?.creador_nombre || 'Alguien',
+            espacio_id: notif.espacio_id,
+            titulo: notif.titulo ?? undefined,
+          });
         }
+      } catch (err) {
+        console.warn('[Consentimiento] Query error:', (err as Error).message);
       } finally {
         isFetchingRef.current = false;
       }
@@ -114,49 +98,25 @@ export const ConsentimientoPendiente: React.FC<ConsentimientoPendienteProps> = (
     cargarSolicitudesPendientes();
 
     // Realtime subscription handles all subsequent notifications
-    const channel = supabase
-      .channel(`consentimiento_${session.user.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notificaciones',
-          filter: `usuario_id=eq.${session.user.id}`,
-        },
-        async (payload) => {
-          const notif = payload.new as any;
-          if (notif.tipo !== 'consentimiento_grabacion' || notif.leida) return;
-          if (solicitudRef.current?.grabacion_id === notif.entidad_id || lastSolicitudIdRef.current === notif.entidad_id) {
-            return;
-          }
+    return recordingRepository.suscribirNotificacionesUsuario(session.user.id, async (notif) => {
+      if (notif.tipo !== 'consentimiento_grabacion' || notif.leida) return;
+      if (solicitudRef.current?.grabacion_id === notif.entidad_id || lastSolicitudIdRef.current === notif.entidad_id) {
+        return;
+      }
+      const grabacion = await recordingRepository.obtenerEstadoConsentimientoGrabacion(notif.entidad_id);
+      if (grabacion?.consentimiento_evaluado) return;
 
-          // Verify recording still needs consent
-          const { data: grabacion } = await supabase
-            .from('grabaciones')
-            .select('consentimiento_evaluado')
-            .eq('id', notif.entidad_id)
-            .single();
-
-          if (grabacion?.consentimiento_evaluado) return;
-
-          const datos = notif.datos_extra as any;
-          lastSolicitudIdRef.current = notif.entidad_id;
-          setSolicitud({
-            grabacion_id: notif.entidad_id,
-            tipo_grabacion: datos?.tipo_grabacion || 'rrhh_entrevista',
-            creador_id: datos?.creador_id || '',
-            creador_nombre: datos?.creador_nombre || 'Alguien',
-            espacio_id: notif.espacio_id,
-            titulo: notif.titulo,
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+      const datos = notif.datos_extra as { tipo_grabacion?: string; creador_id?: string; creador_nombre?: string } | null;
+      lastSolicitudIdRef.current = notif.entidad_id;
+      setSolicitud({
+        grabacion_id: notif.entidad_id,
+        tipo_grabacion: datos?.tipo_grabacion || 'rrhh_entrevista',
+        creador_id: datos?.creador_id || '',
+        creador_nombre: datos?.creador_nombre || 'Alguien',
+        espacio_id: notif.espacio_id,
+        titulo: notif.titulo ?? undefined,
+      });
+    });
   }, [session?.user?.id]);
 
   const responderConsentimiento = useCallback(async (acepta: boolean) => {
@@ -165,27 +125,13 @@ export const ConsentimientoPendiente: React.FC<ConsentimientoPendienteProps> = (
     console.log('🔄 Respondiendo consentimiento:', { grabacion_id: solicitud.grabacion_id, acepta });
     setIsResponding(true);
     try {
-      const { data, error } = await supabase.rpc('responder_consentimiento_grabacion', {
-        p_grabacion_id: solicitud.grabacion_id,
-        p_acepta: acepta,
-      });
+      await recordingRepository.responderConsentimientoGrabacion(solicitud.grabacion_id, acepta);
 
-      console.log('📤 Respuesta RPC:', { data, error });
-
-      if (error) {
-        console.error('❌ Error en RPC:', error);
-        throw error;
-      }
-
-      // Marcar notificación como leída
-      const { error: updateError } = await supabase
-        .from('notificaciones')
-        .update({ leida: true })
-        .eq('entidad_id', solicitud.grabacion_id)
-        .eq('tipo', 'consentimiento_grabacion');
-
-      if (updateError) {
-        console.warn('⚠️ Error marcando notificación como leída:', updateError);
+      // Marcar notificación como leída (best-effort, no rompe el flujo)
+      try {
+        await recordingRepository.marcarNotificacionConsentimientoLeida(solicitud.grabacion_id);
+      } catch (updateErr) {
+        console.warn('⚠️ Error marcando notificación como leída:', updateErr);
       }
 
       console.log('✅ Consentimiento respondido exitosamente');

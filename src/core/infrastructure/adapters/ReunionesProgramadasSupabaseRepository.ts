@@ -300,6 +300,85 @@ export class ReunionesProgramadasSupabaseRepository implements IReunionesProgram
       return null;
     }
   }
+
+  async obtenerInvitacionGeneralActiva(salaId: string) {
+    const { data, error } = await supabase
+      .from('invitaciones_reunion')
+      .select('id, token_unico, expira_en, nombre, tipo_invitado')
+      .eq('sala_id', salaId)
+      .is('participante_id', null)
+      .order('creado_en', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return data as { id: string; token_unico: string; expira_en: string | null; nombre: string | null; tipo_invitado: string | null } | null;
+  }
+
+  async actualizarTipoInvitadoGeneral(invitacionId: string, tipoInvitado: string): Promise<void> {
+    const { error } = await supabase
+      .from('invitaciones_reunion')
+      .update({ tipo_invitado: tipoInvitado, nombre: null, email: null })
+      .eq('id', invitacionId);
+    if (error) throw error;
+  }
+
+  async obtenerReunionesActivas(espacioId: string): Promise<ReunionProgramadaData[]> {
+    const { data, error } = await supabase
+      .from('reuniones_programadas')
+      .select(
+        '*, creador:usuarios!reuniones_programadas_creado_por_usuarios_fkey(id, nombre), sala:salas_reunion(id, nombre), participantes:reunion_participantes(id, usuario_id, estado, notificado, usuario:usuarios(id, nombre))'
+      )
+      .eq('espacio_id', espacioId)
+      .gte('fecha_fin', new Date().toISOString())
+      .order('fecha_inicio', { ascending: true });
+    if (error) throw error;
+    return (data as ReunionProgramadaData[]) ?? [];
+  }
+
+  suscribirCambiosReuniones(espacioId: string, callback: () => void): () => void {
+    const channel = supabase
+      .channel(`meetings_${espacioId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'reuniones_programadas',
+        filter: `espacio_id=eq.${espacioId}`,
+      }, callback)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }
+
+  async actualizarMiEstadoReunion(reunionId: string, usuarioId: string, estado: 'aceptado' | 'rechazado' | 'tentativo'): Promise<void> {
+    const { error } = await supabase
+      .from('reunion_participantes')
+      .update({ estado })
+      .eq('reunion_id', reunionId)
+      .eq('usuario_id', usuarioId);
+    if (error) throw error;
+  }
+
+  async crearInvitacionGeneral(input: {
+    sala_id: string;
+    tipo_invitado: string;
+    creado_por: string | null;
+    expira_en: string;
+  }): Promise<{ token_unico: string } | null> {
+    const { data, error } = await supabase
+      .from('invitaciones_reunion')
+      .insert({
+        sala_id: input.sala_id,
+        participante_id: null,
+        email: null,
+        nombre: null,
+        tipo_invitado: input.tipo_invitado,
+        creado_por: input.creado_por,
+        expira_en: input.expira_en,
+      })
+      .select('token_unico')
+      .single();
+    if (error) throw error;
+    return data as { token_unico: string } | null;
+  }
 }
 
 export const reunionesProgramadasRepository: IReunionesProgramadasRepository =

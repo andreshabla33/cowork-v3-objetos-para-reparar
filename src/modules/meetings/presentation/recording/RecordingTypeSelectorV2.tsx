@@ -10,8 +10,7 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
-import { 
+import {
   TipoGrabacionDetallado, 
   CargoLaboral,
   CONFIGURACIONES_GRABACION_DETALLADO,
