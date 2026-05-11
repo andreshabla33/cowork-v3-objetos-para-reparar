@@ -24,7 +24,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { RecordingManager } from '@/components/meetings/recording/RecordingManager';
 import type { CargoLaboral } from '@/components/meetings/recording/types/analysis';
 import { ConsentimientoPendiente } from '@/components/meetings/recording/ConsentimientoPendiente';
-import { AvatarCustomizer3D } from '@/components/AvatarCustomizer3D';
+import { AvatarCustomizer3D } from '@/components/customizer/AvatarCustomizer3D';
 import type { CatalogoObjeto3D } from '@/types/objetos3d';
 import { logger } from '@/core/infrastructure/observability/logger';
 
