@@ -36,7 +36,7 @@
 | ITEM | Estado | Trabajo restante |
 |---|---|---|
 | **10** | 🟢 **EN CURSO** — Batch 1 cerrado 2026-05-09 (5 commits del usuario: `5534b42` + `8006f15` + `cd98047` + `5346440` + `280dda5`) | 51 archivos `hooks/` restantes. Batch 2 sugerido: `hooks/auth/` (riesgo bajo) |
-| **11** | 🟢 **EN CURSO** — Batches 1-15 cerrados (2026-05-09 + 2026-05-11). 9 bounded contexts creados/extendidos en `src/modules/` | **24 archivos** `components/` restantes (ChatPanel, Dashboard, TaskBoard, UserAvatar, VideoWithBackground, VirtualSpace3D, WorkspaceLayout, ui/ + otros 9 raíz) |
+| **11** | ✅ **CERRADO** — Batches 1-17 cerrados (2026-05-09 + 2026-05-11). 11 bounded contexts creados/extendidos en `src/modules/`. **`components/` ELIMINADA al 100%** | 0 archivos legacy |
 | 19 (cierre) | ⏸ Pendiente | Eliminar carpetas `store/`, `hooks/`, `components/` enteras (post 10/11) |
 
 **ITEM 11 Batch 1 (cerrado `bf33970`)** — 5 huérfanos eliminados en components/ raíz (1.867L):
@@ -98,10 +98,19 @@
 - root + recording/ + recording/types + recording/v2 + videocall/ + videocall/hooks + videocall/lobby.
 - App.tsx imports + lazy + `types/meeting-types.ts` import. Múltiples `'../../types'` y `'../../../hooks/meetings/...'` → paths absolutos.
 
-**Próximos pasos `components/` legacy (24 archivos restantes)**:
-- 9 archivos raíz: ChatPanel, Dashboard, TaskBoard, UserAvatar, VideoWithBackground, VirtualSpace3D, WorkspaceLayout, AvatarCard, ObjectCard + 7 toasts/selectors (Batch 16+ candidato).
-- `components/ui/` (8 archivos): primitives compartidos — candidato Batch dedicado a `src/ui/` (no bounded context).
-- 7 archivos misc: BottomControlBar, GamificacionPanel, MetricasEmpresaPanel, MiembrosView, MiniModeOverlay, MonicaDockInline, StatusSelector → distribución bounded context por funcionalidad.
+**ITEM 11 Batch 16 (cerrado `f2d2b15`)** — `components/ui/` (8 archivos) → `src/modules/ui/presentation/`:
+- Button, Card, Input, Modal, NotificationToast, AnimatedBackground, AppErrorBoundary, AICopilotSlot + index.ts
+- 4 consumers actualizados (index.tsx, ModalInvitarUsuario, WorkspaceLayout, Dashboard).
+
+**ITEM 11 Batch 17 (cerrado `39b215e` + `9f79c81` + `be34b76` + `2ee318e` + `3db467e`)** — 16 archivos raíz finales distribuidos por bounded context owner:
+- 17a chat/: ChatPanel (365L) → `src/modules/chat/presentation/`
+- 17b workspace/: Dashboard (349L), TaskBoard (283L), MetricasEmpresaPanel (421L) → `src/modules/workspace/presentation/`
+- 17c user/: UserAvatar, AvatarCard, MiembrosView → `src/modules/user/presentation/`
+- 17d realtime-room/chat: VideoWithBackground, BottomControlBar → `src/modules/realtime-room/presentation/`; ChatToast → `src/modules/chat/presentation/`
+- 17e-i: VirtualSpace3D (1423L) → space3d/; WorkspaceLayout (369L), MiniModeOverlay (414L), MonicaDockInline (220L) → ui-shell/; ObjectCard → customizer/; GamificacionPanel → games/; StatusSelector → presence/
+- Decisión: NO crear nuevo BC `ai-copilot/` para MonicaDockInline (220L, 1 consumer). YAGNI — sumar a ui-shell/.
+
+⭐ HITO **ITEM 11 COMPLETO**: `components/` ELIMINADA al 100% (228 → 0 archivos).
 
 **ITEM 10 Batch 1 (cerrado por el usuario 2026-05-09)**:
 - `hooks/useIdleDetection.ts` (84L) → `src/modules/presence/presentation/useIdleDetection.ts` (move + compat shim, 1 consumer)
@@ -117,7 +126,7 @@
 | `modules/` | ✅ ELIMINADA | 0 |
 | `store/` | ✅ **ELIMINADA** (Batch 10) | 0 |
 | `hooks/` | 🟡 **54 archivos** (-2 vs estado pre-Batch 1) | ITEM 10 en curso |
-| `components/` | 🟡 **24 archivos** (-204 vs estado pre-Batches 1-15) | ITEM 11 — solo cleanup raíz + ui/ pendiente |
+| `components/` | ✅ **ELIMINADA** (Batches 16+17 cierre 2026-05-11) | 0 |
 
 ### Validación end-to-end
 
