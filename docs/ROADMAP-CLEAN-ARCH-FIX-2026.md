@@ -57,6 +57,43 @@ Total: **9 repos creados/extendidos** con port + adapter + singleton. Archivos r
 | **11** | ✅ **CERRADO** — Batches 1-17 cerrados (2026-05-09 + 2026-05-11). 11 bounded contexts creados/extendidos en `src/modules/`. **`components/` ELIMINADA al 100%** | 0 archivos legacy |
 | 19 (cierre) | ⏸ Pendiente | Eliminar carpetas `store/`, `hooks/`, `components/` enteras (post 10/11) |
 
+### 🔴 DEUDA EXPLÍCITA — ITEM 15 god-hook/god-component splits (pendiente)
+
+Path B cerrado al 100% en `presentation/` (cero `supabase.from()` en UI) — refactor de **capas** COMPLETO. La deuda restante es de **tamaño**: archivos que exceden regla dura (500L archivo / 200L componente / 100L hook) y donde split es valioso, no cosmético.
+
+Cada uno requiere **sesión dedicada** con design doc previo + agent especializado.
+
+| Archivo | Líneas | Naturaleza | Sesión recomendada |
+|---|---|---|---|
+| `space3d/presentation/VirtualSpace3D.tsx` | **1423** | God-component R3F (Canvas + scene + post-process + state wiring) | `threejs-performance-expert-gpu-optimizer` |
+| `workspace/presentation/hooks/usePresenceChannels.ts` | **935** | God-hook orchestrator (pool multi-channel + retry exponencial + throttle + density-aware) | Design doc → split en PresencePoolController + SyncOrchestrator + DensityPolicy + RetryStrategy |
+| `avatar3d/presentation/GLTFAvatar.tsx` | **883** | God-component (R3F render + AnimationMixer + skin morph + bone retargeting) | `threejs-performance-expert-gpu-optimizer` |
+| `games/presentation/minigames/ChessGame.tsx` | **640** | Chess engine + multiplayer broadcast + UI | Extract chess engine a Application use case |
+| `realtime-room/presentation/BottomControlBar.tsx` | **507** | UI + lógica devices (audio/video/share/rec) | `livekit-transport-master` para extracción de lógica devices |
+| `ui-shell/presentation/MiniModeOverlay.tsx` | 414 | UI + presencia + sesión mezcladas | Split por concern UI |
+| `workspace/presentation/MetricasEmpresaPanel.tsx` | 376 | UI + cálculos analytics + sparklines | Extract `analytics` use cases (totales, ranking, sparkline data) |
+| `ui-shell/presentation/WorkspaceLayout.tsx` | 369 | Orchestrator + composition root | Aceptar as-is (orchestrator legítimo) |
+| `chat/presentation/ChatPanel.tsx` | 365 | UI cohesionada (lógica ya en useChatPanel) | Aceptar as-is — split cosmético sin valor |
+| `workspace/presentation/Dashboard.tsx` | 349 | UI + cargas iniciales workspaces | Extract carga inicial a hook delgado |
+| `workspace/presentation/TaskBoard.tsx` | 283 | UI + mutaciones store + filtros | Extract sub-componentes (TaskCard, NewTaskForm) |
+
+**Criterio split or no** (decisión 2026-05-09):
+> Conteo de líneas NO es criterio confiable. El criterio real es **"¿hay business logic mezclada?"** Si la lógica YA está delegada a Repos/UseCases/Application layer, archivo grande es solo wiring/UI cohesionada — split sería cosmético sin valor arquitectónico.
+
+Aplicado: WorkspaceLayout 369L + ChatPanel 365L → **aceptar as-is** (orchestrator legítimo / lógica ya en useChatPanel).
+Los demás 9 archivos: candidatos reales con valor arquitectónico al split.
+
+**Orden recomendado** (por valor arquitectónico × independencia):
+1. **MetricasEmpresaPanel** (376L) — split más limpio (analytics use cases puros)
+2. **Dashboard** (349L) — extract carga inicial
+3. **TaskBoard** (283L) — extract sub-componentes
+4. **ChessGame** (640L) — chess engine fuera (Application)
+5. **MiniModeOverlay** (414L) — split por concern UI
+6. **BottomControlBar** (507L) — extract device controls (LiveKit dual rule)
+7. **GLTFAvatar** (883L) — extract animation mixer + skin morph (R3F perf)
+8. **usePresenceChannels** (935L) — controller-based split con design doc dedicado
+9. **VirtualSpace3D** (1423L) — multi-sesión, blast radius mayor
+
 **ITEM 11 Batch 1 (cerrado `bf33970`)** — 5 huérfanos eliminados en components/ raíz (1.867L):
 - `MeetingRooms.tsx` (514L) — substituido por meetings/videocall/MeetingRoom*.tsx
 - `Navbar.tsx` (127L) — vestigio pre-WorkspaceLayout
