@@ -15,7 +15,7 @@ import {
   CargoLaboral,
   PERMISOS_ANALISIS,
   INFO_CARGOS,
-} from '../../meetings/recording/types/analysis';
+} from '@/components/meetings/recording/types/analysis';
 
 // ==================== CATÁLOGO DE MÉTRICAS ====================
 

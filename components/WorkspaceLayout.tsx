@@ -39,7 +39,7 @@ const ChatPanel = lazy(() => import('./ChatPanel').then(m => ({ default: m.ChatP
 const MonicaDockInline = lazy(() => import('./MonicaDockInline'));
 const GameHub = lazy(() => import('@/modules/games/presentation').then(m => ({ default: m.GameHub })));
 const GameInvitationNotification = lazy(() => import('@/modules/games/presentation').then(m => ({ default: m.GameInvitationNotification })));
-const SettingsModal = lazy(() => import('./settings/SettingsModal'));
+const SettingsModal = lazy(() => import('@/modules/settings/presentation/SettingsModal'));
 
 const FallbackPanel = () => (
   <div className="flex h-full w-full items-center justify-center">
