@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { espacioConfiguracionRepository } from '@/core/infrastructure/adapters/EspacioConfiguracionSupabaseRepository';
+import { miembrosEspacioRepository } from '@/core/infrastructure/adapters/MiembrosEspacioSupabaseRepository';
 import { SettingToggle } from '../components/SettingToggle';
 import { SettingDropdown } from '../components/SettingDropdown';
 import { SettingSection } from '../components/SettingSection';
@@ -48,13 +49,9 @@ export const SettingsGuests: React.FC<SettingsGuestsProps> = ({
   useEffect(() => {
     const loadFromDB = async () => {
       if (!workspaceId) return;
-      const { data } = await supabase
-        .from('espacios_trabajo')
-        .select('configuracion')
-        .eq('id', workspaceId)
-        .single();
-      if (data?.configuracion?.guests) {
-        const g = data.configuracion.guests;
+      const configuracion = await espacioConfiguracionRepository.obtenerConfiguracion(workspaceId);
+      const g = configuracion?.guests;
+      if (g) {
         onSettingsChange({
           guestCheckInEnabled: g.checkInEnabled ?? settings.guestCheckInEnabled,
           requireApproval: g.requireApproval ?? settings.requireApproval,
@@ -70,44 +67,29 @@ export const SettingsGuests: React.FC<SettingsGuestsProps> = ({
 
   const loadGuests = async () => {
     if (!workspaceId) return;
-    
-    const { data, error } = await supabase
-      .from('invitaciones_pendientes')
-      .select('id, email, creada_en, expira_en')
-      .eq('espacio_id', workspaceId)
-      .eq('usada', false)
-      .order('creada_en', { ascending: false });
-
-    if (!error && data) {
-      setGuests(data.map((g: any) => ({
-        id: g.id,
-        email: g.email,
-        acceso_hasta: g.expira_en,
-        creado_en: g.creado_en
-      })));
-    }
+    const data = await miembrosEspacioRepository.listarInvitacionesAdmin(workspaceId);
+    setGuests(data.map((g) => ({
+      id: g.id,
+      email: g.email,
+      acceso_hasta: (g as { expira_en?: string }).expira_en ?? '',
+      creado_en: (g as { creada_en?: string }).creada_en ?? '',
+    })));
     setLoading(false);
   };
 
   const revokeGuest = async (guestId: string) => {
-    // Mismo patrón RLS silencioso que en SettingsMembers.cancelarInvitacion.
-    // Sin `{ count: 'exact' }`, un user sin permisos veía la fila desaparecer
-    // del estado local pero al recargar `loadGuests()` reaparecía.
-    const { error, count } = await supabase
-      .from('invitaciones_pendientes')
-      .delete({ count: 'exact' })
-      .eq('id', guestId);
-    if (error) {
-      console.warn('Error revocando invitación', { guestId, error: error.message });
+    try {
+      const { count } = await miembrosEspacioRepository.cancelarInvitacionConCount(guestId);
+      if (count === 0) {
+        console.warn('Acceso no revocado: 0 filas afectadas (RLS o id inexistente)', { guestId });
+        alert('No tienes permisos para revocar este acceso, o ya no existe.');
+        return;
+      }
+      loadGuests();
+    } catch (err) {
+      console.warn('Error revocando invitación', { guestId, error: (err as Error).message });
       alert('Error revocando acceso. Intenta de nuevo.');
-      return;
     }
-    if (!count || count === 0) {
-      console.warn('Acceso no revocado: 0 filas afectadas (RLS o id inexistente)', { guestId });
-      alert('No tienes permisos para revocar este acceso, o ya no existe.');
-      return;
-    }
-    loadGuests();
   };
 
   const updateSetting = <K extends keyof GuestsSettings>(key: K, value: GuestsSettings[K]) => {
@@ -115,21 +97,15 @@ export const SettingsGuests: React.FC<SettingsGuestsProps> = ({
     onSettingsChange(newSettings);
     // Persistir en BD (fire-and-forget)
     if (workspaceId) {
-      supabase
-        .from('espacios_trabajo')
-        .update({
-          configuracion: {
-            guests: {
-              checkInEnabled: newSettings.guestCheckInEnabled,
-              requireApproval: newSettings.requireApproval,
-              accessDuration: newSettings.guestAccessDuration,
-              allowChat: newSettings.allowGuestChat,
-              allowVideo: newSettings.allowGuestVideo,
-            }
-          }
-        })
-        .eq('id', workspaceId)
-        .then();
+      void espacioConfiguracionRepository.actualizarConfiguracion(workspaceId, {
+        guests: {
+          checkInEnabled: newSettings.guestCheckInEnabled,
+          requireApproval: newSettings.requireApproval,
+          accessDuration: newSettings.guestAccessDuration,
+          allowChat: newSettings.allowGuestChat,
+          allowVideo: newSettings.allowGuestVideo,
+        },
+      });
     }
   };
 

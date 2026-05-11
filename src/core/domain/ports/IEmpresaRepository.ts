@@ -15,13 +15,44 @@ export interface EmpresaBasica {
   logo_url?: string | null;
 }
 
+export interface EmpresaCompleta {
+  id: string;
+  nombre: string;
+  nit_rut?: string | null;
+  industria?: string | null;
+  tamano?: string | null;
+  sitio_web?: string | null;
+  pais?: string | null;
+  ciudad?: string | null;
+  direccion?: string | null;
+  telefono?: string | null;
+  email_contacto?: string | null;
+  descripcion?: string | null;
+  logo_url?: string | null;
+  espacio_id: string;
+  creado_por?: string | null;
+  actualizado_en?: string;
+}
+
+export interface EmpresaUpsertPayload {
+  nombre: string;
+  nit_rut?: string | null;
+  industria?: string | null;
+  tamano?: string | null;
+  sitio_web?: string | null;
+  pais?: string | null;
+  ciudad?: string | null;
+  direccion?: string | null;
+  telefono?: string | null;
+  email_contacto?: string | null;
+  descripcion?: string | null;
+  actualizado_en: string;
+}
+
 export interface IEmpresaRepository {
-  /**
-   * Cargar todas las empresas activas de un espacio, ordenadas por nombre.
-   *
-   * @param espacioId - ID del espacio (workspace).
-   * @returns Lista de empresas básicas (id, nombre, logo_url).
-   * @throws Error si la query falla.
-   */
   cargarEmpresasDeEspacio(espacioId: string): Promise<EmpresaBasica[]>;
+  obtenerEmpresaIdDeUsuario(espacioId: string, usuarioId: string): Promise<string | null>;
+  obtenerEmpresaCompleta(empresaId: string, espacioId: string): Promise<EmpresaCompleta | null>;
+  actualizarEmpresa(empresaId: string, payload: EmpresaUpsertPayload): Promise<void>;
+  crearEmpresa(payload: EmpresaUpsertPayload, espacioId: string, creadorId: string): Promise<EmpresaCompleta>;
 }

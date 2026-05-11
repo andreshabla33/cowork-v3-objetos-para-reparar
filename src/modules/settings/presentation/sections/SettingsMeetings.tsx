@@ -4,7 +4,7 @@ import { SettingSection } from '../components/SettingSection';
 import { Language, getCurrentLanguage, subscribeToLanguageChange } from '@/core/infrastructure/i18n/i18n';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { miembrosEspacioRepository } from '@/core/infrastructure/adapters/MiembrosEspacioSupabaseRepository';
 import {
   TipoAnalisis as TipoAnalisisService,
   getTodasMetricasCached,
@@ -133,14 +133,7 @@ export const SettingsMeetings: React.FC<SettingsMeetingsProps> = ({
       const userId = currentUser?.id || session?.user?.id;
       if (!userId || !workspaceId) return;
 
-      const { data } = await supabase
-        .from('miembros_espacio')
-        .select('cargo_id, cargo_ref:cargos!cargo_id(clave)')
-        .eq('usuario_id', userId)
-        .eq('espacio_id', workspaceId)
-        .single();
-
-      const clave = (data?.cargo_ref as any)?.clave;
+      const clave = await miembrosEspacioRepository.obtenerCargoClave(userId, workspaceId);
       if (clave) {
         setCargoUsuario(clave as CargoLaboral);
       }

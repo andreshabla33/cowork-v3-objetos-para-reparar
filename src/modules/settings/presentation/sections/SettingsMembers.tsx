@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { miembrosEspacioRepository } from '@/core/infrastructure/adapters/MiembrosEspacioSupabaseRepository';
 import { SettingSection } from '../components/SettingSection';
 import { Language, getCurrentLanguage, subscribeToLanguageChange } from '@/core/infrastructure/i18n/i18n';
 import { ModalInvitarUsuario } from '@/modules/invitation/presentation/ModalInvitarUsuario';
@@ -55,30 +55,16 @@ export const SettingsMembers: React.FC<SettingsMembersProps> = ({
     if (!workspaceId) return;
     setLoading(true);
 
-    const [membersRes, invitesRes] = await Promise.all([
-      supabase
-        .from('miembros_espacio')
-        .select(`
-          id,
-          usuario_id,
-          rol,
-          cargo,
-          cargo_id,
-          aceptado,
-          usuario:usuarios(nombre, email),
-          cargo_ref:cargos!cargo_id(nombre)
-        `)
-        .eq('espacio_id', workspaceId),
-      supabase
-        .from('invitaciones_pendientes')
-        .select('id, email, rol, creada_en, expira_en')
-        .eq('espacio_id', workspaceId)
-        .eq('usada', false)
-        .order('creada_en', { ascending: false }),
-    ]);
-
-    if (!membersRes.error && membersRes.data) setMembers(membersRes.data as any);
-    if (!invitesRes.error && invitesRes.data) setInvitaciones(invitesRes.data as any);
+    try {
+      const [membersData, invitesData] = await Promise.all([
+        miembrosEspacioRepository.listarMiembrosAdmin(workspaceId),
+        miembrosEspacioRepository.listarInvitacionesAdmin(workspaceId),
+      ]);
+      setMembers(membersData as any);
+      setInvitaciones(invitesData as any);
+    } catch (err) {
+      console.error('Error cargando miembros', err);
+    }
     setLoading(false);
   };
 
@@ -94,38 +80,7 @@ export const SettingsMembers: React.FC<SettingsMembersProps> = ({
   // Sigue el mismo patrón que useEspacioObjetos para consistencia.
   useEffect(() => {
     if (!workspaceId) return;
-
-    const canal = supabase
-      .channel(`settings_members:${workspaceId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'miembros_espacio',
-          filter: `espacio_id=eq.${workspaceId}`,
-        },
-        () => {
-          void loadData();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'invitaciones_pendientes',
-          filter: `espacio_id=eq.${workspaceId}`,
-        },
-        () => {
-          void loadData();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(canal);
-    };
+    return miembrosEspacioRepository.suscribirCambiosMiembros(workspaceId, () => void loadData());
   }, [workspaceId]);
 
   const cancelarInvitacion = async (id: string) => {
@@ -135,12 +90,12 @@ export const SettingsMembers: React.FC<SettingsMembersProps> = ({
     // así que al recargar la invitación reaparecía.
     // Policy real: solo super_admin/admin de la misma (espacio, empresa) puede.
     // Ref: https://supabase.com/docs/reference/javascript/delete (count option).
-    const { error, count } = await supabase
-      .from('invitaciones_pendientes')
-      .delete({ count: 'exact' })
-      .eq('id', id);
-    if (error) {
-      console.warn('Error cancelando invitación', { id, error: error.message });
+    let count = 0;
+    try {
+      const res = await miembrosEspacioRepository.cancelarInvitacionConCount(id);
+      count = res.count;
+    } catch (err) {
+      console.warn('Error cancelando invitación', { id, error: (err as Error).message });
       alert('Error cancelando invitación. Intenta de nuevo.');
       return;
     }

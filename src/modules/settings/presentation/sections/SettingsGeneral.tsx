@@ -4,7 +4,7 @@ import { SettingToggle } from '../components/SettingToggle';
 import { SettingDropdown } from '../components/SettingDropdown';
 import { SettingSection } from '../components/SettingSection';
 import { Language, getCurrentLanguage, setLanguage } from '@/core/infrastructure/i18n/i18n';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { miembrosEspacioRepository } from '@/core/infrastructure/adapters/MiembrosEspacioSupabaseRepository';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -33,14 +33,12 @@ export const SettingsGeneral: React.FC<SettingsGeneralProps> = ({
 
   const handleResetTour = async () => {
     if (!session?.user?.id || !activeWorkspace?.id) return;
-    const { error } = await supabase
-      .from('miembros_espacio')
-      .update({ tour_completado: false, tour_veces_mostrado: 0 })
-      .eq('usuario_id', session.user.id)
-      .eq('espacio_id', activeWorkspace.id);
-    if (!error) {
+    try {
+      await miembrosEspacioRepository.resetearTour(session.user.id, activeWorkspace.id);
       setTourResetDone(true);
       setTimeout(() => setTourResetDone(false), 3000);
+    } catch {
+      // silent fail — UI no muestra error
     }
   };
 

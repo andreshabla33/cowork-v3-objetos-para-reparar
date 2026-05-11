@@ -5,7 +5,7 @@ import {
   Building2, Globe, MapPin, Phone, Mail, FileText,
   Check, RefreshCw, Save, Plus, Users
 } from 'lucide-react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { empresaRepository } from '@/core/infrastructure/adapters/EmpresaSupabaseRepository';
 import { useAuthSession, useAuthSessionGetter } from '@/hooks/auth/useAuthSession';
 
 const TAMANOS = [
@@ -22,21 +22,7 @@ const INDUSTRIAS = [
   'Inmobiliaria', 'Legal', 'Energía', 'Transporte', 'Otro',
 ];
 
-interface Empresa {
-  id: string;
-  nombre: string;
-  nit_rut: string | null;
-  industria: string | null;
-  tamano: string;
-  sitio_web: string | null;
-  logo_url: string | null;
-  pais: string | null;
-  ciudad: string | null;
-  direccion: string | null;
-  telefono: string | null;
-  email_contacto: string | null;
-  descripcion: string | null;
-}
+import type { EmpresaCompleta as Empresa } from '@/core/domain/ports/IEmpresaRepository';
 
 interface SettingsEmpresaProps {
   workspaceId: string;
@@ -76,20 +62,9 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
         return;
       }
 
-      const { data: miembroData } = await supabase
-        .from('miembros_espacio')
-        .select('empresa_id')
-        .eq('espacio_id', workspaceId)
-        .eq('usuario_id', currentUserId)
-        .maybeSingle();
-
-      if (miembroData?.empresa_id) {
-        const { data: empresaData } = await supabase
-          .from('empresas')
-          .select('*')
-          .eq('id', miembroData.empresa_id)
-          .eq('espacio_id', workspaceId)
-          .single();
+      const empresaId = await empresaRepository.obtenerEmpresaIdDeUsuario(workspaceId, currentUserId);
+      if (empresaId) {
+        const empresaData = await empresaRepository.obtenerEmpresaCompleta(empresaId, workspaceId);
 
         if (empresaData) {
           setEmpresa(empresaData);
@@ -149,27 +124,12 @@ export const SettingsEmpresa: React.FC<SettingsEmpresaProps> = ({ workspaceId, i
 
       if (empresa) {
         // Actualizar empresa existente
-        const { error } = await supabase
-          .from('empresas')
-          .update(empresaPayload)
-          .eq('id', empresa.id);
-        if (error) throw error;
+        await empresaRepository.actualizarEmpresa(empresa.id, empresaPayload);
         showMessage('Empresa actualizada correctamente', 'success');
       } else {
         // Crear nueva empresa y vincular al espacio
         const { userId: creadorId } = getAuthSession();
-
-        const { data: nuevaEmpresa, error: createError } = await supabase
-          .from('empresas')
-          .insert({
-            ...empresaPayload,
-            creado_por: creadorId,
-            espacio_id: workspaceId,
-          })
-          .select()
-          .single();
-        if (createError) throw createError;
-
+        const nuevaEmpresa = await empresaRepository.crearEmpresa(empresaPayload, workspaceId, creadorId ?? '');
         setEmpresa(nuevaEmpresa);
         showMessage('Empresa creada correctamente', 'success');
       }
