@@ -10,9 +10,9 @@
  */
 import React, { useState } from 'react';
 import { Mail, User, Shield, Users, Crown, X, Send, CheckCircle, AlertTriangle } from 'lucide-react';
-import { Modal } from '@/components/ui/Modal';
-import { Input } from '@/components/ui/Input';
-import { Button } from '@/components/ui/Button';
+import { Modal } from '@/modules/ui/presentation/Modal';
+import { Input } from '@/modules/ui/presentation/Input';
+import { Button } from '@/modules/ui/presentation/Button';
 import { EnviarInvitacionUseCase } from '@/core/application/usecases/EnviarInvitacionUseCase';
 // DI: Repository port resolved from React Context, not module-level singleton
 import { useDIUseCase } from '@/core/infrastructure/di/DIProvider';

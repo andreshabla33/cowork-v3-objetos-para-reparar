@@ -39,7 +39,7 @@ import './styles/tailwind.css';
 import './styles/aurora-glass.css';
 import './styles/login-theme.css';
 import App from './App';
-import { AppErrorBoundary } from './components/ui/AppErrorBoundary';
+import { AppErrorBoundary } from '@/modules/ui/presentation/AppErrorBoundary';
 import { DIProvider } from './src/core/infrastructure/di/DIProvider';
 import { captureError } from '@/core/infrastructure/observability/sentryInit';
 import { registerSentryForwarder } from './src/core/infrastructure/observability/logger';

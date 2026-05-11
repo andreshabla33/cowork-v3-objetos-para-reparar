@@ -20,7 +20,7 @@ import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { getThemeStyles } from '@/core/infrastructure/theme/theme';
 import { MiniModeOverlay } from './MiniModeOverlay';
-import { NotificationToast } from './ui/NotificationToast';
+import { NotificationToast } from '@/modules/ui/presentation/NotificationToast';
 import { ProductTour } from '@/modules/onboarding/presentation/ProductTour';
 import { WorkspaceSidebar, MobileNavOverlay, WorkspaceContentRouter } from '@/modules/ui-shell/presentation';
 import { getSettingsSection } from '@/core/infrastructure/userSettings/userSettings';
