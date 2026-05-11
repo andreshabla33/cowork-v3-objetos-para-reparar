@@ -22,7 +22,7 @@ import type {
   TipoReunionUnificado,
   InvitadoExterno,
 } from '@/types/meeting-types';
-import type { CargoLaboral } from '@/components/meetings/recording/types/analysis';
+import type { CargoLaboral } from '@/modules/meetings/presentation/recording/types/analysis';
 import { getTiposReunionPorCargo, TIPOS_REUNION_CONFIG } from '@/types/meeting-types';
 
 // Adapters (singleton instances per Dependency Injection pattern)

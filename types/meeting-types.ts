@@ -8,7 +8,7 @@
  * - Modelo de datos consistente
  */
 
-import { CargoLaboral, TipoGrabacionDetallado } from '../components/meetings/recording/types/analysis';
+import { CargoLaboral, TipoGrabacionDetallado } from '@/modules/meetings/presentation/recording/types/analysis';
 
 // ==================== TIPOS UNIFICADOS ====================
 

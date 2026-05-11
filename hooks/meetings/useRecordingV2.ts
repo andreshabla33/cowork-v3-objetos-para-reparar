@@ -22,16 +22,16 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { recordingRepository } from '@/core/infrastructure/adapters/RecordingSupabaseRepository';
 import { useAuthSessionGetter } from '@/hooks/auth/useAuthSession';
-import { useTranscription } from '@/components/meetings/recording/useTranscription';
+import { useTranscription } from '@/modules/meetings/presentation/recording/useTranscription';
 import {
   useCombinedAnalysis,
   type AnalisisResumenTiempoReal,
-} from '@/components/meetings/recording/useCombinedAnalysis';
+} from '@/modules/meetings/presentation/recording/useCombinedAnalysis';
 import {
   type TipoGrabacionDetallado,
   CONFIGURACIONES_GRABACION_DETALLADO,
   type ResultadoAnalisis,
-} from '@/components/meetings/recording/types/analysis';
+} from '@/modules/meetings/presentation/recording/types/analysis';
 
 export interface ProcessingState {
   step: 'idle' | 'selecting_type' | 'recording' | 'stopping' | 'processing' | 'complete' | 'error';

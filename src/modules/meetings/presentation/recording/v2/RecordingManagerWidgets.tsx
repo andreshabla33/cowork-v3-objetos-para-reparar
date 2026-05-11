@@ -8,8 +8,8 @@
  */
 
 import React from 'react';
-import type { AnalisisResumenTiempoReal } from '@/components/meetings/recording/useCombinedAnalysis';
-import type { CONFIGURACIONES_GRABACION_DETALLADO, TipoGrabacionDetallado } from '@/components/meetings/recording/types/analysis';
+import type { AnalisisResumenTiempoReal } from '@/modules/meetings/presentation/recording/useCombinedAnalysis';
+import type { CONFIGURACIONES_GRABACION_DETALLADO, TipoGrabacionDetallado } from '@/modules/meetings/presentation/recording/types/analysis';
 
 type ConfigGrabacion = (typeof CONFIGURACIONES_GRABACION_DETALLADO)[TipoGrabacionDetallado];
 

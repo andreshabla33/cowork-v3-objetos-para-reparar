@@ -9,7 +9,7 @@ import { User, PresenceStatus, Role, ZonaEmpresa } from '@/types';
 import { FloorType } from '../src/core/domain/entities';
 // RecordingManager, ConsentimientoPendiente y AvatarCustomizer3D ya no
 // se importan aquí: viven dentro de <VirtualSpace3DModals> (root).
-import type { CargoLaboral } from './meetings/recording/types/analysis';
+import type { CargoLaboral } from '@/modules/meetings/presentation/recording/types/analysis';
 import { BottomControlBar } from './BottomControlBar';
 import { StressFase1Panel } from '@/tests/stress/fase1-local/presentation/StressFase1Panel';
 import { VirtualSpace3DModals } from '@/modules/space3d/presentation/scene/root/VirtualSpace3DModals';

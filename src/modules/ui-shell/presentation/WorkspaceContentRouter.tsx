@@ -18,8 +18,8 @@ const TaskBoard = lazy(() => import('@/components/TaskBoard').then(module => ({ 
 const MiembrosView = lazy(() => import('@/components/MiembrosView').then(module => ({ default: module.MiembrosView })));
 const AvatarCustomizer3D = lazy(() => import('@/modules/customizer/presentation/AvatarCustomizer3D'));
 const ChatPanel = lazy(() => import('@/components/ChatPanel').then(module => ({ default: module.ChatPanel })));
-const CalendarPanel = lazy(() => import('@/components/meetings/CalendarPanel'));
-const GrabacionesHistorial = lazy(() => import('@/components/meetings/recording/GrabacionesHistorial'));
+const CalendarPanel = lazy(() => import('@/modules/meetings/presentation/CalendarPanel'));
+const GrabacionesHistorial = lazy(() => import('@/modules/meetings/presentation/recording/GrabacionesHistorial'));
 const MetricasEmpresaPanel = lazy(() => import('@/components/MetricasEmpresaPanel'));
 
 const FallbackPanel = () => (

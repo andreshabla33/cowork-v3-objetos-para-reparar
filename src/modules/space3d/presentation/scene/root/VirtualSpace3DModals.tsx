@@ -21,9 +21,9 @@
 
 import React from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import { RecordingManager } from '@/components/meetings/recording/RecordingManager';
-import type { CargoLaboral } from '@/components/meetings/recording/types/analysis';
-import { ConsentimientoPendiente } from '@/components/meetings/recording/ConsentimientoPendiente';
+import { RecordingManager } from '@/modules/meetings/presentation/recording/RecordingManager';
+import type { CargoLaboral } from '@/modules/meetings/presentation/recording/types/analysis';
+import { ConsentimientoPendiente } from '@/modules/meetings/presentation/recording/ConsentimientoPendiente';
 import { AvatarCustomizer3D } from '@/modules/customizer/presentation/AvatarCustomizer3D';
 import type { CatalogoObjeto3D } from '@/types/objetos3d';
 import { logger } from '@/core/infrastructure/observability/logger';
