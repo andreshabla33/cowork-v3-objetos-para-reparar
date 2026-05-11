@@ -1,6 +1,6 @@
-# Roadmap Clean Arch + Bug Fixes — Cowork V3.7 (2026-05-05, auditado 2026-05-08, sesión cierre 2026-05-09)
+# Roadmap Clean Arch + Bug Fixes — Cowork V3.7 (2026-05-05, auditado 2026-05-08, sesiones cierre 2026-05-09 + 2026-05-11)
 
-## 🎯 Estado real consolidado al 2026-05-09 (~46 commits sesión refactor + 5 commits ITEM 10 Batch 1)
+## 🎯 Estado real consolidado al 2026-05-11 (~46 commits sesión refactor + 5 commits ITEM 10 Batch 1 + 10 commits ITEM 11 Batches 6-15)
 
 ### ITEMs cerrados al 100% (16/21 = ~76%)
 
@@ -27,7 +27,7 @@
 
 | ITEM | Estado | Bloqueo |
 |---|---|---|
-| 8 fase 2 | **95%** — 19 archivos store/ → src/modules/_state/ ([`c0fb8fa`](#)) | Solo `gameStore.ts` queda (consumidos por components/games/ legacy) |
+| 8 fase 2 | ✅ **100%** — `gameStore.ts` migrado a `src/modules/games/state/` ([`0d21335`](#)) | — `store/` ELIMINADA al 100% |
 | 19 | **Partial** — 5 huérfanos eliminados (917L) ([`45fa2bf`](#)) | Cleanup completo carpetas requiere ITEM 10/11 |
 | 21 P3-19 | ✅ | sRGBEncoding → SRGBColorSpace ([`cf55c22`](#)) |
 
@@ -36,7 +36,7 @@
 | ITEM | Estado | Trabajo restante |
 |---|---|---|
 | **10** | 🟢 **EN CURSO** — Batch 1 cerrado 2026-05-09 (5 commits del usuario: `5534b42` + `8006f15` + `cd98047` + `5346440` + `280dda5`) | 51 archivos `hooks/` restantes. Batch 2 sugerido: `hooks/auth/` (riesgo bajo) |
-| **11** | 🟢 **EN CURSO** — Batches 1+2 cerrados 2026-05-09 (`bf33970` + `305a7a2`) | 222 archivos `components/` restantes |
+| **11** | 🟢 **EN CURSO** — Batches 1-15 cerrados (2026-05-09 + 2026-05-11). 9 bounded contexts creados/extendidos en `src/modules/` | **24 archivos** `components/` restantes (ChatPanel, Dashboard, TaskBoard, UserAvatar, VideoWithBackground, VirtualSpace3D, WorkspaceLayout, ui/ + otros 9 raíz) |
 | 19 (cierre) | ⏸ Pendiente | Eliminar carpetas `store/`, `hooks/`, `components/` enteras (post 10/11) |
 
 **ITEM 11 Batch 1 (cerrado `bf33970`)** — 5 huérfanos eliminados en components/ raíz (1.867L):
@@ -64,14 +64,44 @@
 - 2 consumers actualizados (App.tsx lazy + WorkspaceLayout). Relative imports a `../../src/core/*` reparados.
 - `components/onboarding/` subdir eliminado.
 
-**Próximos Batches sugeridos (en orden de complejidad)**:
-- Batch 6: `avatar3d/` (5 archivos) — bounded context "avatar3d", 7+ consumers cross-subdir (customizer + space3d). Riesgo M.
-- Batch 7: `layout/` (5 archivos) → `src/modules/ui-shell/presentation/`. Consumidos por WorkspaceLayout.
-- Batch 8: `games/` (11 archivos) → `src/modules/games/presentation/` + migrar `gameStore.ts` final.
-- Batch 9: `chat/` (6 archivos) → `src/modules/chat/presentation/`.
-- Batch 10: `marketplace/` (8 archivos) → `src/modules/marketplace/presentation/`.
-- Batch 11: `customizer/` (12 archivos con subdirs) → `src/modules/customizer/presentation/`.
-- Batch 12+: subdirs grandes (`settings/` 23, `3d/` 26, `space3d/` 26, `meetings/` 60). XL multi-sesión cada uno.
+**ITEM 11 Batch 6 (cerrado `08d7b22`)** — `avatar3d/` (5 archivos) → `src/modules/avatar3d/presentation/`:
+- GLTFAvatar, rigUtils, shared, useAvatar3D, useAvatarControls. Cross-subdir reference `../space3d/shared` → `@/components/space3d/shared`.
+
+**ITEM 11 Batch 7 (cerrado `304ce26`)** — `layout/` (5 archivos) → `src/modules/ui-shell/presentation/`:
+- WorkspaceContentRouter + 4 layout components. 7 `lazy()` imports reparados con regex `import('../X')` → `import('@/components/X')`.
+
+**ITEM 11 Batch 8 (cerrado `5bf6453`)** — `chat/` (6 archivos) → `src/modules/chat/presentation/`:
+- AgregarMiembros, ChatMembersPanel, ChatSidebarContent, ChatThreadPanel, MessageContent, ModalCrearGrupo.
+- Consumer ChatPanel.tsx: 5 imports `'./chat/X'` → `'@/modules/chat/presentation/X'`.
+
+**ITEM 11 Batch 9 (cerrado `9a66f03`)** — `marketplace/` (8 archivos) → `src/modules/marketplace/presentation/`:
+- App.tsx lazy import reparado.
+
+**ITEM 11 Batch 10 (cerrado `0d21335`)** ⭐ **HITO** — `games/` (11 archivos) + `gameStore.ts` → `src/modules/games/`:
+- 11 archivos UI games + minigames → `src/modules/games/presentation/`.
+- `store/gameStore.ts` → `src/modules/games/state/gameStore.ts`.
+- **`store/` ELIMINADA al 100%** como side-effect. ITEM 8 fase 2 cerrado.
+
+**ITEM 11 Batch 11 (cerrado `b680bce`)** — `customizer/` (12 archivos con subdirs) → `src/modules/customizer/presentation/`:
+- 12 archivos incluyendo panels/preview/shared. 5 cross-subdir relative imports reparados a absolutos (UserAvatar, AvatarCard, ObjectCard, 3d/GeometriaProceduralObjeto3D).
+
+**ITEM 11 Batch 12 (cerrado `1062efb`)** — `settings/` (23 archivos) → `src/modules/settings/presentation/`:
+- SettingsModal + components/ + sections/. Bulk sed para imports relativos a absolutos.
+
+**ITEM 11 Batch 13 (cerrado `ca64486`)** — `3d/` (26 archivos) → `src/modules/space3d/presentation/world/`:
+- Bulk replace `'@/components/3d/'`, `'./3d/'`, `'../3d/'` → `'@/modules/space3d/presentation/world/'`.
+
+**ITEM 11 Batch 14 (cerrado `61dd1a3`)** — `space3d/` (26 archivos) → `src/modules/space3d/presentation/scene/`:
+- 26 archivos en scene/ + scene/root/. Post-fix de Batch 13: world/ files referenciaban `'@/components/space3d/...'` actualizados a `'@/modules/space3d/presentation/scene/'`.
+
+**ITEM 11 Batch 15 (cerrado `a48b086`)** — `meetings/` (62 archivos) → `src/modules/meetings/presentation/`:
+- root + recording/ + recording/types + recording/v2 + videocall/ + videocall/hooks + videocall/lobby.
+- App.tsx imports + lazy + `types/meeting-types.ts` import. Múltiples `'../../types'` y `'../../../hooks/meetings/...'` → paths absolutos.
+
+**Próximos pasos `components/` legacy (24 archivos restantes)**:
+- 9 archivos raíz: ChatPanel, Dashboard, TaskBoard, UserAvatar, VideoWithBackground, VirtualSpace3D, WorkspaceLayout, AvatarCard, ObjectCard + 7 toasts/selectors (Batch 16+ candidato).
+- `components/ui/` (8 archivos): primitives compartidos — candidato Batch dedicado a `src/ui/` (no bounded context).
+- 7 archivos misc: BottomControlBar, GamificacionPanel, MetricasEmpresaPanel, MiembrosView, MiniModeOverlay, MonicaDockInline, StatusSelector → distribución bounded context por funcionalidad.
 
 **ITEM 10 Batch 1 (cerrado por el usuario 2026-05-09)**:
 - `hooks/useIdleDetection.ts` (84L) → `src/modules/presence/presentation/useIdleDetection.ts` (move + compat shim, 1 consumer)
@@ -85,9 +115,9 @@
 | `services/` | ✅ ELIMINADA | 0 |
 | `lib/` | ✅ ELIMINADA | 0 |
 | `modules/` | ✅ ELIMINADA | 0 |
-| `store/` | 🟡 1 archivo | `gameStore.ts` (bloqueado por ITEM 11) |
+| `store/` | ✅ **ELIMINADA** (Batch 10) | 0 |
 | `hooks/` | 🟡 **54 archivos** (-2 vs estado pre-Batch 1) | ITEM 10 en curso |
-| `components/` | 🟡 **208 archivos** (-20 vs estado pre-Batches 1-5) | ITEM 11 en curso |
+| `components/` | 🟡 **24 archivos** (-204 vs estado pre-Batches 1-15) | ITEM 11 — solo cleanup raíz + ui/ pendiente |
 
 ### Validación end-to-end
 
