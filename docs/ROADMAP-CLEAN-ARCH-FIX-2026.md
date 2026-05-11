@@ -50,11 +50,28 @@
 - `components/AvatarCustomizer3D.tsx` (10L shim re-export) → eliminado
 - 2 consumers actualizados a `@/components/customizer/AvatarCustomizer3D` directo (lazy import + static import)
 
-**Próximos Batches sugeridos (en orden de riesgo creciente)**:
-- Batch 3: archivos sueltos top-level con 1 consumer (ForgotPasswordScreen, ResetPasswordScreen, PantallaAccesoRecuperacionContrasena → `src/modules/user/presentation/`)
-- Batch 4: subdirs pequeños aislados (`media/`, `invitation/`, `invitaciones/` → migrar enteros)
-- Batch 5+: subdirs medianos (`avatar3d/`, `layout/`, `chat/`, `onboarding/`, `marketplace/`)
-- Batch final: subdirs grandes (`meetings/` con 60 archivos, `space3d/`, `3d/`, `settings/`)
+**ITEM 11 Batch 3 (cerrado `2841630`)** — 4 auth screens → `src/modules/user/presentation/`:
+- `LoginScreen`, `ForgotPasswordScreen`, `ResetPasswordScreen`, `PantallaAccesoRecuperacionContrasena`
+- 4 imports actualizados en App.tsx; relative `../hooks/auth/useLoginAuth` reparado a absoluto
+
+**ITEM 11 Batch 4 (cerrado `2abc97a`)** — 3 subdirs single-file:
+- `media/SharedMediaDeviceControls.tsx` → `src/modules/realtime-room/presentation/devices/`
+- `invitaciones/ModalInvitarUsuario.tsx` + `invitation/InvitationProcessor.tsx` → `src/modules/invitation/presentation/` (unificación bounded context invitation)
+- 6 consumers actualizados. Subdirs vacíos eliminados.
+
+**ITEM 11 Batch 5 (cerrado `7a3eb32`)** — `onboarding/` (7 archivos) → `src/modules/onboarding/presentation/`:
+- CargoSelector, OnboardingAvatarStep, OnboardingCargoView, OnboardingCreador, ProductTour, SelectorPlantillaEspacio + index.ts
+- 2 consumers actualizados (App.tsx lazy + WorkspaceLayout). Relative imports a `../../src/core/*` reparados.
+- `components/onboarding/` subdir eliminado.
+
+**Próximos Batches sugeridos (en orden de complejidad)**:
+- Batch 6: `avatar3d/` (5 archivos) — bounded context "avatar3d", 7+ consumers cross-subdir (customizer + space3d). Riesgo M.
+- Batch 7: `layout/` (5 archivos) → `src/modules/ui-shell/presentation/`. Consumidos por WorkspaceLayout.
+- Batch 8: `games/` (11 archivos) → `src/modules/games/presentation/` + migrar `gameStore.ts` final.
+- Batch 9: `chat/` (6 archivos) → `src/modules/chat/presentation/`.
+- Batch 10: `marketplace/` (8 archivos) → `src/modules/marketplace/presentation/`.
+- Batch 11: `customizer/` (12 archivos con subdirs) → `src/modules/customizer/presentation/`.
+- Batch 12+: subdirs grandes (`settings/` 23, `3d/` 26, `space3d/` 26, `meetings/` 60). XL multi-sesión cada uno.
 
 **ITEM 10 Batch 1 (cerrado por el usuario 2026-05-09)**:
 - `hooks/useIdleDetection.ts` (84L) → `src/modules/presence/presentation/useIdleDetection.ts` (move + compat shim, 1 consumer)
@@ -70,7 +87,7 @@
 | `modules/` | ✅ ELIMINADA | 0 |
 | `store/` | 🟡 1 archivo | `gameStore.ts` (bloqueado por ITEM 11) |
 | `hooks/` | 🟡 **54 archivos** (-2 vs estado pre-Batch 1) | ITEM 10 en curso |
-| `components/` | 🟡 **222 archivos** (-6 vs estado pre-Batch 1+2) | ITEM 11 en curso |
+| `components/` | 🟡 **208 archivos** (-20 vs estado pre-Batches 1-5) | ITEM 11 en curso |
 
 ### Validación end-to-end
 
