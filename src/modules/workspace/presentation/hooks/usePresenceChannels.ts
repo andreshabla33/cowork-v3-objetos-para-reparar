@@ -27,7 +27,7 @@
 
 import { useCallback, useRef, useEffect, useMemo } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { presenceChannelService } from '@/core/infrastructure/adapters/PresenceChannelSupabaseService';
 import { logger } from '@/core/infrastructure/observability/logger';
 import { obtenerChunk } from '@/core/infrastructure/r3f/chunkSystem';
 import { getSettingsSection } from '@/core/infrastructure/userSettings/userSettings';
@@ -178,7 +178,7 @@ export function usePresenceChannels({
     if (removingChannelsRef.current.has(channelName)) return; // Already mid-removal
     removingChannelsRef.current.add(channelName);
     try {
-      supabase.removeChannel(channel);
+      presenceChannelService.eliminarCanal(channel);
     } finally {
       removingChannelsRef.current.delete(channelName);
     }
@@ -542,13 +542,13 @@ export function usePresenceChannels({
       // list (can happen after React StrictMode double-mount or HMR). Without
       // this, supabase.channel() may return an already-subscribed instance and
       // calling .on() after .subscribe() throws the "cannot add callbacks" error.
-      const existingGlobal = supabase.getChannels().find(ch => ch.topic === `realtime:${globalChannelName}`);
+      const existingGlobal = presenceChannelService.buscarCanalActivoPorNombre(globalChannelName);
       if (existingGlobal) {
-        supabase.removeChannel(existingGlobal);
+        presenceChannelService.eliminarCanal(existingGlobal);
       }
 
-      const channel = supabase.channel(globalChannelName, {
-        config: { presence: { key: userId } },
+      const channel = presenceChannelService.crearCanalPresence(globalChannelName, {
+        presence: { key: userId },
       });
 
       channel
@@ -629,13 +629,13 @@ export function usePresenceChannels({
         if (presenceChannelsRef.current.has(canalNombre)) return;
 
         // Guard: purge stale channel from Supabase's internal registry
-        const existingCh = supabase.getChannels().find(ch => ch.topic === `realtime:${canalNombre}`);
+        const existingCh = presenceChannelService.buscarCanalActivoPorNombre(canalNombre);
         if (existingCh) {
-          supabase.removeChannel(existingCh);
+          presenceChannelService.eliminarCanal(existingCh);
         }
 
-        const channel = supabase.channel(canalNombre, {
-          config: { presence: { key: userId } },
+        const channel = presenceChannelService.crearCanalPresence(canalNombre, {
+          presence: { key: userId },
         });
 
         channel
