@@ -1,6 +1,6 @@
 # Roadmap Clean Arch + Bug Fixes — Cowork V3.7 (2026-05-05, auditado 2026-05-08, sesión cierre 2026-05-09)
 
-## 🎯 Estado real consolidado al 2026-05-09 (sesión cerrada con 41 commits)
+## 🎯 Estado real consolidado al 2026-05-09 (~46 commits sesión refactor + 5 commits ITEM 10 Batch 1)
 
 ### ITEMs cerrados al 100% (16/21 = ~76%)
 
@@ -31,13 +31,18 @@
 | 19 | **Partial** — 5 huérfanos eliminados (917L) ([`45fa2bf`](#)) | Cleanup completo carpetas requiere ITEM 10/11 |
 | 21 P3-19 | ✅ | sRGBEncoding → SRGBColorSpace ([`cf55c22`](#)) |
 
-### ITEMs pendientes XL (sesiones dedicadas requeridas)
+### ITEMs en progreso (XL multi-sesión)
 
-| ITEM | Razón pendiente | Trabajo estimado |
+| ITEM | Estado | Trabajo restante |
 |---|---|---|
-| **10** | strangler fig hooks/ — **54 archivos** legacy → src/modules/<feature>/. Cada hook requiere clasificación arquitectónica + UX testing por feature | XL multi-sesión |
-| **11** | strangler fig components/ — **233 archivos** legacy → src/modules/<feature>/. Multi-sesión obligatoria | XL multi-sesión grande |
-| 19 (cierre) | Eliminar carpetas `store/`, `hooks/`, `components/` enteras | post 10/11 |
+| **10** | 🟢 **EN CURSO** — Batch 1 cerrado 2026-05-09 (5 commits del usuario: `5534b42` + `8006f15` + `cd98047` + `5346440` + `280dda5`) | 51 archivos `hooks/` restantes. Batch 2 sugerido: `hooks/auth/` (riesgo bajo) |
+| **11** | ⏸ SIN TOCAR | strangler fig components/ — **228 archivos** legacy → src/modules/<feature>/. Multi-sesión obligatoria |
+| 19 (cierre) | ⏸ Pendiente | Eliminar carpetas `store/`, `hooks/`, `components/` enteras (post 10/11) |
+
+**ITEM 10 Batch 1 (cerrado por el usuario 2026-05-09)**:
+- `hooks/useIdleDetection.ts` (84L) → `src/modules/presence/presentation/useIdleDetection.ts` (move + compat shim, 1 consumer)
+- `hooks/useAvatarIK.ts` (254L) → 🛑 STOP huérfano ELIMINADO (`8006f15`)
+- `hooks/useOnboarding.ts` (204L) → 🛑 STOP huérfano ELIMINADO (`cd98047`) — lógica ya canónica en `OnboardingRepository` + `CompletarOnboardingUseCase`
 
 ### Carpetas legacy raíz — estado actual
 
@@ -47,7 +52,7 @@
 | `lib/` | ✅ ELIMINADA | 0 |
 | `modules/` | ✅ ELIMINADA | 0 |
 | `store/` | 🟡 1 archivo | `gameStore.ts` (bloqueado por ITEM 11) |
-| `hooks/` | 🟡 56 archivos | Pendiente ITEM 10 |
+| `hooks/` | 🟡 **54 archivos** (-2 vs estado pre-Batch 1) | ITEM 10 en curso |
 | `components/` | 🟡 228 archivos | Pendiente ITEM 11 (XL) |
 
 ### Validación end-to-end
