@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { driver, type DriveStep, type Config } from 'driver.js';
 import 'driver.js/dist/driver.css';
-import '../../styles/driver-tour.css';
+import '@/styles/driver-tour.css';
 import { miembrosEspacioRepository } from '@/core/infrastructure/adapters/MiembrosEspacioSupabaseRepository';
 
 interface ProductTourProps {

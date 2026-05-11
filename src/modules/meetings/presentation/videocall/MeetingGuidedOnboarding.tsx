@@ -1,7 +1,7 @@
 import React from 'react';
 import { driver, type Config, type DriveStep } from 'driver.js';
 import 'driver.js/dist/driver.css';
-import '../../../styles/driver-tour.css';
+import '@/styles/driver-tour.css';
 import { GuidedOnboardingService } from '@/modules/realtime-room';
 
 interface MeetingGuidedOnboardingProps {

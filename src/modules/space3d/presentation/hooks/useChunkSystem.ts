@@ -148,7 +148,7 @@ export function useChunkSystem(params: UseChunkSystemParams): UseChunkSystemRetu
   useEffect(() => {
     let worker: Worker | null = null;
     try {
-      worker = new Worker(new URL('../../workers/chunkWorker.ts', import.meta.url), { type: 'module' });
+      worker = new Worker(new URL('../../../../../workers/chunkWorker.ts', import.meta.url), { type: 'module' });
       chunkWorkerRef.current = worker;
       setChunkWorkerReady(true);
       worker.onmessage = (event: MessageEvent) => {
@@ -181,7 +181,7 @@ export function useChunkSystem(params: UseChunkSystemParams): UseChunkSystemRetu
   useEffect(() => {
     let worker: Worker | null = null;
     try {
-      worker = new Worker(new URL('../../workers/interpolacionWorker.ts', import.meta.url), { type: 'module' });
+      worker = new Worker(new URL('../../../../../workers/interpolacionWorker.ts', import.meta.url), { type: 'module' });
       interpolacionWorkerRef.current = worker;
       worker.onmessage = (event: MessageEvent) => {
         const { type, payload } = event.data || {};
