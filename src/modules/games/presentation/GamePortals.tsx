@@ -3,8 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
  Gamepad2, Users, Trophy, Star, Bell, X, Lock, Zap, Search, MessageCircle, Building2
 } from 'lucide-react';
-import { useGameStore } from '../../store/gameStore';
-import type { GameType, GamePortal } from '../../types/games';
+import { useGameStore } from '@/modules/games/state/gameStore';
+import type { GameType, GamePortal } from '@/types/games';
 
 interface GamePortalUIProps {
  onOpenGameHub: () => void;

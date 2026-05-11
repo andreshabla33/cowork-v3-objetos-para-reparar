@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Users, Trophy, X, CheckCircle2, XCircle, Zap, Star, TrendingUp, AlertCircle } from 'lucide-react';
-import type { TriviaQuestion } from '../../../types/games';
+import type { TriviaQuestion } from '@/types/games';
 
 interface TriviaBattleGameProps {
  onClose: () => void;

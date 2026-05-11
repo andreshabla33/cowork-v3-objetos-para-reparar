@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Clock, MapPin, Trophy, X, CheckCircle2, Star, Compass, Lightbulb, Target } from 'lucide-react';
-import type { ScavengerItem } from '../../../types/games';
+import type { ScavengerItem } from '@/types/games';
 
 interface ScavengerHuntGameProps {
  onClose: () => void;

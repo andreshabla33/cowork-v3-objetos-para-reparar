@@ -12,7 +12,7 @@ import type {
   GameSettings,
   GameResults,
   GamePortal,
-} from '../types/games';
+} from '@/types/games';
 
 interface GameState {
   currentSession: GameSession | null;

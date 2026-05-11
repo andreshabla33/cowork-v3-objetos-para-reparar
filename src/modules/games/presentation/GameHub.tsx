@@ -5,11 +5,11 @@ import {
  Gamepad2, X, Trophy, Medal, Star, Users, Clock, Zap, Lock, Search, 
  MessageCircle, Building2, TrendingUp, Crown
 } from 'lucide-react';
-import { useGameStore } from '../../store/gameStore';
-import type { GameType } from '../../types/games';
+import { useGameStore } from '@/modules/games/state/gameStore';
+import type { GameType } from '@/types/games';
 // El contrato `PendingGameInvitation` vive en Domain (`types/workspace`).
 // Se elimina la interfaz local duplicada para mantener Single Source of Truth.
-import type { PendingGameInvitation } from '../../types/workspace';
+import type { PendingGameInvitation } from '@/types/workspace';
 
 import { EscapeRoomGame } from './minigames/EscapeRoomGame';
 import { TriviaBattleGame } from './minigames/TriviaBattleGame';

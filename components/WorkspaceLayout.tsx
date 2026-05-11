@@ -37,8 +37,8 @@ import type { GameInvitationData, PendingGameInvitation } from '../types/workspa
 const VirtualSpace3D = lazy(() => import('./VirtualSpace3D'));
 const ChatPanel = lazy(() => import('./ChatPanel').then(m => ({ default: m.ChatPanel })));
 const MonicaDockInline = lazy(() => import('./MonicaDockInline'));
-const GameHub = lazy(() => import('./games').then(m => ({ default: m.GameHub })));
-const GameInvitationNotification = lazy(() => import('./games').then(m => ({ default: m.GameInvitationNotification })));
+const GameHub = lazy(() => import('@/modules/games/presentation').then(m => ({ default: m.GameHub })));
+const GameInvitationNotification = lazy(() => import('@/modules/games/presentation').then(m => ({ default: m.GameInvitationNotification })));
 const SettingsModal = lazy(() => import('./settings/SettingsModal'));
 
 const FallbackPanel = () => (

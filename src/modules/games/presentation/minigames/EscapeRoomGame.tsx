@@ -14,7 +14,7 @@ import {
  MessageSquare,
  Send
 } from 'lucide-react';
-import type { Player } from '../../../types/games';
+import type { Player } from '@/types/games';
 
 interface EscapeRoomGameProps {
  onClose: () => void;
