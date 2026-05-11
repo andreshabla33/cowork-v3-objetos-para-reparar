@@ -22,7 +22,7 @@ import { getThemeStyles } from '@/core/infrastructure/theme/theme';
 import { MiniModeOverlay } from './MiniModeOverlay';
 import { NotificationToast } from './ui/NotificationToast';
 import { ProductTour } from '@/modules/onboarding/presentation/ProductTour';
-import { WorkspaceSidebar, MobileNavOverlay, WorkspaceContentRouter } from './layout';
+import { WorkspaceSidebar, MobileNavOverlay, WorkspaceContentRouter } from '@/modules/ui-shell/presentation';
 import { getSettingsSection } from '@/core/infrastructure/userSettings/userSettings';
 import { cargarMetricasEspacio } from '@/core/infrastructure/observability/metricasAnalisis';
 import { Language, getCurrentLanguage, subscribeToLanguageChange } from '@/core/infrastructure/i18n/i18n';

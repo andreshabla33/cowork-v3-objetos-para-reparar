@@ -9,7 +9,7 @@
  */
 
 import React from 'react';
-import { StatusSelector } from '../StatusSelector';
+import { StatusSelector } from '@/components/StatusSelector';
 import { THEME_LIST, type ThemeStyleSet } from '@/core/infrastructure/theme/theme';
 import type { ThemeType } from '@/types';
 import type { SubTabType } from '@/types/workspace';

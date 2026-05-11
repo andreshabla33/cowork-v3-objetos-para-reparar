@@ -11,7 +11,7 @@
  */
 
 import React from 'react';
-import { UserAvatar } from '../UserAvatar';
+import { UserAvatar } from '@/components/UserAvatar';
 import type { ThemeStyleSet } from '@/core/infrastructure/theme/theme';
 import type { ThemeType, PresenceStatus } from '@/types';
 import type { SubTabType } from '@/types/workspace';

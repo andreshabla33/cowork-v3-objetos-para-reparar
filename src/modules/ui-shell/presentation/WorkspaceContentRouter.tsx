@@ -14,13 +14,13 @@ import type { SubTabType } from '@/types/workspace';
 import { t } from '@/core/infrastructure/i18n/i18n';
 import type { Language } from '@/core/infrastructure/i18n/i18n';
 
-const TaskBoard = lazy(() => import('../TaskBoard').then(module => ({ default: module.TaskBoard })));
-const MiembrosView = lazy(() => import('../MiembrosView').then(module => ({ default: module.MiembrosView })));
-const AvatarCustomizer3D = lazy(() => import('../customizer/AvatarCustomizer3D'));
-const ChatPanel = lazy(() => import('../ChatPanel').then(module => ({ default: module.ChatPanel })));
-const CalendarPanel = lazy(() => import('../meetings/CalendarPanel'));
-const GrabacionesHistorial = lazy(() => import('../meetings/recording/GrabacionesHistorial'));
-const MetricasEmpresaPanel = lazy(() => import('../MetricasEmpresaPanel'));
+const TaskBoard = lazy(() => import('@/components/TaskBoard').then(module => ({ default: module.TaskBoard })));
+const MiembrosView = lazy(() => import('@/components/MiembrosView').then(module => ({ default: module.MiembrosView })));
+const AvatarCustomizer3D = lazy(() => import('@/components/customizer/AvatarCustomizer3D'));
+const ChatPanel = lazy(() => import('@/components/ChatPanel').then(module => ({ default: module.ChatPanel })));
+const CalendarPanel = lazy(() => import('@/components/meetings/CalendarPanel'));
+const GrabacionesHistorial = lazy(() => import('@/components/meetings/recording/GrabacionesHistorial'));
+const MetricasEmpresaPanel = lazy(() => import('@/components/MetricasEmpresaPanel'));
 
 const FallbackPanel = () => (
   <div className="flex h-full w-full items-center justify-center">
