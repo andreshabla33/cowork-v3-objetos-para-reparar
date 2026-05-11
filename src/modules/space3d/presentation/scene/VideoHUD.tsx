@@ -1,7 +1,7 @@
 ﻿'use client';
 import React, { useRef, useEffect, useMemo, Suspense, useState, useCallback } from 'react';
 import type { LocalVideoTrack } from 'livekit-client';
-import { VideoWithBackground } from '@/components/VideoWithBackground';
+import { VideoWithBackground } from '@/modules/realtime-room/presentation/VideoWithBackground';
 import { useFrame, useThree } from '@react-three/fiber';
 import { OrthographicCamera, PerspectiveCamera, Grid, Text, Html, PerformanceMonitor, useGLTF } from '@react-three/drei';
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';

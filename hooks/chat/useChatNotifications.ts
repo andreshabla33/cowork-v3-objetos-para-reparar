@@ -14,7 +14,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { logger } from '@/core/infrastructure/observability/logger';
 import { getSettingsSection } from '@/core/infrastructure/userSettings/userSettings';
 import { audioManager } from '@/src/core/infrastructure/audio/AudioManagerAdapter';
-import type { ToastNotification } from '@/components/ChatToast';
+import type { ToastNotification } from '@/modules/chat/presentation/ChatToast';
 import type { ChatRealtimeSubscription } from '@/src/core/domain/ports/IChatRealtimeService';
 
 import { chatRepository } from '@/src/core/infrastructure/adapters/ChatSupabaseRepository';

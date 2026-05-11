@@ -21,7 +21,7 @@ import {
 import type { LocalVideoTrack } from 'livekit-client';
 import { statusColors, type VirtualSpace3DProps } from './spaceTypes';
 import { StableVideo } from './Overlays';
-import { VideoWithBackground } from '@/components/VideoWithBackground';
+import { VideoWithBackground } from '@/modules/realtime-room/presentation/VideoWithBackground';
 import type { EffectType } from '@/src/core/domain/ports/IVideoTrackProcessor';
 
 // ECS imports (PR-6/7/9/10)

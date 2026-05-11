@@ -1,7 +1,7 @@
 import React from 'react';
 import type { TrackReferenceOrPlaceholder } from '@livekit/components-react';
 import { logger } from '@/core/infrastructure/observability/logger';
-import { ChatToast } from '@/components/ChatToast';
+import { ChatToast } from '@/modules/chat/presentation/ChatToast';
 import { RecordingDiagnosticsService, type RecordingDiagnosticsSnapshot } from '@/modules/realtime-room';
 import { RecordingManager } from '../recording/RecordingManager';
 import { MeetingAudioRenderer } from './MeetingAudioRenderer';

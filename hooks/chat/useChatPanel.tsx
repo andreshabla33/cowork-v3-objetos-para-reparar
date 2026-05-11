@@ -16,7 +16,7 @@ import type {
   MiembroChatData,
   MiembroCanal,
 } from '@/src/core/domain/ports/IChatRepository';
-import type { ToastNotification } from '@/components/ChatToast';
+import type { ToastNotification } from '@/modules/chat/presentation/ChatToast';
 
 import { useChatChannels } from './useChatChannels';
 import { useChatMessages } from './useChatMessages';

@@ -18,11 +18,11 @@ import { useTranslation } from 'react-i18next';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { ModalCrearGrupo } from './ModalCrearGrupo';
-import { ChatToast } from '@/components/ChatToast';
+import { ChatToast } from '@/modules/chat/presentation/ChatToast';
 import { PresenceStatus } from '@/types';
 import type { ChatGroup } from '@/types';
 import type { MiembroChatData } from '@/src/core/domain/ports/IChatRepository';
-import type { ToastNotification } from '@/components/ChatToast';
+import type { ToastNotification } from '@/modules/chat/presentation/ChatToast';
 
 /* ────────────────────────────────────────────────────────────────────────
    Helpers

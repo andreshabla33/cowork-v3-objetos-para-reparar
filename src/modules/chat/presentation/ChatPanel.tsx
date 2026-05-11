@@ -16,7 +16,7 @@ import { ChatThreadPanel } from '@/modules/chat/presentation/ChatThreadPanel';
 import { ChatMembersPanel } from '@/modules/chat/presentation/ChatMembersPanel';
 import { MessageContent } from '@/modules/chat/presentation/MessageContent';
 import { AgregarMiembros } from '@/modules/chat/presentation/AgregarMiembros';
-import { ChatToast } from '@/components/ChatToast';
+import { ChatToast } from '@/modules/chat/presentation/ChatToast';
 import { UserAvatar } from '@/modules/user/presentation/UserAvatar';
 import type { ChatGroup } from '@/types';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';

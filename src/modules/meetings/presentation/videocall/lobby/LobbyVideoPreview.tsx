@@ -11,7 +11,7 @@
 
 import React, { useRef, useEffect } from 'react';
 import type { LocalVideoTrack } from 'livekit-client';
-import { VideoWithBackground } from '@/components/VideoWithBackground';
+import { VideoWithBackground } from '@/modules/realtime-room/presentation/VideoWithBackground';
 import type { CameraSettings } from '@/modules/realtime-room';
 
 interface LobbyVideoPreviewProps {

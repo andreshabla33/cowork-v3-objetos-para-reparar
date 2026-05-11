@@ -13,7 +13,7 @@ import { recordingRepository } from '@/src/core/infrastructure/adapters/Recordin
 import type { MensajeChatRecord } from '@/src/core/domain/ports/IChatRepository';
 import type { InvitadoExterno } from '@/types/meeting-types';
 import type { TipoGrabacionDetallado } from '../../recording/types/analysis';
-import type { ToastNotification } from '@/components/ChatToast';
+import type { ToastNotification } from '@/modules/chat/presentation/ChatToast';
 import type { GuestPermissions, MeetingConsentRequest, MeetingQualityState } from '../meetingRoom.types';
 import type { ViewMode } from '../ViewModeSelector';
 import type { TipoReunion } from '../MeetingControlBar';
