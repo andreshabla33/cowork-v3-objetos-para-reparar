@@ -24,13 +24,13 @@ import { LoginScreen } from '@/modules/user/presentation/LoginScreen';
 import { PantallaAccesoRecuperacionContrasena } from '@/modules/user/presentation/PantallaAccesoRecuperacionContrasena';
 import { ResetPasswordScreen } from '@/modules/user/presentation/ResetPasswordScreen';
 import { InvitationProcessor } from '@/modules/invitation/presentation/InvitationProcessor';
-import { OnboardingCargoView } from './components/onboarding/OnboardingCargoView';
+import { OnboardingCargoView } from '@/modules/onboarding/presentation/OnboardingCargoView';
 import { ThankYouScreen } from './components/meetings/ThankYouScreen';
 
 // ─── Lazy-loaded routes ─────────────────────────────────────────────────
 const Dashboard = lazy(() => import('./components/Dashboard').then((m) => ({ default: m.Dashboard })));
 const WorkspaceLayout = lazy(() => import('./components/WorkspaceLayout').then((m) => ({ default: m.WorkspaceLayout })));
-const OnboardingCreador = lazy(() => import('./components/onboarding/OnboardingCreador').then((m) => ({ default: m.OnboardingCreador })));
+const OnboardingCreador = lazy(() => import('@/modules/onboarding/presentation/OnboardingCreador').then((m) => ({ default: m.OnboardingCreador })));
 const MeetingLobby = lazy(() => import('./components/meetings/videocall/MeetingLobby').then((m) => ({ default: m.MeetingLobby })));
 const MeetingRoom = lazy(() => import('./components/meetings/videocall/MeetingRoom'));
 const ExploradorPublico3D = lazy(() => import('./components/marketplace/ExploradorPublico3D').then((m) => ({ default: m.ExploradorPublico3D })));

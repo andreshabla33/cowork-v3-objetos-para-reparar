@@ -18,13 +18,13 @@ import { logger } from '@/core/infrastructure/observability/logger';
 import { CargoSelector } from './CargoSelector';
 import { OnboardingAvatarStep } from './OnboardingAvatarStep';
 import type { CargoLaboral, CargoDB } from './CargoSelector';
-import type { Departamento, OnboardingCargoState } from '../../src/core/domain/entities/onboarding';
+import type { Departamento, OnboardingCargoState } from '@/core/domain/entities/onboarding';
 
 // Clean Architecture: Use Cases (Application Layer — no infrastructure imports)
-import { ObtenerDatosOnboardingUseCase } from '../../src/core/application/usecases/ObtenerDatosOnboardingUseCase';
-import { CompletarOnboardingUseCase } from '../../src/core/application/usecases/CompletarOnboardingUseCase';
+import { ObtenerDatosOnboardingUseCase } from '@/core/application/usecases/ObtenerDatosOnboardingUseCase';
+import { CompletarOnboardingUseCase } from '@/core/application/usecases/CompletarOnboardingUseCase';
 // DI: Repository port resolved from React Context, not module-level singleton
-import { useDIUseCase } from '../../src/core/infrastructure/di/DIProvider';
+import { useDIUseCase } from '@/core/infrastructure/di/DIProvider';
 
 const log = logger.child('onboarding');
 

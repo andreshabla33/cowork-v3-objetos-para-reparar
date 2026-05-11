@@ -21,7 +21,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { getThemeStyles } from '@/core/infrastructure/theme/theme';
 import { MiniModeOverlay } from './MiniModeOverlay';
 import { NotificationToast } from './ui/NotificationToast';
-import { ProductTour } from './onboarding/ProductTour';
+import { ProductTour } from '@/modules/onboarding/presentation/ProductTour';
 import { WorkspaceSidebar, MobileNavOverlay, WorkspaceContentRouter } from './layout';
 import { getSettingsSection } from '@/core/infrastructure/userSettings/userSettings';
 import { cargarMetricasEspacio } from '@/core/infrastructure/observability/metricasAnalisis';

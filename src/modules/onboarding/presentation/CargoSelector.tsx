@@ -48,7 +48,7 @@ export type CargoInfo = {
 };
 
 // Cargo desde BD — tipo canónico en Domain, importado + re-exportado para backward compat
-import type { CargoDB } from '../../src/core/domain/entities/onboarding';
+import type { CargoDB } from '@/core/domain/entities/onboarding';
 export type { CargoDB };
 
 // Mapeo de nombre de icono (BD) a componente Lucide
