@@ -5,7 +5,8 @@
  */
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { autorizacionEmpresaRepository } from '@/core/infrastructure/adapters/AutorizacionEmpresaSupabaseRepository';
+import { recordingRepository } from '@/core/infrastructure/adapters/RecordingSupabaseRepository';
 import { cargarAutorizacionesActivas, cargarSolicitudesEnviadas, cargarZonasEmpresa, solicitarAccesoEmpresa } from '@/core/infrastructure/adapters/autorizacionesEmpresaFacade';
 import type { AutorizacionEmpresa, ZonaEmpresa } from '@/types';
 import { ZONA_SOLICITUD_RADIO, type UseNotificationsReturn, type UseNotificationsParams } from './types';
@@ -81,55 +82,29 @@ export function useNotifications(params: UseNotificationsParams): UseNotificatio
   // Suscripción realtime a zonas de empresa
   useEffect(() => {
     if (!activeWorkspace?.id) return;
-
-    const channel = supabase
-      .channel(`zonas-cambios-${activeWorkspace.id}`)
-      .on('postgres_changes', {
-        event: '*', // INSERT, UPDATE, DELETE
-        schema: 'public',
-        table: 'zonas_empresa',
-        filter: `espacio_id=eq.${activeWorkspace.id}`
-      }, () => {
-        // Refrescar lista completa al detectar cambio
-        refrescarZonasEmpresa();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return autorizacionEmpresaRepository.suscribirCambiosZonasEmpresa(activeWorkspace.id, () => {
+      refrescarZonasEmpresa();
+    });
   }, [activeWorkspace?.id, refrescarZonasEmpresa]);
 
-  // Suscripción realtime a notificaciones
+  // Suscripción realtime a notificaciones del usuario
   useEffect(() => {
     if (!session?.user?.id) return;
-    const channel = supabase
-      .channel(`notificaciones-${session.user.id}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'notificaciones',
-        filter: `usuario_id=eq.${session.user.id}`
-      }, (payload) => {
-        const nueva = payload.new as any;
-        if (activeWorkspace?.id && nueva?.espacio_id && nueva.espacio_id !== activeWorkspace.id) return;
-        setNotificacionAutorizacion({
-          id: nueva.id,
-          titulo: nueva.titulo || 'Notificación',
-          mensaje: nueva.mensaje,
-          tipo: nueva.tipo,
-          datos_extra: nueva.datos_extra,
-        });
-        if (String(nueva.tipo || '').includes('autorizacion_empresa')) {
-          cargarAutorizaciones();
-          cargarSolicitudesPendientes();
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return recordingRepository.suscribirNotificacionesUsuario(session.user.id, (nueva) => {
+      if (activeWorkspace?.id && nueva.espacio_id && nueva.espacio_id !== activeWorkspace.id) return;
+      const notif = nueva as { id?: string; tipo: string; titulo?: string | null; mensaje?: string; espacio_id: string; datos_extra: unknown };
+      setNotificacionAutorizacion({
+        id: notif.id || '',
+        titulo: notif.titulo || 'Notificación',
+        mensaje: notif.mensaje || '',
+        tipo: notif.tipo,
+        datos_extra: notif.datos_extra as Record<string, unknown>,
+      });
+      if (String(nueva.tipo || '').includes('autorizacion_empresa')) {
+        cargarAutorizaciones();
+        cargarSolicitudesPendientes();
+      }
+    });
   }, [activeWorkspace?.id, cargarAutorizaciones, cargarSolicitudesPendientes, session?.user?.id]);
 
   // Auto-dismiss de notificación

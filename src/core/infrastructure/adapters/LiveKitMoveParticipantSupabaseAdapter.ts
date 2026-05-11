@@ -16,6 +16,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import type {
   IRoomMoveService,
   MoveServiceResult,
@@ -112,3 +113,5 @@ export class LiveKitMoveParticipantSupabaseAdapter implements IRoomMoveService {
     return undefined;
   }
 }
+
+export const liveKitMoveParticipantAdapter = new LiveKitMoveParticipantSupabaseAdapter(supabase);

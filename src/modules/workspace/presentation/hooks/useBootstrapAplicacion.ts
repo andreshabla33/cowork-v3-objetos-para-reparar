@@ -15,10 +15,9 @@
 import { useEffect, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
 
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { logger } from '@/core/infrastructure/observability/logger';
-import { authRepository } from '@/src/core/infrastructure/adapters/AuthSupabaseRepository';
+import { authRepository } from '@/core/infrastructure/adapters/AuthSupabaseRepository';
 import { ValidarSesionAlBootstrapUseCase } from '@/src/core/application/usecases/ValidarSesionAlBootstrapUseCase';
 
 const log = logger.child('bootstrap');
@@ -86,15 +85,15 @@ export function useBootstrapAplicacion({ initialize, setSession, setView, setAut
 
       if (tokenHash && (type === 'signup' || type === 'email')) {
         try {
-          const { data, error } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
+          const result = await authRepository.verificarTokenOtp({
+            tokenHash,
             type: type === 'signup' ? 'signup' : 'email',
           });
-          if (error) {
+          if (result.error) {
             setAuthFeedback({ type: 'error', message: 'Error al confirmar email. Intenta registrarte de nuevo.' });
-          } else if (data.session) {
-            if (shouldSyncSession(data.session)) {
-              setSession(data.session);
+          } else if (result.session) {
+            if (shouldSyncSession(result.session)) {
+              setSession(result.session);
             }
             setAuthFeedback({ type: 'success', message: '¡Email confirmado! Bienvenido a Cowork.' });
           }
@@ -108,7 +107,7 @@ export function useBootstrapAplicacion({ initialize, setSession, setView, setAut
 
     void verificarEInicializar();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const unsubscribe = authRepository.suscribirCambiosAuth(async (event, session) => {
       // Deduplicación: ignorar eventos idénticos que lleguen dentro de 500ms
       const eventKey = `${event}:${session?.user?.id || 'no-user'}`;
       const now = Date.now();
@@ -192,7 +191,7 @@ export function useBootstrapAplicacion({ initialize, setSession, setView, setAut
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => unsubscribe();
   }, [initialize, setAuthFeedback, setSession, setView]);
 }
 

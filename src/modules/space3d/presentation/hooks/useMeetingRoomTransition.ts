@@ -25,13 +25,12 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import {
   MoveToMeetingRoomUseCase,
   ReturnToGlobalRoomUseCase,
   type MoveToMeetingRoomResult,
-} from '@/src/core/application/usecases/MoveToMeetingRoomUseCase';
-import { LiveKitMoveParticipantSupabaseAdapter } from '@/src/core/infrastructure/adapters/LiveKitMoveParticipantSupabaseAdapter';
+} from '@/core/application/usecases/MoveToMeetingRoomUseCase';
+import { liveKitMoveParticipantAdapter } from '@/core/infrastructure/adapters/LiveKitMoveParticipantSupabaseAdapter';
 import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('useMeetingRoomTransition');
@@ -105,7 +104,7 @@ export function useMeetingRoomTransition(
     returnToGlobal: ReturnToGlobalRoomUseCase;
   } | null>(null);
   if (useCasesRef.current === null) {
-    const adapter = new LiveKitMoveParticipantSupabaseAdapter(supabase);
+    const adapter = liveKitMoveParticipantAdapter;
     useCasesRef.current = {
       moveToMeeting: new MoveToMeetingRoomUseCase(adapter),
       returnToGlobal: new ReturnToGlobalRoomUseCase(adapter),

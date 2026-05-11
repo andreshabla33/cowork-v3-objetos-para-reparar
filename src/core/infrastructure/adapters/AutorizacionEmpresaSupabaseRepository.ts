@@ -416,6 +416,19 @@ export class AutorizacionEmpresaSupabaseRepository
 
     return true;
   }
+
+  suscribirCambiosZonasEmpresa(espacioId: string, callback: () => void): () => void {
+    const channel = supabase
+      .channel(`zonas-cambios-${espacioId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'zonas_empresa',
+        filter: `espacio_id=eq.${espacioId}`,
+      }, callback)
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }
 }
 
 export const autorizacionEmpresaRepository = new AutorizacionEmpresaSupabaseRepository();

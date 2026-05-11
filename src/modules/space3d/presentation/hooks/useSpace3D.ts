@@ -12,7 +12,7 @@ import type { User } from '@/types';
 import type { RealtimePositionEntry } from './types';
 import { isTouchDevice, hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
 import { registrarLoginDiario, otorgarXP, XP_POR_ACCION } from '@/core/infrastructure/adapters/gamificacion';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { miembrosEspacioRepository } from '@/core/infrastructure/adapters/MiembrosEspacioSupabaseRepository';
 import type { JoystickInput } from '@/modules/space3d/presentation/world/MobileJoystick';
 import { saveCameraSettings, saveAudioSettings, type CameraSettings, type AudioSettings } from '@/modules/realtime-room';
 import { seleccionarSpace3DBase } from '@/modules/_state/selectores';
@@ -422,14 +422,7 @@ export function useSpace3D(props: {
   useEffect(() => {
     const cargarCargo = async () => {
       if (!session?.user?.id || !activeWorkspace?.id) return;
-      const { data } = await supabase
-        .from('miembros_espacio')
-        .select('cargo_id, cargo_ref:cargos!cargo_id(clave)')
-        .eq('usuario_id', session.user.id)
-        .eq('espacio_id', activeWorkspace.id)
-        .single();
-      const cargoRef = data?.cargo_ref as { clave?: string } | null;
-      const clave = cargoRef?.clave;
+      const clave = await miembrosEspacioRepository.obtenerCargoClave(session.user.id, activeWorkspace.id);
       if (clave) setCargoUsuario(clave);
     };
     cargarCargo();

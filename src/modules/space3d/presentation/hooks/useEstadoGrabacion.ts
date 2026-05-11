@@ -8,7 +8,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { recordingRepository } from '@/core/infrastructure/adapters/RecordingSupabaseRepository';
 import { logger } from '@/core/infrastructure/observability/logger';
 import type { UseRecordingReturn } from './types';
 
@@ -34,30 +34,12 @@ export function useEstadoGrabacion(
   // Escuchar notificaciones de consentimiento aceptado (para el grabador)
   useEffect(() => {
     if (!sessionUserId) return;
-
-    const channel = supabase
-      .channel('consentimiento_respuesta_grabador')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notificaciones',
-          filter: `usuario_id=eq.${sessionUserId}`,
-        },
-        (payload) => {
-          const notif = payload.new as Record<string, unknown>;
-          if (notif.tipo === 'consentimiento_respuesta' && (notif.titulo as string)?.includes('Aceptado')) {
-            log.info('✅ Consentimiento aceptado por el evaluado');
-            setConsentimientoAceptado(true);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return recordingRepository.suscribirNotificacionesUsuario(sessionUserId, (notif) => {
+      if (notif.tipo === 'consentimiento_respuesta' && (notif.titulo as string | null)?.includes('Aceptado')) {
+        log.info('✅ Consentimiento aceptado por el evaluado');
+        setConsentimientoAceptado(true);
+      }
+    });
   }, [sessionUserId]);
 
   return {

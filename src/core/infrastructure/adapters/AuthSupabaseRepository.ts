@@ -9,6 +9,7 @@
 
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { logger } from '@/core/infrastructure/observability/logger';
+import type { Session } from '@supabase/supabase-js';
 import { pickOneRelation } from '../../domain/utils/supabaseRelations';
 import type {
   IAuthRepository,
@@ -192,6 +193,29 @@ export class AuthSupabaseRepository implements IAuthRepository {
       if (event === 'PASSWORD_RECOVERY') callback();
     });
     return () => subscription.unsubscribe();
+  }
+
+  suscribirCambiosAuth(callback: (event: string, session: Session | null) => void): () => void {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(callback);
+    return () => subscription.unsubscribe();
+  }
+
+  async verificarTokenOtp(input: { tokenHash: string; type: 'signup' | 'email' }): Promise<ResultadoAuth> {
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: input.tokenHash,
+        type: input.type,
+      });
+      if (error) {
+        log.warn('verifyOtp failed', { error: error.message });
+        return { session: null, error: error.message };
+      }
+      return { session: data.session };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      log.error('verifyOtp exception', { error: message });
+      return { session: null, error: message };
+    }
   }
 }
 

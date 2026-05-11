@@ -67,4 +67,10 @@ export interface IAutorizacionEmpresaRepository {
 
   /** Revoke an active approval. Logs activity + notifies the requester. */
   revocar(input: ActualizarAutorizacionInput): Promise<boolean>;
+
+  /**
+   * Subscribe to INSERT/UPDATE/DELETE on `zonas_empresa` filtered by espacio.
+   * Devuelve `unsubscribe`.
+   */
+  suscribirCambiosZonasEmpresa(espacioId: string, callback: () => void): () => void;
 }

@@ -1,19 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ocupacionAsientosRepository } from '@/core/infrastructure/adapters/OcupacionAsientosSupabaseRepository';
 import { logger } from '@/core/infrastructure/observability/logger';
+import type { OcupacionAsientoReal } from '@/core/domain/ports/IOcupacionAsientosRepository';
 
 const log = logger.child('useOcupacionAsientos');
 
-export interface OcupacionAsientoReal {
-  id: string;
-  espacio_id: string;
-  espacio_objeto_id: string;
-  clave_asiento: string;
-  usuario_id: string;
-  ocupado_en: string;
-  ultimo_latido_en: string;
-  actualizado_en: string;
-}
+export type { OcupacionAsientoReal };
 
 interface ResultadoOcupacionAsiento {
   ok: boolean;
@@ -45,7 +37,6 @@ export function useOcupacionAsientos(
   const [ocupacionesRaw, setOcupacionesRaw] = useState<OcupacionAsientoReal[]>([]);
   const [loading, setLoading] = useState(true);
   const [marcaTiempo, setMarcaTiempo] = useState(() => Date.now());
-  const subscriptionRef = useRef<any>(null);
 
   useEffect(() => {
     const interval = setInterval(() => setMarcaTiempo(Date.now()), 10000);
@@ -66,48 +57,26 @@ export function useOcupacionAsientos(
 
     const cargarOcupaciones = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('ocupacion_asientos')
-        .select('*')
-        .eq('espacio_id', espacioId);
-
-      if (error) {
-        log.error('Error fetching ocupaciones', { error: error instanceof Error ? error.message : String(error) });
-      } else {
-        setOcupacionesRaw((data as OcupacionAsientoReal[]) || []);
+      try {
+        const data = await ocupacionAsientosRepository.listarPorEspacio(espacioId);
+        setOcupacionesRaw(data);
+      } catch (err) {
+        log.error('Error fetching ocupaciones', { error: err instanceof Error ? err.message : String(err) });
       }
       setLoading(false);
     };
 
     cargarOcupaciones();
 
-    subscriptionRef.current = supabase
-      .channel(`ocupacion_asientos:${espacioId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'ocupacion_asientos',
-          filter: `espacio_id=eq.${espacioId}`,
-        },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            setOcupacionesRaw((prev) => [...prev.filter((fila) => fila.id !== (payload.new as OcupacionAsientoReal).id), payload.new as OcupacionAsientoReal]);
-          } else if (payload.eventType === 'UPDATE') {
-            setOcupacionesRaw((prev) => prev.map((fila) => fila.id === (payload.new as OcupacionAsientoReal).id ? (payload.new as OcupacionAsientoReal) : fila));
-          } else if (payload.eventType === 'DELETE') {
-            setOcupacionesRaw((prev) => prev.filter((fila) => fila.id !== (payload.old as OcupacionAsientoReal).id));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      if (subscriptionRef.current) {
-        supabase.removeChannel(subscriptionRef.current);
+    return ocupacionAsientosRepository.suscribirCambios(espacioId, (evento) => {
+      if (evento.tipo === 'INSERT') {
+        setOcupacionesRaw((prev) => [...prev.filter((fila) => fila.id !== evento.ocupacion.id), evento.ocupacion]);
+      } else if (evento.tipo === 'UPDATE') {
+        setOcupacionesRaw((prev) => prev.map((fila) => fila.id === evento.ocupacion.id ? evento.ocupacion : fila));
+      } else if (evento.tipo === 'DELETE') {
+        setOcupacionesRaw((prev) => prev.filter((fila) => fila.id !== evento.ocupacion.id));
       }
-    };
+    });
   }, [espacioId, userId]);
 
   const ocupaciones = useMemo(() => {
@@ -127,55 +96,28 @@ export function useOcupacionAsientos(
     if (!espacioId || !userId) {
       return { ok: false, motivo: 'sin_sesion' };
     }
-
-    const { data, error } = await supabase.rpc('ocupar_asiento_espacio', {
-      p_espacio_id: espacioId,
-      p_espacio_objeto_id: espacioObjetoId,
-      p_clave_asiento: claveAsiento,
-    });
-
-    if (error) {
-      const mensaje = `${error.message || ''} ${error.details || ''}`.toUpperCase();
+    try {
+      const ocupacion = await ocupacionAsientosRepository.ocupar(espacioId, espacioObjetoId, claveAsiento);
+      return { ok: true, ocupacion };
+    } catch (error: unknown) {
+      const err = error as { message?: string; details?: string };
+      const mensaje = `${err.message || ''} ${err.details || ''}`.toUpperCase();
       if (mensaje.includes('ASIENTO_OCUPADO')) {
         return { ok: false, motivo: 'asiento_ocupado' };
       }
-      log.error('Error ocupando asiento', { error: error instanceof Error ? error.message : String(error) });
+      log.error('Error ocupando asiento', { error: err.message || String(error) });
       return { ok: false, motivo: 'error' };
     }
-
-    return { ok: true, ocupacion: data as OcupacionAsientoReal };
   }, [espacioId, userId]);
 
   const liberarAsiento = useCallback(async (espacioObjetoId?: string | null, claveAsiento?: string | null) => {
     if (!userId) return false;
-
-    const { data, error } = await supabase.rpc('liberar_asiento_espacio', {
-      p_espacio_objeto_id: espacioObjetoId ?? null,
-      p_clave_asiento: claveAsiento ?? null,
-    });
-
-    if (error) {
-      log.error('Error liberando asiento', { error: error instanceof Error ? error.message : String(error) });
-      return false;
-    }
-
-    return !!data;
+    return ocupacionAsientosRepository.liberar(espacioObjetoId ?? null, claveAsiento ?? null);
   }, [userId]);
 
   const refrescarOcupacion = useCallback(async (espacioObjetoId?: string | null, claveAsiento?: string | null) => {
     if (!userId) return false;
-
-    const { data, error } = await supabase.rpc('refrescar_ocupacion_asiento', {
-      p_espacio_objeto_id: espacioObjetoId ?? null,
-      p_clave_asiento: claveAsiento ?? null,
-    });
-
-    if (error) {
-      log.error('Error refrescando ocupación', { error: error instanceof Error ? error.message : String(error) });
-      return false;
-    }
-
-    return !!data;
+    return ocupacionAsientosRepository.refrescar(espacioObjetoId ?? null, claveAsiento ?? null);
   }, [userId]);
 
   return {

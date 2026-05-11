@@ -90,4 +90,16 @@ export interface IAuthRepository {
    * detecta token de recovery en la URL. Devuelve `unsubscribe`.
    */
   suscribirRecuperacionPassword(callback: () => void): () => void;
+
+  /**
+   * Suscripción genérica a eventos auth (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED, etc.).
+   * Para PASSWORD_RECOVERY usar `suscribirRecuperacionPassword`.
+   * Devuelve `unsubscribe`.
+   */
+  suscribirCambiosAuth(callback: (event: string, session: Session | null) => void): () => void;
+
+  /**
+   * Verificar OTP token (email signup/email confirmation flow).
+   */
+  verificarTokenOtp(input: { tokenHash: string; type: 'signup' | 'email' }): Promise<ResultadoAuth>;
 }
