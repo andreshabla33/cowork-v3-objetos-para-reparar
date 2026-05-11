@@ -6,7 +6,7 @@ import {
   Check, RefreshCw, Save, Plus, Users
 } from 'lucide-react';
 import { empresaRepository } from '@/core/infrastructure/adapters/EmpresaSupabaseRepository';
-import { useAuthSession, useAuthSessionGetter } from '@/hooks/auth/useAuthSession';
+import { useAuthSession, useAuthSessionGetter } from '@/modules/user/presentation/hooks/useAuthSession';
 
 const TAMANOS = [
   { value: 'startup', label: 'Startup (1-10)' },

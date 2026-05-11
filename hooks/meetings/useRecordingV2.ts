@@ -21,7 +21,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { recordingRepository } from '@/core/infrastructure/adapters/RecordingSupabaseRepository';
-import { useAuthSessionGetter } from '@/hooks/auth/useAuthSession';
+import { useAuthSessionGetter } from '@/modules/user/presentation/hooks/useAuthSession';
 import { useTranscription } from '@/modules/meetings/presentation/recording/useTranscription';
 import {
   useCombinedAnalysis,

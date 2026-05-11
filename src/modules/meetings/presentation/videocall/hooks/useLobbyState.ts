@@ -27,7 +27,7 @@ import {
 } from '@/modules/realtime-room';
 import type { PreflightCheck } from '@/modules/realtime-room';
 import { detectBrowserInfo } from '@/modules/realtime-room';
-import type { PreferenciasIngresoReunion } from '@/hooks/app/useRutasReunion';
+import type { PreferenciasIngresoReunion } from '@/modules/meetings/presentation/hooks/useRutasReunion';
 import { useMeetingMediaBridge } from './useMeetingMediaBridge';
 import type { SalaInfo } from '@/src/core/domain/entities/lobby';
 

@@ -27,10 +27,10 @@ import { getSettingsSection } from '@/core/infrastructure/userSettings/userSetti
 import { cargarMetricasEspacio } from '@/core/infrastructure/observability/metricasAnalisis';
 import { Language, getCurrentLanguage, subscribeToLanguageChange } from '@/core/infrastructure/i18n/i18n';
 import { useIdleDetection } from '@/modules/presence/presentation/useIdleDetection';
-import { useLogoutUser } from '@/hooks/app/useLogoutUser';
-import { useWorkspaceData } from '@/hooks/workspace/useWorkspaceData';
-import { usePresenceChannels } from '@/hooks/workspace/usePresenceChannels';
-import { usePresenceLifecycle } from '@/hooks/workspace/usePresenceLifecycle';
+import { useLogoutUser } from '@/modules/user/presentation/hooks/useLogoutUser';
+import { useWorkspaceData } from '@/modules/workspace/presentation/hooks/useWorkspaceData';
+import { usePresenceChannels } from '@/modules/workspace/presentation/hooks/usePresenceChannels';
+import { usePresenceLifecycle } from '@/modules/workspace/presentation/hooks/usePresenceLifecycle';
 import type { ThemeType } from '@/types';
 import type { GameInvitationData, PendingGameInvitation } from '@/types/workspace';
 

@@ -9,7 +9,7 @@
 
 import React, { useMemo } from 'react';
 import { AvatarCard } from '@/modules/user/presentation/AvatarCard';
-import type { UseAvatarCatalogReturn } from '@/hooks/customizer/useAvatarCatalog';
+import type { UseAvatarCatalogReturn } from '@/modules/customizer/presentation/hooks/useAvatarCatalog';
 
 /** Subset of catalog state consumed by this panel. */
 export interface AvatarPanelProps {

@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { Building2, Check, MapPin, Plus, RefreshCw, Send, Sparkles, XCircle, LayoutGrid, Circle, Hexagon, Eye, Trash2 } from 'lucide-react';
 import { empresaRepository } from '@/core/infrastructure/adapters/EmpresaSupabaseRepository';
 import { membershipRepository } from '@/core/infrastructure/adapters/MembershipSupabaseRepository';
-import { useAuthSession } from '@/hooks/auth/useAuthSession';
+import { useAuthSession } from '@/modules/user/presentation/hooks/useAuthSession';
 import type { AutorizacionEmpresa, ZonaEmpresa } from '@/types';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';

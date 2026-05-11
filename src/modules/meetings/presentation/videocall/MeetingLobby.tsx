@@ -16,7 +16,7 @@
 'use client';
 
 import React from 'react';
-import type { PreferenciasIngresoReunion } from '@/hooks/app/useRutasReunion';
+import type { PreferenciasIngresoReunion } from '@/modules/meetings/presentation/hooks/useRutasReunion';
 import { useLobbyState } from './hooks/useLobbyState';
 import { LobbyLoadingScreen } from './lobby/LobbyLoadingScreen';
 import { LobbyErrorScreen } from './lobby/LobbyErrorScreen';

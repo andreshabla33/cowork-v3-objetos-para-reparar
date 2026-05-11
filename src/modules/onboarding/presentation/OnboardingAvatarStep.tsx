@@ -17,7 +17,7 @@ import React, { useEffect, useCallback, useState } from 'react';
 import { AvatarPanel } from '@/modules/customizer/presentation/panels/AvatarPanel';
 import { PreviewCanvas } from '@/modules/customizer/presentation/preview/PreviewCanvas';
 import { AvatarPreviewScene } from '@/modules/customizer/presentation/preview/AvatarPreviewScene';
-import { useAvatarCatalog } from '@/hooks/customizer/useAvatarCatalog';
+import { useAvatarCatalog } from '@/modules/customizer/presentation/hooks/useAvatarCatalog';
 
 export interface OnboardingAvatarStepProps {
  /** Called when the user finishes selecting an avatar (or clicks "Continuar") */

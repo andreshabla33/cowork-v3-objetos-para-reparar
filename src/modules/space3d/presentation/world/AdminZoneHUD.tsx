@@ -6,7 +6,7 @@ import { FloorType, FLOOR_TYPE_LABELS, FLOOR_TYPE_CATEGORIES, normalizarTipoSuel
 import { normalizarConfiguracionZonaEmpresa, normalizarTipoSubsueloZona, type TipoSubsueloZona } from '@/core/domain/entities/cerramientosZona';
 import { TEXTURE_REGISTRY } from '@/core/infrastructure/r3f/rendering/textureRegistry';
 import { ZonaEmpresa } from '@/types';
-import { useAuthSessionGetter } from '@/hooks/auth/useAuthSession';
+import { useAuthSessionGetter } from '@/modules/user/presentation/hooks/useAuthSession';
 
 interface AdminZoneHUDProps {
   workspaceId: string;

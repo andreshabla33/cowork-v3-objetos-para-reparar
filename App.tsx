@@ -13,8 +13,8 @@
 import React, { lazy, Suspense, useMemo } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { useBootstrapAplicacion } from './hooks/app/useBootstrapAplicacion';
-import { useRutasReunion } from './hooks/app/useRutasReunion';
+import { useBootstrapAplicacion } from '@/modules/workspace/presentation/hooks/useBootstrapAplicacion';
+import { useRutasReunion } from '@/modules/meetings/presentation/hooks/useRutasReunion';
 import { seleccionarBootstrapApp } from '@/modules/_state/selectores';
 import { ESPACIO_GLOBAL_ID } from './src/core/domain/constants';
 import { resolverRutaApp } from './src/core/infrastructure/routing/appRouter';

@@ -1,7 +1,7 @@
 import type { TipoReunion } from './MeetingControlBar';
 import type { TipoReunionUnificado, InvitadoExterno } from '@/types/meeting-types';
 import type { CargoLaboral } from '../recording/types/analysis';
-import type { PreferenciasIngresoReunion } from '@/hooks/app/useRutasReunion';
+import type { PreferenciasIngresoReunion } from '@/modules/meetings/presentation/hooks/useRutasReunion';
 
 export interface MeetingRoomProps {
   salaId: string;

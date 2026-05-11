@@ -9,7 +9,7 @@
 
 import React from 'react';
 import { UserAvatar } from '@/modules/user/presentation/UserAvatar';
-import type { UseProfileEditorReturn } from '@/hooks/customizer/useProfileEditor';
+import type { UseProfileEditorReturn } from '@/modules/customizer/presentation/hooks/useProfileEditor';
 import type { PresenceStatus } from '@/types';
 
 export interface ProfilePanelProps {
