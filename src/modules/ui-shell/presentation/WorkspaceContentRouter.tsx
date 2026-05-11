@@ -16,7 +16,7 @@ import type { Language } from '@/core/infrastructure/i18n/i18n';
 
 const TaskBoard = lazy(() => import('@/components/TaskBoard').then(module => ({ default: module.TaskBoard })));
 const MiembrosView = lazy(() => import('@/components/MiembrosView').then(module => ({ default: module.MiembrosView })));
-const AvatarCustomizer3D = lazy(() => import('@/components/customizer/AvatarCustomizer3D'));
+const AvatarCustomizer3D = lazy(() => import('@/modules/customizer/presentation/AvatarCustomizer3D'));
 const ChatPanel = lazy(() => import('@/components/ChatPanel').then(module => ({ default: module.ChatPanel })));
 const CalendarPanel = lazy(() => import('@/components/meetings/CalendarPanel'));
 const GrabacionesHistorial = lazy(() => import('@/components/meetings/recording/GrabacionesHistorial'));

@@ -8,7 +8,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { AvatarCard } from '../../AvatarCard';
+import { AvatarCard } from '@/components/AvatarCard';
 import type { UseAvatarCatalogReturn } from '@/hooks/customizer/useAvatarCatalog';
 
 /** Subset of catalog state consumed by this panel. */

@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { ObjectCard } from '../../ObjectCard';
+import { ObjectCard } from '@/components/ObjectCard';
 import { CATEGORY_LABELS, CATEGORY_ICONS } from '../shared/customizerConstants';
 import type { CatalogoObjeto3D } from '@/types/objetos3d';
 import type { UseAvatarCatalogReturn } from '@/hooks/customizer/useAvatarCatalog';

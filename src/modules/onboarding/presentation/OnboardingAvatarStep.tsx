@@ -14,9 +14,9 @@
  */
 
 import React, { useEffect, useCallback, useState } from 'react';
-import { AvatarPanel } from '@/components/customizer/panels/AvatarPanel';
-import { PreviewCanvas } from '@/components/customizer/preview/PreviewCanvas';
-import { AvatarPreviewScene } from '@/components/customizer/preview/AvatarPreviewScene';
+import { AvatarPanel } from '@/modules/customizer/presentation/panels/AvatarPanel';
+import { PreviewCanvas } from '@/modules/customizer/presentation/preview/PreviewCanvas';
+import { AvatarPreviewScene } from '@/modules/customizer/presentation/preview/AvatarPreviewScene';
 import { useAvatarCatalog } from '@/hooks/customizer/useAvatarCatalog';
 
 export interface OnboardingAvatarStepProps {

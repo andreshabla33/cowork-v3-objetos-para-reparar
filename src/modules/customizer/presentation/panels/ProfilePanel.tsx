@@ -8,7 +8,7 @@
  */
 
 import React from 'react';
-import { UserAvatar } from '../../UserAvatar';
+import { UserAvatar } from '@/components/UserAvatar';
 import type { UseProfileEditorReturn } from '@/hooks/customizer/useProfileEditor';
 import type { PresenceStatus } from '@/types';
 
