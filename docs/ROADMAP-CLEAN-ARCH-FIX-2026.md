@@ -1,6 +1,10 @@
 # Roadmap Clean Arch + Bug Fixes — Cowork V3.7 (2026-05-05, auditado 2026-05-08, sesiones cierre 2026-05-09 + 2026-05-11)
 
-## 🎯 Estado real consolidado al 2026-05-11 (~46 commits sesión refactor + 5 commits ITEM 10 Batch 1 + 10 commits ITEM 11 Batches 6-15)
+## 🎯 Estado real consolidado al 2026-05-11 — TODAS LAS CARPETAS LEGACY ELIMINADAS
+
+ITEMs 10 + 11 cerrados al 100% (`hooks/`, `components/`, `store/`, `services/`, `lib/`, `modules/` legacy = 0 archivos).
+
+Path B (Repository pattern) — 5 sub-batches ejecutados (B.1 MetricasEmpresaPanel, B.2 MiembrosView, B.3 Settings ×5, B.4 Onboarding ×2, B.5a Auth/Chat/Invitation ×3). 11 archivos restantes con `supabase` directo en `presentation/` (games ×2, avatar3d ×2, meetings ×5, realtime-room ×1, avatarLoader bootstrap ×1) — deferidos a sesión dedicada por complejidad LiveKit/recording flow.
 
 ### ITEMs cerrados al 100% (16/21 = ~76%)
 
@@ -35,7 +39,7 @@
 
 | ITEM | Estado | Trabajo restante |
 |---|---|---|
-| **10** | 🟢 **EN CURSO** — Batch 1 cerrado 2026-05-09 (5 commits del usuario: `5534b42` + `8006f15` + `cd98047` + `5346440` + `280dda5`) | 51 archivos `hooks/` restantes. Batch 2 sugerido: `hooks/auth/` (riesgo bajo) |
+| **10** | ✅ **CERRADO** — Batches 1-G cerrados (2026-05-09 + 2026-05-11). **`hooks/` ELIMINADA al 100%**. 54 hooks distribuidos a 5 BC: user/(4), customizer/(2), workspace/(4), meetings/(6), chat/(7), space3d/(31) | 0 archivos legacy |
 | **11** | ✅ **CERRADO** — Batches 1-17 cerrados (2026-05-09 + 2026-05-11). 11 bounded contexts creados/extendidos en `src/modules/`. **`components/` ELIMINADA al 100%** | 0 archivos legacy |
 | 19 (cierre) | ⏸ Pendiente | Eliminar carpetas `store/`, `hooks/`, `components/` enteras (post 10/11) |
 
@@ -125,7 +129,7 @@
 | `lib/` | ✅ ELIMINADA | 0 |
 | `modules/` | ✅ ELIMINADA | 0 |
 | `store/` | ✅ **ELIMINADA** (Batch 10) | 0 |
-| `hooks/` | 🟡 **54 archivos** (-2 vs estado pre-Batch 1) | ITEM 10 en curso |
+| `hooks/` | ✅ **ELIMINADA** (ITEM 10 cierre 2026-05-11) | 0 |
 | `components/` | ✅ **ELIMINADA** (Batches 16+17 cierre 2026-05-11) | 0 |
 
 ### Validación end-to-end
