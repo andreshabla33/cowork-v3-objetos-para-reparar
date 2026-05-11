@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { miembrosEspacioRepository } from '@/core/infrastructure/adapters/MiembrosEspacioSupabaseRepository';
 import { chatRepository } from '@/src/core/infrastructure/adapters/ChatSupabaseRepository';
 import { Language, getCurrentLanguage, subscribeToLanguageChange, t } from '@/core/infrastructure/i18n/i18n';
 
@@ -25,27 +25,12 @@ export const AgregarMiembros: React.FC<Props> = ({ grupoId, espacioId, onClose }
 
   useEffect(() => {
     const cargar = async () => {
-      const { data: miembrosEspacio } = await supabase
-        .from('miembros_espacio')
-        .select('usuario_id')
-        .eq('espacio_id', espacioId)
-        .eq('aceptado', true);
-        
-      const { data: miembrosGrupo } = await supabase
-        .from('miembros_grupo')
-        .select('usuario_id')
-        .eq('grupo_id', grupoId);
-
-      if (miembrosEspacio && miembrosEspacio.length > 0) {
-        const ids = miembrosEspacio.map((m: any) => m.usuario_id);
-        const { data: usuarios } = await supabase
-          .from('usuarios')
-          .select('id, nombre, email')
-          .in('id', ids);
-        setUsuarios(usuarios || []);
-      }
-      
-      setMiembrosActuales(miembrosGrupo?.map((m: any) => m.usuario_id) || []);
+      const [usuarios, miembrosGrupo] = await Promise.all([
+        miembrosEspacioRepository.listarUsuariosAceptadosDeEspacio(espacioId),
+        miembrosEspacioRepository.listarMiembrosDeGrupo(grupoId),
+      ]);
+      setUsuarios(usuarios);
+      setMiembrosActuales(miembrosGrupo);
     };
     cargar();
   }, [grupoId, espacioId]);

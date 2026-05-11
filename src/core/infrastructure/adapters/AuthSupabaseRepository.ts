@@ -186,6 +186,13 @@ export class AuthSupabaseRepository implements IAuthRepository {
       log.warn('Sign out exception (ignored — local state clears anyway)', { error: message });
     }
   }
+
+  suscribirRecuperacionPassword(callback: () => void): () => void {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') callback();
+    });
+    return () => subscription.unsubscribe();
+  }
 }
 
 export const authRepository = new AuthSupabaseRepository();

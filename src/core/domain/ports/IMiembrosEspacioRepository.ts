@@ -76,4 +76,6 @@ export interface IMiembrosEspacioRepository {
   obtenerEstadoTour(usuarioId: string, espacioId: string): Promise<EstadoTour | null>;
   actualizarEstadoTour(usuarioId: string, espacioId: string, updates: UpdateTour): Promise<void>;
   suscribirCambiosTourUsuario(usuarioId: string, callback: (payload: CambioTourPayload) => void): () => void;
+  listarUsuariosAceptadosDeEspacio(espacioId: string): Promise<Array<{ id: string; nombre: string; email: string }>>;
+  listarMiembrosDeGrupo(grupoId: string): Promise<string[]>;
 }

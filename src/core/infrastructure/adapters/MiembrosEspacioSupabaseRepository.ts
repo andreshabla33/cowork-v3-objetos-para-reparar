@@ -135,6 +135,29 @@ export class MiembrosEspacioSupabaseRepository implements IMiembrosEspacioReposi
     if (error) throw error;
   }
 
+  async listarUsuariosAceptadosDeEspacio(espacioId: string): Promise<Array<{ id: string; nombre: string; email: string }>> {
+    const { data: miembros } = await supabase
+      .from('miembros_espacio')
+      .select('usuario_id')
+      .eq('espacio_id', espacioId)
+      .eq('aceptado', true);
+    if (!miembros || miembros.length === 0) return [];
+    const ids = miembros.map((m: { usuario_id: string }) => m.usuario_id);
+    const { data: usuarios } = await supabase
+      .from('usuarios')
+      .select('id, nombre, email')
+      .in('id', ids);
+    return (usuarios ?? []) as Array<{ id: string; nombre: string; email: string }>;
+  }
+
+  async listarMiembrosDeGrupo(grupoId: string): Promise<string[]> {
+    const { data } = await supabase
+      .from('miembros_grupo')
+      .select('usuario_id')
+      .eq('grupo_id', grupoId);
+    return (data ?? []).map((m: { usuario_id: string }) => m.usuario_id);
+  }
+
   suscribirCambiosTourUsuario(usuarioId: string, callback: (payload: CambioTourPayload) => void): () => void {
     const canal = supabase
       .channel(`tour-reset-${usuarioId}`)

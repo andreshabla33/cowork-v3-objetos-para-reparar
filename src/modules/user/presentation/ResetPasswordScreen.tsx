@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { authRepository } from '@/core/infrastructure/adapters/AuthSupabaseRepository';
 import { useUserStore } from '@/modules/user/state/useUserStore';
 import { confirmPasswordReset } from '@/core/infrastructure/auth/authRecoveryService';
 
@@ -55,14 +55,12 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({ errorF
  setState(prev => prev === 'validating' ? 'error_token' : prev);
  };
 
- const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+ const unsubscribe = authRepository.suscribirRecuperacionPassword(() => {
  if (!isMounted) return;
- if (event === 'PASSWORD_RECOVERY') {
  if (timeoutId !== null) {
  window.clearTimeout(timeoutId);
  }
  setState('form');
- }
  });
 
  // Fallback: si la sesión ya existía antes de que el listener se montara.
@@ -81,7 +79,7 @@ export const ResetPasswordScreen: React.FC<ResetPasswordScreenProps> = ({ errorF
  if (timeoutId !== null) {
  window.clearTimeout(timeoutId);
  }
- subscription.unsubscribe();
+ unsubscribe();
  };
  // eslint-disable-next-line react-hooks/exhaustive-deps
  }, []);

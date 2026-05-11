@@ -24,7 +24,7 @@ import { VerificarInvitacionUseCase } from '@/core/application/usecases/Verifica
 import { AceptarInvitacionUseCase } from '@/core/application/usecases/AceptarInvitacionUseCase';
 // DI: Repository port resolved from React Context, not module-level singleton
 import { useDIUseCase } from '@/core/infrastructure/di/DIProvider';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { authRepository } from '@/core/infrastructure/adapters/AuthSupabaseRepository';
 
 const log = logger.child('invitation');
 
@@ -188,7 +188,7 @@ export const InvitationProcessor: React.FC = () => {
  <button
  onClick={async () => {
  const currentUrl = window.location.href;
- await supabase.auth.signOut();
+ await authRepository.cerrarSesion();
  window.location.href = currentUrl;
  }}
  className="w-full py-2.5 bg-white/50 border border-[rgba(46,150,245,0.14)] rounded-xl font-black uppercase tracking-widest text-[10px] text-[#4A6485] hover:border-[rgba(46,150,245,0.3)]/30 hover:text-[#1E86E5] transition-all"

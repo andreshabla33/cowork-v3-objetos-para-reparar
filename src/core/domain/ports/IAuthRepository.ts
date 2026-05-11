@@ -84,4 +84,10 @@ export interface IAuthRepository {
    * cookies y emite `SIGNED_OUT` a los listeners. Idempotente.
    */
   cerrarSesion(): Promise<void>;
+
+  /**
+   * Suscribe a eventos PASSWORD_RECOVERY. Callback se dispara cuando supabase
+   * detecta token de recovery en la URL. Devuelve `unsubscribe`.
+   */
+  suscribirRecuperacionPassword(callback: () => void): () => void;
 }
