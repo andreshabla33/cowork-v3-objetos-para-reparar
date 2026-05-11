@@ -9,7 +9,8 @@ import {
  ChevronLeft, ChevronRight, Cpu, User, Settings, Play,
  Sparkles, Timer, Zap
 } from 'lucide-react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { juegosRepository } from '@/core/infrastructure/adapters/JuegosSupabaseRepository';
+import type { CanalAjedrezController } from '@/core/domain/ports/IJuegosRepository';
 
 interface ChessGameProps {
  onClose: () => void;
@@ -185,7 +186,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({
  const timerRef = useRef<NodeJS.Timeout | null>(null);
  
  // Supabase channel
- const channelRef = useRef<any>(null);
+ const channelRef = useRef<CanalAjedrezController | null>(null);
+ const partidaUnsubRef = useRef<(() => void) | null>(null);
  
  // Online mode states
  const [miembrosEspacio, setMiembrosEspacio] = useState<MiembroEspacio[]>([]);
@@ -220,49 +222,20 @@ export const ChessGame: React.FC<ChessGameProps> = ({
  console.log('🎮 loadMiembrosEspacio: Loading members for espacio:', espacioId, 'excluding user:', currentUserId);
  setLoadingMiembros(true);
  try {
- // Primero obtener los usuario_id de los miembros del espacio
- const { data: membersData, error: membersError } = await supabase
- .from('miembros_espacio')
- .select('usuario_id')
- .eq('espacio_id', espacioId)
- .eq('aceptado', true)
- .neq('usuario_id', currentUserId);
- 
- console.log('🎮 loadMiembrosEspacio membersData:', { membersData, membersError });
- 
- if (membersError) {
- console.error('🎮 Error consultando miembros_espacio:', membersError);
- throw membersError;
- }
- 
- if (!membersData || membersData.length === 0) {
+ const usersData = await juegosRepository.listarMiembrosOnline(espacioId, currentUserId);
+
+ if (usersData.length === 0) {
  console.log('🎮 No hay otros miembros en el espacio');
  setMiembrosEspacio([]);
  setLoadingMiembros(false);
  return;
  }
 
- // Obtener los datos de los usuarios
- const userIds = membersData.map(m => m.usuario_id);
- console.log('🎮 loadMiembrosEspacio userIds:', userIds);
- 
- const { data: usersData, error: usersError } = await supabase
- .from('usuarios')
- .select('id, nombre, avatar_url, estado_disponibilidad')
- .in('id', userIds);
-
- console.log('🎮 loadMiembrosEspacio usersData:', { usersData, usersError });
-
- if (usersError) {
- console.error('🎮 Error consultando usuarios:', usersError);
- throw usersError;
- }
-
- const miembros: MiembroEspacio[] = (usersData || []).map((u: any) => ({
+ const miembros: MiembroEspacio[] = usersData.map((u) => ({
  id: u.id,
  nombre: u.nombre,
- avatar_url: u.avatar_url,
- estado_disponibilidad: u.estado_disponibilidad
+ avatar_url: u.avatar_url ?? undefined,
+ estado_disponibilidad: u.estado_disponibilidad ?? undefined
  }));
 
  console.log('🎮 loadMiembrosEspacio final miembros:', miembros);
@@ -291,63 +264,40 @@ export const ChessGame: React.FC<ChessGameProps> = ({
  setEsperandoRespuesta(true);
 
  try {
- // Crear la invitación
- const { data: invitacion, error } = await supabase
- .from('invitaciones_juegos')
- .insert({
- juego: 'ajedrez',
+ const invitacion = await juegosRepository.crearInvitacionAjedrez({
  invitador_id: currentUserId,
  invitado_id: miembro.id,
  espacio_id: espacioId,
- configuracion: {
  tiempo: selectedTime,
  invitador_nombre: currentUserName,
- invitador_color: playerColor
- }
- })
- .select()
- .single();
-
- if (error) throw error;
+ invitador_color: playerColor!,
+ });
 
  setInvitacionEnviada(invitacion);
  console.log('🎮 Invitación creada:', invitacion.id);
 
  // Suscribirse a cambios en esta invitación
- const channel = supabase
- .channel(`invitacion-${invitacion.id}`)
- .on('postgres_changes', {
- event: 'UPDATE',
- schema: 'public',
- table: 'invitaciones_juegos',
- filter: `id=eq.${invitacion.id}`
- }, (payload) => {
- console.log('🎮 Invitación UPDATE recibido:', payload);
- const updated = payload.new as InvitacionJuego;
+ const unsubscribe = juegosRepository.suscribirCambiosInvitacion(invitacion.id, (updated) => {
+ console.log('🎮 Invitación UPDATE recibido:', updated);
  if (updated.estado === 'aceptada' && updated.partida_id) {
  console.log('🎮 Invitación ACEPTADA! Iniciando partida:', updated.partida_id);
- // Invitación aceptada - iniciar partida
  setPartidaOnlineId(updated.partida_id);
  setOpponent({ id: miembro.id, name: miembro.nombre });
  setEsperandoRespuesta(false);
- iniciarPartidaOnline(updated.partida_id, playerColor);
+ iniciarPartidaOnline(updated.partida_id, playerColor!);
  } else if (updated.estado === 'rechazada') {
  console.log('🎮 Invitación RECHAZADA');
- // Invitación rechazada
  setEsperandoRespuesta(false);
  setSelectedMiembro(null);
  setInvitacionEnviada(null);
  alert(`${miembro.nombre} rechazó la invitación`);
  }
- })
- .subscribe((status) => {
- console.log('🎮 Canal invitación status:', status);
  });
 
  // Timeout de 5 minutos
  setTimeout(() => {
  if (esperandoRespuesta) {
- supabase.removeChannel(channel);
+ unsubscribe();
  cancelarInvitacion();
  }
  }, 300000);
@@ -364,10 +314,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({
  if (!invitacionEnviada) return;
 
  try {
- await supabase
- .from('invitaciones_juegos')
- .update({ estado: 'cancelada' })
- .eq('id', invitacionEnviada.id);
+ await juegosRepository.cancelarInvitacion(invitacionEnviada.id);
  } catch (error) {
  console.error('Error cancelando invitación:', error);
  }
@@ -386,38 +333,26 @@ export const ChessGame: React.FC<ChessGameProps> = ({
  setGameMode('online');
  
  // Suscribirse a cambios en la partida
- const channel = supabase
- .channel(`partida-ajedrez-${partidaId}`)
- .on('postgres_changes', {
- event: 'UPDATE',
- schema: 'public',
- table: 'partidas_ajedrez',
- filter: `id=eq.${partidaId}`
- }, (payload) => {
- console.log('🎮 Partida UPDATE recibido:', payload);
- const partida = payload.new as any;
+ const unsubscribePartida = juegosRepository.suscribirCambiosPartida(partidaId, (partida) => {
+ console.log('🎮 Partida UPDATE recibido:', partida);
  // Procesar si ahora es MI turno (el oponente acaba de mover)
  if (partida.turno === miColor && partida.fen_actual !== chess.fen()) {
  console.log('🎮 Procesando movimiento del oponente:', partida.ultimo_movimiento);
  chess.load(partida.fen_actual);
  setBoard(chess.board());
  if (partida.ultimo_movimiento) {
- setLastMove(partida.ultimo_movimiento);
+ setLastMove(partida.ultimo_movimiento as { from: Square; to: Square });
  }
  setWhiteTime(partida.tiempo_blancas);
  setBlackTime(partida.tiempo_negras);
  setIsMyTurn(true);
- 
  if (partida.estado === 'jaque_mate' || partida.estado === 'tablas' || partida.estado === 'abandono') {
  setGamePhase('finished');
  }
  }
- })
- .subscribe((status) => {
- console.log('🎮 Canal partida status:', status);
  });
 
- channelRef.current = channel;
+ partidaUnsubRef.current = unsubscribePartida;
  
  // Iniciar el juego directamente (sin depender del estado opponent)
  chess.reset();
@@ -456,16 +391,11 @@ export const ChessGame: React.FC<ChessGameProps> = ({
  historial_movimientos: chess.history({ verbose: true })
  };
  console.log('🎮 Enviando UPDATE a partida:', partidaOnlineId, updateData);
- 
- const { error } = await supabase
- .from('partidas_ajedrez')
- .update(updateData)
- .eq('id', partidaOnlineId);
- 
- if (error) {
- console.error('🎮 Error en UPDATE:', error);
- } else {
+ try {
+ await juegosRepository.actualizarPartidaAjedrez(partidaOnlineId, updateData);
  console.log('🎮 UPDATE exitoso');
+ } catch (error) {
+ console.error('🎮 Error en UPDATE:', error);
  }
  } catch (error) {
  console.error('🎮 Error sincronizando movimiento:', error);
@@ -612,17 +542,17 @@ export const ChessGame: React.FC<ChessGameProps> = ({
  } catch (e) {}
  }, [soundEnabled]);
 
- // Inicializar conexión multiplayer
+ // Inicializar conexión multiplayer (broadcast channel)
  useEffect(() => {
  if (!sessionId) return;
 
- const channel = supabase.channel(`chess-game-${sessionId}`)
- .on('broadcast', { event: 'move' }, ({ payload }) => {
+ const controller: CanalAjedrezController = juegosRepository.crearCanalAjedrez(sessionId, {
+ onMove: (payload) => {
  if (payload.playerId !== currentUserId) {
- handleRemoteMove(payload.move);
+ handleRemoteMove(payload.move as Move);
  }
- })
- .on('broadcast', { event: 'join' }, ({ payload }) => {
+ },
+ onJoin: (payload) => {
  if (payload.playerId !== currentUserId) {
  setOpponent({ id: payload.playerId, name: payload.playerName });
  if (!playerColor) {
@@ -630,27 +560,23 @@ export const ChessGame: React.FC<ChessGameProps> = ({
  setBoardFlipped(true);
  }
  }
- })
- .on('broadcast', { event: 'chat' }, ({ payload }) => {
+ },
+ onChat: (payload) => {
  if (payload.from !== currentUserId) {
  setChatMessages(prev => [...prev, payload]);
  }
- })
- .on('broadcast', { event: 'resign' }, ({ payload }) => {
+ },
+ onResign: (payload) => {
  if (payload.playerId !== currentUserId) {
  handleGameEnd(playerColor === 'w' ? 'white' : 'black');
  }
- })
- .subscribe();
+ },
+ });
 
- channelRef.current = channel;
+ channelRef.current = controller;
 
  // Anunciar entrada al juego
- channel.send({
- type: 'broadcast',
- event: 'join',
- payload: { playerId: currentUserId, playerName: currentUserName }
- });
+ controller.send('join', { playerId: currentUserId, playerName: currentUserName });
 
  // Si soy el primero, soy blancas
  if (!playerColor) {
@@ -658,7 +584,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({
  }
 
  return () => {
- supabase.removeChannel(channel);
+ controller.close();
  };
  }, [sessionId, currentUserId, currentUserName, playerColor]);
 
@@ -775,11 +701,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({
  
  // Enviar movimiento al oponente via broadcast (para modo sesión)
  if (channelRef.current && !partidaOnlineId) {
- channelRef.current.send({
- type: 'broadcast',
- event: 'move',
- payload: { playerId: currentUserId, move: moveData }
- });
+ channelRef.current.send('move', { playerId: currentUserId, move: moveData });
  }
  }
  }
@@ -836,11 +758,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({
  // Rendirse
  const handleResign = useCallback(() => {
  if (channelRef.current) {
- channelRef.current.send({
- type: 'broadcast',
- event: 'resign',
- payload: { playerId: currentUserId }
- });
+ channelRef.current.send('resign', { playerId: currentUserId });
  }
  handleGameEnd(playerColor === 'w' ? 'black' : 'white');
  }, [currentUserId, playerColor, handleGameEnd]);
@@ -853,13 +771,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({
  setChatMessages(prev => [...prev, message]);
  
  if (channelRef.current) {
- channelRef.current.send({
- type: 'broadcast',
- event: 'chat',
- payload: { ...message, from: currentUserId }
- });
+ channelRef.current.send('chat', { ...message, from: currentUserId });
  }
- 
+
  setChatInput('');
  }, [chatInput, currentUserName, currentUserId]);
 

@@ -3,23 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Crown, X, Check, Clock, Swords } from 'lucide-react';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
-
-interface InvitacionJuego {
-  id: string;
-  juego: string;
-  invitador_id: string;
-  invitado_id: string;
-  espacio_id: string;
-  estado: string;
-  configuracion: {
-    tiempo: number;
-    invitador_nombre: string;
-    invitador_color: 'w' | 'b';
-  };
-  creada_en: string;
-  expira_en: string;
-}
+import { juegosRepository } from '@/core/infrastructure/adapters/JuegosSupabaseRepository';
+import type { InvitacionJuego } from '@/core/domain/ports/IJuegosRepository';
 
 interface GameInvitationNotificationProps {
   userId: string;
@@ -40,108 +25,37 @@ export const GameInvitationNotification: React.FC<GameInvitationNotificationProp
 
     // Cargar invitaciones pendientes existentes
     const cargarInvitaciones = async () => {
-      const { data } = await supabase
-        .from('invitaciones_juegos')
-        .select('*')
-        .eq('invitado_id', userId)
-        .eq('espacio_id', espacioId)
-        .eq('estado', 'pendiente')
-        .gt('expira_en', new Date().toISOString());
-
-      if (data) {
+      try {
+        const data = await juegosRepository.listarInvitacionesPendientes(userId, espacioId);
         setInvitaciones(data);
+      } catch (err) {
+        console.error('Error cargando invitaciones', err);
       }
     };
 
     cargarInvitaciones();
 
     // Suscribirse a nuevas invitaciones en tiempo real
-    const channel = supabase
-      .channel(`invitaciones-${userId}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'invitaciones_juegos',
-        filter: `invitado_id=eq.${userId}`
-      }, (payload) => {
-        const nueva = payload.new as InvitacionJuego;
+    return juegosRepository.suscribirInvitacionesUsuario(userId, {
+      onInsert: (nueva) => {
         if (nueva.estado === 'pendiente' && nueva.espacio_id === espacioId) {
           setInvitaciones(prev => [...prev, nueva]);
         }
-      })
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'invitaciones_juegos',
-        filter: `invitado_id=eq.${userId}`
-      }, (payload) => {
-        const updated = payload.new as InvitacionJuego;
+      },
+      onUpdate: (updated) => {
         if (updated.estado !== 'pendiente') {
           setInvitaciones(prev => prev.filter(i => i.id !== updated.id));
         }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+      },
+    });
   }, [userId, espacioId]);
 
   // Aceptar invitación
   const aceptarInvitacion = async (invitacion: InvitacionJuego) => {
-    console.log('🎮 Aceptando invitación:', invitacion);
     try {
-      // Crear la partida de ajedrez
-      const miColor = invitacion.configuracion.invitador_color === 'w' ? 'b' : 'w';
-      
-      const partidaData = {
-        jugador_blancas_id: invitacion.configuracion.invitador_color === 'w' 
-          ? invitacion.invitador_id 
-          : userId,
-        jugador_negras_id: invitacion.configuracion.invitador_color === 'w' 
-          ? userId 
-          : invitacion.invitador_id,
-        estado: 'jugando',
-        turno: 'w',
-        fen_actual: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
-        tiempo_blancas: invitacion.configuracion.tiempo || 600,
-        tiempo_negras: invitacion.configuracion.tiempo || 600,
-        fecha_inicio: new Date().toISOString(),
-        historial_movimientos: [],
-        piezas_capturadas_blancas: [],
-        piezas_capturadas_negras: []
-      };
-      
-      console.log('🎮 Creando partida con datos:', partidaData);
-      
-      const { data: partida, error: errorPartida } = await supabase
-        .from('partidas_ajedrez')
-        .insert(partidaData)
-        .select()
-        .single();
-
-      console.log('🎮 Resultado crear partida:', { partida, errorPartida });
-
-      if (errorPartida) throw errorPartida;
-
-      // Actualizar la invitación con el ID de la partida
-      const { error: errorInvitacion } = await supabase
-        .from('invitaciones_juegos')
-        .update({ 
-          estado: 'aceptada',
-          partida_id: partida.id,
-          respondida_en: new Date().toISOString()
-        })
-        .eq('id', invitacion.id);
-
-      if (errorInvitacion) throw errorInvitacion;
-
-      // Remover de la lista local
+      const partida = await juegosRepository.aceptarInvitacionConPartida(invitacion, userId);
       setInvitaciones(prev => prev.filter(i => i.id !== invitacion.id));
-
-      // Notificar al padre para abrir el juego
       onAccept(invitacion, partida.id);
-
     } catch (error) {
       console.error('Error aceptando invitación:', error);
     }
@@ -150,14 +64,7 @@ export const GameInvitationNotification: React.FC<GameInvitationNotificationProp
   // Rechazar invitación
   const rechazarInvitacion = async (invitacion: InvitacionJuego) => {
     try {
-      await supabase
-        .from('invitaciones_juegos')
-        .update({ 
-          estado: 'rechazada',
-          respondida_en: new Date().toISOString()
-        })
-        .eq('id', invitacion.id);
-
+      await juegosRepository.rechazarInvitacion(invitacion.id);
       setInvitaciones(prev => prev.filter(i => i.id !== invitacion.id));
     } catch (error) {
       console.error('Error rechazando invitación:', error);
