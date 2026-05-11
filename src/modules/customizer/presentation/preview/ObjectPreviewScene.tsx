@@ -12,7 +12,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls, useGLTF } from '@react-three/drei';
 import type { CatalogoObjeto3D } from '@/types/objetos3d';
-import { GeometriaProceduralObjeto3D } from '@/components/3d/GeometriaProceduralObjeto3D';
+import { GeometriaProceduralObjeto3D } from '@/modules/space3d/presentation/world/GeometriaProceduralObjeto3D';
 import { esObjetoArquitectonicoProcedural } from '@/src/core/domain/entities/objetosArquitectonicos';
 
 // ─── Fallback cube ───────────────────────────────────────────────────────────

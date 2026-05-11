@@ -20,14 +20,14 @@ import { VirtualSpace3DStatusOverlays } from './space3d/root/VirtualSpace3DStatu
 import { useLiveKitVideoBackground, useLocalCameraTrack } from '@/modules/realtime-room';
 import type { LocalVideoTrack } from 'livekit-client';
 import { useRendererMetrics } from '@/hooks/space3d/useRendererMetrics';
-import { SpatialAudio } from './3d/SpatialAudio';
-import { AdaptivePerformanceMonitor } from './3d/AdaptivePerformanceMonitor';
+import { SpatialAudio } from '@/modules/space3d/presentation/world/SpatialAudio';
+import { AdaptivePerformanceMonitor } from '@/modules/space3d/presentation/world/AdaptivePerformanceMonitor';
 import { isAdaptivePerformanceEnabled } from '@/core/infrastructure/r3f/ecs/avatarRenderPolicy';
 import { type GpuInfo } from '@/core/infrastructure/r3f/gpuCapabilities';
 import { logger } from '@/core/infrastructure/observability/logger';
-import { MobileJoystick, type JoystickInput } from './3d/MobileJoystick';
-import { EmoteWheel } from './3d/EmoteWheel';
-import { DayNightCycle } from './3d/DayNightCycle';
+import { MobileJoystick, type JoystickInput } from '@/modules/space3d/presentation/world/MobileJoystick';
+import { EmoteWheel } from '@/modules/space3d/presentation/world/EmoteWheel';
+import { DayNightCycle } from '@/modules/space3d/presentation/world/DayNightCycle';
 import { hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
 import { GamificacionPanel } from './GamificacionPanel';
 import { useSpace3D, useSpaceVideoHudLayoutSnapshot } from '@/hooks/space3d';
@@ -49,8 +49,8 @@ import type { InteraccionObjetoAccion } from '@/src/core/application/usecases/In
 // emiten a través del port `INotificationBus` (vía useApplicationServices).
 // Nota (F4): EditModeHUD, PlacementHUD, InspectorEdicionObjeto, BuildModePanel
 // ya no se importan aquí — viven dentro de <VirtualSpace3DAdminOverlay>.
-import { EditModeToast, PlacementToast, ToastContainer } from './3d/PlacementHUD';
-import { AdminZoneHUD } from './3d/AdminZoneHUD';
+import { EditModeToast, PlacementToast, ToastContainer } from '@/modules/space3d/presentation/world/PlacementHUD';
+import { AdminZoneHUD } from '@/modules/space3d/presentation/world/AdminZoneHUD';
 import type { CatalogoObjeto3D, ObjetoPreview3D } from '@/types/objetos3d';
 import type { AsientoRuntime3D } from './space3d/asientosRuntime';
 // `normalizarInteraccionConfigObjeto` / `resolverDisplayObjeto` / `resolverUseObjeto`

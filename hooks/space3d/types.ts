@@ -6,7 +6,7 @@
 
 import type { User, PresenceStatus, AutorizacionEmpresa, ZonaEmpresa, Workspace } from '@/types';
 import type { CameraSettings, AudioSettings } from '@/modules/realtime-room';
-import type { JoystickInput } from '@/components/3d/MobileJoystick';
+import type { JoystickInput } from '@/modules/space3d/presentation/world/MobileJoystick';
 import type { EstadoEcsEspacio } from '@/core/infrastructure/r3f/ecs/espacioEcs';
 import type { GpuInfo } from '@/core/infrastructure/r3f/gpuCapabilities';
 import type { UserSettings } from '@/core/infrastructure/userSettings/userSettings';

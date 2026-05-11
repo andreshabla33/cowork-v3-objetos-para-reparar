@@ -13,7 +13,7 @@ import { logger } from '@/core/infrastructure/observability/logger';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
-import { FACTOR_ESCALA_OBJETOS_ESCENA } from '../space3d/shared';
+import { FACTOR_ESCALA_OBJETOS_ESCENA } from '@/components/space3d/shared';
 
 const log = logger.child('Escritorio3D');
 

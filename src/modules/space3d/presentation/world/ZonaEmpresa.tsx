@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useGLTF, Text } from '@react-three/drei';
 import * as THREE from 'three';
-import { FloorType, normalizarTipoSuelo } from '../../src/core/domain/entities';
+import { FloorType, normalizarTipoSuelo } from '@/core/domain/entities';
 import { crearPropsMaterialSueloPbr, TEXTURE_REGISTRY } from '@/core/infrastructure/r3f/rendering/textureRegistry';
 
 interface ZonaEmpresaProps {

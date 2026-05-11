@@ -22,7 +22,7 @@
  * consumidores deben usar este adapter vía el container.
  */
 
-import { toastEmitter } from '@/components/3d/PlacementHUD';
+import { toastEmitter } from '@/modules/space3d/presentation/world/PlacementHUD';
 import type {
   INotificationBus,
   NotificacionEmitida,

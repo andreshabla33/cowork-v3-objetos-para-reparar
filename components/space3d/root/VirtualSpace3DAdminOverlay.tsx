@@ -20,8 +20,8 @@
  */
 
 import React from 'react';
-import { EditModeHUD, InspectorEdicionObjeto, PlacementHUD } from '@/components/3d/PlacementHUD';
-import { BuildModePanel } from '@/components/3d/BuildModePanel';
+import { EditModeHUD, InspectorEdicionObjeto, PlacementHUD } from '@/modules/space3d/presentation/world/PlacementHUD';
+import { BuildModePanel } from '@/modules/space3d/presentation/world/BuildModePanel';
 import type { CatalogoObjeto3D, ObjetoPreview3D } from '@/types/objetos3d';
 import type { EspacioObjeto, TransformacionObjetoInput } from '@/hooks/space3d/useEspacioObjetos';
 import type { ModoEdicionObjeto } from '@/modules/_state/slices/editorSlice';

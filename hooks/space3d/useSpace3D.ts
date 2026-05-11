@@ -13,7 +13,7 @@ import type { RealtimePositionEntry } from './types';
 import { isTouchDevice, hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
 import { registrarLoginDiario, otorgarXP, XP_POR_ACCION } from '@/core/infrastructure/adapters/gamificacion';
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
-import type { JoystickInput } from '@/components/3d/MobileJoystick';
+import type { JoystickInput } from '@/modules/space3d/presentation/world/MobileJoystick';
 import { saveCameraSettings, saveAudioSettings, type CameraSettings, type AudioSettings } from '@/modules/realtime-room';
 import { seleccionarSpace3DBase } from '@/modules/_state/selectores';
 import { useUserSettings } from './useUserSettings';

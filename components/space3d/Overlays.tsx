@@ -9,19 +9,19 @@ import { GLTFAvatar } from '@/modules/avatar3d/presentation/GLTFAvatar';
 import { useAvatarControls } from '@/modules/avatar3d/presentation/useAvatarControls';
 import type { AnimationState } from '@/modules/avatar3d/presentation/shared';
 import { VideoWithBackground } from '../VideoWithBackground';
-import { GhostAvatar } from '../3d/GhostAvatar';
-import { ZonaEmpresa as ZonaEmpresa3D } from '../3d/ZonaEmpresa';
-import { Escritorio3D } from '../3d/Escritorio3D';
+import { GhostAvatar } from '@/modules/space3d/presentation/world/GhostAvatar';
+import { ZonaEmpresa as ZonaEmpresa3D } from '@/modules/space3d/presentation/world/ZonaEmpresa';
+import { Escritorio3D } from '@/modules/space3d/presentation/world/Escritorio3D';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
-import { DayNightCycle } from '../3d/DayNightCycle';
-import { ObjetosInteractivos } from '../3d/ObjetosInteractivos';
-import { ParticulasClima } from '../3d/ParticulasClima';
-import { EmoteSync, useSyncEffects } from '../3d/EmoteSync';
+import { DayNightCycle } from '@/modules/space3d/presentation/world/DayNightCycle';
+import { ObjetosInteractivos } from '@/modules/space3d/presentation/world/ObjetosInteractivos';
+import { ParticulasClima } from '@/modules/space3d/presentation/world/ParticulasClima';
+import { EmoteSync, useSyncEffects } from '@/modules/space3d/presentation/world/EmoteSync';
 import { hapticFeedback, isMobileDevice } from '@/core/infrastructure/platform/mobileDetect';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { type CameraSettings } from '@/modules/realtime-room';
 import { obtenerEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/core/infrastructure/r3f/ecs/espacioEcs';
-import { type JoystickInput } from '../3d/MobileJoystick';
+import { type JoystickInput } from '@/modules/space3d/presentation/world/MobileJoystick';
 import { getSettingsSection } from '@/core/infrastructure/userSettings/userSettings';
 import {
   AvatarLodLevel, DireccionAvatar, themeColors,

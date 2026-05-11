@@ -25,7 +25,7 @@ import * as THREE from 'three';
 import { useGLTF } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
-import { obtenerDimensionesObjetoRuntime } from '../space3d/objetosRuntime';
+import { obtenerDimensionesObjetoRuntime } from '@/components/space3d/objetosRuntime';
 import { ObjetoEscena3D } from './ObjetoEscena3D';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';

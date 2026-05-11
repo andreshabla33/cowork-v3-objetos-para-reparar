@@ -10,7 +10,7 @@ import { logger } from '@/core/infrastructure/observability/logger';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import type { ObjetoPreview3D } from '@/types/objetos3d';
 import { esObjetoArquitectonicoProcedural } from '@/src/core/domain/entities/objetosArquitectonicos';
-import { esObjetoInteractuable, obtenerDimensionesObjetoRuntime, obtenerEmojiInteraccionObjeto, obtenerEtiquetaInteraccionObjeto, obtenerRadioInteraccionObjeto } from '../space3d/objetosRuntime';
+import { esObjetoInteractuable, obtenerDimensionesObjetoRuntime, obtenerEmojiInteraccionObjeto, obtenerEtiquetaInteraccionObjeto, obtenerRadioInteraccionObjeto } from '@/components/space3d/objetosRuntime';
 import { GeometriaProceduralObjeto3D } from './GeometriaProceduralObjeto3D';
 
 const log = logger.child('ObjetoEscena3D');

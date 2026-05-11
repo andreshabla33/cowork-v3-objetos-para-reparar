@@ -10,8 +10,8 @@
 
 import React, { useMemo } from 'react';
 import type { ZonaEmpresa } from '@/types';
-import { ZonaEmpresa as ZonaEmpresa3D } from '../3d/ZonaEmpresa';
-import { CerramientoZona3D } from '../3d/CerramientoZona3D';
+import { ZonaEmpresa as ZonaEmpresa3D } from '@/modules/space3d/presentation/world/ZonaEmpresa';
+import { CerramientoZona3D } from '@/modules/space3d/presentation/world/CerramientoZona3D';
 import {
   calcularNivelAnidamientoRectangulo,
   zonaDbAMundo,

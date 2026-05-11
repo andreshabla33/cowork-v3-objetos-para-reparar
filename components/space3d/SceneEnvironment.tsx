@@ -12,8 +12,8 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { Sky, Environment } from '@react-three/drei';
-import { DayNightCycle } from '../3d/DayNightCycle';
-import { ParticulasClima } from '../3d/ParticulasClima';
+import { DayNightCycle } from '@/modules/space3d/presentation/world/DayNightCycle';
+import { ParticulasClima } from '@/modules/space3d/presentation/world/ParticulasClima';
 import { computeSunPosition } from '@/src/core/domain/entities/espacio3d/ScenePolicy';
 import type { AdaptiveRenderConfig } from '@/core/infrastructure/r3f/gpuCapabilities';
 
