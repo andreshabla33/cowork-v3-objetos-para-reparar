@@ -14,7 +14,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { ForgotPasswordScreen } from './ForgotPasswordScreen';
-import { useLoginAuth } from '../hooks/auth/useLoginAuth';
+import { useLoginAuth } from '@/hooks/auth/useLoginAuth';
 
 export const LoginScreen: React.FC = () => {
   const {
