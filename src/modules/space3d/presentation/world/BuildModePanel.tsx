@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import type { CatalogoObjeto3D } from '@/types/objetos3d';
 import { ObjectCard } from '@/modules/customizer/presentation/ObjectCard';
-import { useBuildMode } from '@/hooks/space3d/useBuildMode';
+import { useBuildMode } from '@/modules/space3d/presentation/hooks/useBuildMode';
 
 interface BuildModePanelProps {
   onClose: () => void;

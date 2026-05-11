@@ -8,7 +8,7 @@ import { GLTFAvatar } from '@/modules/avatar3d/presentation/GLTFAvatar';
 import type { AnimationState, AvatarAssetQuality, Avatar3DConfig } from '@/modules/avatar3d/presentation/shared';
 import { resolveAvatarModelUrl } from '@/modules/avatar3d/presentation/shared';
 import { GhostAvatar } from '@/modules/space3d/presentation/world/GhostAvatar';
-import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
+import type { EspacioObjeto } from '@/modules/space3d/presentation/hooks/useEspacioObjetos';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { obtenerDimensionesObjetoRuntime } from './objetosRuntime';
 import { obtenerEstadoUsuarioEcs, type EstadoEcsEspacio } from '@/core/infrastructure/r3f/ecs/espacioEcs';

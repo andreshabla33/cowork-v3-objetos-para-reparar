@@ -19,7 +19,7 @@ import {
   resolverTipoSubsueloZona,
 } from '@/src/core/domain/entities';
 import { crearParedesCerramientosZonas } from './cerramientosZonaRuntime';
-import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
+import type { EspacioObjeto } from '@/modules/space3d/presentation/hooks/useEspacioObjetos';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

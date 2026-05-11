@@ -1,4 +1,4 @@
-import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
+import type { EspacioObjeto } from '@/modules/space3d/presentation/hooks/useEspacioObjetos';
 import {
   normalizarEstiloVisualArquitectonico,
   resolverPerfilVisualArquitectonico,

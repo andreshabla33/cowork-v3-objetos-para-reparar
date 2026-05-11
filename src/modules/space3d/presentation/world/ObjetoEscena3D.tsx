@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
 import { logger } from '@/core/infrastructure/observability/logger';
-import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
+import type { EspacioObjeto } from '@/modules/space3d/presentation/hooks/useEspacioObjetos';
 import type { ObjetoPreview3D } from '@/types/objetos3d';
 import { esObjetoArquitectonicoProcedural } from '@/src/core/domain/entities/objetosArquitectonicos';
 import { esObjetoInteractuable, obtenerDimensionesObjetoRuntime, obtenerEmojiInteraccionObjeto, obtenerEtiquetaInteraccionObjeto, obtenerRadioInteraccionObjeto } from '@/modules/space3d/presentation/scene/objetosRuntime';

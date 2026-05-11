@@ -7,7 +7,7 @@
 import type { StateCreator } from 'zustand';
 import { FloorType } from '@/core/domain/entities';
 import type { PlantillaZonaId } from '@/core/domain/entities/plantillasEspacio';
-import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
+import type { EspacioObjeto } from '@/modules/space3d/presentation/hooks/useEspacioObjetos';
 
 export type ModoEdicionObjeto = 'mover' | 'rotar' | 'escalar' | 'add';
 

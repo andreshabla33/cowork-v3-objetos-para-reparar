@@ -24,7 +24,7 @@ import React, { useCallback, useEffect, useMemo, useRef, Suspense } from 'react'
 import * as THREE from 'three';
 import { useGLTF } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
-import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
+import type { EspacioObjeto } from '@/modules/space3d/presentation/hooks/useEspacioObjetos';
 import { obtenerDimensionesObjetoRuntime } from '@/modules/space3d/presentation/scene/objetosRuntime';
 import { ObjetoEscena3D } from './ObjetoEscena3D';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';

@@ -19,7 +19,7 @@ import { MovingToRoomBanner } from '@/modules/space3d/presentation/scene/root/Mo
 import { VirtualSpace3DStatusOverlays } from '@/modules/space3d/presentation/scene/root/VirtualSpace3DStatusOverlays';
 import { useLiveKitVideoBackground, useLocalCameraTrack } from '@/modules/realtime-room';
 import type { LocalVideoTrack } from 'livekit-client';
-import { useRendererMetrics } from '@/hooks/space3d/useRendererMetrics';
+import { useRendererMetrics } from '@/modules/space3d/presentation/hooks/useRendererMetrics';
 import { SpatialAudio } from '@/modules/space3d/presentation/world/SpatialAudio';
 import { AdaptivePerformanceMonitor } from '@/modules/space3d/presentation/world/AdaptivePerformanceMonitor';
 import { isAdaptivePerformanceEnabled } from '@/core/infrastructure/r3f/ecs/avatarRenderPolicy';
@@ -30,13 +30,13 @@ import { EmoteWheel } from '@/modules/space3d/presentation/world/EmoteWheel';
 import { DayNightCycle } from '@/modules/space3d/presentation/world/DayNightCycle';
 import { hapticFeedback } from '@/core/infrastructure/platform/mobileDetect';
 import { GamificacionPanel } from '@/modules/games/presentation/GamificacionPanel';
-import { useSpace3D, useSpaceVideoHudLayoutSnapshot } from '@/hooks/space3d';
-import { useEspacioObjetos, type EspacioObjeto, type TransformacionObjetoInput } from '@/hooks/space3d/useEspacioObjetos';
-import { useHistorialEdicion } from '@/hooks/space3d/useHistorialEdicion';
-import { useOcupacionAsientos } from '@/hooks/space3d/useOcupacionAsientos';
-import { useWebGLContextRecovery } from '@/hooks/space3d/useWebGLContextRecovery';
-import { useSpace3DKeyboardShortcuts } from '@/hooks/space3d/useSpace3DKeyboardShortcuts';
-import { useFloorClickHandlers } from '@/hooks/space3d/useFloorClickHandlers';
+import { useSpace3D, useSpaceVideoHudLayoutSnapshot } from '@/modules/space3d/presentation/hooks';
+import { useEspacioObjetos, type EspacioObjeto, type TransformacionObjetoInput } from '@/modules/space3d/presentation/hooks/useEspacioObjetos';
+import { useHistorialEdicion } from '@/modules/space3d/presentation/hooks/useHistorialEdicion';
+import { useOcupacionAsientos } from '@/modules/space3d/presentation/hooks/useOcupacionAsientos';
+import { useWebGLContextRecovery } from '@/modules/space3d/presentation/hooks/useWebGLContextRecovery';
+import { useSpace3DKeyboardShortcuts } from '@/modules/space3d/presentation/hooks/useSpace3DKeyboardShortcuts';
+import { useFloorClickHandlers } from '@/modules/space3d/presentation/hooks/useFloorClickHandlers';
 import { obtenerEstadoUsuarioEcs } from '@/core/infrastructure/r3f/ecs/espacioEcs';
 // `setBroadcastSoundFunctions` eliminado: useBroadcast recibe ISoundBus
 // por inyección via container (plan 328c3152 #3).

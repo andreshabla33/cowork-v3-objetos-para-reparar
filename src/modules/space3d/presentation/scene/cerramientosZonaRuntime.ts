@@ -1,5 +1,5 @@
 import type { ZonaEmpresa } from '@/types';
-import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
+import type { EspacioObjeto } from '@/modules/space3d/presentation/hooks/useEspacioObjetos';
 import type { EstiloVisualArquitectonico } from '@/src/core/domain/entities/estilosVisualesArquitectonicos';
 import { resolverConfiguracionCerramientoZona, type LadoCerramientoZona } from '@/src/core/domain/entities/cerramientosZona';
 import type { ConfiguracionGeometricaObjeto, TipoMaterialArquitectonico } from '@/src/core/domain/entities/objetosArquitectonicos';

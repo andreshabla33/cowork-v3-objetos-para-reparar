@@ -23,7 +23,7 @@
  * @see src/core/domain/entities/espacio3d/InteraccionObjetoEntity.ts
  */
 
-import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
+import type { EspacioObjeto } from '@/modules/space3d/presentation/hooks/useEspacioObjetos';
 import type { AsientoRuntime3D } from '@/modules/space3d/presentation/scene/asientosRuntime';
 import {
   normalizarInteraccionConfig,

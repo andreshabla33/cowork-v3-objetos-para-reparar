@@ -15,7 +15,7 @@ import { VideoWithBackground } from '@/modules/realtime-room/presentation/VideoW
 import { GhostAvatar } from '@/modules/space3d/presentation/world/GhostAvatar';
 import { ZonaEmpresa as ZonaEmpresa3D } from '@/modules/space3d/presentation/world/ZonaEmpresa';
 import { Escritorio3D } from '@/modules/space3d/presentation/world/Escritorio3D';
-import type { EspacioObjeto, SpawnPersonal } from '@/hooks/space3d/useEspacioObjetos';
+import type { EspacioObjeto, SpawnPersonal } from '@/modules/space3d/presentation/hooks/useEspacioObjetos';
 import { DayNightCycle } from '@/modules/space3d/presentation/world/DayNightCycle';
 import { ObjetosInteractivos } from '@/modules/space3d/presentation/world/ObjetosInteractivos';
 import { ParticulasClima } from '@/modules/space3d/presentation/world/ParticulasClima';
@@ -40,11 +40,11 @@ import {
 import { esAnimacionAsiento, resolverAsientoUsuario, type AsientoRuntime3D } from './asientosRuntime';
 import { esPosicionTransitable, type ObstaculoColision3D } from './colisionesRuntime';
 import { resolverMovimientoConDeslizamiento } from './movimientoRuntime';
-import type { OcupacionAsientoReal } from '@/hooks/space3d/useOcupacionAsientos';
+import type { OcupacionAsientoReal } from '@/modules/space3d/presentation/hooks/useOcupacionAsientos';
 import { statusColors, STATUS_LABELS, type VirtualSpace3DProps } from './spaceTypes';
 import { Avatar, type AvatarProps } from './Avatar3DScene';
 import { TeleportEffect } from './Avatar3DScene';
-import { useSeatDetection } from '@/hooks/space3d/useSeatDetection';
+import { useSeatDetection } from '@/modules/space3d/presentation/hooks/useSeatDetection';
 
 const log = logger.child('Player3D');
 

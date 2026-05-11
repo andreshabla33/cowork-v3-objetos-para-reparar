@@ -14,7 +14,7 @@ import type { AnimationState } from '@/modules/avatar3d/presentation/shared';
 import { GhostAvatar } from '@/modules/space3d/presentation/world/GhostAvatar';
 import { ZonaEmpresa as ZonaEmpresa3D } from '@/modules/space3d/presentation/world/ZonaEmpresa';
 import { Escritorio3D } from '@/modules/space3d/presentation/world/Escritorio3D';
-import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
+import type { EspacioObjeto } from '@/modules/space3d/presentation/hooks/useEspacioObjetos';
 import { DayNightCycle } from '@/modules/space3d/presentation/world/DayNightCycle';
 import { ObjetosInteractivos } from '@/modules/space3d/presentation/world/ObjetosInteractivos';
 import { ParticulasClima } from '@/modules/space3d/presentation/world/ParticulasClima';

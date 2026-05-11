@@ -40,7 +40,7 @@ import {
   SpaceRealtimeCoordinator,
 } from '@/modules/realtime-room';
 import type { RemoteMediaLifecycleEvent } from '@/modules/realtime-room/application/RemoteMediaLifecycleDiagnostics';
-import type { RealtimePositionEntry } from '@/hooks/space3d/types';
+import type { RealtimePositionEntry } from '@/modules/space3d/presentation/hooks/types';
 
 const log = logger.child('useLiveKit-room-lifecycle');
 const IDLE_DISCONNECT_GRACE_MS = 60_000;

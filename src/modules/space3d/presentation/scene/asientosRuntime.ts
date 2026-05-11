@@ -27,7 +27,7 @@ export {
 // Mantenemos el wrapper aquí con las importaciones de presentación
 // hasta que los consumidores (Scene3D) migren al use case.
 
-import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
+import type { EspacioObjeto } from '@/modules/space3d/presentation/hooks/useEspacioObjetos';
 import {
   obtenerDimensionesObjetoRuntime,
   obtenerFactoresEscalaObjetoRuntime,

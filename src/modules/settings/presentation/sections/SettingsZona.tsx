@@ -32,7 +32,7 @@ import {
 } from '@/core/infrastructure/adapters/autorizacionesEmpresaFacade';
 import { generarLayoutZonas, detectarOverlaps, type EmpresaParaLayout, type ZonaGenerada, type LayoutConfig } from '@/core/domain/zonaLayoutEngine';
 import { FloorType, FLOOR_TYPE_LABELS, normalizarTipoSuelo } from '@/src/core/domain/entities';
-import { useConfiguracionPerimetro } from '@/hooks/space3d/useConfiguracionPerimetro';
+import { useConfiguracionPerimetro } from '@/modules/space3d/presentation/hooks/useConfiguracionPerimetro';
 import type { PerimeterWallStyle, PerimeterPolicy } from '@/src/core/domain/entities/espacio3d/ScenePolicy';
 
 interface EmpresaBasica {

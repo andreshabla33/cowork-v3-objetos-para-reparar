@@ -18,9 +18,9 @@ import { FantasmaColocacion3D, ObjetoEscena3D } from '@/modules/space3d/presenta
 import { ObjetosInstanciados } from '@/modules/space3d/presentation/world/ObjetosInstanciados';
 import { StaticObjectBatcher } from '@/modules/space3d/presentation/world/StaticObjectBatcher';
 import { BuiltinWallBatcher } from '@/modules/space3d/presentation/world/BuiltinWallBatcher';
-import { useSceneOptimization } from '@/hooks/space3d/useSceneOptimization';
-import type { EspacioObjeto, SpawnPersonal, TransformacionObjetoInput } from '@/hooks/space3d/useEspacioObjetos';
-import type { OcupacionAsientoReal } from '@/hooks/space3d/useOcupacionAsientos';
+import { useSceneOptimization } from '@/modules/space3d/presentation/hooks/useSceneOptimization';
+import type { EspacioObjeto, SpawnPersonal, TransformacionObjetoInput } from '@/modules/space3d/presentation/hooks/useEspacioObjetos';
+import type { OcupacionAsientoReal } from '@/modules/space3d/presentation/hooks/useOcupacionAsientos';
 import type { ObjetoPreview3D } from '@/types/objetos3d';
 import { DayNightCycle } from '@/modules/space3d/presentation/world/DayNightCycle';
 import { ObjetosInteractivos } from '@/modules/space3d/presentation/world/ObjetosInteractivos';
@@ -31,8 +31,8 @@ import { DEFAULT_SCENE_POLICY, resolveSkyColors, type ScenePolicy } from '@/src/
 import { generarParedesPerimetrales } from '@/src/core/application/usecases/GenerarParedesPerimetralesUseCase';
 import { ColocarObjetoUseCase } from '@/src/core/application/usecases/ColocarObjetoUseCase';
 import type { ObjetoColocable, Rayo } from '@/src/core/domain/entities/espacio3d/PlacementPolicy';
-import { useConfiguracionPerimetro } from '@/hooks/space3d/useConfiguracionPerimetro';
-import { useTerreno } from '@/hooks/space3d/useTerreno';
+import { useConfiguracionPerimetro } from '@/modules/space3d/presentation/hooks/useConfiguracionPerimetro';
+import { useTerreno } from '@/modules/space3d/presentation/hooks/useTerreno';
 import { Terrain3D } from './Terrain3D';
 import { EmoteSync, useSyncEffects } from '@/modules/space3d/presentation/world/EmoteSync';
 import { hapticFeedback, isMobileDevice } from '@/core/infrastructure/platform/mobileDetect';

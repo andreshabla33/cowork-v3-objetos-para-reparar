@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
+import type { EspacioObjeto } from '@/modules/space3d/presentation/hooks/useEspacioObjetos';
 import { GeometriaProceduralObjeto3D } from './GeometriaProceduralObjeto3D';
 import { obtenerDimensionesObjetoRuntime } from '@/modules/space3d/presentation/scene/objetosRuntime';
 
