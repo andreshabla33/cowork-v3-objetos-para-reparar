@@ -24,7 +24,7 @@ import type {
   AnimacionAvatarData,
 } from '@/src/core/domain/ports/IAvatarCatalogRepository';
 import type { CatalogoObjeto3D } from '@/types/objetos3d';
-import type { Avatar3DConfig } from '@/components/avatar3d/shared';
+import type { Avatar3DConfig } from '@/modules/avatar3d/presentation/shared';
 
 const log = logger.child('avatar-catalog');
 

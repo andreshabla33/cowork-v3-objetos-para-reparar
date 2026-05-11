@@ -16,9 +16,9 @@
  * - Presentation: InstancedAvatarRenderer.tsx (renderizado)
  */
 
-import type { AnimationState } from '@/components/avatar3d/shared';
+import type { AnimationState } from '@/modules/avatar3d/presentation/shared';
 import type { AvatarConfig } from '@/types';
-import type { Avatar3DConfig } from '@/components/avatar3d/shared';
+import type { Avatar3DConfig } from '@/modules/avatar3d/presentation/shared';
 import type { AvatarDisposeCallback, IAvatarResourceDisposer } from '@/src/core/domain/ports/IAvatarResourceDisposer';
 import { isPresencePositionSentinel } from '@/modules/realtime-room';
 

@@ -4,9 +4,9 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { User, PresenceStatus, ZonaEmpresa } from '@/types';
-import { GLTFAvatar } from '../avatar3d/GLTFAvatar';
-import type { AnimationState, AvatarAssetQuality, Avatar3DConfig } from '../avatar3d/shared';
-import { resolveAvatarModelUrl } from '../avatar3d/shared';
+import { GLTFAvatar } from '@/modules/avatar3d/presentation/GLTFAvatar';
+import type { AnimationState, AvatarAssetQuality, Avatar3DConfig } from '@/modules/avatar3d/presentation/shared';
+import { resolveAvatarModelUrl } from '@/modules/avatar3d/presentation/shared';
 import { GhostAvatar } from '../3d/GhostAvatar';
 import type { EspacioObjeto } from '@/hooks/space3d/useEspacioObjetos';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
@@ -45,7 +45,7 @@ import { AvatarLabels } from '../3d/AvatarLabels';
 import { CrowdInstances, type CrowdEntity } from './CrowdInstances';
 import { MidLodInstances, type MidLodEntity } from './MidLodInstances';
 import { InstancedAvatarRenderer } from '../3d/InstancedAvatarRenderer';
-import { DEFAULT_MODEL_URL } from '../avatar3d/shared';
+import { DEFAULT_MODEL_URL } from '@/modules/avatar3d/presentation/shared';
 import {
   IDLE_HERO_FRAMING,
   selectGameplayFraming,

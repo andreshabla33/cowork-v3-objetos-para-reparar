@@ -8,7 +8,7 @@
  * Without this sync, remote users receive avatar3DConfig=null.
  */
 import type { StateCreator } from 'zustand';
-import type { Avatar3DConfig } from '@/components/avatar3d/shared';
+import type { Avatar3DConfig } from '@/modules/avatar3d/presentation/shared';
 import type { User } from '@/types';
 
 export interface AvatarSlice {

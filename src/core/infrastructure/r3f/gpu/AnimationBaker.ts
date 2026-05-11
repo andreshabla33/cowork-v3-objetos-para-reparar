@@ -21,7 +21,7 @@
 
 import * as THREE from 'three';
 import { logger } from '@/core/infrastructure/observability/logger';
-import { remapAnimationTracks } from '@/components/avatar3d/rigUtils';
+import { remapAnimationTracks } from '@/modules/avatar3d/presentation/rigUtils';
 
 const log = logger.child('AnimationBaker');
 

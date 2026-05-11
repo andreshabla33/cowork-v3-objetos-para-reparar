@@ -10,7 +10,7 @@
  */
 
 import type { AvatarConfig } from '@/types';
-import type { Avatar3DConfig } from '@/components/avatar3d/shared';
+import type { Avatar3DConfig } from '@/modules/avatar3d/presentation/shared';
 import type { UserAvatarData } from './userDataLoader';
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { avatarCatalogRepository } from '@/src/core/infrastructure/adapters/AvatarCatalogSupabaseRepository';

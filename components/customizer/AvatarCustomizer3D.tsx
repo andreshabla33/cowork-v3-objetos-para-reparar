@@ -16,7 +16,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useGLTF } from '@react-three/drei';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import type { CatalogoObjeto3D } from '@/types/objetos3d';
-import { useAvatar3D } from '../avatar3d/useAvatar3D';
+import { useAvatar3D } from '@/modules/avatar3d/presentation/useAvatar3D';
 import { useAvatarCatalog } from '@/hooks/customizer/useAvatarCatalog';
 import { useProfileEditor } from '@/hooks/customizer/useProfileEditor';
 import { glass } from '@/styles/design-tokens';

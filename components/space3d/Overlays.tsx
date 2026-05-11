@@ -5,9 +5,9 @@ import { OrthographicCamera, PerspectiveCamera, Grid, Text, Html, PerformanceMon
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { User, PresenceStatus, ZonaEmpresa } from '@/types';
-import { GLTFAvatar } from '../avatar3d/GLTFAvatar';
-import { useAvatarControls } from '../avatar3d/useAvatarControls';
-import type { AnimationState } from '../avatar3d/shared';
+import { GLTFAvatar } from '@/modules/avatar3d/presentation/GLTFAvatar';
+import { useAvatarControls } from '@/modules/avatar3d/presentation/useAvatarControls';
+import type { AnimationState } from '@/modules/avatar3d/presentation/shared';
 import { VideoWithBackground } from '../VideoWithBackground';
 import { GhostAvatar } from '../3d/GhostAvatar';
 import { ZonaEmpresa as ZonaEmpresa3D } from '../3d/ZonaEmpresa';

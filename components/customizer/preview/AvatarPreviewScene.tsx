@@ -9,8 +9,8 @@
 
 import React from 'react';
 import { OrbitControls } from '@react-three/drei';
-import { GLTFAvatar } from '../../avatar3d/GLTFAvatar';
-import type { Avatar3DConfig } from '../../avatar3d/shared';
+import { GLTFAvatar } from '@/modules/avatar3d/presentation/GLTFAvatar';
+import type { Avatar3DConfig } from '@/modules/avatar3d/presentation/shared';
 
 interface AvatarPreviewSceneProps {
   avatarConfig: Avatar3DConfig | null;
