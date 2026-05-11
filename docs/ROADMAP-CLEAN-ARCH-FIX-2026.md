@@ -36,8 +36,25 @@
 | ITEM | Estado | Trabajo restante |
 |---|---|---|
 | **10** | 🟢 **EN CURSO** — Batch 1 cerrado 2026-05-09 (5 commits del usuario: `5534b42` + `8006f15` + `cd98047` + `5346440` + `280dda5`) | 51 archivos `hooks/` restantes. Batch 2 sugerido: `hooks/auth/` (riesgo bajo) |
-| **11** | ⏸ SIN TOCAR | strangler fig components/ — **228 archivos** legacy → src/modules/<feature>/. Multi-sesión obligatoria |
+| **11** | 🟢 **EN CURSO** — Batches 1+2 cerrados 2026-05-09 (`bf33970` + `305a7a2`) | 222 archivos `components/` restantes |
 | 19 (cierre) | ⏸ Pendiente | Eliminar carpetas `store/`, `hooks/`, `components/` enteras (post 10/11) |
+
+**ITEM 11 Batch 1 (cerrado `bf33970`)** — 5 huérfanos eliminados en components/ raíz (1.867L):
+- `MeetingRooms.tsx` (514L) — substituido por meetings/videocall/MeetingRoom*.tsx
+- `Navbar.tsx` (127L) — vestigio pre-WorkspaceLayout
+- `VibenAssistant.tsx` (357L) — substituido por MonicaDockInline
+- `VirtualSpace.tsx` (852L) — VirtualSpace 2D legacy (sin consumers, VirtualSpace3D activo)
+- `WorkspaceCreator.tsx` (17L) — stub vacío
+
+**ITEM 11 Batch 2 (cerrado `305a7a2`)** — shim AvatarCustomizer3D eliminado:
+- `components/AvatarCustomizer3D.tsx` (10L shim re-export) → eliminado
+- 2 consumers actualizados a `@/components/customizer/AvatarCustomizer3D` directo (lazy import + static import)
+
+**Próximos Batches sugeridos (en orden de riesgo creciente)**:
+- Batch 3: archivos sueltos top-level con 1 consumer (ForgotPasswordScreen, ResetPasswordScreen, PantallaAccesoRecuperacionContrasena → `src/modules/user/presentation/`)
+- Batch 4: subdirs pequeños aislados (`media/`, `invitation/`, `invitaciones/` → migrar enteros)
+- Batch 5+: subdirs medianos (`avatar3d/`, `layout/`, `chat/`, `onboarding/`, `marketplace/`)
+- Batch final: subdirs grandes (`meetings/` con 60 archivos, `space3d/`, `3d/`, `settings/`)
 
 **ITEM 10 Batch 1 (cerrado por el usuario 2026-05-09)**:
 - `hooks/useIdleDetection.ts` (84L) → `src/modules/presence/presentation/useIdleDetection.ts` (move + compat shim, 1 consumer)
@@ -53,7 +70,7 @@
 | `modules/` | ✅ ELIMINADA | 0 |
 | `store/` | 🟡 1 archivo | `gameStore.ts` (bloqueado por ITEM 11) |
 | `hooks/` | 🟡 **54 archivos** (-2 vs estado pre-Batch 1) | ITEM 10 en curso |
-| `components/` | 🟡 228 archivos | Pendiente ITEM 11 (XL) |
+| `components/` | 🟡 **222 archivos** (-6 vs estado pre-Batch 1+2) | ITEM 11 en curso |
 
 ### Validación end-to-end
 
