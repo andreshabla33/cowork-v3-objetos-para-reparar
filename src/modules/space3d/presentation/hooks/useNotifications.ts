@@ -90,7 +90,7 @@ export function useNotifications(params: UseNotificationsParams): UseNotificatio
   // Suscripción realtime a notificaciones del usuario
   useEffect(() => {
     if (!session?.user?.id) return;
-    return recordingRepository.suscribirNotificacionesUsuario(session.user.id, (nueva) => {
+    return recordingRepository.suscribirNotificacionesUsuario(session.user.id, 'workspace-notif', (nueva) => {
       if (activeWorkspace?.id && nueva.espacio_id && nueva.espacio_id !== activeWorkspace.id) return;
       const notif = nueva as { id?: string; tipo: string; titulo?: string | null; mensaje?: string; espacio_id: string; datos_extra: unknown };
       setNotificacionAutorizacion({

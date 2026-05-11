@@ -781,12 +781,25 @@ class RecordingSupabaseRepository implements IRecordingRepository {
     if (error) throw error;
   }
 
+  /**
+   * Suscribirse a INSERTs en `notificaciones` filtrados por usuario.
+   *
+   * @param usuarioId — usuario a observar
+   * @param scope — identifica al consumer (e.g. 'consentimiento-pendiente',
+   *   'workspace-notif'). REQUERIDO para que cada consumer tenga su propio
+   *   channel y evitar colisiones del tipo "cannot add postgres_changes
+   *   callbacks after subscribe()". Ref doc oficial:
+   *   https://supabase.com/docs/guides/realtime/postgres-changes
+   *   "Each consumer can create their own independent channel."
+   * @param callback — invocado por cada nueva notificación
+   */
   suscribirNotificacionesUsuario(
     usuarioId: string,
+    scope: string,
     callback: (notif: { tipo: string; leida: boolean; entidad_id: string; espacio_id: string; titulo: string | null; datos_extra: unknown }) => void,
   ): () => void {
     const channel = supabase
-      .channel(`consentimiento_${usuarioId}`)
+      .channel(`notif:${scope}:${usuarioId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',

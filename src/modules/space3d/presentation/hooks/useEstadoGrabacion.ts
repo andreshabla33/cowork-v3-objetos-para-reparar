@@ -34,7 +34,7 @@ export function useEstadoGrabacion(
   // Escuchar notificaciones de consentimiento aceptado (para el grabador)
   useEffect(() => {
     if (!sessionUserId) return;
-    return recordingRepository.suscribirNotificacionesUsuario(sessionUserId, (notif) => {
+    return recordingRepository.suscribirNotificacionesUsuario(sessionUserId, 'consentimiento-respuesta-grabador', (notif) => {
       if (notif.tipo === 'consentimiento_respuesta' && (notif.titulo as string | null)?.includes('Aceptado')) {
         log.info('✅ Consentimiento aceptado por el evaluado');
         setConsentimientoAceptado(true);

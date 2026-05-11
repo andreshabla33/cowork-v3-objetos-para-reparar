@@ -98,7 +98,7 @@ export const ConsentimientoPendiente: React.FC<ConsentimientoPendienteProps> = (
     cargarSolicitudesPendientes();
 
     // Realtime subscription handles all subsequent notifications
-    return recordingRepository.suscribirNotificacionesUsuario(session.user.id, async (notif) => {
+    return recordingRepository.suscribirNotificacionesUsuario(session.user.id, 'consentimiento-pendiente', async (notif) => {
       if (notif.tipo !== 'consentimiento_grabacion' || notif.leida) return;
       if (solicitudRef.current?.grabacion_id === notif.entidad_id || lastSolicitudIdRef.current === notif.entidad_id) {
         return;
