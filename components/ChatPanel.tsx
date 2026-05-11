@@ -11,11 +11,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useChatPanel } from '../hooks/chat/useChatPanel';
-import { ChatSidebarContent } from './chat/ChatSidebarContent';
-import { ChatThreadPanel } from './chat/ChatThreadPanel';
-import { ChatMembersPanel } from './chat/ChatMembersPanel';
-import { MessageContent } from './chat/MessageContent';
-import { AgregarMiembros } from './chat/AgregarMiembros';
+import { ChatSidebarContent } from '@/modules/chat/presentation/ChatSidebarContent';
+import { ChatThreadPanel } from '@/modules/chat/presentation/ChatThreadPanel';
+import { ChatMembersPanel } from '@/modules/chat/presentation/ChatMembersPanel';
+import { MessageContent } from '@/modules/chat/presentation/MessageContent';
+import { AgregarMiembros } from '@/modules/chat/presentation/AgregarMiembros';
 import { ChatToast } from './ChatToast';
 import { UserAvatar } from './UserAvatar';
 import type { ChatGroup } from '../types';
