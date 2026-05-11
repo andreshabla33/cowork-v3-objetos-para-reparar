@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
-import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
+import { miembrosEspacioRepository } from '@/core/infrastructure/adapters/MiembrosEspacioSupabaseRepository';
 import { invitacionRepository } from '@/src/core/infrastructure/adapters/InvitacionSupabaseRepository';
 import { Role } from '@/types';
 import { ModalInvitarUsuario } from '@/modules/invitation/presentation/ModalInvitarUsuario';
@@ -38,24 +38,16 @@ export const MiembrosView: React.FC = () => {
  if (!activeWorkspace) return;
  setLoading(true);
  try {
- const { data: mData } = await supabase
- .from('miembros_espacio')
- .select('*, usuario:usuarios(*), departamento:departamentos(*), cargo_ref:cargos!cargo_id(nombre, clave)')
- .eq('espacio_id', activeWorkspace.id)
- .eq('aceptado', true);
- 
- const { data: iData } = await supabase
- .from('invitaciones_pendientes')
- .select('*')
- .eq('espacio_id', activeWorkspace.id)
- .eq('usada', false);
-
- setMiembros(mData || []);
- setInvitaciones(iData || []);
+ const [mData, iData] = await Promise.all([
+ miembrosEspacioRepository.listarMiembrosAceptados(activeWorkspace.id),
+ miembrosEspacioRepository.listarInvitacionesPendientes(activeWorkspace.id),
+ ]);
+ setMiembros(mData);
+ setInvitaciones(iData);
 
  // Obtener cargo del usuario actual
  if (session?.user?.id) {
- const miMiembro = mData?.find((m: any) => m.usuario_id === session.user.id);
+ const miMiembro = mData.find((m: any) => m.usuario_id === session.user.id);
  const clave = miMiembro?.cargo_ref?.clave || miMiembro?.cargo;
  setCargoUsuario(clave || null);
  }
@@ -71,15 +63,9 @@ export const MiembrosView: React.FC = () => {
  const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate()).toISOString();
  const inicioSemana = new Date(ahora.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
- const { data } = await supabase
- .from('registro_conexiones')
- .select('usuario_id, conectado_en, desconectado_en, duracion_minutos')
- .eq('espacio_id', activeWorkspace.id)
- .gte('conectado_en', inicioSemana);
-
- if (data) {
+ const data = await miembrosEspacioRepository.listarConexionesDesde(activeWorkspace.id, inicioSemana);
  const map: Record<string, { hoy: number; semana: number; conectado: boolean }> = {};
- data.forEach((r: any) => {
+ data.forEach((r) => {
  if (!map[r.usuario_id]) map[r.usuario_id] = { hoy: 0, semana: 0, conectado: false };
  const mins = r.duracion_minutos || (r.desconectado_en ? 0 : Math.floor((ahora.getTime() - new Date(r.conectado_en).getTime()) / 60000));
  if (new Date(r.conectado_en) >= new Date(inicioHoy)) map[r.usuario_id].hoy += mins;
@@ -87,7 +73,6 @@ export const MiembrosView: React.FC = () => {
  if (!r.desconectado_en) map[r.usuario_id].conectado = true;
  });
  setConexiones(map);
- }
  };
 
  useEffect(() => { fetchData(); }, [activeWorkspace]);
