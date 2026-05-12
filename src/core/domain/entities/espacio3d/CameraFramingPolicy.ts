@@ -148,6 +148,22 @@ export const ISOMETRIC_MIN_ZOOM = 5;
 export const ISOMETRIC_MAX_ZOOM = 18;
 
 /**
+ * Tiempo sin interacción manual con OrbitControls (drag / wheel / pinch) para
+ * disparar auto-return al framing isométrico default. Si el usuario hizo zoom
+ * y se alejó/acercó del default, tras este idle la cámara vuelve sola — UX
+ * resiliente para usuarios que no saben cómo restaurar la vista.
+ *
+ * 2500ms = balance: lo bastante largo para no interrumpir mientras el usuario
+ * sigue mirando algo zoomeado, lo bastante corto para que el retorno se
+ * sienta automático tras soltar el mouse.
+ *
+ * Ref: Unity Cinemachine FreeLook `RecenterToTargetHeading.m_WaitTime` —
+ * pattern canónico de auto-recenter en third-person cameras.
+ * https://docs.unity3d.com/Packages/com.unity.cinemachine@2.10/manual/CinemachineFreeLook.html
+ */
+export const ZOOM_RETURN_IDLE_MS = 2500;
+
+/**
  * Overview para modo dibujo/colocación de zonas y plantillas. Cámara alta
  * y alejada en ángulo isométrico suave, target en el piso del centro del
  * grid. Usado cuando `isDrawingZone` o `plantillaZonaEnColocacion` están

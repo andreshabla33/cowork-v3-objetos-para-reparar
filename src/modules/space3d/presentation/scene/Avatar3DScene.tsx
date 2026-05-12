@@ -56,6 +56,7 @@ import {
   TRANSITION_TO_MOVING_MS,
   DRAWING_OVERVIEW_FRAMING,
   TRANSITION_TO_DRAWING_MS,
+  ZOOM_RETURN_IDLE_MS,
   type CameraMode,
 } from '@/src/core/domain/entities/espacio3d/CameraFramingPolicy';
 
@@ -889,7 +890,15 @@ export const CameraFollow: React.FC<{
   isEditMode?: boolean;
   /** Centro del terreno en world coords — usado como target durante overview. */
   terrainCenter?: { x: number; z: number };
-}> = ({ controlsRef, cameraMode = 'isometric', zonasEmpresa = [], empresaId = null, espacioObjetos = [], usersInCallIds, usersInAudioRangeIds, followTargetId = null, getFollowTargetPosition, gpuRenderConfig, cameraShoulderMode = 'center', isInDrawingMode = false, isEditMode = false, terrainCenter }) => {
+  /**
+   * Timestamp (ms) de la última interacción manual con OrbitControls. Lo
+   * actualiza `Scene3D` desde los callbacks `onStart`/`onEnd`. Cuando han
+   * pasado `ZOOM_RETURN_IDLE_MS` desde ese timestamp y la cámara está en
+   * modo isometric, el chase-cam la regresa al framing default (auto-recenter
+   * canónico tipo Unity Cinemachine FreeLook).
+   */
+  userInteractionTimestampRef?: React.MutableRefObject<number>;
+}> = ({ controlsRef, cameraMode = 'isometric', zonasEmpresa = [], empresaId = null, espacioObjetos = [], usersInCallIds, usersInAudioRangeIds, followTargetId = null, getFollowTargetPosition, gpuRenderConfig, cameraShoulderMode = 'center', isInDrawingMode = false, isEditMode = false, terrainCenter, userInteractionTimestampRef }) => {
   const { camera, scene } = useThree();
   const baseFovRef = useRef<number | null>(null);
 
@@ -1148,6 +1157,29 @@ export const CameraFollow: React.FC<{
       cameraTargetHeight = THREE.MathUtils.lerp(cameraTargetHeight, IDLE_HERO_FRAMING.targetHeight, b);
     }
 
+    // ─── Auto-return al framing isométrico tras zoom manual ──────────────
+    // Si el usuario hizo zoom in/out (drag o wheel) y se alejó del default,
+    // tras `ZOOM_RETURN_IDLE_MS` sin nueva interacción la cámara regresa al
+    // framing canónico. Mismo pattern que Cinemachine FreeLook m_RecenterTime.
+    //
+    // Solo aplica en modo isometric (free tiene chase-cam rotativo que ya
+    // tiene su propia lógica). Y no durante drawing / edit / interior /
+    // follow remoto (cada uno ya gobierna el framing por su cuenta).
+    const lastInteractAt = userInteractionTimestampRef?.current ?? 0;
+    const sinceInteractionMs = lastInteractAt > 0 ? Date.now() - lastInteractAt : Number.POSITIVE_INFINITY;
+    const zoomReturnActive = isIsometric
+      && !isFollowing
+      && !usarVistaInterior
+      && !isInDrawingMode
+      && !isEditMode
+      && sinceInteractionMs >= ZOOM_RETURN_IDLE_MS;
+
+    if (zoomReturnActive) {
+      cameraDistance = ISOMETRIC_FRAMING.distance;
+      cameraHeight = ISOMETRIC_FRAMING.height;
+      cameraTargetHeight = ISOMETRIC_FRAMING.targetHeight;
+    }
+
     controls.enabled = !isDragging;
     controls.minDistance = usarVistaInterior ? 1.05 : 1.1;
     controls.maxDistance = usarVistaInterior ? Math.max(cameraDistance + 1.1, 3.2) : 50;
@@ -1251,12 +1283,15 @@ export const CameraFollow: React.FC<{
 
     controls.target.y = THREE.MathUtils.lerp(controls.target.y, cameraTargetHeight, smoothing);
 
-    // Pull-in activo: dentro de recintos compactos (siempre) o durante el
-    // blend hero-idle (fuera de interior y sin follow). El blend lerpea
-    // `cameraDistance/Height/TargetHeight` hacia IDLE_HERO_FRAMING, pero
-    // OrbitControls no mueve camera.position.y ni la radial automáticamente
-    // — hay que tirarla activamente aquí (pattern Cinemachine dolly).
-    const pullInActive = usarVistaInterior || (!isFollowing && idleBlendRef.current > 0.01);
+    // Pull-in activo: dentro de recintos compactos (siempre), durante el
+    // blend hero-idle (fuera de interior y sin follow), o durante el
+    // auto-return al framing isométrico tras zoom manual. El blend / auto-
+    // return reasignan `cameraDistance/Height/TargetHeight`, pero OrbitControls
+    // no mueve camera.position.y ni la radial automáticamente — hay que
+    // tirarla activamente aquí (pattern Cinemachine dolly).
+    const pullInActive = usarVistaInterior
+      || (!isFollowing && idleBlendRef.current > 0.01)
+      || zoomReturnActive;
 
     if (pullInActive && distanciaHorizontalActual > cameraDistance + 0.08) {
       const factorDistancia = cameraDistance / distanciaHorizontalActual;

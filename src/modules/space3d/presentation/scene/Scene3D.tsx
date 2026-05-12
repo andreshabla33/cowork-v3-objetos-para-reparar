@@ -1117,7 +1117,13 @@ export const Scene: React.FC<SceneProps> = ({
   const orbitDprBaseRef = useRef<number | null>(null);
   const orbitRestoreTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Timestamp de la última interacción manual con la cámara (drag/wheel/pinch).
+  // CameraFollow lo consume para disparar auto-return al framing default tras
+  // ZOOM_RETURN_IDLE_MS de inactividad — ver CameraFramingPolicy.
+  const userInteractionTimestampRef = useRef<number>(0);
+
   const handleOrbitStart = useCallback(() => {
+    userInteractionTimestampRef.current = Date.now();
     if (!setAdaptiveDpr || adaptiveDpr === undefined || minDpr === undefined) return;
     if (orbitRestoreTimeoutRef.current) {
       clearTimeout(orbitRestoreTimeoutRef.current);
@@ -1132,6 +1138,9 @@ export const Scene: React.FC<SceneProps> = ({
   }, [adaptiveDpr, minDpr, setAdaptiveDpr]);
 
   const handleOrbitEnd = useCallback(() => {
+    // Resetea el timestamp al MOMENTO del soltar — el idle timer empieza a
+    // contar desde aquí, no desde el inicio del drag.
+    userInteractionTimestampRef.current = Date.now();
     if (!setAdaptiveDpr) return;
     if (orbitRestoreTimeoutRef.current) clearTimeout(orbitRestoreTimeoutRef.current);
     orbitRestoreTimeoutRef.current = setTimeout(() => {
@@ -1537,6 +1546,7 @@ export const Scene: React.FC<SceneProps> = ({
         isInDrawingMode={isDrawingZone || isDraggingPlantillaZona || !!plantillaZonaEnColocacion}
         isEditMode={isEditMode}
         terrainCenter={{ x: terrainBounds.centerX, z: terrainBounds.centerZ }}
+        userInteractionTimestampRef={userInteractionTimestampRef}
       />
 
       {/* Usuarios remotos */}
