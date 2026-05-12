@@ -28,8 +28,10 @@ import { InyectorPlantillaZona } from '../infrastructure/adapters/InyectorPlanti
 import { RepositorioPlantillaZonaSupabase } from '../infrastructure/adapters/RepositorioPlantillaZonaSupabaseAdapter';
 import { ToastEmitterAdapter } from '../infrastructure/adapters/ToastEmitterAdapter';
 import { WebAudioSoundAdapter } from '../infrastructure/adapters/WebAudioSoundAdapter';
+import { RecastNavigationAdapter } from '../infrastructure/r3f/navigation/RecastNavigationAdapter';
 import type { INotificationBus } from '../domain/ports/INotificationBus';
 import type { ISoundBus } from '../domain/ports/ISoundBus';
+import type { INavigationService } from '../domain/ports/INavigationService';
 
 // ─── Contrato público ─────────────────────────────────────────────────────────
 
@@ -41,6 +43,12 @@ export interface ApplicationServices {
   readonly notifications: INotificationBus;
   /** Port para reproducir efectos de sonido del espacio 3D. */
   readonly sounds: ISoundBus;
+  /**
+   * Port para pathfinding/obstacle avoidance. Impl canónica:
+   * `RecastNavigationAdapter` (WASM). Consumir vía `useNavigation` hook,
+   * nunca importar el adapter directamente desde Module/Presentation.
+   */
+  readonly navigation: INavigationService;
 }
 
 // ─── Container ────────────────────────────────────────────────────────────────
@@ -58,6 +66,7 @@ class ApplicationServicesContainerImpl implements ApplicationServices {
   private _inyectorPlantilla: InyectorPlantillaZona | null = null;
   private _notifications: INotificationBus | null = null;
   private _sounds: ISoundBus | null = null;
+  private _navigation: INavigationService | null = null;
 
   get aplicarPlantillaZona(): AplicarPlantillaZonaUseCase {
     if (!this._aplicarPlantillaZona) {
@@ -97,6 +106,13 @@ class ApplicationServicesContainerImpl implements ApplicationServices {
       this._sounds = new WebAudioSoundAdapter();
     }
     return this._sounds;
+  }
+
+  get navigation(): INavigationService {
+    if (!this._navigation) {
+      this._navigation = new RecastNavigationAdapter();
+    }
+    return this._navigation;
   }
 
   private get repositorioPlantilla(): RepositorioPlantillaZonaSupabase {
