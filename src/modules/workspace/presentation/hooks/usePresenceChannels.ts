@@ -68,6 +68,24 @@ const CHANNEL_RETRY_BASE_MS = 3_000;
 const DEAD_CHANNEL_STATES = new Set(['closed']);
 
 /**
+ * FIX 2026-05-12: persistent errored channel purge threshold.
+ *
+ * Problema observado en logs producción: el global discovery channel queda
+ * en `errored` loop infinito (TIMED_OUT cada ~12s) cuando el subscribe
+ * inicial nunca llega a SUBSCRIBED. El rejoinTimer interno reintenta para
+ * siempre pero nunca promueve a 'closed' → health-check (que solo purga
+ * 'closed') no lo detecta nunca → log spam + funcionalidad degradada.
+ *
+ * rejoinTimer schedule oficial realtime-js: [1, 2, 5, 10] segundos (4 intentos
+ * = ~18s para agotarse). 20s = 4 intentos + buffer → si tras 20s sigue en
+ * errored, el rejoinTimer no va a recuperar solo. Purgar y recrear.
+ *
+ * Ref: realtime-js RealtimeChannel.rejoinTimer config
+ * Ref: https://github.com/orgs/supabase/discussions/27513
+ */
+const ERRORED_CHANNEL_PURGE_THRESHOLD_MS = 20_000;
+
+/**
  * FIX 2026-05-12 ghost user mitigation — stale-presence threshold.
  *
  * Supabase Presence depende de heartbeat (25s) + timeout server-side (~30-60s)
@@ -171,6 +189,14 @@ export function usePresenceChannels({
    *      transition synchronously via stateChangeCallbacks.
    */
   const removingChannelsRef = useRef<Set<string>>(new Set());
+  /**
+   * Timestamp del primer CHANNEL_ERROR/TIMED_OUT por canal. Usado por
+   * `checkChannelHealth` para detectar channels atascados en errored loop
+   * (rejoinTimer interno falla repetidamente sin promover a 'closed').
+   * Se limpia cuando el canal alcanza SUBSCRIBED.
+   * FIX 2026-05-12 — ver `ERRORED_CHANNEL_PURGE_THRESHOLD_MS`.
+   */
+  const firstErroredAtRef = useRef<Map<string, number>>(new Map());
   const prevOnlineUsersRef = useRef<Set<string>>(new Set());
   const lastNotificationRef = useRef<Map<string, number>>(new Map());
   const userRef = useRef(currentUser);
@@ -610,6 +636,7 @@ export function usePresenceChannels({
         .subscribe(async (status: string) => {
           if (status === 'SUBSCRIBED') {
             retryCountRef.current = 0; // Reset backoff on success
+            firstErroredAtRef.current.delete(globalChannelName);
             await trackPresenceEnCanal(channel, 'empresa');
             log.info('Global empresa discovery channel subscribed', {
               channelName: globalChannelName,
@@ -632,19 +659,23 @@ export function usePresenceChannels({
             });
             safeRemoveChannel(channel, globalChannelName);
             globalChannelRef.current = null;
+            firstErroredAtRef.current.delete(globalChannelName);
             scheduleChannelRetry();
-          } else if (status === 'CHANNEL_ERROR') {
-            // Transient: trust the rejoinTimer. Health-check will promote
-            // to CLOSED and purge only if the channel never recovers.
-            log.debug('Global discovery channel CHANNEL_ERROR — trusting rejoinTimer', {
-              channelName: globalChannelName,
-            });
-          } else if (status === 'TIMED_OUT') {
-            // Supabase's rejoinTimer handles TIMED_OUT automatically.
-            // Log for diagnostics; if it persists, checkChannelHealth will catch it.
-            log.warn('Global discovery channel TIMED_OUT — awaiting auto-rejoin', {
-              channelName: globalChannelName,
-            });
+          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            // Transient: trust the rejoinTimer. checkChannelHealth promueve
+            // a purge si el canal queda atascado >ERRORED_CHANNEL_PURGE_THRESHOLD_MS.
+            if (!firstErroredAtRef.current.has(globalChannelName)) {
+              firstErroredAtRef.current.set(globalChannelName, Date.now());
+            }
+            if (status === 'TIMED_OUT') {
+              log.warn('Global discovery channel TIMED_OUT — awaiting auto-rejoin', {
+                channelName: globalChannelName,
+              });
+            } else {
+              log.debug('Global discovery channel CHANNEL_ERROR — trusting rejoinTimer', {
+                channelName: globalChannelName,
+              });
+            }
           }
         });
 
@@ -696,6 +727,7 @@ export function usePresenceChannels({
           })
           .subscribe(async (status: string) => {
             if (status === 'SUBSCRIBED') {
+              firstErroredAtRef.current.delete(canalNombre);
               await trackPresenceEnCanal(channel, nivelDetalle);
             } else if (status === 'CLOSED') {
               // Re-entrancy guard: removeChannel() synchronously triggers
@@ -708,11 +740,17 @@ export function usePresenceChannels({
               });
               safeRemoveChannel(channel, canalNombre);
               presenceChannelsRef.current.delete(canalNombre);
+              firstErroredAtRef.current.delete(canalNombre);
               scheduleChannelRetry();
-            } else if (status === 'CHANNEL_ERROR') {
+            } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
               // Transient: RealtimeChannel.rejoinTimer handles it.
-              // Health-check escalates to CLOSED if it never recovers.
-              log.debug('Chunk channel CHANNEL_ERROR — trusting rejoinTimer', {
+              // checkChannelHealth promueve a purge si queda atascado
+              // >ERRORED_CHANNEL_PURGE_THRESHOLD_MS.
+              if (!firstErroredAtRef.current.has(canalNombre)) {
+                firstErroredAtRef.current.set(canalNombre, Date.now());
+              }
+              log.debug('Chunk channel transient error — trusting rejoinTimer', {
+                status,
                 channelName: canalNombre,
               });
             }
@@ -861,15 +899,45 @@ export function usePresenceChannels({
    */
   const checkChannelHealth = useCallback((): void => {
     let purgedCount = 0;
+    const now = Date.now();
+
+    /**
+     * Decide si un canal debe purgarse:
+     *   - `closed`: siempre purgar (no tiene rejoinTimer)
+     *   - `errored`: purgar si lleva > ERRORED_CHANNEL_PURGE_THRESHOLD_MS atascado
+     *     (el rejoinTimer interno agotó su backoff de 1+2+5+10s = 18s)
+     * FIX 2026-05-12: el global discovery channel quedaba en errored loop
+     * infinito (TIMED_OUT cada ~12s sin recuperar). Sin esta lógica, el
+     * health-check solo purgaba `closed` → nunca se recuperaba.
+     */
+    const debePurgarse = (canalNombre: string, state: string): boolean => {
+      if (DEAD_CHANNEL_STATES.has(state)) return true;
+      if (state === 'errored') {
+        const firstErroredAt = firstErroredAtRef.current.get(canalNombre);
+        if (firstErroredAt && now - firstErroredAt > ERRORED_CHANNEL_PURGE_THRESHOLD_MS) {
+          return true;
+        }
+      }
+      return false;
+    };
 
     // Check global discovery channel
     if (globalChannelRef.current) {
-      const globalName = `global-empresa-discovery`;
+      // Usar el channel name canónico del Map (NOT 'global-empresa-discovery'
+      // hardcoded — bug previo: el key del tracking Map no matcheaba).
+      const globalName = globalChannelRef.current.topic;
       const state = globalChannelRef.current.state;
-      if (DEAD_CHANNEL_STATES.has(state)) {
-        log.warn('Health check: global discovery channel dead', { state });
+      if (debePurgarse(globalName, state)) {
+        log.warn('Health check: global discovery channel dead — purging', {
+          state,
+          channelName: globalName,
+          erroredDurationMs: firstErroredAtRef.current.has(globalName)
+            ? now - (firstErroredAtRef.current.get(globalName) ?? now)
+            : 0,
+        });
         safeRemoveChannel(globalChannelRef.current, globalName);
         globalChannelRef.current = null;
+        firstErroredAtRef.current.delete(globalName);
         purgedCount++;
       }
     }
@@ -880,16 +948,23 @@ export function usePresenceChannels({
     const deadChannels: Array<[string, RealtimeChannel]> = [];
     presenceChannelsRef.current.forEach(
       (channel: RealtimeChannel, canalNombre: string) => {
-        if (DEAD_CHANNEL_STATES.has(channel.state)) {
+        if (debePurgarse(canalNombre, channel.state)) {
           deadChannels.push([canalNombre, channel]);
         }
       },
     );
 
     for (const [canalNombre, channel] of deadChannels) {
-      log.warn('Health check: chunk channel dead', { channelName: canalNombre, state: channel.state });
+      log.warn('Health check: chunk channel dead — purging', {
+        channelName: canalNombre,
+        state: channel.state,
+        erroredDurationMs: firstErroredAtRef.current.has(canalNombre)
+          ? now - (firstErroredAtRef.current.get(canalNombre) ?? now)
+          : 0,
+      });
       safeRemoveChannel(channel, canalNombre);
       presenceChannelsRef.current.delete(canalNombre);
+      firstErroredAtRef.current.delete(canalNombre);
       purgedCount++;
     }
 
@@ -968,6 +1043,7 @@ export function usePresenceChannels({
       globalChannelRef.current = null;
     }
     prevOnlineUsersRef.current = new Set();
+    firstErroredAtRef.current.clear();
   }, [safeRemoveChannel]);
 
   return {
