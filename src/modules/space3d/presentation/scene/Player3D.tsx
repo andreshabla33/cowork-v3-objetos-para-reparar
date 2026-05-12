@@ -127,6 +127,17 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
    * computaría el path desde una posición incorrecta.
    */
   const lastManualSyncRef = useRef(0);
+  /**
+   * Flag para hacer teleportAgent inicial una vez que el agente está
+   * registrado. El agente nace en pos sentinel (0,0); este sync inicial
+   * le da la pose real para que el primer click-to-move no compute
+   * el path desde (0,0).
+   */
+  const agentInitialSyncDoneRef = useRef(false);
+  // Reset del flag cuando cambia el agentId (re-build del navmesh, etc.)
+  useEffect(() => {
+    agentInitialSyncDoneRef.current = false;
+  }, [navigationAgentId]);
   const empresasAuthRef = useRef(empresasAutorizadas);
   const asientosRef = useRef(asientos);
   const ocupacionesAsientosRef = useRef(ocupacionesAsientosPorObjetoId);
@@ -888,6 +899,18 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     const previousZ = positionRef.current.z;
     let movedThisFrame = false;
 
+    // Sync inicial del agente recast con la pose real una vez que el agente
+    // está disponible. Sin esto, el agente nace en (0,0) sentinel y el
+    // primer click-to-move computa path desde el punto equivocado.
+    if (
+      navigationService && navigationAgentId && navigationReady &&
+      !agentInitialSyncDoneRef.current &&
+      Number.isFinite(positionRef.current.x) && Number.isFinite(positionRef.current.z)
+    ) {
+      navigationService.teleportAgent(navigationAgentId, positionRef.current);
+      agentInitialSyncDoneRef.current = true;
+    }
+
     // PR-1: Leer isRunningRef.current en lugar de la variable de closure 'isRunning'
     // Evita el problema de stale closure donde el frame captura el valor de isRunning
     // al momento de montaje, no el valor actual.
@@ -1095,8 +1118,11 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
           lastDispatchedMoveTargetRef.current = { x: tx, z: tz };
         }
         // Leer pose interpolada del crowd agent — ya viene avoidance-aware.
+        // El adapter ya filtra NaN devolviendo null, pero defendemos otra
+        // vez aquí: positionRef alimenta SpatialAudio y un NaN crashea
+        // AudioParam (bug 2026-05-12).
         const pose = navigationService.getAgentPose(navigationAgentId);
-        if (pose) {
+        if (pose && Number.isFinite(pose.position.x) && Number.isFinite(pose.position.z)) {
           autoMoveTimeRef.current += delta;
           const isAutoRunning = autoMoveTimeRef.current > 0.4;
           positionRef.current.x = pose.position.x;

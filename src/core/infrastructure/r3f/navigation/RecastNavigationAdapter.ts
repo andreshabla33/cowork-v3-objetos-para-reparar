@@ -270,6 +270,17 @@ export class RecastNavigationAdapter implements INavigationService {
     if (!record) return null;
     const pos = record.agent.position();
     const vel = record.agent.velocity();
+
+    // Defensa contra NaN: recast puede retornar non-finite si el agente
+    // está fuera del navmesh o en un estado interno raro. Sin esta guarda,
+    // los NaN propagan a positionRef → SpatialAudio AudioParam crash.
+    if (
+      !Number.isFinite(pos.x) || !Number.isFinite(pos.z) ||
+      !Number.isFinite(vel.x) || !Number.isFinite(vel.z)
+    ) {
+      return null;
+    }
+
     const speedSq = vel.x * vel.x + vel.z * vel.z;
     return {
       position: { x: pos.x, z: pos.z },

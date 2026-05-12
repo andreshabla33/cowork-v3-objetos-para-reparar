@@ -228,17 +228,39 @@ export function useNavigation(params: UseNavigationParams): UseNavigationReturn 
     });
   }, [built, espacioObjetos, terrainBounds, service]);
 
-  // ─── 4. Registrar agente local cuando hay navmesh + posición ──────────────
+  // ─── 4. Registrar agente local cuando hay navmesh listo ───────────────────
+  // Patrón canónico React: ref para leer "última pose" sin que cambios de
+  // posición disparen re-run del effect. Sin esto, cada paso del avatar
+  // re-ejecutaba register+cleanup → 85+ agentes leakeados en 46s → crowd
+  // saturado retornaba NaN en position() → SpatialAudio AudioParam crash
+  // (bug 2026-05-12, confirmado en logs producción).
+  //
+  // Ref: https://react.dev/learn/referencing-values-with-refs
+  //   "Use a ref when you want a component to 'remember' some information,
+  //    but you don't want that information to trigger new renders."
+  //
+  // El effect depende SOLO de `[service, built]` (cosas que sí deben
+  // disparar re-init). La posición se sincroniza vía `teleportAgent` desde
+  // Player3D (WASD throttle 200ms + sync inicial al primer frame).
+  const localPositionRef = useRef(localPosition);
   useEffect(() => {
-    if (!service || !built || !localPosition) return;
-    const id = service.addAgent(localPosition, DEFAULT_AGENT_PARAMS);
+    localPositionRef.current = localPosition;
+  }, [localPosition]);
+
+  useEffect(() => {
+    if (!service || !built) return;
+    // Snapshot via ref: lee la última pose sin que el effect re-corra.
+    // Puede ser sentinel (0,0) si el avatar aún no hidrató — el sync
+    // inicial en Player3D (agentInitialSyncDoneRef) corrige al primer frame.
+    const initialPos = localPositionRef.current ?? { x: 0, z: 0 };
+    const id = service.addAgent(initialPos, DEFAULT_AGENT_PARAMS);
     setLocalAgentId(id);
     log.info('local agent registered', { id });
     return () => {
       service.removeAgent(id);
       setLocalAgentId(null);
     };
-  }, [built, localPosition?.x, localPosition?.z, service]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [service, built]);
 
   // ─── 5. Tick cada frame ───────────────────────────────────────────────────
   useFrame((_, delta) => {
