@@ -184,6 +184,18 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
     },
   });
 
+  // FIX 2026-05-12: pre-warm de MediaPipe workers (Face+Pose) cuando hay tipo
+  // de grabación con análisis biométrico. Evita 5s de freeze al hacer click
+  // "iniciar grabación" — los WASM + modelos se cargan en background al mount.
+  // Idempotente (initializeWorker tiene guards internos).
+  useEffect(() => {
+    if (!tipoGrabacion) return;
+    // tipoBase ya está derivado arriba: 'rrhh' | 'deals' | 'equipo'
+    // Todos usan análisis biométrico → pre-warm siempre que se haya elegido tipo.
+    log.info('Pre-warming MediaPipe workers para análisis biométrico', { tipoBase });
+    void combinedAnalysis.precargarWorkers();
+  }, [tipoGrabacion, tipoBase, combinedAnalysis]);
+
   // Actualizar estado
   const updateState = useCallback((updates: Partial<ProcessingState>) => {
     setProcessingState(prev => ({ ...prev, ...updates }));
@@ -585,8 +597,13 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
       }
 
       // Si todo falla, usar placeholder informativo
+      // FIX 2026-05-12: trackeamos si la transcripción es placeholder para skip
+      // del resumen AI (edge function `generar-resumen-ai` retorna 400 con texto
+      // placeholder/insuficiente — Clean Arch: presentation decide, no domain).
+      let transcriptIsPlaceholder = false;
       if (!transcript || transcript.trim().length < 10) {
         transcript = `[Grabación de ${Math.round(duration / 60)} minutos - transcripción no disponible]`;
+        transcriptIsPlaceholder = true;
         log.warn('Using placeholder for transcription');
       }
 
@@ -650,41 +667,50 @@ export const RecordingManager: React.FC<RecordingManagerProps> = ({
         ? emotionFrames.reduce((sum, f) => sum + f.engagement_score, 0) / emotionFrames.length
         : 0.5;
 
-      try {
-        log.debug('Generating AI summary', { grabacionId: grabacionIdRef.current, emotionFrameCount: emotionFrames.length });
-        // Muestrear emociones uniformemente (máx 100 frames distribuidos en toda la grabación)
-        const maxEmotionFrames = 100;
-        const sampledEmotions = emotionFrames.length <= maxEmotionFrames
-          ? emotionFrames
-          : emotionFrames.filter((_, i) => i % Math.ceil(emotionFrames.length / maxEmotionFrames) === 0);
-
+      // FIX 2026-05-12: skip AI summary si transcripción es placeholder.
+      // Edge function `generar-resumen-ai` retorna 400 con texto insuficiente.
+      // Presentation layer decide (Clean Arch — domain no parsea strings).
+      if (transcriptIsPlaceholder) {
+        log.info('Skipping AI summary — transcripción es placeholder', {
+          grabacionId: grabacionIdRef.current,
+        });
+      } else {
         try {
-          await recordingOps.generarResumenAI({
-            grabacionId: grabacionIdRef.current,
-            espacioId,
-            userId,
-            transcripcion: transcript,
-            emociones: sampledEmotions.map(e => ({
-              timestamp_segundos: e.timestamp_segundos,
-              emocion_dominante: e.emocion_dominante,
-              engagement_score: e.engagement_score,
-            })),
-            duracion: duration,
-            participantes: [userName],
-            reunionTitulo,
-            tipoGrabacion,
-            engagementPromedio: avgEngagement,
-            microexpresionesCount: resultadoAnalisis.microexpresiones.length,
-            totalFrames: emotionFrames.length,
-          });
-          log.info('AI summary generated successfully');
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          log.warn('Error generating AI summary, continuing', { error: message });
+          log.debug('Generating AI summary', { grabacionId: grabacionIdRef.current, emotionFrameCount: emotionFrames.length });
+          // Muestrear emociones uniformemente (máx 100 frames distribuidos en toda la grabación)
+          const maxEmotionFrames = 100;
+          const sampledEmotions = emotionFrames.length <= maxEmotionFrames
+            ? emotionFrames
+            : emotionFrames.filter((_, i) => i % Math.ceil(emotionFrames.length / maxEmotionFrames) === 0);
+
+          try {
+            await recordingOps.generarResumenAI({
+              grabacionId: grabacionIdRef.current,
+              espacioId,
+              userId,
+              transcripcion: transcript,
+              emociones: sampledEmotions.map(e => ({
+                timestamp_segundos: e.timestamp_segundos,
+                emocion_dominante: e.emocion_dominante,
+                engagement_score: e.engagement_score,
+              })),
+              duracion: duration,
+              participantes: [userName],
+              reunionTitulo,
+              tipoGrabacion,
+              engagementPromedio: avgEngagement,
+              microexpresionesCount: resultadoAnalisis.microexpresiones.length,
+              totalFrames: emotionFrames.length,
+            });
+            log.info('AI summary generated successfully');
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            log.warn('Error generating AI summary, continuing', { error: message });
+          }
+        } catch (aiErr) {
+          const message = aiErr instanceof Error ? aiErr.message : String(aiErr);
+          log.warn('Error in AI process, continuing', { error: message });
         }
-      } catch (aiErr) {
-        const message = aiErr instanceof Error ? aiErr.message : String(aiErr);
-        log.warn('Error in AI process, continuing', { error: message });
       }
 
       // Completar grabación

@@ -475,12 +475,21 @@ export const useBodyLanguageAnalysis = (options: UseBodyLanguageAnalysisOptions 
     };
   }, [stopWorker]);
 
+  /**
+   * FIX 2026-05-12: pre-warm del worker MediaPipe Pose (sin attach video).
+   * Llamado desde RecordingManager al mount para evitar 5s freeze al recording start.
+   */
+  const precargarWorker = useCallback(async (): Promise<boolean> => {
+    return loadPoseLandmarker();
+  }, [loadPoseLandmarker]);
+
   return {
     ...state,
     startAnalysis,
     stopAnalysis,
     getResults,
     getPosturaAnalysis,
+    precargarWorker,
   };
 };
 

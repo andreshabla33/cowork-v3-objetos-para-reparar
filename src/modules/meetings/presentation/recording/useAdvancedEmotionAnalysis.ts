@@ -681,11 +681,21 @@ export const useAdvancedEmotionAnalysis = (options: UseAdvancedEmotionAnalysisOp
     };
   }, [stopWorker]);
 
+  /**
+   * FIX 2026-05-12: pre-warm del worker MediaPipe (sin attach video).
+   * Llamado desde RecordingManager al mount para evitar 5s freeze al recording start.
+   * Idempotente — initializeWorker() ya tiene guards internos.
+   */
+  const precargarWorker = useCallback(async (): Promise<boolean> => {
+    return loadFaceLandmarker();
+  }, [loadFaceLandmarker]);
+
   return {
     ...state,
     startAnalysis,
     stopAnalysis,
     getResults,
+    precargarWorker,
   };
 };
 

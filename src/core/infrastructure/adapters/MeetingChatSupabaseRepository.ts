@@ -113,54 +113,30 @@ export class MeetingChatSupabaseRepository implements IMeetingChatRepository {
       throw new Error('Cannot create chat group: user not authenticated');
     }
 
-    const { data: newGroup, error: insertError } = await supabase
+    // FIX 2026-05-12: ignoreDuplicates: false → ON CONFLICT DO UPDATE garantiza
+    // que el SELECT retorne la fila (nueva o existente) en 1 round-trip, sin
+    // race RLS/replicación. El payload es idempotente (mismo nombre/espacio_id/
+    // tipo/creado_por) → UPDATE no muta valores semánticos, solo dispara
+    // `actualizado_en` trigger (sin consumers que ordenen por ese campo).
+    // Ref: https://supabase.com/docs/reference/javascript/upsert
+    const { data: grupo, error: upsertError } = await supabase
       .from('grupos_chat')
       .upsert(
         { nombre, espacio_id: espacioId, tipo: 'reunion', creado_por: userId },
-        { onConflict: 'espacio_id,nombre', ignoreDuplicates: true },
+        { onConflict: 'espacio_id,nombre', ignoreDuplicates: false },
       )
       .select('id')
-      .maybeSingle();
+      .single();
 
-    if (insertError) {
-      log.error('Failed to create chat group', {
-        salaId, espacioId, error: insertError.message,
+    if (upsertError || !grupo) {
+      log.error('Failed to upsert chat group', {
+        salaId, espacioId, error: upsertError?.message,
       });
-      throw insertError;
+      throw upsertError ?? new Error('Chat group upsert returned no row');
     }
 
-    if (newGroup) {
-      log.info('Chat group created successfully', { grupoId: newGroup.id, salaId });
-      return newGroup.id;
-    }
-
-    // Conflict path: upsert ignored, fallback SELECT con retry para race RLS/replicación.
-    // FIX 2026-05-12: usar maybeSingle() (no throw en 0 rows) + 1 retry tras 150ms,
-    // ya que la replicación post-upsert puede tardar unos ms en propagar a la
-    // RLS read query desde el mismo cliente.
-    // Ref: https://supabase.com/docs/reference/javascript/maybesingle
-    const buscarGrupoExistente = async () => {
-      return supabase
-        .from('grupos_chat')
-        .select('id')
-        .eq('tipo', 'reunion')
-        .eq('espacio_id', espacioId)
-        .eq('nombre', nombre)
-        .maybeSingle();
-    };
-
-    let { data: existing, error: fallbackError } = await buscarGrupoExistente();
-    if (!existing && !fallbackError) {
-      await new Promise((r) => setTimeout(r, 150));
-      ({ data: existing, error: fallbackError } = await buscarGrupoExistente());
-    }
-
-    if (fallbackError || !existing) {
-      throw fallbackError ?? new Error('Chat group not found after upsert conflict');
-    }
-
-    log.info('Chat group retrieved after conflict', { grupoId: existing.id, salaId });
-    return existing.id;
+    log.info('Chat group ready (upsert)', { grupoId: grupo.id, salaId });
+    return grupo.id;
   }
 
   async obtenerHistorialMensajes(

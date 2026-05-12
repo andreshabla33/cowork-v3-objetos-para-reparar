@@ -172,6 +172,24 @@ export const useCombinedAnalysis = (options: UseCombinedAnalysisOptions) => {
   useEffect(() => { updateResumenRef.current = updateResumenTiempoReal; }, [updateResumenTiempoReal]);
   useEffect(() => { checkAlertsRef.current = checkAlerts; }, [checkAlerts]);
 
+  /**
+   * FIX 2026-05-12: pre-warm de los workers MediaPipe (Face + Pose) en paralelo.
+   * Llamar al mount de RecordingManager cuando `tipoBase` requiere análisis
+   * (equipo/rrhh) para evitar 5s freeze al click "iniciar grabación".
+   *
+   * Side effect: 2 workers idle con ~150MB RAM cada uno + 2 GL contexts en GPU.
+   * En Intel Iris Xe esto suma a Three.js + LiveKit blur → riesgo Context Lost.
+   * Aceptado como trade-off — usuario puede toggle por settings en futuro.
+   *
+   * Fire-and-forget desde el caller.
+   */
+  const precargarWorkers = useCallback(async (): Promise<void> => {
+    await Promise.all([
+      emotionAnalysis.precargarWorker(),
+      bodyAnalysis.precargarWorker(),
+    ]);
+  }, [emotionAnalysis, bodyAnalysis]);
+
   // Iniciar análisis combinado
   const startAnalysis = useCallback(async (videoElement: HTMLVideoElement) => {
     videoElementRef.current = videoElement;
@@ -262,6 +280,7 @@ export const useCombinedAnalysis = (options: UseCombinedAnalysisOptions) => {
     stopAnalysis,
     getResultadoCompleto,
     generateAnalisisEspecifico,
+    precargarWorkers,
   };
 };
 
