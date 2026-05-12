@@ -4,9 +4,10 @@ import { SettingDropdown } from '../components/SettingDropdown';
 import { SettingSlider } from '../components/SettingSlider';
 import { SettingSection } from '../components/SettingSection';
 import { Language, getCurrentLanguage, subscribeToLanguageChange } from '@/core/infrastructure/i18n/i18n';
+import type { CameraMode } from '@/src/core/domain/entities/espacio3d/CameraFramingPolicy';
 
 interface Space3DSettings {
-  cameraMode: string;
+  cameraMode: CameraMode;
   movementSpeed: number;
   cameraSensitivity: number;
   invertYAxis: boolean;
@@ -47,10 +48,23 @@ export const SettingsSpace3D: React.FC<SettingsSpace3DProps> = ({
     return titles[key]?.[currentLang] || titles[key]?.['es'] || key;
   };
 
-  const cameraModeOptions = [
-    { value: 'free', label: currentLang === 'en' ? 'Free' : currentLang === 'pt' ? 'Livre' : 'Libre' },
-    { value: 'fixed', label: currentLang === 'en' ? 'Fixed' : currentLang === 'pt' ? 'Fixa' : 'Fija' },
-    { value: 'follow', label: currentLang === 'en' ? 'Follow avatar' : currentLang === 'pt' ? 'Seguir avatar' : 'Seguir avatar' }
+  const cameraModeOptions: Array<{ value: CameraMode; label: string }> = [
+    {
+      value: 'isometric',
+      label: currentLang === 'en'
+        ? 'Game view (recommended)'
+        : currentLang === 'pt'
+          ? 'Vista de jogo (recomendada)'
+          : 'Vista de juego (recomendada)',
+    },
+    {
+      value: 'free',
+      label: currentLang === 'en' ? 'Free (rotate 360°)' : currentLang === 'pt' ? 'Livre (rotação 360°)' : 'Libre (rotación 360°)',
+    },
+    {
+      value: 'fixed',
+      label: currentLang === 'en' ? 'Fixed' : currentLang === 'pt' ? 'Fixa' : 'Fija',
+    },
   ];
 
   const shoulderOptions = [
@@ -80,7 +94,7 @@ export const SettingsSpace3D: React.FC<SettingsSpace3DProps> = ({
           description={currentLang === 'en' ? 'How the camera behaves in the space' : currentLang === 'pt' ? 'Como a câmera se comporta no espaço' : 'Cómo se comporta la cámara en el espacio'}
           value={settings.cameraMode}
           options={cameraModeOptions}
-          onChange={(v) => updateSetting('cameraMode', v)}
+          onChange={(v) => updateSetting('cameraMode', v as CameraMode)}
         />
         <SettingSlider
           label={currentLang === 'en' ? 'Camera sensitivity' : currentLang === 'pt' ? 'Sensibilidade da câmera' : 'Sensibilidad de cámara'}

@@ -3,6 +3,7 @@
 // Esta utilidad permite a cualquier componente leer los settings sin importar SettingsModal.
 
 import type { Language } from '@/core/infrastructure/i18n/i18n';
+import type { CameraMode } from '@/src/core/domain/entities/espacio3d/CameraFramingPolicy';
 
 const STORAGE_KEY = 'user_settings';
 
@@ -72,7 +73,7 @@ export interface UserSettings {
     batterySaver: boolean;
   };
   space3d: {
-    cameraMode: string;
+    cameraMode: CameraMode;
     movementSpeed: number;
     cameraSensitivity: number;
     invertYAxis: boolean;
@@ -230,7 +231,7 @@ export const defaultUserSettings: UserSettings = {
     batterySaver: false
   },
   space3d: {
-    cameraMode: 'free',
+    cameraMode: 'isometric',
     movementSpeed: 5,
     cameraSensitivity: 5,
     invertYAxis: false,
@@ -301,13 +302,37 @@ export function deepMergeSettings<T extends Record<string, any>>(defaults: T, ov
   return result;
 }
 
+/**
+ * Migra valores legacy de `cameraMode` que ya no son válidos en el type
+ * `CameraMode`. Cualquier valor persistido fuera del set actual cae al
+ * default isométrico para evitar branches inválidos en SceneCamera /
+ * CameraFollow.
+ *
+ * Histórico: `'follow'` existió como opción pero nunca tuvo branch propio
+ * en el código (caía en rotate-libre por accidente). Normalizado a `'free'`
+ * para preservar el comportamiento que esos usuarios estaban viendo.
+ */
+const VALID_CAMERA_MODES: readonly string[] = ['isometric', 'free', 'fixed'];
+
+function normalizarCameraModeLegacy(settings: UserSettings): UserSettings {
+  const cm = (settings.space3d as { cameraMode?: string })?.cameraMode;
+  if (typeof cm === 'string' && !VALID_CAMERA_MODES.includes(cm)) {
+    const migrated = cm === 'follow' ? 'free' : 'isometric';
+    return {
+      ...settings,
+      space3d: { ...settings.space3d, cameraMode: migrated as CameraMode },
+    };
+  }
+  return settings;
+}
+
 // Leer todos los settings
 export function getUserSettings(): UserSettings {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      return deepMergeSettings(defaultUserSettings, parsed);
+      return normalizarCameraModeLegacy(deepMergeSettings(defaultUserSettings, parsed));
     }
   } catch (e) {
     console.error('Error loading user settings:', e);

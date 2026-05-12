@@ -1,7 +1,7 @@
 'use client';
 import React, { useRef, useEffect, useMemo, Suspense, useState, useCallback, useSyncExternalStore } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
-import { OrthographicCamera, PerspectiveCamera, Grid, Text, OrbitControls, Html, PerformanceMonitor, useGLTF } from '@react-three/drei';
+import { OrthographicCamera, PerspectiveCamera, Grid, Text, Html, PerformanceMonitor, useGLTF } from '@react-three/drei';
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier';
 import * as THREE from 'three';
 import { logger } from '@/core/infrastructure/observability/logger';
@@ -36,10 +36,10 @@ import { useTerreno } from '@/modules/space3d/presentation/hooks/useTerreno';
 import { Terrain3D } from './Terrain3D';
 import { EmoteSync, useSyncEffects } from '@/modules/space3d/presentation/world/EmoteSync';
 import { hapticFeedback, isMobileDevice } from '@/core/infrastructure/platform/mobileDetect';
+import type { CameraMode } from '@/src/core/domain/entities/espacio3d/CameraFramingPolicy';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import type { ModoEdicionObjeto, PlantillaZonaEnColocacion } from '@/modules/_state/slices';
 import { FloorType, calcularNivelAnidamientoRectangulo, detectarSolapamientoSubzona, zonaDbAMundo, type RectanguloZona, resolverTipoSubsueloZona } from '@/src/core/domain/entities';
-import { DRAWING_MAX_ORBIT_DISTANCE } from '@/src/core/domain/entities/espacio3d/CameraFramingPolicy';
 import { obtenerPlantillaZona } from '@/src/core/domain/entities/plantillasEspacio';
 import { crearPropsMaterialSueloPbr } from '@/core/infrastructure/r3f/rendering/textureRegistry';
 import {
@@ -107,7 +107,7 @@ export interface SceneProps {
   showNamesAboveAvatars?: boolean;
   cameraSensitivity?: number;
   invertYAxis?: boolean;
-  cameraMode?: string;
+  cameraMode?: CameraMode;
   /** OTS shoulder offset (tier 2 opcional). Default 'center' = sin offset. */
   cameraShoulderMode?: 'center' | 'left' | 'right';
   realtimePositionsRef?: React.MutableRefObject<Map<string, any>>;
@@ -387,7 +387,7 @@ export const Scene: React.FC<SceneProps> = ({
   showNamesAboveAvatars = true,
   cameraSensitivity = 5,
   invertYAxis = false,
-  cameraMode = 'free',
+  cameraMode = 'isometric',
   cameraShoulderMode = 'center',
   realtimePositionsRef,
   interpolacionWorkerRef,
@@ -1185,25 +1185,15 @@ export const Scene: React.FC<SceneProps> = ({
         baseY={terrainBounds.topY}
       />
 
-      {/* OrbitControls (drei) — Restaurado de la v2.2!
-          - OrbitControls NO retrasa la cámara, muta la posición síncronamente en el render pass.
-          - Se soluciona el lag root que causaba CameraControls de yomotsu. */}
-      <OrbitControls
-        ref={orbitControlsRef}
-        makeDefault
-        minDistance={1.1}
-        // En drawing mode expandimos maxDistance para que el admin pueda
-        // hacer zoom-out manual y ver todo el grid de la empresa (50×50m).
-        // Ref: Domain CameraFramingPolicy.ts — DRAWING_MAX_ORBIT_DISTANCE.
-        maxDistance={isDrawingZone || isDraggingPlantillaZona ? DRAWING_MAX_ORBIT_DISTANCE : 50}
-        maxPolarAngle={Math.PI / 2 - 0.1}
-        minPolarAngle={isDrawingZone ? 0.05 : Math.PI / 6}
-        enablePan={cameraMode === 'free' && !isDraggingPlantillaZona}
-        enableRotate={cameraMode !== 'fixed' && !isDrawingZone && !isDraggingPlantillaZona}
-        rotateSpeed={cameraSensitivity / 10}
-        zoomSpeed={0.8}
-        enableDamping={true}
-        dampingFactor={0.05}
+      {/* Controles de cámara — toda la lógica de límites por modo/contexto
+          vive en SceneCamera (Presentation infra). Domain (CameraFramingPolicy)
+          define las constantes; CameraFollow muta posición/target en useFrame. */}
+      <SceneCamera
+        orbitControlsRef={orbitControlsRef}
+        cameraMode={cameraMode}
+        cameraSensitivity={cameraSensitivity}
+        isDrawingZone={isDrawingZone}
+        isDraggingPlantillaZona={isDraggingPlantillaZona}
         onStart={handleOrbitStart}
         onEnd={handleOrbitEnd}
       />
@@ -1509,6 +1499,7 @@ export const Scene: React.FC<SceneProps> = ({
       />
       <CameraFollow
         controlsRef={orbitControlsRef}
+        cameraMode={cameraMode}
         zonasEmpresa={zonasEmpresa}
         empresaId={currentUser.empresa_id}
         espacioObjetos={espacioObjetos}
@@ -1519,6 +1510,7 @@ export const Scene: React.FC<SceneProps> = ({
         gpuRenderConfig={gpuRenderConfig}
         cameraShoulderMode={cameraShoulderMode}
         isInDrawingMode={isDrawingZone || isDraggingPlantillaZona || !!plantillaZonaEnColocacion}
+        isEditMode={isEditMode}
         terrainCenter={{ x: terrainBounds.centerX, z: terrainBounds.centerZ }}
       />
 

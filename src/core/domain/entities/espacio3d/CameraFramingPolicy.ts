@@ -31,6 +31,24 @@
  *   https://uxplanet.org/metaverse-design-guide-part-1-c902455ddb2b
  */
 
+// ─── Camera mode strict type ────────────────────────────────────────────────
+
+/**
+ * Modos de cámara soportados. Type strict (no `string`) para que el compilador
+ * detecte typos y branches no-soportados.
+ *
+ * - `'isometric'`: vista picada fija tipo Lords Mobile / Clash of Clans.
+ *   Pan + zoom permitidos; rotate bloqueado (ángulo azimuth y polar fijos).
+ *   Sin idle-hero close-up, sin chase-cam-rotation. **Default recomendado**
+ *   para audiencia no-técnica (elimina friction de rotación accidental).
+ * - `'free'`: legacy chase-cam con rotate 360° + idle-hero blend cuando
+ *   avatar queda quieto. Conservado para usuarios que prefieren el modo
+ *   pre-2026-05.
+ * - `'fixed'`: bloquea rotate + pan. Vista estática. Caso de uso raro;
+ *   conservado para compat.
+ */
+export type CameraMode = 'isometric' | 'free' | 'fixed';
+
 // ─── Value object ────────────────────────────────────────────────────────────
 
 /**
@@ -85,6 +103,41 @@ export const GAMEPLAY_VIDEO_PROXIMITY_FRAMING: CameraFraming = Object.freeze({
   height: 5.2,
   targetHeight: 1.26,
 });
+
+/**
+ * Vista isométrica picada estilo Lords Mobile / Clash of Clans. Avatar ocupa
+ * ~25-35% del viewport, contexto visual amplio. Optimizado para audiencia
+ * no-técnica: elimina la desorientación del chase-cam rotativo.
+ *
+ * Valores calibrados para FOV 50°. Ángulo polar fijo (ver
+ * `ISOMETRIC_POLAR_ANGLE`) crea el look "tablero de ajedrez en perspectiva"
+ * característico del género.
+ *
+ * Ref: Clash of Clans / Lords Mobile fixed isometric camera pattern.
+ * Ref: Gather.town — cámara fija como decisión deliberada de accesibilidad.
+ */
+export const ISOMETRIC_FRAMING: CameraFraming = Object.freeze({
+  distance: 12,
+  height: 10,
+  targetHeight: 1.0,
+});
+
+/**
+ * Ángulo polar fijo para el modo isométrico (radianes desde el eje vertical).
+ * π/4 ≈ 45° produce la inclinación canónica isométrica. Se aplica como
+ * `min === max === ISOMETRIC_POLAR_ANGLE` en OrbitControls para bloquear
+ * el tilt vertical.
+ *
+ * Ref: https://threejs.org/docs/#examples/en/controls/OrbitControls.minPolarAngle
+ */
+export const ISOMETRIC_POLAR_ANGLE = Math.PI / 4;
+
+/**
+ * Zoom permitido en modo isométrico. Min = 8m (acercamiento sin perder
+ * contexto), max = 25m (vista wide sin que el avatar se vuelva un pixel).
+ */
+export const ISOMETRIC_MIN_ZOOM = 8;
+export const ISOMETRIC_MAX_ZOOM = 25;
 
 /**
  * Overview para modo dibujo/colocación de zonas y plantillas. Cámara alta
@@ -177,6 +230,10 @@ export const CameraFramingPolicy = {
   IDLE_HERO: IDLE_HERO_FRAMING,
   GAMEPLAY_DEFAULT: GAMEPLAY_DEFAULT_FRAMING,
   GAMEPLAY_VIDEO_PROXIMITY: GAMEPLAY_VIDEO_PROXIMITY_FRAMING,
+  ISOMETRIC: ISOMETRIC_FRAMING,
+  ISOMETRIC_POLAR_ANGLE,
+  ISOMETRIC_MIN_ZOOM,
+  ISOMETRIC_MAX_ZOOM,
   IDLE_THRESHOLD_MS,
   TRANSITION_TO_IDLE_MS,
   TRANSITION_TO_MOVING_MS,

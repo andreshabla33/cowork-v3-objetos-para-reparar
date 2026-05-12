@@ -48,6 +48,7 @@ import { InstancedAvatarRenderer } from '@/modules/space3d/presentation/world/In
 import { DEFAULT_MODEL_URL } from '@/modules/avatar3d/presentation/shared';
 import {
   IDLE_HERO_FRAMING,
+  ISOMETRIC_FRAMING,
   selectGameplayFraming,
   dampLambdaForDurationMs,
   IDLE_THRESHOLD_MS,
@@ -55,6 +56,7 @@ import {
   TRANSITION_TO_MOVING_MS,
   DRAWING_OVERVIEW_FRAMING,
   TRANSITION_TO_DRAWING_MS,
+  type CameraMode,
 } from '@/src/core/domain/entities/espacio3d/CameraFramingPolicy';
 
 /**
@@ -841,6 +843,13 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
 // ═══════════════════════════════════════════════════════════════════════════════
 export const CameraFollow: React.FC<{
   controlsRef: React.MutableRefObject<any>;
+  /**
+   * Modo de cámara activo. `'isometric'` (default) deshabilita el idle-hero
+   * close-up y la chase-cam rotation — la cámara mantiene orientación fija
+   * y solo translada para seguir al avatar. `'free'` mantiene el chase-cam
+   * clásico con idle-hero blend. Ver Domain `CameraFramingPolicy.CameraMode`.
+   */
+  cameraMode?: CameraMode;
   zonasEmpresa?: ZonaEmpresa[];
   empresaId?: string | null;
   espacioObjetos?: EspacioObjeto[];
@@ -870,9 +879,17 @@ export const CameraFollow: React.FC<{
    * `plantillaZonaEnColocacion !== null` (prop Scene3D).
    */
   isInDrawingMode?: boolean;
+  /**
+   * Admin con `isEditMode` activo (colocando/moviendo objetos individuales).
+   * En modo `free` se usa como guard adicional para deshabilitar el idle-hero
+   * blend — sin esto, el admin que se queda quieto frente al objeto que coloca
+   * recibe un dolly-in que le tapa la vista. Solo aplica al modo `free`; en
+   * `isometric` el idle-hero está globalmente off.
+   */
+  isEditMode?: boolean;
   /** Centro del terreno en world coords — usado como target durante overview. */
   terrainCenter?: { x: number; z: number };
-}> = ({ controlsRef, zonasEmpresa = [], empresaId = null, espacioObjetos = [], usersInCallIds, usersInAudioRangeIds, followTargetId = null, getFollowTargetPosition, gpuRenderConfig, cameraShoulderMode = 'center', isInDrawingMode = false, terrainCenter }) => {
+}> = ({ controlsRef, cameraMode = 'isometric', zonasEmpresa = [], empresaId = null, espacioObjetos = [], usersInCallIds, usersInAudioRangeIds, followTargetId = null, getFollowTargetPosition, gpuRenderConfig, cameraShoulderMode = 'center', isInDrawingMode = false, isEditMode = false, terrainCenter }) => {
   const { camera, scene } = useThree();
   const baseFovRef = useRef<number | null>(null);
 
@@ -972,8 +989,12 @@ export const CameraFollow: React.FC<{
   const CAMERA_INTRO_DISTANCE = IDLE_HERO_FRAMING.distance;
   const CAMERA_INTRO_TARGET_HEIGHT = IDLE_HERO_FRAMING.targetHeight;
   const hayVideoProximidad = (usersInCallIds?.size || 0) > 0 || (usersInAudioRangeIds?.size || 0) > 0;
-  // Framing gameplay (cuando el avatar se mueve o hay proximidad social).
-  const gameplayFraming = selectGameplayFraming({ hayVideoProximidad });
+  // Framing gameplay. En isometric el framing es fijo (Lords Mobile-style);
+  // en free se selecciona dinámicamente según proximidad social.
+  const isIsometric = cameraMode === 'isometric';
+  const gameplayFraming = isIsometric
+    ? ISOMETRIC_FRAMING
+    : selectGameplayFraming({ hayVideoProximidad });
   const CAMERA_DEFAULT_HEIGHT = gameplayFraming.height;
   const CAMERA_DEFAULT_DISTANCE = gameplayFraming.distance;
   const CAMERA_DEFAULT_TARGET_HEIGHT = gameplayFraming.targetHeight;
@@ -1097,15 +1118,21 @@ export const CameraFollow: React.FC<{
     // son sub-segundo. Usa MathUtils.damp para frame-rate independence
     // (ref: https://threejs.org/docs/#api/en/math/MathUtils.damp).
     // Signal: camera.userData.playerMoving escrito por Player3D cada frame.
-    // Blend se desactiva dentro de recintos compactos (vista interior ya
-    // maneja su propio framing) y al seguir a un remoto (isFollowing).
+    //
+    // Blend se desactiva cuando:
+    //  - modo `isometric` (vista fija sin close-up por diseño)
+    //  - dentro de recintos compactos (vista interior maneja su framing)
+    //  - siguiendo a un remoto (`isFollowing`)
+    //  - admin con `isEditMode` o `isInDrawingMode` (no taparle la vista al
+    //    objeto que está colocando; fix 2026-05-12)
     const playerMovingForIdle = (camera as any).userData?.playerMoving as boolean | undefined;
     if (playerMovingForIdle) {
       idleTimeMsRef.current = 0;
     } else {
       idleTimeMsRef.current += delta * 1000;
     }
-    const wantIdleHero = !usarVistaInterior && !isFollowing && idleTimeMsRef.current >= IDLE_THRESHOLD_MS;
+    const idleHeroAllowed = !isIsometric && !isEditMode && !isInDrawingMode;
+    const wantIdleHero = idleHeroAllowed && !usarVistaInterior && !isFollowing && idleTimeMsRef.current >= IDLE_THRESHOLD_MS;
     const idleTargetBlend = wantIdleHero ? 1 : 0;
     // Asimetría: entrar en idle más lento (reveal cinematográfico),
     // salir más rápido (input del usuario debe sentirse inmediato).
@@ -1185,9 +1212,11 @@ export const CameraFollow: React.FC<{
       controls.target.x += deltaX;
       controls.target.z += deltaZ;
 
-      // Chase-cam rotation: rotar offset alrededor del avatar
-      // Solo si el usuario no está interactuando manualmente con la cámara
-      if (!userInteractingRef.current && !usarVistaInterior) {
+      // Chase-cam rotation: rotar offset alrededor del avatar.
+      // Deshabilitada en isometric (la cámara mantiene azimuth fija por diseño).
+      // En modo `free`, solo se aplica si el usuario no está interactuando
+      // manualmente y fuera de vista interior.
+      if (!isIsometric && !userInteractingRef.current && !usarVistaInterior) {
         // Lerp suave del ángulo actual al objetivo
         const angleDiff = targetAngleRef.current - currentAngleRef.current;
         // Normalizar diferencia al rango [-PI, PI]

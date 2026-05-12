@@ -1,64 +1,149 @@
 /**
- * @module components/space3d/SceneCamera
+ * @module space3d/scene/SceneCamera
  *
- * Sub-componente extraído de Scene3D.tsx (CLEAN-ARCH-F4).
- * Responsabilidad única: controles de cámara y configuración de perspectiva.
+ * Componente único de OrbitControls del espacio 3D. Encapsula las decisiones
+ * de cámara según `cameraMode` + flags de modo construcción:
  *
- * Extraído del render de Scene3D (líneas 715–728).
+ *  - `isometric` (default 2026-05-12): pan + zoom permitidos, rotate bloqueado,
+ *    ángulo polar fijo. Vista Lords Mobile / Clash of Clans. Optimizado para
+ *    usuarios no-técnicos — elimina friction de rotación accidental.
+ *  - `free` (legacy): rotate 360° + pan + zoom. Comportamiento pre-isometric.
+ *  - `fixed`: bloquea rotate y pan. Solo zoom.
+ *
+ * Cuando el admin entra en `isDrawingZone` / `isDraggingPlantillaZona`, la
+ * cámara permite zoom extendido y polar mínimo relajado (para que el
+ * bird's-eye automatizado por `CameraFollow` funcione sin que OrbitControls
+ * clampe el ángulo).
+ *
+ * Clean Architecture: Presentation infra. Lee constantes del Domain
+ * (`CameraFramingPolicy`) — no decide framings, solo aplica límites de
+ * input. Las transiciones de posición/target viven en CameraFollow.
+ *
+ * Refs:
+ *  - https://drei.docs.pmnd.rs/controls/orbit-controls
+ *  - https://threejs.org/docs/#examples/en/controls/OrbitControls
  */
 
 import React from 'react';
 import { OrbitControls } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsType } from 'three-stdlib';
-import { DRAWING_MAX_ORBIT_DISTANCE } from '@/src/core/domain/entities/espacio3d/CameraFramingPolicy';
+import {
+  DRAWING_MAX_ORBIT_DISTANCE,
+  ISOMETRIC_POLAR_ANGLE,
+  ISOMETRIC_MIN_ZOOM,
+  ISOMETRIC_MAX_ZOOM,
+  type CameraMode,
+} from '@/src/core/domain/entities/espacio3d/CameraFramingPolicy';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 export interface SceneCameraProps {
   orbitControlsRef: React.MutableRefObject<OrbitControlsType | null>;
-  /** 'free' | 'fixed' | 'follow' */
-  cameraMode?: string;
+  cameraMode: CameraMode;
   cameraSensitivity?: number;
-  invertYAxis?: boolean;
-  /** Desactiva pan durante arrastre de plantilla */
+  /** Admin dibujando una zona con drag (lápiz). */
   isDrawingZone?: boolean;
+  /** Admin arrastrando una plantilla de zona pre-existente. */
   isDraggingPlantillaZona?: boolean;
+  /** Disparado al iniciar input manual (mouse down sobre la cámara). */
+  onStart?: () => void;
+  /** Disparado al soltar input manual. */
+  onEnd?: () => void;
+}
+
+// ─── Helpers de configuración por modo ──────────────────────────────────────
+
+interface OrbitLimits {
+  enablePan: boolean;
+  enableRotate: boolean;
+  minDistance: number;
+  maxDistance: number;
+  minPolarAngle: number;
+  maxPolarAngle: number;
+}
+
+function resolveOrbitLimits(
+  mode: CameraMode,
+  isDrawingZone: boolean,
+  isDraggingPlantillaZona: boolean,
+): OrbitLimits {
+  // Drawing mode: bird's-eye automático en CameraFollow. Aquí ampliamos los
+  // rangos de input para que el admin pueda zoom-out y picar más vertical
+  // sin que el clamp de OrbitControls lo bloquee.
+  if (isDrawingZone || isDraggingPlantillaZona) {
+    return {
+      enablePan: !isDraggingPlantillaZona,
+      enableRotate: !isDraggingPlantillaZona,
+      minDistance: 1.1,
+      maxDistance: DRAWING_MAX_ORBIT_DISTANCE,
+      minPolarAngle: 0.05,
+      maxPolarAngle: Math.PI / 2 - 0.1,
+    };
+  }
+
+  switch (mode) {
+    case 'isometric':
+      // Vista picada fija. Polar min === max bloquea el tilt; rotate desactivado
+      // bloquea la azimuth. Pan + zoom permitidos para que el usuario explore.
+      return {
+        enablePan: true,
+        enableRotate: false,
+        minDistance: ISOMETRIC_MIN_ZOOM,
+        maxDistance: ISOMETRIC_MAX_ZOOM,
+        minPolarAngle: ISOMETRIC_POLAR_ANGLE,
+        maxPolarAngle: ISOMETRIC_POLAR_ANGLE,
+      };
+    case 'fixed':
+      return {
+        enablePan: false,
+        enableRotate: false,
+        minDistance: 1.1,
+        maxDistance: 50,
+        minPolarAngle: Math.PI / 6,
+        maxPolarAngle: Math.PI / 2 - 0.1,
+      };
+    case 'free':
+    default:
+      return {
+        enablePan: true,
+        enableRotate: true,
+        minDistance: 1.1,
+        maxDistance: 50,
+        minPolarAngle: Math.PI / 6,
+        maxPolarAngle: Math.PI / 2 - 0.1,
+      };
+  }
 }
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 
-/**
- * Controla la cámara del espacio 3D.
- *
- * Usa OrbitControls de Drei (no CameraControls de yomotsu) para evitar
- * el lag de frame que introducía el lerp de yomotsu.
- *
- * Ref: https://docs.pmnd.rs/react-three-fiber — OrbitControls makeDefault
- */
 export const SceneCamera: React.FC<SceneCameraProps> = ({
   orbitControlsRef,
-  cameraMode = 'free',
+  cameraMode,
   cameraSensitivity = 5,
-  invertYAxis = false,
   isDrawingZone = false,
   isDraggingPlantillaZona = false,
+  onStart,
+  onEnd,
 }) => {
+  const limits = resolveOrbitLimits(cameraMode, isDrawingZone, isDraggingPlantillaZona);
+
   return (
     <OrbitControls
       ref={orbitControlsRef}
       makeDefault
-      minDistance={1.1}
-      // En drawing mode, maxDistance se expande para permitir zoom-out hasta
-      // ver todo el grid de 50×50m (WORLD_SIZE_PX/16). Valor desde Domain.
-      maxDistance={isDrawingZone ? DRAWING_MAX_ORBIT_DISTANCE : 50}
-      maxPolarAngle={Math.PI / 2 - 0.1}
-      minPolarAngle={isDrawingZone ? 0.05 : Math.PI / 6}
-      enablePan={cameraMode === 'free' && !isDraggingPlantillaZona}
-      enableRotate={cameraMode !== 'fixed' && !isDrawingZone && !isDraggingPlantillaZona}
+      minDistance={limits.minDistance}
+      maxDistance={limits.maxDistance}
+      minPolarAngle={limits.minPolarAngle}
+      maxPolarAngle={limits.maxPolarAngle}
+      enablePan={limits.enablePan}
+      enableRotate={limits.enableRotate}
       rotateSpeed={cameraSensitivity / 10}
       zoomSpeed={0.8}
       enableDamping={true}
       dampingFactor={0.05}
+      onStart={onStart}
+      onEnd={onEnd}
     />
   );
 };
