@@ -19,6 +19,7 @@ import { ObjetosInstanciados } from '@/modules/space3d/presentation/world/Objeto
 import { StaticObjectBatcher } from '@/modules/space3d/presentation/world/StaticObjectBatcher';
 import { BuiltinWallBatcher } from '@/modules/space3d/presentation/world/BuiltinWallBatcher';
 import { useSceneOptimization } from '@/modules/space3d/presentation/hooks/useSceneOptimization';
+import { useOrbitDprRegression } from '@/modules/space3d/presentation/hooks/useOrbitDprRegression';
 import type { EspacioObjeto, SpawnPersonal, TransformacionObjetoInput } from '@/modules/space3d/presentation/hooks/useEspacioObjetos';
 import type { OcupacionAsientoReal } from '@/modules/space3d/presentation/hooks/useOcupacionAsientos';
 import type { ObjetoPreview3D } from '@/types/objetos3d';
@@ -1098,67 +1099,11 @@ export const Scene: React.FC<SceneProps> = ({
     // Si necesitas lógica para mallas instanciadas basadas en asientos dinámicos, agragarla aquí.
   }, []);
 
-  // ── Movement regression (Sketchfab pattern, R3F docs preferred) ──
-  //
-  // Cuando el usuario hace orbit con la cámara, bajamos DPR a minDpr
-  // temporalmente — el render procesa ~40% menos pixeles durante el pan,
-  // liberando GPU para que el movimiento se sienta fluido. Al soltar,
-  // restauramos el DPR original con debounce de 200 ms para evitar
-  // flicker en drags rápidos.
-  //
-  // Solo activo cuando graphicsQuality='auto' (las 3 props llegan undefined
-  // en otros modos → handlers son no-op). Stateless: el DPR baseline se
-  // guarda en un ref local para sobrevivir al drag sin re-renders.
-  //
-  // Ref: https://r3f.docs.pmnd.rs/advanced/scaling-performance
-  //      "Movement regression (like Sketchfab) appears preferred: detect
-  //       user interaction via controls and call regress(), automatically
-  //       scaling quality during movement."
-  const orbitDprBaseRef = useRef<number | null>(null);
-  const orbitRestoreTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Timestamp de la última interacción manual con la cámara (drag/wheel/pinch).
-  // CameraFollow lo consume para disparar auto-return al framing default tras
-  // ZOOM_RETURN_IDLE_MS de inactividad — ver CameraFramingPolicy.
-  const userInteractionTimestampRef = useRef<number>(0);
-
-  const handleOrbitStart = useCallback(() => {
-    userInteractionTimestampRef.current = Date.now();
-    if (!setAdaptiveDpr || adaptiveDpr === undefined || minDpr === undefined) return;
-    if (orbitRestoreTimeoutRef.current) {
-      clearTimeout(orbitRestoreTimeoutRef.current);
-      orbitRestoreTimeoutRef.current = null;
-    }
-    // Guarda el baseline solo la primera vez de un drag (no pisar con
-    // minDpr si ya estaba en regression de un drag anterior muy reciente).
-    if (orbitDprBaseRef.current === null) {
-      orbitDprBaseRef.current = adaptiveDpr;
-    }
-    setAdaptiveDpr(minDpr);
-  }, [adaptiveDpr, minDpr, setAdaptiveDpr]);
-
-  const handleOrbitEnd = useCallback(() => {
-    // Resetea el timestamp al MOMENTO del soltar — el idle timer empieza a
-    // contar desde aquí, no desde el inicio del drag.
-    userInteractionTimestampRef.current = Date.now();
-    if (!setAdaptiveDpr) return;
-    if (orbitRestoreTimeoutRef.current) clearTimeout(orbitRestoreTimeoutRef.current);
-    orbitRestoreTimeoutRef.current = setTimeout(() => {
-      const base = orbitDprBaseRef.current;
-      if (base !== null) {
-        setAdaptiveDpr(base);
-        orbitDprBaseRef.current = null;
-      }
-      orbitRestoreTimeoutRef.current = null;
-    }, 200);
-  }, [setAdaptiveDpr]);
-
-  // Cleanup timeout on unmount para evitar callback zombie después del unmount.
-  useEffect(() => {
-    return () => {
-      if (orbitRestoreTimeoutRef.current) clearTimeout(orbitRestoreTimeoutRef.current);
-    };
-  }, []);
+  // Movement regression (Sketchfab pattern) + interaction timestamp tracking
+  // para el auto-return de cámara. Lógica extraída a hook reutilizable
+  // (ITEM 15 P1-07 — split god-component).
+  const { handleOrbitStart, handleOrbitEnd, userInteractionTimestampRef } =
+    useOrbitDprRegression({ adaptiveDpr, minDpr, setAdaptiveDpr });
 
   return (
     <>
