@@ -1118,6 +1118,14 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
         // dinámicamente sin necesidad de recompute cada frame.
         const last = lastDispatchedMoveTargetRef.current;
         if (!last || last.x !== tx || last.z !== tz) {
+          // Mismo fix de drift del bug 2026-05-12 (ver bloque WASD arriba):
+          // si es un nuevo target (transición idle → moving), re-sync el
+          // agent con la pose visual antes de pedir el path. Evita que el
+          // path se compute desde una pose stale del agent → first-frame
+          // snap visible.
+          if (!last && Number.isFinite(positionRef.current.x) && Number.isFinite(positionRef.current.z)) {
+            navigationService.teleportAgent(navigationAgentId, positionRef.current);
+          }
           navigationService.moveAgent(navigationAgentId, { x: tx, z: tz });
           lastDispatchedMoveTargetRef.current = { x: tx, z: tz };
         }
@@ -1163,6 +1171,32 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     const movingByDirectInput = dx !== 0 || dy !== 0;
     if (movingByDirectInput) {
       if (navigationService && navigationAgentId && navigationReady) {
+        // ── Re-sync crowd agent ↔ pose visual en transición idle → moving ──
+        //
+        // Bug 2026-05-12 (reportado por el usuario: "cada tecla salta la
+        // escena"): tras periods of idle, el crowd agent acumula drift sutil
+        // contra `positionRef.current` (la verdad visual del avatar). Razones:
+        // crowd avoidance no-op steering, `stopAgent()` post click-to-move
+        // que detiene al agent en su pose actual (≠ pose del avatar visible,
+        // que termina a `dist < 0.15` del target), rounding del simulator.
+        //
+        // Sin esta sincronización, el primer frame de input directo lee la
+        // pose del agent (`getAgentPose` en el bloque post-input) y SOBRESCRIBE
+        // `positionRef.current` → snap visible de la cámara (chase-cam sigue
+        // al avatar) → "la escena salta".
+        //
+        // Fix: cuando detectamos transición idle → moving (input directo),
+        // teleport el agent a la pose visual ANTES de aplicar velocity. Así
+        // la lectura post-input retorna la misma posición visual + δ del
+        // velocity aplicado en este frame.
+        //
+        // Ref: recast Crowd `requestMoveVelocity` honra la pose actual del
+        // agent — teleportar primero es la forma canónica de "anchor"
+        // (ver github.com/isaac-mason/recast-navigation-js).
+        if (!wasMovingDirectInputRef.current && Number.isFinite(positionRef.current.x) && Number.isFinite(positionRef.current.z)) {
+          navigationService.teleportAgent(navigationAgentId, positionRef.current);
+        }
+
         // ── Input directo (WASD/joystick) vía recast Crowd ──
         // El crowd aplica steering + obstacle avoidance entre agents.
         // Velocity en m/s: dx/dy vienen escalados por delta (m/frame),
