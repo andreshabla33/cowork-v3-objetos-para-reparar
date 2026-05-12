@@ -5,14 +5,18 @@
  */
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import type { User } from '@/types';
+import type { User, ZonaEmpresa } from '@/types';
 import type { Session } from '@supabase/supabase-js';
 import type { UserSettings } from '@/core/infrastructure/userSettings/userSettings';
 import { AUDIO_SPATIAL_RADIUS_FACTOR, PROXIMITY_ACTIVATION_FACTOR, PROXIMITY_COORD_THRESHOLD, PROXIMITY_EXIT_FACTOR, type UseProximityReturn } from './types';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { ActiveSpeakerPolicy, GalleryPolicy } from '@/modules/realtime-room';
 import { normalizarConfiguracionZonaEmpresa } from '@/src/core/domain/entities/cerramientosZona';
-import { isMeetingZone } from '@/src/core/domain/entities/realtime/MeetingRoomAssignment';
+import {
+  isMeetingZone,
+  isPointInMeetingZoneEnter,
+  isPointInMeetingZoneExit,
+} from '@/src/core/domain/entities/realtime/MeetingRoomAssignment';
 import { classifyZonasEmpresa } from '@/src/core/domain/entities/realtime/ZonaEmpresaKind';
 import { SpatialHashGrid } from '@/src/core/domain/services/SpatialHashGrid';
 import { avatarStore } from '@/core/infrastructure/r3f/ecs/AvatarECS';
@@ -20,7 +24,12 @@ import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('useProximity');
 
-/** Check if a point (px, py) is inside a zone's bounding box */
+/**
+ * Check if a point (px, py) is inside a zone's bounding box.
+ * Legacy — usado para detección genérica (ej. zonas no-meeting). La
+ * detección de meeting zones usa hysteresis (bbox doble) — ver
+ * `isPointInMeetingZoneEnter` / `isPointInMeetingZoneExit` del Domain.
+ */
 const isPointInZone = (px: number, py: number, zona: { posicion_x: number | string; posicion_y: number | string; ancho: number | string; alto: number | string }): boolean => {
   const halfW = Number(zona.ancho) / 2;
   const halfH = Number(zona.alto) / 2;
@@ -156,11 +165,41 @@ export function useProximity(params: {
   }, [zonasEmpresa]);
 
   // ========== Detección de Zonas de Aislamiento (Meeting) ==========
+  // Hysteresis bbox doble (FIX 2026-05-12 — deuda técnica B3).
+  //
+  // Antes: una sola bbox + grace period 3s → 6 transitions en 2min al
+  // borde porque el avatar oscilaba entrando/saliendo con jitter de coords.
+  //
+  // Ahora:
+  //  - Si user FUERA de zona: usa `enterBbox` (shrinked −0.5m) — solo entra
+  //    si cruza bien adentro
+  //  - Si user DENTRO de zona: usa `exitBbox` (expanded +0.5m) — solo sale
+  //    si cruza bien afuera
+  //  - Estado intermedio (entre bboxes): NO cambia el current zone
+  //
+  // El grace period sigue activo (3s) como capa de safety contra jitter
+  // temporal — ortogonal a hysteresis espacial. Ref: Valve docs "area
+  // triggers with entry/exit thresholds".
+  const lastDetectedZoneRef = useRef<ZonaEmpresa | null>(null);
   const myCurrentZone = useMemo(() => {
-    if (meetingZones.length === 0) return null;
-    return meetingZones.find(zona =>
-      isPointInZone(stableProximityCoords.x, stableProximityCoords.y, zona)
-    ) ?? null;
+    if (meetingZones.length === 0) {
+      lastDetectedZoneRef.current = null;
+      return null;
+    }
+    const point = { x: stableProximityCoords.x, y: stableProximityCoords.y };
+    const lastZone = lastDetectedZoneRef.current;
+
+    // Caso A: ya estábamos dentro de una zona — sticky con exitBbox expandido.
+    if (lastZone) {
+      const stillInside = isPointInMeetingZoneExit(point, lastZone);
+      if (stillInside) return lastZone;
+      // Salió del exitBbox → buscar siguiente zona o caer a null.
+    }
+
+    // Caso B: estamos fuera (o transicionando) — usa enterBbox shrinked.
+    const newZone = meetingZones.find((zona) => isPointInMeetingZoneEnter(point, zona)) ?? null;
+    lastDetectedZoneRef.current = newZone;
+    return newZone;
   }, [stableProximityCoords.x, stableProximityCoords.y, meetingZones]);
 
   // Grace period para evitar flipping entre meeting/global al cruzar el borde.

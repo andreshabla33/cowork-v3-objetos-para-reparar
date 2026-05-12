@@ -124,6 +124,82 @@ export function isMeetingZone(zonaConfig: unknown): boolean {
     && (MEETING_PLANTILLAS as readonly string[]).includes(plantillaId);
 }
 
+// ─── Hysteresis para detección de borde (bbox doble) ────────────────────────
+
+/**
+ * Margen de hysteresis en unidades DB (factor /16 a world). 8 unidades DB =
+ * 0.5m en world coordinates. Calibrado contra dimensiones típicas de zonas:
+ *  - sala_juntas: 64-128 unidades DB (4-8m) → margen 0.5m = ±12.5% del lado
+ *  - sala_meeting_grande: 224 × 160 (14×10m) → margen 0.5m ≈ ±5% del lado
+ *
+ * Trade-off:
+ *  - margen ≥ 1m: histeresis muy notoria, user "entra" cuando ya está clavado
+ *    bien adentro → percepción rara
+ *  - margen ≤ 0.25m: insuficiente, flapping a 30Hz jitter de coords sigue
+ *  - 0.5m: sweet spot — el avatar tiene radio ~0.42m, así que margen 0.5m
+ *    asegura que el centro del avatar cruza el bbox visible "completamente"
+ *    antes de transitionar.
+ *
+ * Ref: bug deuda técnica 2026-04-24 — 6 transitions en 2min con flapping
+ *      al borde. Hysteresis elimina el problema en el plano espacial.
+ */
+export const MEETING_ZONE_HYSTERESIS_MARGIN_DB = 8;
+
+/**
+ * Bounds rectangulares de una zona en formato DB (units /16 a world).
+ * Usa keys mixed-type porque algunos roundtrips de Supabase numeric ↔ JS
+ * pueden traer strings.
+ */
+export interface MeetingZoneBbox {
+  posicion_x: number | string;
+  posicion_y: number | string;
+  ancho: number | string;
+  alto: number | string;
+}
+
+/**
+ * `true` si el punto está dentro del bbox **shrinked** (con margen interior).
+ * Se usa cuando el usuario está FUERA de la zona — solo dispara `enter` si
+ * cruza bien adentro del bbox visible (no en el borde).
+ *
+ * Si el bbox es más chico que 2×margin en algún eje, el bbox se contrae a
+ * cero ahí (zonas minúsculas no son seleccionables — comportamiento OK).
+ */
+export function isPointInMeetingZoneEnter(
+  point: { x: number; y: number },
+  zona: MeetingZoneBbox,
+): boolean {
+  const margin = MEETING_ZONE_HYSTERESIS_MARGIN_DB;
+  const halfW = Math.max(Number(zona.ancho) / 2 - margin, 0);
+  const halfH = Math.max(Number(zona.alto) / 2 - margin, 0);
+  const cx = Number(zona.posicion_x);
+  const cy = Number(zona.posicion_y);
+  return (
+    point.x >= cx - halfW && point.x <= cx + halfW &&
+    point.y >= cy - halfH && point.y <= cy + halfH
+  );
+}
+
+/**
+ * `true` si el punto está dentro del bbox **expanded** (con margen exterior).
+ * Se usa cuando el usuario ESTÁ DENTRO de la zona — solo dispara `leave` si
+ * sale bien afuera del bbox visible.
+ */
+export function isPointInMeetingZoneExit(
+  point: { x: number; y: number },
+  zona: MeetingZoneBbox,
+): boolean {
+  const margin = MEETING_ZONE_HYSTERESIS_MARGIN_DB;
+  const halfW = Number(zona.ancho) / 2 + margin;
+  const halfH = Number(zona.alto) / 2 + margin;
+  const cx = Number(zona.posicion_x);
+  const cy = Number(zona.posicion_y);
+  return (
+    point.x >= cx - halfW && point.x <= cx + halfW &&
+    point.y >= cy - halfH && point.y <= cy + halfH
+  );
+}
+
 // ─── Factories de MeetingRoomAssignment (validadas) ─────────────────────────
 
 /**
