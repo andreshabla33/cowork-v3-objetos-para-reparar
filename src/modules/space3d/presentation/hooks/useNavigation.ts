@@ -146,19 +146,6 @@ export function useNavigation(params: UseNavigationParams): UseNavigationReturn 
   const [initialized, setInitialized] = useState(false);
   const [built, setBuilt] = useState(false);
   const [localAgentId, setLocalAgentId] = useState<NavigationAgentId | null>(null);
-  /**
-   * Counter incremental que cambia con cada build/rebuild del navmesh.
-   *
-   * Bug 2026-05-12: `service.build()` internamente hace `disposeNavData()`
-   * que limpia el Map de agents del adapter. Pero `setBuilt(true)` era
-   * idempotente — React no re-renderizaba → effect del agent NO re-corría
-   * → `localAgentId` quedaba stale apuntando a un agent que ya no existía
-   * en el crowd nuevo. Resultado: avatar congelado tras rebuild.
-   *
-   * Fix: `buildVersion` cambia con cada rebuild → el effect del agent lo
-   * tiene en deps → re-corre (cleanup remove agent stale, register nuevo).
-   */
-  const [buildVersion, setBuildVersion] = useState(0);
 
   /** Set de ids de obstáculos actualmente registrados en recast. */
   const registeredObstaclesRef = useRef<Set<string>>(new Set());
@@ -188,10 +175,35 @@ export function useNavigation(params: UseNavigationParams): UseNavigationReturn 
     return () => { cancelled = true; };
   }, [enabled]);
 
-  // ─── 2. Build navmesh cuando hay terreno + initialized ────────────────────
+  // ─── 2. Build navmesh + registrar agente local (lifecycle acoplado) ───────
+  //
+  // Refactor 2026-05-12 #2: build + addAgent en el MISMO effect.
+  //
+  // Patrón canónico React (https://react.dev/reference/react/useEffect):
+  // "Each Effect in your code should represent a separate and independent
+  //  synchronization process."
+  //
+  // El agent local es CONSECUENCIA del build (no existe sin navmesh). Su
+  // lifecycle debe acoplarse: cuando build/rebuild ocurre, el cleanup quita
+  // el agent viejo + el body registra uno nuevo. Sin necesidad de version
+  // counters o setState idempotentes.
+  //
+  // Bug previo (resuelto por este refactor): `setBuilt(true)` idempotente
+  // hacía bail-out via Object.is — el effect del agent separado NO re-corría
+  // tras rebuild → `localAgentId` quedaba stale → avatar congelado.
+  //
+  // Ref: https://react.dev/reference/react/useState#caveats
+  //   "If the new value you provide is identical to the current state, as
+  //    determined by an Object.is comparison, React will skip re-rendering"
+  const localPositionRef = useRef(localPosition);
+  useEffect(() => {
+    localPositionRef.current = localPosition;
+  }, [localPosition]);
+
   useEffect(() => {
     if (!service || !initialized || !terrainBounds) {
       setBuilt(false);
+      setLocalAgentId(null);
       return;
     }
     const walkable = buildPlanarWalkableSurface(terrainBounds);
@@ -203,15 +215,30 @@ export function useNavigation(params: UseNavigationParams): UseNavigationReturn 
     if (!result.success) {
       log.error('navmesh build failed', { error: result.error });
       setBuilt(false);
+      setLocalAgentId(null);
       return;
     }
 
     registeredObstaclesRef.current = new Set(initialObstaculos.map((o) => o.id));
-    setBuilt(true);
-    setBuildVersion((prev) => prev + 1);
     log.info('navmesh built', { initialObstaculos: initialObstaculos.length });
-    // No retornamos cleanup aquí — el rebuild reemplaza internamente el navmesh.
-    // El dispose final corre en el unmount handler de abajo.
+
+    // Registrar agent local INMEDIATAMENTE tras build — su lifecycle se
+    // acopla al del navmesh. Snapshot de pos via ref para no disparar
+    // re-runs con cambios de posición (que pasarían por cleanup+register
+    // infinitos — bug 2026-05-12 #1).
+    const initialPos = localPositionRef.current ?? { x: 0, z: 0 };
+    const agentId = service.addAgent(initialPos, DEFAULT_AGENT_PARAMS);
+    setLocalAgentId(agentId);
+    setBuilt(true);
+    log.info('local agent registered', { id: agentId });
+
+    return () => {
+      // Cleanup en orden inverso: quita agent ANTES del próximo build (que
+      // disposeNavData → clears agents). En unmount, el dispose() final
+      // limpia todo.
+      service.removeAgent(agentId);
+      setLocalAgentId(null);
+    };
   }, [initialized, terrainBounds, espacioObjetos, service]);
 
   // ─── 3. Sync diferencial de obstáculos (admin coloca/quita muebles) ───────
@@ -242,46 +269,9 @@ export function useNavigation(params: UseNavigationParams): UseNavigationReturn 
     });
   }, [built, espacioObjetos, terrainBounds, service]);
 
-  // ─── 4. Registrar agente local cuando hay navmesh listo ───────────────────
-  // Patrón canónico React: ref para leer "última pose" sin que cambios de
-  // posición disparen re-run del effect. Sin esto, cada paso del avatar
-  // re-ejecutaba register+cleanup → 85+ agentes leakeados en 46s → crowd
-  // saturado retornaba NaN en position() → SpatialAudio AudioParam crash
-  // (bug 2026-05-12 #1, confirmado en logs producción).
-  //
-  // Ref: https://react.dev/learn/referencing-values-with-refs
-  //   "Use a ref when you want a component to 'remember' some information,
-  //    but you don't want that information to trigger new renders."
-  //
-  // Deps `[service, built, buildVersion]`:
-  // - service: re-init si el adapter cambia
-  // - built: re-register cuando termina el build inicial
-  // - buildVersion: CRÍTICO — cuando obstáculos cambian, `service.build()`
-  //   internamente hace `disposeNavData()` que clear el Map de agents del
-  //   adapter. `setBuilt(true)` era idempotente → effect NO re-corría →
-  //   `localAgentId` quedaba stale → avatar congelado (bug 2026-05-12 #2).
-  //
-  // La posición se sincroniza vía `teleportAgent` desde Player3D (sync
-  // inicial al primer frame con coords válidas).
-  const localPositionRef = useRef(localPosition);
-  useEffect(() => {
-    localPositionRef.current = localPosition;
-  }, [localPosition]);
-
-  useEffect(() => {
-    if (!service || !built) return;
-    // Snapshot via ref: lee la última pose sin que el effect re-corra.
-    // Puede ser sentinel (0,0) si el avatar aún no hidrató — el sync
-    // inicial en Player3D (agentInitialSyncDoneRef) corrige al primer frame.
-    const initialPos = localPositionRef.current ?? { x: 0, z: 0 };
-    const id = service.addAgent(initialPos, DEFAULT_AGENT_PARAMS);
-    setLocalAgentId(id);
-    log.info('local agent registered', { id, buildVersion });
-    return () => {
-      service.removeAgent(id);
-      setLocalAgentId(null);
-    };
-  }, [service, built, buildVersion]);
+  // (El agent register vive ahora dentro del effect de build — ver §2.
+  // Su lifecycle está acoplado al del navmesh para garantizar re-register
+  // automático tras rebuild, sin counter de version.)
 
   // ─── 5. Tick cada frame ───────────────────────────────────────────────────
   useFrame((_, delta) => {
