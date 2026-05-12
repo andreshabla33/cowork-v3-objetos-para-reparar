@@ -70,20 +70,26 @@ const DEAD_CHANNEL_STATES = new Set(['closed']);
 /**
  * FIX 2026-05-12 ghost user mitigation — stale-presence threshold.
  *
- * Supabase Presence depende de heartbeat (25s default) + timeout server-side
- * (~30-60s) para fire LEAVE cuando un cliente desconecta sin untrack. Si user A
- * se mueve antes del timeout y re-suscribe chunks donde user B (fantasma) tenía
- * presence cached, el aggregator re-incluye al fantasma con su última posición.
+ * Supabase Presence depende de heartbeat (25s) + timeout server-side (~30-60s)
+ * para fire LEAVE cuando un cliente desconecta sin untrack. Si user A se mueve
+ * antes del timeout y re-suscribe chunks donde user B (fantasma) tenía presence
+ * cached, el aggregator re-incluye al fantasma con su última posición.
  *
  * Mitigación client-side: cada track agrega `last_seen: Date.now()` al payload,
- * y el lifecycle (usePresenceLifecycle) refresca el track cada 5s aunque user no
- * se mueva. El aggregator filtra presences cuyo last_seen > STALE_PRESENCE_MS.
+ * y el lifecycle refresca via updatePresenceInChannels (45s throttle) aunque
+ * user no se mueva. El aggregator filtra presences cuyo last_seen > STALE_MS.
  *
- * 15s = 3× refresh interval (5s). Tolera 2 heartbeats perdidos sin flicker.
+ * Threshold 60s = 1× refresh + margin. Cubre el caso edge donde server LEAVE
+ * tarda > 60s (raro pero observado). En condiciones normales, el server LEAVE
+ * llega antes (~30-60s) y este filter no se activa.
+ *
+ * Iteración 1 (5s/15s) saturaba canales: cada track() genera nuevo presence_ref
+ * server-side → fire LEAVE del ref previo. 11-16 channels × tracks/5s = cascade
+ * de events + CLOSED states. Ref: realtime-js RealtimePresence.ts ~L290.
  *
  * Ref: https://supabase.com/docs/guides/realtime/presence
  */
-const STALE_PRESENCE_MS = 15_000;
+const STALE_PRESENCE_MS = 60_000;
 
 interface UsePresenceChannelsProps {
   activeWorkspaceId: string | undefined;
@@ -767,11 +773,16 @@ export function usePresenceChannels({
   /**
    * Force re-track in ALL joined channels, bypassing the throttle.
    *
-   * Called when empresa_id loads to ensure all payloads carry the correct
-   * empresa_id. Without this, payloads tracked during the initial subscription
-   * (before empresa_id loaded) would have stale data until the next throttled
-   * update (up to 5s later). Also triggers a recalculation to re-read all
-   * channels with the now-correct empresa_id for same-company detection.
+   * Casos de uso:
+   *  1. empresa_id loads: garantiza payloads con empresa_id correcta sin esperar
+   *     al próximo update throttled.
+   *  2. Keep-alive periódico (usePresenceLifecycle, 45s) para refrescar
+   *     `last_seen` y evitar que peers nos marquen como ghost (umbral 60s).
+   *
+   * NOTE: cada track() genera nuevo presence_ref server-side → fire LEAVE del
+   * ref previo en cada channel. Por eso el interval es 45s (no más frecuente);
+   * con N=15 channels eso es ~0.3 tracks/seg. Iter previo con 5s saturó canales.
+   * Ref: realtime-js RealtimePresence.ts ~L290 (filter presenceRefsToRemove).
    */
   const forceRetrackAll = useCallback((): void => {
     if (!userId) return;

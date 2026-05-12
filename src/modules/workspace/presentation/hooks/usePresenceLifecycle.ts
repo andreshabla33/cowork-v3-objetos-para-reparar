@@ -47,18 +47,23 @@ const HEALTH_CHECK_INTERVAL_MS = 10_000;
 /**
  * Interval (ms) for the periodic presence re-track ("keep-alive").
  *
- * FIX 2026-05-12 ghost user mitigation. Cada 5s re-trackeamos el payload con
- * `last_seen: Date.now()` actualizado, para que peers no nos marquen stale
- * (umbral = 15s = 3× refresh). Sin esto, un user estático aparece como
- * fantasma a sus peers después de 15s sin movimiento.
+ * FIX 2026-05-12 ghost user mitigation (iter 2). Cada 45s re-trackeamos el
+ * payload con `last_seen: Date.now()` para que peers no nos marquen stale
+ * (umbral = 60s).
  *
- * Compara con HEALTH_CHECK_INTERVAL_MS (10s): este interval modifica payload
- * (write), aquél inspecciona state (read). 5s es el valor más alto que mantiene
- * un margen seguro contra el umbral de 15s sin generar tráfico excesivo.
+ * 45s elegido para:
+ *   - Match el `trackThrottleMs=45s` natural de updatePresenceInChannels:
+ *     consistencia entre keep-alive periódico y track-on-state-change.
+ *   - Mantener throughput aceptable: 11-16 channels × 1 track/45s ≈ 0.3-0.4
+ *     tracks/seg (vs ~3 tracks/seg con el iter 1 de 5s).
+ *
+ * Iter 1 usaba 5s → cada track() genera nuevo presence_ref → server fire
+ * LEAVE del ref previo → cascade de events + chunk channels CLOSED bajo
+ * carga. Confirmado en logs (2026-05-12) y en realtime-js RealtimePresence.ts.
  *
  * Ref: https://supabase.com/docs/guides/realtime/presence
  */
-const PRESENCE_REFRESH_MS = 5_000;
+const PRESENCE_REFRESH_MS = 45_000;
 
 interface UsePresenceLifecycleParams {
   activeWorkspaceId: string | undefined;
