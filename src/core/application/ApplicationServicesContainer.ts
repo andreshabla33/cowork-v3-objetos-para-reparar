@@ -28,7 +28,6 @@ import { InyectorPlantillaZona } from '../infrastructure/adapters/InyectorPlanti
 import { RepositorioPlantillaZonaSupabase } from '../infrastructure/adapters/RepositorioPlantillaZonaSupabaseAdapter';
 import { ToastEmitterAdapter } from '../infrastructure/adapters/ToastEmitterAdapter';
 import { WebAudioSoundAdapter } from '../infrastructure/adapters/WebAudioSoundAdapter';
-import { RecastNavigationAdapter } from '../infrastructure/r3f/navigation/RecastNavigationAdapter';
 import type { INotificationBus } from '../domain/ports/INotificationBus';
 import type { ISoundBus } from '../domain/ports/ISoundBus';
 import type { INavigationService } from '../domain/ports/INavigationService';
@@ -44,11 +43,17 @@ export interface ApplicationServices {
   /** Port para reproducir efectos de sonido del espacio 3D. */
   readonly sounds: ISoundBus;
   /**
-   * Port para pathfinding/obstacle avoidance. Impl canónica:
-   * `RecastNavigationAdapter` (WASM). Consumir vía `useNavigation` hook,
-   * nunca importar el adapter directamente desde Module/Presentation.
+   * Resolver lazy del navigation service (pathfinding/obstacle avoidance).
+   *
+   * Retorna Promise para que el bundler extraiga el adapter (recast WASM
+   * ~750 KB raw) a un chunk separado que se carga **solo** al entrar al
+   * espacio 3D. Si se exportara como instancia sync, vite incluiría
+   * recast en el chunk del container → impacto en initial load.
+   *
+   * Consumir vía `useNavigation` hook — nunca importar el adapter
+   * concreto directamente desde Module/Presentation.
    */
-  readonly navigation: INavigationService;
+  resolveNavigationService(): Promise<INavigationService>;
 }
 
 // ─── Container ────────────────────────────────────────────────────────────────
@@ -108,8 +113,14 @@ class ApplicationServicesContainerImpl implements ApplicationServices {
     return this._sounds;
   }
 
-  get navigation(): INavigationService {
+  async resolveNavigationService(): Promise<INavigationService> {
     if (!this._navigation) {
+      // Dynamic import: vite extrae el adapter (recast WASM) a un chunk
+      // separado que solo descarga al entrar al espacio 3D. El initial
+      // load del workspace queda sin el peso del WASM.
+      const { RecastNavigationAdapter } = await import(
+        '../infrastructure/r3f/navigation/RecastNavigationAdapter'
+      );
       this._navigation = new RecastNavigationAdapter();
     }
     return this._navigation;

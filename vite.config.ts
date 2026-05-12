@@ -81,6 +81,14 @@ export default defineConfig(async (): Promise<UserConfig> => {
               return 'vendor-physics';
             }
 
+            // Recast NavMesh (pathfinding WASM ~750 KB raw / ~230 KB gz).
+            // Chunk separado para que rollup pueda lazy-loadearlo junto con
+            // VirtualSpace3D — el initial load del workspace NO paga el WASM.
+            // Ref: https://github.com/isaac-mason/recast-navigation-js
+            if (id.includes('recast-navigation') || id.includes('@recast-navigation')) {
+              return 'vendor-navigation';
+            }
+
             if (id.includes('livekit-client') || id.includes('@livekit')) {
               return 'vendor-livekit';
             }

@@ -103,7 +103,7 @@ export interface PlayerProps {
    * + `teleportAgent` para sincronizar la pose del crowd agent.
    * Si `navigationReady === false`, se cae al pathfinding lineal previo.
    */
-  navigationService?: import('@/src/core/domain/ports/INavigationService').INavigationService;
+  navigationService?: import('@/src/core/domain/ports/INavigationService').INavigationService | null;
   navigationAgentId?: import('@/src/core/domain/entities/espacio3d/NavigationConfig').NavigationAgentId | null;
   navigationReady?: boolean;
 }

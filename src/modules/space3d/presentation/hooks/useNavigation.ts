@@ -24,7 +24,7 @@
  *  - https://github.com/isaac-mason/recast-navigation-js (WASM init async)
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { logger } from '@/core/infrastructure/observability/logger';
 import { getApplicationServices } from '@/src/core/application/ApplicationServicesContainer';
@@ -125,7 +125,12 @@ export interface UseNavigationParams {
 }
 
 export interface UseNavigationReturn {
-  service: INavigationService;
+  /**
+   * El adapter concreto. `null` mientras se resuelve el chunk lazy (~50-200ms
+   * en la primera carga). Consumers deben handle null + fallback al
+   * comportamiento previo.
+   */
+  service: INavigationService | null;
   /** `true` cuando WASM cargado + navmesh construido + agente local listo. */
   ready: boolean;
   /** Id del agente local registrado en el crowd. `null` hasta que `ready`. */
@@ -137,7 +142,7 @@ export interface UseNavigationReturn {
 export function useNavigation(params: UseNavigationParams): UseNavigationReturn {
   const { terrainBounds, espacioObjetos, localPosition, enabled = true } = params;
 
-  const service = useMemo(() => getApplicationServices().navigation, []);
+  const [service, setService] = useState<INavigationService | null>(null);
   const [initialized, setInitialized] = useState(false);
   const [built, setBuilt] = useState(false);
   const [localAgentId, setLocalAgentId] = useState<NavigationAgentId | null>(null);
@@ -145,11 +150,19 @@ export function useNavigation(params: UseNavigationParams): UseNavigationReturn 
   /** Set de ids de obstáculos actualmente registrados en recast. */
   const registeredObstaclesRef = useRef<Set<string>>(new Set());
 
-  // ─── 1. Init WASM (idempotente, una vez por sesión) ───────────────────────
+  // ─── 1. Resolver dynamic import + init WASM ───────────────────────────────
+  // Resolve carga el chunk lazy (vendor-navigation) — solo cuando el usuario
+  // entra a Scene3D. Initial load del workspace no paga el peso del WASM.
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
-    service.initialize()
+    getApplicationServices()
+      .resolveNavigationService()
+      .then((resolved) => {
+        if (cancelled) return;
+        setService(resolved);
+        return resolved.initialize();
+      })
       .then(() => {
         if (!cancelled) {
           setInitialized(true);
@@ -160,11 +173,11 @@ export function useNavigation(params: UseNavigationParams): UseNavigationReturn 
         log.error('navigation initialize failed', { error: (err as Error)?.message });
       });
     return () => { cancelled = true; };
-  }, [enabled, service]);
+  }, [enabled]);
 
   // ─── 2. Build navmesh cuando hay terreno + initialized ────────────────────
   useEffect(() => {
-    if (!initialized || !terrainBounds) {
+    if (!service || !initialized || !terrainBounds) {
       setBuilt(false);
       return;
     }
@@ -192,7 +205,7 @@ export function useNavigation(params: UseNavigationParams): UseNavigationReturn 
   // Diff incremental para no rebuildear el navmesh entero — el TileCache
   // procesa add/remove en sus queued updates (cap 64).
   useEffect(() => {
-    if (!built || !terrainBounds) return;
+    if (!service || !built || !terrainBounds) return;
 
     const currentIds = new Set(espacioObjetos.map((o) => o.id));
     const registered = registeredObstaclesRef.current;
@@ -217,7 +230,7 @@ export function useNavigation(params: UseNavigationParams): UseNavigationReturn 
 
   // ─── 4. Registrar agente local cuando hay navmesh + posición ──────────────
   useEffect(() => {
-    if (!built || !localPosition) return;
+    if (!service || !built || !localPosition) return;
     const id = service.addAgent(localPosition, DEFAULT_AGENT_PARAMS);
     setLocalAgentId(id);
     log.info('local agent registered', { id });
@@ -229,14 +242,14 @@ export function useNavigation(params: UseNavigationParams): UseNavigationReturn 
 
   // ─── 5. Tick cada frame ───────────────────────────────────────────────────
   useFrame((_, delta) => {
-    if (!built) return;
+    if (!service || !built) return;
     service.tick(delta);
   });
 
   // ─── 6. Dispose total al desmontar ────────────────────────────────────────
   useEffect(() => {
     return () => {
-      service.dispose();
+      if (service) service.dispose();
     };
   }, [service]);
 
