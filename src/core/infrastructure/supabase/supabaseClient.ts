@@ -85,7 +85,34 @@ function tryForceRealtimeRecovery(): void {
 //   Observabilidad: loggea transiciones del heartbeat interno para
 //   correlacionar con Sentry sin entrar en la lógica de recovery (el
 //   rejoinTimer interno de RealtimeChannel ya reconecta automáticamente).
+// ── Auth lock noop (issue supabase/supabase#42505) ───────────────────────────
+//
+// Bug 2026-05-12: primer arranque post-deploy se quedaba colgado en
+// "SINCRONIZANDO WORKSPACE" — `supabase.auth.getSession()` esperaba 5s para
+// el lock steal automático, y a veces el flow se quedaba >60s sin completar.
+//
+// Causa root: `@supabase/auth-js` usa `navigator.locks.request()` para
+// coordinar el refresh del token entre múltiples tabs/contextos. Cuando el
+// lock queda "orphaned" (component unmount mid-operation, SW de deploy
+// previo aún activo, etc.), el auto-recovery con `{ steal: true }` puede
+// dejar la promise interna en estado inconsistente.
+//
+// Workaround oficial documentado (supabase/supabase#42505): pasar un `lock`
+// noop que ejecuta fn() directamente sin coordinación.
+//
+// Trade-off aceptable: si dos tabs refrescan el token en el mismo segundo,
+// ambos hacen HTTP request a `/auth/v1/token?grant_type=refresh_token`.
+// Supabase server es idempotente con `refresh_token` — retorna el mismo
+// nuevo token a ambos. NO hay corrupción de sesión.
+//
+// API @experimental: https://github.com/supabase/supabase-js — `auth.lock`
+// Ref: https://github.com/supabase/supabase/issues/42505
+const noopAuthLock = async <R>(_name: string, _acquireTimeout: number, fn: () => Promise<R>): Promise<R> => fn();
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    lock: noopAuthLock,
+  },
   realtime: {
     heartbeatIntervalMs: 25_000,
     worker: true,
