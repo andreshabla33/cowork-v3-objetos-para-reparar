@@ -51,23 +51,30 @@ const PreviewCaptureBridge = ({
  *   1. gl.dispose() — libera texturas, geometrías, programas internos de Three.js
  *   2. forceContextLoss() — libera el contexto WebGL del navegador (slot GPU)
  *
- * Guard: verifica isContextLost() antes de forzar pérdida para evitar
- * "INVALID_OPERATION: loseContext: context already lost" en unmount.
+ * Guard layered:
+ *   - isContextLost() check evita el path obvio
+ *   - try/catch absorbe el edge case donde getContext() reporta sano pero la
+ *     extensión WEBGL_lose_context ya considera el context dead. Sin esto se
+ *     loggea "INVALID_OPERATION: loseContext: context already lost" en
+ *     unmount durante presión GPU (logs 2026-05-12).
  */
 const PreviewRendererLifecycle = () => {
   const { gl } = useThree();
 
   useEffect(() => {
     return () => {
-      // 1. Liberar recursos Three.js primero
       gl.dispose();
 
-      // 2. Liberar slot WebGL del navegador (solo si el contexto sigue vivo)
       const ctx = gl.getContext();
       const isAlreadyLost = ctx && typeof ctx.isContextLost === 'function' && ctx.isContextLost();
 
       if (!isAlreadyLost && typeof gl.forceContextLoss === 'function') {
-        gl.forceContextLoss();
+        try {
+          gl.forceContextLoss();
+        } catch {
+          // Race: context murió entre el check y el call (raro bajo presión GPU).
+          // Benign — el slot se libera de igual forma cuando el GC corra.
+        }
       }
     };
   }, [gl]);
