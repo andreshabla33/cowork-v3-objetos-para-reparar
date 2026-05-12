@@ -37,6 +37,7 @@ import { Terrain3D } from './Terrain3D';
 import { EmoteSync, useSyncEffects } from '@/modules/space3d/presentation/world/EmoteSync';
 import { hapticFeedback, isMobileDevice } from '@/core/infrastructure/platform/mobileDetect';
 import type { CameraMode } from '@/src/core/domain/entities/espacio3d/CameraFramingPolicy';
+import { useNavigation } from '@/modules/space3d/presentation/hooks/useNavigation';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import type { ModoEdicionObjeto, PlantillaZonaEnColocacion } from '@/modules/_state/slices';
 import { FloorType, calcularNivelAnidamientoRectangulo, detectarSolapamientoSubzona, zonaDbAMundo, type RectanguloZona, resolverTipoSubsueloZona } from '@/src/core/domain/entities';
@@ -677,6 +678,29 @@ export const Scene: React.FC<SceneProps> = ({
     ],
     [cerramientosZona, espacioObjetos, paredesPerimetrales]
   );
+
+  // ── Navigation service (pathfinding/obstacle-avoidance) ──
+  // Construye navmesh + tilecache desde el terreno + obstáculos. Phase 2
+  // del feature: Player3D usa esto para que el click-to-move respete
+  // obstáculos. WASD/joystick mantienen el sliding clásico (input directo,
+  // sincronizado con teleportAgent para que recast no pierda el rastro).
+  const navigationLocalPosition = useMemo(
+    () => ({ x: currentUser.x, z: currentUser.y }),
+    [currentUser.x, currentUser.y],
+  );
+  const navigationTerrainBounds = useMemo(() => ({
+    minX: movementBounds.minX,
+    maxX: movementBounds.maxX,
+    minZ: movementBounds.minZ,
+    maxZ: movementBounds.maxZ,
+    y: terrainBounds.topY,
+  }), [movementBounds, terrainBounds.topY]);
+  const navigation = useNavigation({
+    terrainBounds: navigationTerrainBounds,
+    espacioObjetos,
+    localPosition: navigationLocalPosition,
+  });
+
   // --- Hito 8: Edit Mode dragging ---
   const isDragging = useStore((s) => s.isDragging);
   const isDrawingZone = useStore((s) => s.isDrawingZone);
@@ -1496,6 +1520,9 @@ export const Scene: React.FC<SceneProps> = ({
         onRefrescarAsiento={onRefrescarAsiento}
         obstaculos={obstaculosMundo}
         movementBounds={movementBounds}
+        navigationService={navigation.service}
+        navigationAgentId={navigation.localAgentId}
+        navigationReady={navigation.ready}
       />
       <CameraFollow
         controlsRef={orbitControlsRef}

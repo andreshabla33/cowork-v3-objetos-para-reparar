@@ -96,13 +96,37 @@ export interface PlayerProps {
    * pasa para que el dominio trabaje con coords reales.
    */
   movementBounds?: { minX: number; maxX: number; minZ: number; maxZ: number };
+  /**
+   * Navigation service para pathfinding (recast NavMesh). Solo se usa
+   * cuando hay `moveTarget` (click-to-move) — para que el avatar bordee
+   * obstáculos hasta el destino. WASD/joystick mantienen sliding clásico
+   * + `teleportAgent` para sincronizar la pose del crowd agent.
+   * Si `navigationReady === false`, se cae al pathfinding lineal previo.
+   */
+  navigationService?: import('@/src/core/domain/ports/INavigationService').INavigationService;
+  navigationAgentId?: import('@/src/core/domain/entities/espacio3d/NavigationConfig').NavigationAgentId | null;
+  navigationReady?: boolean;
 }
 
-export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream, localVideoTrack, backgroundEffect = 'none', showVideoBubble = true, videoIsProcessed = false, message, reactions = [], onClickAvatar, moveTarget, onReachTarget, teleportTarget, onTeleportDone, broadcastMovement, moveSpeed, runSpeed, ecsStateRef, onPositionUpdate, zonasEmpresa = [], spawnPersonal = { spawn_x: null, spawn_z: null }, onGuardarPosicionPersistente, empresasAutorizadas = [], usersInCallIds, mobileInputRef, onXPEvent, espacioObjetos = [], asientos = [], ocupacionesAsientosPorObjetoId = new Map(), onOcuparAsiento, onLiberarAsiento, onRefrescarAsiento, obstaculos = [], movementBounds }) => {
+export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream, localVideoTrack, backgroundEffect = 'none', showVideoBubble = true, videoIsProcessed = false, message, reactions = [], onClickAvatar, moveTarget, onReachTarget, teleportTarget, onTeleportDone, broadcastMovement, moveSpeed, runSpeed, ecsStateRef, onPositionUpdate, zonasEmpresa = [], spawnPersonal = { spawn_x: null, spawn_z: null }, onGuardarPosicionPersistente, empresasAutorizadas = [], usersInCallIds, mobileInputRef, onXPEvent, espacioObjetos = [], asientos = [], ocupacionesAsientosPorObjetoId = new Map(), onOcuparAsiento, onLiberarAsiento, onRefrescarAsiento, obstaculos = [], movementBounds, navigationService, navigationAgentId = null, navigationReady = false }) => {
   const groupRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
   // Refs para acceso seguro dentro de useFrame
   const zonasRef = useRef(zonasEmpresa);
+  /**
+   * Track del último `moveTarget` enviado al navigation service. Cuando
+   * la prop cambia, se dispara un único `moveAgent(...)` — el avatar
+   * sigue el path computado por recast hasta llegar. Sin este guard
+   * llamaríamos `moveAgent` cada frame.
+   */
+  const lastDispatchedMoveTargetRef = useRef<{ x: number; z: number } | null>(null);
+  /**
+   * Cuando WASD/joystick mueven el avatar manualmente, hay que
+   * sincronizar la pose del crowd agent vía `teleportAgent`. Sin esto,
+   * recast queda con una pose stale y el siguiente click-to-move
+   * computaría el path desde una posición incorrecta.
+   */
+  const lastManualSyncRef = useRef(0);
   const empresasAuthRef = useRef(empresasAutorizadas);
   const asientosRef = useRef(asientos);
   const ocupacionesAsientosRef = useRef(ocupacionesAsientosPorObjetoId);
@@ -1056,7 +1080,34 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
       if (dist < 0.15) {
         autoMoveTimeRef.current = 0;
         if (onReachTarget) onReachTarget();
+        if (navigationService && navigationAgentId) {
+          navigationService.stopAgent(navigationAgentId);
+        }
+        lastDispatchedMoveTargetRef.current = null;
+      } else if (navigationService && navigationAgentId && navigationReady) {
+        // ── Click-to-move con pathfinding recast ──
+        // Cuando el target cambia, dispatch único a moveAgent. El crowd
+        // computa path con funnel + steering — bordea obstáculos
+        // dinámicamente sin necesidad de recompute cada frame.
+        const last = lastDispatchedMoveTargetRef.current;
+        if (!last || last.x !== tx || last.z !== tz) {
+          navigationService.moveAgent(navigationAgentId, { x: tx, z: tz });
+          lastDispatchedMoveTargetRef.current = { x: tx, z: tz };
+        }
+        // Leer pose interpolada del crowd agent — ya viene avoidance-aware.
+        const pose = navigationService.getAgentPose(navigationAgentId);
+        if (pose) {
+          autoMoveTimeRef.current += delta;
+          const isAutoRunning = autoMoveTimeRef.current > 0.4;
+          positionRef.current.x = pose.position.x;
+          positionRef.current.z = pose.position.z;
+          movedThisFrame = pose.isMoving;
+          if (pose.isMoving && ['idle', 'walk', 'run'].includes(baseAnimationStateRef.current)) {
+            actualizarAnimationStateBase(isAutoRunning ? 'run' : 'walk');
+          }
+        }
       } else {
+        // ── Fallback (navigationService aún no ready): pathfinding lineal con sliding ──
         autoMoveTimeRef.current += delta;
         const isAutoRunning = autoMoveTimeRef.current > 0.4;
         const autoSpeed = isAutoRunning ? baseRunSpeed : baseMoveSpeed;
@@ -1091,6 +1142,17 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
       positionRef.current.z = movimientoResuelto.posicion.z;
       movedThisFrame = movimientoResuelto.seMovio;
       actualizarAnimationStateBase(shouldRun ? 'run' : 'walk');
+
+      // Sincronizar el crowd agent con la pose real (input directo).
+      // Throttle a 5 ticks/seg para no spam. Sin esto, recast guarda una pose
+      // stale y el siguiente click-to-move computa path desde el punto viejo.
+      if (navigationService && navigationAgentId && navigationReady) {
+        const now = performance.now();
+        if (now - lastManualSyncRef.current > 200) {
+          navigationService.teleportAgent(navigationAgentId, positionRef.current);
+          lastManualSyncRef.current = now;
+        }
+      }
     }
 
     const deltaMovimientoX = positionRef.current.x - previousX;
