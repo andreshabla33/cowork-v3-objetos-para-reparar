@@ -155,6 +155,17 @@ export function adaptiveConfigFromTier(
     ? gpuInfo.estimatedVRAM === 'medium' || gpuInfo.estimatedVRAM === 'low'
     : false;
 
+  // FIX 2026-05-12: Intel Iris/UHD vía ANGLE Direct3D11 (Windows) sufre
+  // WebGL Context Lost cuando coexisten 3 GL contexts (Three.js + MediaPipe
+  // segmentación blur + MediaPipe Face/Pose). El driver ANGLE D3D11 alcanza
+  // el límite de recursos y el browser libera el context.
+  // Cap DPR=1.0 en esta combinación específica reduce fragment-bound y
+  // previene context loss durante el warm-up.
+  // Ref logs producción 2026-05-12: "THREE.WebGLRenderer: Context Lost" en
+  // Intel Iris Xe ANGLE D3D11 + recording flow.
+  const rendererStr = gpuInfo?.renderer ?? '';
+  const esIntelAngleD3D11 = /ANGLE.*Intel.*Direct3D11/i.test(rendererStr);
+
   // ─── Tier 2 visual defaults (aplica a tier ≥ 2; ver plan-tier-2-cowork) ──
   // Tier 0 y 1 conservan comportamiento pre-Tier 2 (skydome simple, sin IBL,
   // sin ACES, sin FOV dinámico) para máxima compatibilidad con hardware bajo.
@@ -232,7 +243,13 @@ export function adaptiveConfigFromTier(
   // objetos con metalness > 0 (GLTF importados). 1.05 preserva brillo
   // sin saturar specular en ángulos rasantes.
   // Ref: https://threejs.org/docs/#api/en/renderers/WebGLRenderer.toneMappingExposure
-  const maxDprTier3 = esGpuIntegrada ? Math.min(deviceDpr, 1.25) : Math.min(deviceDpr, 2);
+  // Intel ANGLE D3D11 → cap más agresivo (1.0) por context loss observado en prod.
+  // Otras integradas (Apple M-series, Adreno) → 1.25 sigue siendo seguro.
+  const maxDprTier3 = esIntelAngleD3D11
+    ? 1.0
+    : esGpuIntegrada
+      ? Math.min(deviceDpr, 1.25)
+      : Math.min(deviceDpr, 2);
   return {
     shadows: true,
     antialias: true,

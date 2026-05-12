@@ -59,6 +59,21 @@ export class ProcesarGrabacionUseCase {
    * @throws Error if Edge Function call fails
    */
   async generarResumenAI(data: GenerarResumenAIData): Promise<void> {
+    // FIX 2026-05-12: skip AI summary si transcripción es placeholder/vacía/muy corta.
+    // La edge function `generar-resumen-ai` retorna 400 para inputs <30 chars
+    // (Web Speech API casi no capturó nada). Skip elimina 400s en Sentry +
+    // notificación inútil al usuario.
+    const transcripcion = data.transcripcion?.trim() ?? '';
+    const esPlaceholder = transcripcion.startsWith('[Transcripción no disponible')
+      || transcripcion.startsWith('[Sin transcripción')
+      || transcripcion.length < 30;
+    if (esPlaceholder) {
+      log.warn('Skipping AI summary — transcripción insuficiente para análisis', {
+        grabacionId: data.grabacion_id,
+        length: transcripcion.length,
+      });
+      return;
+    }
     log.info('Generating AI summary', { grabacionId: data.grabacion_id });
     await this.repo.generarResumenAI(data);
   }

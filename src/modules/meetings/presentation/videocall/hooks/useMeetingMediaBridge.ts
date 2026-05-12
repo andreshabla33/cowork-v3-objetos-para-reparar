@@ -6,6 +6,7 @@ import { SpaceMediaCoordinator, type SpaceMediaCoordinatorState } from '@/module
 import { getLocalVideoTrackFactory } from '@/src/core/infrastructure/adapters/LocalVideoTrackFactory';
 import { PublicarLocalTrackUseCase } from '@/src/core/application/usecases/PublicarLocalTrackUseCase';
 import { logger } from '@/core/infrastructure/observability/logger';
+import { getLiveKitBackgroundAdapter } from '@/core/infrastructure/adapters/LiveKitOfficialBackgroundAdapter';
 
 const publicarLocalTrackUseCase = new PublicarLocalTrackUseCase(getLocalVideoTrackFactory());
 
@@ -229,6 +230,13 @@ export const useMeetingMediaBridge = ({
     let cancelled = false;
 
     log.info('[Bridge] init() INICIO', { initialCameraEnabled, initialMicrophoneEnabled });
+
+    // FIX 2026-05-12: precargar WASM blur en paralelo al initialize() del coordinator.
+    // Sin esto, el primer toggle de blur tarda ~17s (WASM download + parse) en GPU
+    // integrada Intel Iris Xe. Con esto, el WASM ya está en memory cache cuando
+    // el usuario activa blur → toggle instantáneo.
+    // Fire-and-forget: no bloquea el join meeting.
+    void getLiveKitBackgroundAdapter().precargarWasm();
 
     const init = async () => {
       try {

@@ -416,6 +416,11 @@ serve(async (req) => {
       canPublish,
       canSubscribe,
       canPublishData,
+      // FIX 2026-05-12: setMetadata() del participante requiere este grant explícito.
+      // Default LiveKit = false; sin esto SignalRequestError code=15 reason=NOT_ALLOWED
+      // al llamar `localParticipant.setMetadata()` (usado por audio espacial 3D + UX state).
+      // Ref: https://docs.livekit.io/server-sdk-js/interfaces/VideoGrant.html
+      canUpdateOwnMetadata: true,
       roomAdmin: isHost,
       roomCreate,
     }

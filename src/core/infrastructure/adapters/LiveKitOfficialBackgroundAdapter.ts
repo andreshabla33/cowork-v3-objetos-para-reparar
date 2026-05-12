@@ -148,7 +148,65 @@ export class LiveKitOfficialBackgroundAdapter implements IVideoTrackProcessor {
     log.info('LiveKitOfficialBackgroundAdapter disposed');
   }
 
+  /**
+   * Estado de la precarga WASM. Se completa una sola vez por sesión de browser.
+   * Las llamadas concurrentes esperan la misma promesa.
+   */
+  private wasmWarmupPromise: Promise<void> | null = null;
+  private wasmWarmupDone = false;
+
   // ─── API pública del pipeline keep-alive ─────────────────────────────────
+
+  /**
+   * PASO 0 (opcional, recomendado) — Precarga el WASM de MediaPipe Selfie
+   * Segmentation creando una instancia temporal de BackgroundProcessor sin
+   * attach a ningún track.
+   *
+   * El browser cachea el .wasm en memory cache. Cuando attachProcessor() se
+   * llama después (al activar blur), el setProcessor() resuelve mucho más rápido
+   * porque el WASM ya está cargado.
+   *
+   * Coste primer load: ~17s en GPU integrada (Intel Iris Xe), ~3-5s en discreta.
+   * Coste subsiguientes: <100ms.
+   *
+   * Idempotente — la promesa se cachea por sesión browser.
+   *
+   * Llamar idealmente al unirse a una meeting (paralelo al room.connect).
+   */
+  async precargarWasm(): Promise<void> {
+    if (this.wasmWarmupDone) return;
+    if (this.wasmWarmupPromise) return this.wasmWarmupPromise;
+    if (!supportsBackgroundProcessors()) return;
+
+    this.wasmWarmupPromise = (async () => {
+      const inicio = performance.now();
+      log.info('Blur WASM warm-up iniciado (no attach)');
+      try {
+        // Crear instancia temporal — fuerza la descarga del .wasm a memory cache
+        // del browser. La instancia queda sin track asociado y se descarta por GC.
+        // Ref: https://github.com/livekit/track-processors-js
+        const tempProcessor = BackgroundProcessor({ mode: 'disabled' });
+        // No await ningún método: el constructor inicia la carga del worker WASM
+        // en background. El browser cachea el módulo para el próximo BackgroundProcessor().
+        // Mantener referencia ~100ms para asegurar que la carga inicia.
+        await new Promise((r) => setTimeout(r, 100));
+        // Discard sin attach. El cache del browser persiste.
+        void tempProcessor;
+        this.wasmWarmupDone = true;
+        log.info('Blur WASM warm-up completado', {
+          elapsedMs: Math.round(performance.now() - inicio),
+        });
+      } catch (err) {
+        log.warn('Blur WASM warm-up falló (no bloqueante)', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      } finally {
+        this.wasmWarmupPromise = null;
+      }
+    })();
+
+    return this.wasmWarmupPromise;
+  }
 
   /**
    * PASO 1 del ciclo de vida — Inicializa el processor en modo 'disabled'

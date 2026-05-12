@@ -134,14 +134,26 @@ export class MeetingChatSupabaseRepository implements IMeetingChatRepository {
       return newGroup.id;
     }
 
-    // Conflict path: upsert ignored, fallback SELECT.
-    const { data: existing, error: fallbackError } = await supabase
-      .from('grupos_chat')
-      .select('id')
-      .eq('tipo', 'reunion')
-      .eq('espacio_id', espacioId)
-      .eq('nombre', nombre)
-      .single();
+    // Conflict path: upsert ignored, fallback SELECT con retry para race RLS/replicación.
+    // FIX 2026-05-12: usar maybeSingle() (no throw en 0 rows) + 1 retry tras 150ms,
+    // ya que la replicación post-upsert puede tardar unos ms en propagar a la
+    // RLS read query desde el mismo cliente.
+    // Ref: https://supabase.com/docs/reference/javascript/maybesingle
+    const buscarGrupoExistente = async () => {
+      return supabase
+        .from('grupos_chat')
+        .select('id')
+        .eq('tipo', 'reunion')
+        .eq('espacio_id', espacioId)
+        .eq('nombre', nombre)
+        .maybeSingle();
+    };
+
+    let { data: existing, error: fallbackError } = await buscarGrupoExistente();
+    if (!existing && !fallbackError) {
+      await new Promise((r) => setTimeout(r, 150));
+      ({ data: existing, error: fallbackError } = await buscarGrupoExistente());
+    }
 
     if (fallbackError || !existing) {
       throw fallbackError ?? new Error('Chat group not found after upsert conflict');
