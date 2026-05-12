@@ -43,6 +43,14 @@ export interface PresencePayload {
   y: number;
   direction: 'front' | 'left' | 'right' | 'back';
   status: PresenceStatus;
+  /**
+   * Timestamp en ms (Date.now()) del último track. Usado por consumers para
+   * filtrar presences stale (ghost users) sin esperar el LEAVE del server
+   * (~30-60s heartbeat timeout). Refrescado por re-track periódico (10s).
+   * Opcional para compat con clients legacy durante deploy gradual.
+   * Ref: https://supabase.com/docs/guides/realtime/presence
+   */
+  last_seen?: number;
   // Detailed presence (nivel_detalle === 'empresa')
   name?: string;
   role?: Role;

@@ -67,6 +67,24 @@ const CHANNEL_RETRY_BASE_MS = 3_000;
  */
 const DEAD_CHANNEL_STATES = new Set(['closed']);
 
+/**
+ * FIX 2026-05-12 ghost user mitigation — stale-presence threshold.
+ *
+ * Supabase Presence depende de heartbeat (25s default) + timeout server-side
+ * (~30-60s) para fire LEAVE cuando un cliente desconecta sin untrack. Si user A
+ * se mueve antes del timeout y re-suscribe chunks donde user B (fantasma) tenía
+ * presence cached, el aggregator re-incluye al fantasma con su última posición.
+ *
+ * Mitigación client-side: cada track agrega `last_seen: Date.now()` al payload,
+ * y el lifecycle (usePresenceLifecycle) refresca el track cada 5s aunque user no
+ * se mueva. El aggregator filtra presences cuyo last_seen > STALE_PRESENCE_MS.
+ *
+ * 15s = 3× refresh interval (5s). Tolera 2 heartbeats perdidos sin flicker.
+ *
+ * Ref: https://supabase.com/docs/guides/realtime/presence
+ */
+const STALE_PRESENCE_MS = 15_000;
+
 interface UsePresenceChannelsProps {
   activeWorkspaceId: string | undefined;
   userId: string | undefined;
@@ -204,6 +222,16 @@ export function usePresenceChannels({
     const detalleMap = new Map<string, 'empresa' | 'publico'>();
     const currentEmpresaId = userRef.current.empresa_id;
 
+    // FIX 2026-05-12 ghost user: filtrar presences cuyo last_seen excede
+    // STALE_PRESENCE_MS. Si el peer no refrescó su track en >15s, se considera
+    // ghost (cerró tab pero el server aún no fire LEAVE por heartbeat timeout).
+    // Compat: presences SIN last_seen (legacy clients) NO se filtran.
+    const ahora = Date.now();
+    const esPresenceVigente = (p: PresencePayload): boolean => {
+      if (p.last_seen === undefined) return true;
+      return ahora - p.last_seen <= STALE_PRESENCE_MS;
+    };
+
     // ── Phase 0: Read global empresa discovery channel ──────────────────
     // The global channel ensures ALL same-company users are discoverable
     // regardless of chunk distance. Without this, users in non-overlapping
@@ -215,6 +243,7 @@ export function usePresenceChannels({
         const presences = globalState[key] as PresencePayload[];
         for (const presence of presences) {
           if (!presence.user_id || presence.user_id === userId) continue;
+          if (!esPresenceVigente(presence)) continue; // ghost filter
           // Seed the map with minimal data from global channel.
           // Chunk-based channels will OVERWRITE this with richer data
           // if the user is also within chunk range (empresa always wins).
@@ -267,6 +296,7 @@ export function usePresenceChannels({
         for (const key of Object.keys(state)) {
           const presences = state[key] as PresencePayload[];
           for (const presence of presences) {
+            if (!esPresenceVigente(presence)) continue; // ghost filter
             if (presence.user_id && presence.user_id !== userId) {
               empresaUserIds.add(presence.user_id);
             }
@@ -292,6 +322,7 @@ export function usePresenceChannels({
         const presences = state[key] as PresencePayload[];
         for (const presence of presences) {
           if (presence.user_id === userId) continue;
+          if (!esPresenceVigente(presence)) continue; // ghost filter
 
           const nivelDetalle: 'empresa' | 'publico' =
             presence.nivel_detalle === 'publico' ? 'publico' : 'empresa';
@@ -431,6 +462,9 @@ export function usePresenceChannels({
             ? PresenceStatus.AVAILABLE
             : usuario.status;
 
+      // FIX 2026-05-12 ghost user: last_seen incluido en cada track para que
+      // consumers puedan filtrar presences stale sin esperar LEAVE del server
+      // (~30-60s heartbeat timeout). Refrescado por re-track periódico cada 10s.
       const payloadBase: Partial<PresencePayload> = {
         user_id: userId,
         empresa_id: usuario.empresa_id ?? null,
@@ -440,6 +474,7 @@ export function usePresenceChannels({
         y: privacy.showLocationInSpace ? usuario.y : 0,
         direction: usuario.direction,
         status: statusPrivado,
+        last_seen: Date.now(),
       };
 
       const payloadEmpresa: PresencePayload = {

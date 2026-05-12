@@ -44,6 +44,22 @@ const log = logger.child('presence-lifecycle');
  */
 const HEALTH_CHECK_INTERVAL_MS = 10_000;
 
+/**
+ * Interval (ms) for the periodic presence re-track ("keep-alive").
+ *
+ * FIX 2026-05-12 ghost user mitigation. Cada 5s re-trackeamos el payload con
+ * `last_seen: Date.now()` actualizado, para que peers no nos marquen stale
+ * (umbral = 15s = 3× refresh). Sin esto, un user estático aparece como
+ * fantasma a sus peers después de 15s sin movimiento.
+ *
+ * Compara con HEALTH_CHECK_INTERVAL_MS (10s): este interval modifica payload
+ * (write), aquél inspecciona state (read). 5s es el valor más alto que mantiene
+ * un margen seguro contra el umbral de 15s sin generar tráfico excesivo.
+ *
+ * Ref: https://supabase.com/docs/guides/realtime/presence
+ */
+const PRESENCE_REFRESH_MS = 5_000;
+
 interface UsePresenceLifecycleParams {
   activeWorkspaceId: string | undefined;
   userId: string | undefined;
@@ -187,4 +203,26 @@ export function usePresenceLifecycle({
     const interval = setInterval(checkChannelHealth, HEALTH_CHECK_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [activeWorkspaceId, userId, checkChannelHealth]);
+
+  // ── 6. Periodic presence re-track (keep-alive vs ghost users) ─────────
+  // FIX 2026-05-12 ghost user. Refresca `last_seen` en todos los canales
+  // cada PRESENCE_REFRESH_MS (5s), aunque el user no se mueva. Sin esto,
+  // un user estático aparece como fantasma a peers después de 15s sin
+  // movement → el aggregator client-side lo filtra por error.
+  //
+  // Por qué setInterval + forceRetrackAll (no updatePresenceInChannels):
+  //   - updatePresenceInChannels tiene throttle interno de 45s → no sirve.
+  //   - forceRetrackAll bypassa todos los throttles. Es una operación
+  //     barata (track con payload cached, sin IO adicional).
+  //
+  // Si user untracked (page-exit), peers detectan ausencia por dos vías:
+  //   1. untrack explícito (preferred — pagehide en WorkspaceLayout)
+  //   2. last_seen stale > 15s (fallback si untrack no propagó)
+  //
+  // Ref: Supabase Presence — "track(): Send presence to the channel."
+  useEffect(() => {
+    if (!activeWorkspaceId || !userId) return;
+    const interval = setInterval(forceRetrackAll, PRESENCE_REFRESH_MS);
+    return () => clearInterval(interval);
+  }, [activeWorkspaceId, userId, forceRetrackAll]);
 }
