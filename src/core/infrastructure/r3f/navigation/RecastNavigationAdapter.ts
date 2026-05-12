@@ -246,6 +246,12 @@ export class RecastNavigationAdapter implements INavigationService {
     record.agent.requestMoveTarget(closest.point);
   }
 
+  moveAgentVelocity(agentId: NavigationAgentId, velocity: Posicion2D): void {
+    const record = this.agents.get(agentId);
+    if (!record) return;
+    record.agent.requestMoveVelocity({ x: velocity.x, y: 0, z: velocity.z });
+  }
+
   stopAgent(agentId: NavigationAgentId): void {
     const record = this.agents.get(agentId);
     if (!record) return;

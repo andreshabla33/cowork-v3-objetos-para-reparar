@@ -118,8 +118,23 @@ export interface INavigationService {
    * Solicita que el agente se mueva al target. El servicio computa el path
    * + aplica steering. El agente avanza progresivamente — la pose se lee
    * con `getAgentPose`.
+   *
+   * Caso de uso: click-to-move (target en world coords).
    */
   moveAgent(agentId: NavigationAgentId, target: Posicion2D): void;
+
+  /**
+   * Mueve el agente a velocity constante (m/s) en lugar de a un target.
+   * El crowd aplica steering + avoidance manteniendo la dirección deseada.
+   *
+   * Caso de uso: input directo (WASD/joystick) — el usuario manda dirección,
+   * NO destino. Recast resuelve obstáculos sin parar al avatar.
+   *
+   * Pasar velocity {0,0} para detener el agent.
+   *
+   * Ref: recast-navigation-js CrowdAgent.requestMoveVelocity
+   */
+  moveAgentVelocity(agentId: NavigationAgentId, velocity: Posicion2D): void;
 
   /**
    * Cancela el target actual del agente — se queda parado donde está.

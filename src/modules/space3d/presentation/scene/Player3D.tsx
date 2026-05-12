@@ -121,12 +121,16 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
    */
   const lastDispatchedMoveTargetRef = useRef<{ x: number; z: number } | null>(null);
   /**
-   * Cuando WASD/joystick mueven el avatar manualmente, hay que
-   * sincronizar la pose del crowd agent vía `teleportAgent`. Sin esto,
-   * recast queda con una pose stale y el siguiente click-to-move
-   * computaría el path desde una posición incorrecta.
+   * Flag para detectar la transición input→idle en WASD/joystick.
+   * Cuando el user suelta las teclas, mandamos `moveAgentVelocity({0,0})`
+   * para detener el agent (que de otro modo seguiría con la última
+   * velocity por inercia del crowd steering).
+   *
+   * Reemplaza el `lastManualSyncRef` previo (sync vía teleportAgent
+   * throttle 200ms) — ya no es necesario porque el agent ES la fuente
+   * de verdad (positionRef se setea desde getAgentPose).
    */
-  const lastManualSyncRef = useRef(0);
+  const wasMovingDirectInputRef = useRef(false);
   /**
    * Flag para hacer teleportAgent inicial una vez que el agente está
    * registrado. El agente nace en pos sentinel (0,0); este sync inicial
@@ -1158,26 +1162,57 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
 
     const movingByDirectInput = dx !== 0 || dy !== 0;
     if (movingByDirectInput) {
-      const movimientoResuelto = resolverMovimientoConDeslizamiento({
-        posicionActual: positionRef.current,
-        movimiento: { dx, dz: -dy },
-        bounds: movementBounds ?? { minX: 0, maxX: WORLD_SIZE, minZ: 0, maxZ: WORLD_SIZE },
-        esPosicionValida: isPositionValid,
-      });
-      positionRef.current.x = movimientoResuelto.posicion.x;
-      positionRef.current.z = movimientoResuelto.posicion.z;
-      movedThisFrame = movimientoResuelto.seMovio;
-      actualizarAnimationStateBase(shouldRun ? 'run' : 'walk');
-
-      // Sincronizar el crowd agent con la pose real (input directo).
-      // Throttle a 5 ticks/seg para no spam. Sin esto, recast guarda una pose
-      // stale y el siguiente click-to-move computa path desde el punto viejo.
       if (navigationService && navigationAgentId && navigationReady) {
-        const now = performance.now();
-        if (now - lastManualSyncRef.current > 200) {
-          navigationService.teleportAgent(navigationAgentId, positionRef.current);
-          lastManualSyncRef.current = now;
+        // ── Input directo (WASD/joystick) vía recast Crowd ──
+        // El crowd aplica steering + obstacle avoidance entre agents.
+        // Velocity en m/s: dx/dy vienen escalados por delta (m/frame),
+        // dividimos para revertir a m/s que es lo que recast espera.
+        // Asumimos delta ~16ms a 60fps. Si delta=0 (frame inicial), skip.
+        if (delta > 0) {
+          const vx = dx / delta;
+          const vz = -dy / delta;
+          navigationService.moveAgentVelocity(navigationAgentId, { x: vx, z: vz });
+          wasMovingDirectInputRef.current = true;
         }
+        // Lectura de pose en el bloque post-movement (línea ~+25 abajo)
+        // unifica con click-to-move.
+        actualizarAnimationStateBase(shouldRun ? 'run' : 'walk');
+      } else {
+        // ── Fallback legacy: sliding pure Domain ──
+        // Cuando navigation no está ready (WASM cargando, primer mount),
+        // mantenemos el comportamiento previo para no degradar UX.
+        const movimientoResuelto = resolverMovimientoConDeslizamiento({
+          posicionActual: positionRef.current,
+          movimiento: { dx, dz: -dy },
+          bounds: movementBounds ?? { minX: 0, maxX: WORLD_SIZE, minZ: 0, maxZ: WORLD_SIZE },
+          esPosicionValida: isPositionValid,
+        });
+        positionRef.current.x = movimientoResuelto.posicion.x;
+        positionRef.current.z = movimientoResuelto.posicion.z;
+        movedThisFrame = movimientoResuelto.seMovio;
+        actualizarAnimationStateBase(shouldRun ? 'run' : 'walk');
+      }
+    } else if (wasMovingDirectInputRef.current && navigationService && navigationAgentId && navigationReady) {
+      // User soltó WASD/joystick → detener al agente (velocity 0).
+      // Sin esto, el agent seguiría avanzando con la última velocity.
+      navigationService.moveAgentVelocity(navigationAgentId, { x: 0, z: 0 });
+      wasMovingDirectInputRef.current = false;
+    }
+
+    // ── Pose readback post-input ──
+    // Cuando navigation está activo y hubo input directo via velocity,
+    // leemos la pose del crowd agent UNA vez (con avoidance aplicado).
+    // El click-to-move ya hace su propio readback dentro del else-if del
+    // moveTarget — este es solo para el branch de input directo.
+    if (
+      movingByDirectInput &&
+      navigationService && navigationAgentId && navigationReady
+    ) {
+      const pose = navigationService.getAgentPose(navigationAgentId);
+      if (pose && Number.isFinite(pose.position.x) && Number.isFinite(pose.position.z)) {
+        positionRef.current.x = pose.position.x;
+        positionRef.current.z = pose.position.z;
+        movedThisFrame = pose.isMoving;
       }
     }
 
