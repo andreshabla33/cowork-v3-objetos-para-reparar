@@ -29,14 +29,31 @@ const MAX_DISTANCE = 25; // ~400 world units — audible a distancia media por e
 const ROLLOFF = 0.8; // Rolloff suave para que se escuche gradualmente a distancia (estilo Gather)
 
 /**
+ * WeakMap context → listeners-registered guard. Sin este guard, cada llamada
+ * a `ensureAudioContextRunning` agregaba 4 listeners frescos. Si un track
+ * remoto llegaba antes del primer gesture, la función se llamaba 2 veces
+ * (mount + track recibido), terminando con 8+ listeners simultáneos. Al
+ * primer click, browser disparaba `pointerdown` + `pointerup` + `click`
+ * sobre TODOS los listeners → 6+ logs idénticos en mismo ms (bug 2026-05-12).
+ *
+ * WeakMap permite GC del context cuando se destruye sin leak del flag.
+ */
+const audioContextResumeRegistered = new WeakMap<AudioContext, boolean>();
+
+/**
  * Chrome / Safari crean todos los AudioContext en estado `suspended` hasta que
  * el usuario haya interactuado con la página. Si no llamamos a `ctx.resume()`,
  * el grafo de audio procesa muestras a cero → el participante remoto habla
  * pero no se escucha nada.
  *
  * Esta función intenta reanudar el contexto inmediatamente (si ya hubo gesto)
- * y, como fallback, registra un listener global one-shot en `pointerdown` /
- * `keydown` / `touchstart` que lo reanuda en la primera interacción.
+ * y, como fallback, registra UN solo set de listeners global one-shot en
+ * `pointerdown` / `keydown` / `touchstart` / `click` que lo reanuda en la
+ * primera interacción.
+ *
+ * Ref: https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/resume
+ *      "Resumes the progression of time in an audio context"
+ * Ref: https://developer.chrome.com/blog/autoplay#web_audio
  */
 function ensureAudioContextRunning(ctx: AudioContext): void {
   if (ctx.state === 'running') return;
@@ -47,26 +64,44 @@ function ensureAudioContextRunning(ctx: AudioContext): void {
 
   if (typeof window === 'undefined') return;
 
-  const resumeOnGesture = () => {
-    if (ctx.state === 'running') {
-      cleanup();
-      return;
-    }
-    ctx.resume()
-      .then(() => {
-        log.info('AudioContext resumed after user gesture', { state: ctx.state });
-        cleanup();
-      })
-      .catch((err) => {
-        log.warn('AudioContext resume failed', { error: err instanceof Error ? err.message : String(err) });
-      });
-  };
+  // Guard: si ya registramos listeners para este contexto, no duplicar.
+  // Sin esto, llamadas repetidas a `ensureAudioContextRunning` (mount + cada
+  // track remoto nuevo) agregaban 4 listeners adicionales cada una.
+  if (audioContextResumeRegistered.get(ctx)) return;
+  audioContextResumeRegistered.set(ctx, true);
 
-  const cleanup = () => {
+  /**
+   * Flag síncrono para evitar que múltiples eventos del MISMO gesture
+   * disparen `ctx.resume()` + log antes de que el cleanup async se complete.
+   * Browser sequence típica al hacer click: pointerdown → pointerup → click.
+   * Sin este flag, los 3 invocaban resume + log.
+   */
+  let resumeDispatched = false;
+
+  const cleanup = (): void => {
     window.removeEventListener('pointerdown', resumeOnGesture);
     window.removeEventListener('keydown', resumeOnGesture);
     window.removeEventListener('touchstart', resumeOnGesture);
     window.removeEventListener('click', resumeOnGesture);
+  };
+
+  const resumeOnGesture = (): void => {
+    if (resumeDispatched) return;
+    if (ctx.state === 'running') {
+      cleanup();
+      return;
+    }
+    resumeDispatched = true;
+    // Cleanup SÍNCRONO antes del resume async — sin esto, los demás eventos
+    // del gesture en curso (pointerup, click) re-invocaban la función.
+    cleanup();
+    ctx.resume()
+      .then(() => {
+        log.info('AudioContext resumed after user gesture', { state: ctx.state });
+      })
+      .catch((err) => {
+        log.warn('AudioContext resume failed', { error: err instanceof Error ? err.message : String(err) });
+      });
   };
 
   window.addEventListener('pointerdown', resumeOnGesture, { passive: true });
