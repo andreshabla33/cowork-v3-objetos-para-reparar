@@ -367,9 +367,19 @@ export const CameraFollow: React.FC<{
     // Solo aplica en modo isometric (free tiene chase-cam rotativo que ya
     // tiene su propia lógica). Y no durante drawing / edit / interior /
     // follow remoto (cada uno ya gobierna el framing por su cuenta).
+    //
+    // FIX 2026-05-12: `userInteractionTimestampRef` arranca en `0` (sentinel
+    // "nunca hubo interacción"). ANTES tratábamos eso como `Infinity` ms
+    // transcurridos → `zoomReturnActive` siempre `true` desde el boot, lo
+    // que disparaba micro-lerps cada frame y hacía que la escena "saltara"
+    // ante cualquier movimiento del avatar (bug reportado por el usuario).
+    // Ahora el guard exige `lastInteractAt > 0` — si nunca hubo zoom, el
+    // chase-cam normal del componente gobierna la cámara, sin overrides.
     const lastInteractAt = userInteractionTimestampRef?.current ?? 0;
-    const sinceInteractionMs = lastInteractAt > 0 ? Date.now() - lastInteractAt : Number.POSITIVE_INFINITY;
-    const zoomReturnActive = isIsometric
+    const haveInteracted = lastInteractAt > 0;
+    const sinceInteractionMs = haveInteracted ? Date.now() - lastInteractAt : 0;
+    const zoomReturnActive = haveInteracted
+      && isIsometric
       && !isFollowing
       && !usarVistaInterior
       && !isInDrawingMode
