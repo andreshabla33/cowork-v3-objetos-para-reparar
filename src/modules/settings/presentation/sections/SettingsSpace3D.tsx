@@ -10,7 +10,6 @@ interface Space3DSettings {
   cameraMode: CameraMode;
   movementSpeed: number;
   cameraSensitivity: number;
-  invertYAxis: boolean;
   showFloorGrid: boolean;
   showNamesAboveAvatars: boolean;
   spatialAudio: boolean;
@@ -61,10 +60,6 @@ export const SettingsSpace3D: React.FC<SettingsSpace3DProps> = ({
       value: 'free',
       label: currentLang === 'en' ? 'Free (rotate 360°)' : currentLang === 'pt' ? 'Livre (rotação 360°)' : 'Libre (rotación 360°)',
     },
-    {
-      value: 'fixed',
-      label: currentLang === 'en' ? 'Fixed' : currentLang === 'pt' ? 'Fixa' : 'Fija',
-    },
   ];
 
   const shoulderOptions = [
@@ -103,12 +98,6 @@ export const SettingsSpace3D: React.FC<SettingsSpace3DProps> = ({
           min={1}
           max={10}
           onChange={(v) => updateSetting('cameraSensitivity', v)}
-        />
-        <SettingToggle
-          label={currentLang === 'en' ? 'Invert Y axis' : currentLang === 'pt' ? 'Inverter eixo Y' : 'Invertir eje Y'}
-          description={currentLang === 'en' ? 'Invert vertical camera movement' : currentLang === 'pt' ? 'Inverter o movimento vertical da câmera' : 'Invierte el movimiento vertical de la cámara'}
-          checked={settings.invertYAxis}
-          onChange={(v) => updateSetting('invertYAxis', v)}
         />
         <SettingDropdown
           label={currentLang === 'en' ? 'Shoulder view (cinematic)' : currentLang === 'pt' ? 'Vista sobre o ombro (cinematográfica)' : 'Vista sobre el hombro (cinematográfica)'}

@@ -107,7 +107,6 @@ export interface SceneProps {
   showFloorGrid?: boolean;
   showNamesAboveAvatars?: boolean;
   cameraSensitivity?: number;
-  invertYAxis?: boolean;
   cameraMode?: CameraMode;
   /** OTS shoulder offset (tier 2 opcional). Default 'center' = sin offset. */
   cameraShoulderMode?: 'center' | 'left' | 'right';
@@ -387,7 +386,6 @@ export const Scene: React.FC<SceneProps> = ({
   showFloorGrid = false,
   showNamesAboveAvatars = true,
   cameraSensitivity = 5,
-  invertYAxis = false,
   cameraMode = 'isometric',
   cameraShoulderMode = 'center',
   realtimePositionsRef,

@@ -44,10 +44,12 @@
  * - `'free'`: legacy chase-cam con rotate 360° + idle-hero blend cuando
  *   avatar queda quieto. Conservado para usuarios que prefieren el modo
  *   pre-2026-05.
- * - `'fixed'`: bloquea rotate + pan. Vista estática. Caso de uso raro;
- *   conservado para compat.
+ *
+ * 'fixed' (eliminado 2026-05-12): bloqueaba rotate + pan completamente,
+ * UX confusa sin caso de uso real. Legacy persistido se migra a 'isometric'
+ * en `userSettings.normalizarCameraModeLegacy`.
  */
-export type CameraMode = 'isometric' | 'free' | 'fixed';
+export type CameraMode = 'isometric' | 'free';
 
 // ─── Value object ────────────────────────────────────────────────────────────
 

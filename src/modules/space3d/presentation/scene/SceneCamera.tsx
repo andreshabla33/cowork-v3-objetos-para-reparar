@@ -93,15 +93,6 @@ function resolveOrbitLimits(
         minPolarAngle: ISOMETRIC_POLAR_ANGLE,
         maxPolarAngle: ISOMETRIC_POLAR_ANGLE,
       };
-    case 'fixed':
-      return {
-        enablePan: false,
-        enableRotate: false,
-        minDistance: 1.1,
-        maxDistance: 50,
-        minPolarAngle: Math.PI / 6,
-        maxPolarAngle: Math.PI / 2 - 0.1,
-      };
     case 'free':
     default:
       return {

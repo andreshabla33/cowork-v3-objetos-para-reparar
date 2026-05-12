@@ -76,7 +76,6 @@ export interface UserSettings {
     cameraMode: CameraMode;
     movementSpeed: number;
     cameraSensitivity: number;
-    invertYAxis: boolean;
     showFloorGrid: boolean;
     showNamesAboveAvatars: boolean;
     spatialAudio: boolean;
@@ -234,7 +233,6 @@ export const defaultUserSettings: UserSettings = {
     cameraMode: 'isometric',
     movementSpeed: 5,
     cameraSensitivity: 5,
-    invertYAxis: false,
     showFloorGrid: true,
     showNamesAboveAvatars: true,
     spatialAudio: true,
@@ -308,19 +306,23 @@ export function deepMergeSettings<T extends Record<string, any>>(defaults: T, ov
  * default isométrico para evitar branches inválidos en SceneCamera /
  * CameraFollow.
  *
- * Histórico: `'follow'` existió como opción pero nunca tuvo branch propio
- * en el código (caía en rotate-libre por accidente). Normalizado a `'free'`
- * para preservar el comportamiento que esos usuarios estaban viendo.
+ * Histórico:
+ *  - `'follow'` (eliminado): nunca tuvo branch propio, caía en rotate-libre
+ *    por accidente → migrado a 'free' para preservar comportamiento.
+ *  - `'fixed'` (eliminado 2026-05-12): bloqueaba rotate + pan, UX confusa
+ *    sin uso real → migrado a 'isometric' (default recomendado).
  */
-const VALID_CAMERA_MODES: readonly string[] = ['isometric', 'free', 'fixed'];
+const VALID_CAMERA_MODES: readonly string[] = ['isometric', 'free'];
 
 function normalizarCameraModeLegacy(settings: UserSettings): UserSettings {
   const cm = (settings.space3d as { cameraMode?: string })?.cameraMode;
   if (typeof cm === 'string' && !VALID_CAMERA_MODES.includes(cm)) {
-    const migrated = cm === 'follow' ? 'free' : 'isometric';
+    // 'follow' → 'free' (preservar rotate libre observado).
+    // 'fixed' / cualquier otro → 'isometric' (default recomendado).
+    const migrated: CameraMode = cm === 'follow' ? 'free' : 'isometric';
     return {
       ...settings,
-      space3d: { ...settings.space3d, cameraMode: migrated as CameraMode },
+      space3d: { ...settings.space3d, cameraMode: migrated },
     };
   }
   return settings;
