@@ -113,12 +113,17 @@ export const GAMEPLAY_VIDEO_PROXIMITY_FRAMING: CameraFraming = Object.freeze({
  * `ISOMETRIC_POLAR_ANGLE`) crea el look "tablero de ajedrez en perspectiva"
  * característico del género.
  *
+ * Iteración 2026-05-12 #2: ajuste de distancia tras feedback visual. Iter
+ * 1 (distance=12, height=10) dejaba el avatar a ~70px en pantalla (muy
+ * lejos). Iter 2 acerca 1.7× manteniendo el ángulo isométrico — avatar
+ * a ~120px, lo que pidió el usuario en la captura de referencia.
+ *
  * Ref: Clash of Clans / Lords Mobile fixed isometric camera pattern.
  * Ref: Gather.town — cámara fija como decisión deliberada de accesibilidad.
  */
 export const ISOMETRIC_FRAMING: CameraFraming = Object.freeze({
-  distance: 12,
-  height: 10,
+  distance: 7,
+  height: 5.5,
   targetHeight: 1.0,
 });
 
@@ -133,11 +138,12 @@ export const ISOMETRIC_FRAMING: CameraFraming = Object.freeze({
 export const ISOMETRIC_POLAR_ANGLE = Math.PI / 4;
 
 /**
- * Zoom permitido en modo isométrico. Min = 8m (acercamiento sin perder
- * contexto), max = 25m (vista wide sin que el avatar se vuelva un pixel).
+ * Zoom permitido en modo isométrico. Min = 5m (más cerca = invasivo, el
+ * avatar tapa el contexto). Max = 18m (más lejos = el avatar se pierde).
+ * Calibrado tras iter 2 — antes era 8/25 cuando el default era 12.
  */
-export const ISOMETRIC_MIN_ZOOM = 8;
-export const ISOMETRIC_MAX_ZOOM = 25;
+export const ISOMETRIC_MIN_ZOOM = 5;
+export const ISOMETRIC_MAX_ZOOM = 18;
 
 /**
  * Overview para modo dibujo/colocación de zonas y plantillas. Cámara alta
