@@ -174,12 +174,26 @@ export class RepositorioRegistroEmpresaSupabase implements IRegistroEmpresaRepos
       return { id: miembroExistente.id };
     }
 
+    // FIX 2026-05-12: rol default 'admin' (era 'super_admin' hardcoded).
+    //
+    // El creador de una empresa nueva legítimamente necesita admin para
+    // invitar miembros + gestionar zona/objetos. Pero NO `super_admin`, que
+    // queda reservado para platform admins (asignación manual en DB).
+    //
+    // Bug previo: cualquier usuario que pasaba por OnboardingCreador heredaba
+    // super_admin → registros descontrolados generaban "empresas fantasma"
+    // con creadores con permisos máximos (incidente 2026-04-24 — 3 empresas
+    // fantasma + super_admin a usuarios sin invitación de la plataforma).
+    //
+    // Deuda residual: validar dominio email vs empresas existentes ANTES de
+    // permitir create (prevention completa) — fase 2 separada con UI.
+    // Ver `project_deuda_tecnica_2026-05-12.md`.
     const { data: miembroData, error: miembroError } = await supabase
       .from('miembros_espacio')
       .insert({
         espacio_id: params.espacioId,
         usuario_id: params.userId,
-        rol: 'super_admin',
+        rol: 'admin',
         aceptado: true,
         onboarding_completado: false,
         empresa_id: params.empresaId,
