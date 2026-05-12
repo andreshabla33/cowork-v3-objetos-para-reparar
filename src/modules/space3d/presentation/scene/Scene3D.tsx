@@ -20,6 +20,16 @@ import { StaticObjectBatcher } from '@/modules/space3d/presentation/world/Static
 import { BuiltinWallBatcher } from '@/modules/space3d/presentation/world/BuiltinWallBatcher';
 import { useSceneOptimization } from '@/modules/space3d/presentation/hooks/useSceneOptimization';
 import { useOrbitDprRegression } from '@/modules/space3d/presentation/hooks/useOrbitDprRegression';
+import { useSceneReadySignal } from '@/modules/space3d/presentation/hooks/useSceneReadySignal';
+import { usePlantillaZonaDrag } from '@/modules/space3d/presentation/hooks/usePlantillaZonaDrag';
+import { useZoneDrawingPreview } from '@/modules/space3d/presentation/hooks/useZoneDrawingPreview';
+import { useZoneCollisionTracker } from '@/modules/space3d/presentation/hooks/useZoneCollisionTracker';
+import {
+  ajustarAGrilla,
+  obtenerPuntoSueloMundo,
+  rayoEventoADominio,
+  obtenerElevacionVisualZona,
+} from './sceneHelpers';
 import type { EspacioObjeto, SpawnPersonal, TransformacionObjetoInput } from '@/modules/space3d/presentation/hooks/useEspacioObjetos';
 import type { OcupacionAsientoReal } from '@/modules/space3d/presentation/hooks/useOcupacionAsientos';
 import type { ObjetoPreview3D } from '@/types/objetos3d';
@@ -191,40 +201,13 @@ export interface SceneProps {
   gpuRenderConfig?: import('@/core/infrastructure/r3f/gpuCapabilities').AdaptiveRenderConfig;
 }
 
-const ajustarAGrilla = (valor: number, paso = 0.5) => Math.round(valor / paso) * paso;
-const pisoMundoPlano = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+// Helpers compartidos (ajustarAGrilla, obtenerPuntoSueloMundo, rayoEventoADominio,
+// obtenerElevacionVisualZona, pisoMundoPlano) extraídos a ./sceneHelpers.ts
+// (ITEM 15 P1-07) — re-utilizados desde hooks especializados.
 
 // Use case stateless — singleton module-level evita recrearlo por render.
 // El Presentation se limita a construir el input y consumir el output.
 const colocarObjetoUC = new ColocarObjetoUseCase();
-
-/**
- * Convierte el `THREE.Ray` del evento R3F al tipo de dominio `Rayo`
- * (sin importar THREE en el dominio). Devuelve null si el evento no
- * trae rayo (p.ej. eventos sintéticos de drag-from-panel).
- */
-const rayoEventoADominio = (evento: any): Rayo | null => {
-  const r = evento?.ray;
-  if (!r || !r.origin || !r.direction) return null;
-  return {
-    origenX: r.origin.x,
-    origenY: r.origin.y,
-    origenZ: r.origin.z,
-    direccionX: r.direction.x,
-    direccionY: r.direction.y,
-    direccionZ: r.direction.z,
-  };
-};
-
-const obtenerPuntoSueloMundo = (evento: any) => {
-  const interseccion = new THREE.Vector3();
-  if (evento?.ray?.intersectPlane && evento.ray.intersectPlane(pisoMundoPlano, interseccion)) {
-    return interseccion;
-  }
-  return evento?.point ?? new THREE.Vector3();
-};
-
-const obtenerElevacionVisualZona = (nivelAnidamiento: number) => 0.01 + nivelAnidamiento * 0.02;
 
 useGLTF.preload('/models/terrain.glb');
 
@@ -459,7 +442,6 @@ export const Scene: React.FC<SceneProps> = ({
   const chairDummy = useMemo(() => new THREE.Object3D(), []);
   const playerColliderRef = useRef<any>(null);
   const playerColliderPositionRef = useRef({ x: (currentUser.x || 400) / 16, z: (currentUser.y || 400) / 16 });
-  const zonaColisionRef = useRef<string | null>(null);
 
   // PR-2: Estado de posicón del jugador a baja frecuencia (150ms) para re-render
   // de React.memo en ObjetoEscena3D y proximidad en ObjetosInstanciados.
@@ -707,172 +689,48 @@ export const Scene: React.FC<SceneProps> = ({
   const addNotification = useStore((s) => s.addNotification);
   const isEditMode = useStore((s) => s.isEditMode);
   const selectedObjectId = useStore((s) => s.selectedObjectId);
-  const [previewZonaStart, setPreviewZonaStart] = useState<{ x: number, z: number } | null>(null);
-  const [previewZonaCurrent, setPreviewZonaCurrent] = useState<{ x: number, z: number } | null>(null);
+  // Zone drawing preview — state + memos derivados (rect, overlap, anidamiento)
+  // extraídos a hook dedicado (ITEM 15 P1-07).
+  const {
+    previewZonaStart,
+    previewZonaCurrent,
+    setPreviewZonaStart,
+    setPreviewZonaCurrent,
+    previewZonaRect,
+    zonasExistentesMundo,
+    previewOverlap,
+    previewNivelAnidamiento,
+  } = useZoneDrawingPreview({ zonasEmpresa });
   const modoEdicionObjeto = useStore((s) => s.modoEdicionObjeto) as ModoEdicionObjeto;
 
-  // ── Scene Ready Signal (Fase 5C — race condition fix) ──
-  //
-  // FIX (2026-04-09): The loading screen must NOT hide until merged geometry
-  // (StaticObjectBatcher + BuiltinWallBatcher) has been committed to the scene graph.
-  //
-  // Previous bug: SceneReadyProbe in VirtualSpace3D fired onReady() on mount,
-  // ~2 seconds before batchers completed — causing visible pop-in where glass
-  // walls appeared solid during the gap.
-  //
-  // Sequence:
-  //   1. sceneOptimization.isReady → true (DI services initialized)
-  //   2. React re-renders → batchers compute merged geometries (useMemo, sync)
-  //   3. useEffect fires AFTER render → batchers are in scene graph
-  //   4. requestAnimationFrame → Three.js has processed the geometry
-  //   5. onSceneReady() → loading screen hides
-  //
-  // In edit mode: batchers don't render (ObjetosInstanciados renders instead),
-  // so we signal ready immediately after one rAF frame.
-  //
-  // Ref: React useEffect timing — https://react.dev/reference/react/useEffect
-  // Ref: rAF ensures WebGPURenderer has submitted the geometry to GPU
-  const sceneReadyFiredRef = useRef(false);
-
-  useEffect(() => {
-    if (sceneReadyFiredRef.current || !onSceneReady) return;
-
-    // In edit mode: no batchers needed, individual meshes render synchronously.
-    // In normal mode: wait until sceneOptimization services are ready,
-    // which gates the batcher render (conditional at the bottom of this component).
-    const shouldFire = isEditMode || sceneOptimization.isReady;
-    if (!shouldFire) return;
-
-    // Wait one animation frame so Three.js processes the newly mounted geometry.
-    // useEffect fires after React commit → scene graph updated → rAF ensures
-    // the WebGPURenderer has submitted the draw calls.
-    const rafId = requestAnimationFrame(() => {
-      if (sceneReadyFiredRef.current) return;
-      sceneReadyFiredRef.current = true;
-      onSceneReady();
-      log.info('[Scene3D] Scene ready signal fired', {
-        mode: isEditMode ? 'edit' : 'normal',
-        optimizationReady: sceneOptimization.isReady,
-      });
-    });
-
-    return () => cancelAnimationFrame(rafId);
-  }, [sceneOptimization.isReady, isEditMode, onSceneReady]);
+  // Scene Ready Signal (Fase 5C — race condition fix). Extraído a hook
+  // dedicado (ITEM 15 P1-07) — disparo idempotente post-rAF.
+  useSceneReadySignal({
+    sceneOptimizationReady: sceneOptimization.isReady,
+    isEditMode,
+    onSceneReady,
+    onFired: (meta) => log.info('[Scene3D] Scene ready signal fired', meta),
+  });
 
   const objetoSeleccionado = useMemo(
     () => espacioObjetos.find((obj) => obj.id === selectedObjectId) || null,
     [espacioObjetos, selectedObjectId]
   );
-  const previewZonaRect = useMemo(() => {
-    if (!previewZonaStart || !previewZonaCurrent) return null;
-
-    const minX = Math.min(previewZonaStart.x, previewZonaCurrent.x);
-    const maxX = Math.max(previewZonaStart.x, previewZonaCurrent.x);
-    const minZ = Math.min(previewZonaStart.z, previewZonaCurrent.z);
-    const maxZ = Math.max(previewZonaStart.z, previewZonaCurrent.z);
-    const ancho = Math.abs(maxX - minX);
-    const alto = Math.abs(maxZ - minZ);
-
-    return {
-      ancho,
-      alto,
-      centroX: minX + ancho / 2,
-      centroZ: minZ + alto / 2,
-    };
-  }, [previewZonaStart, previewZonaCurrent]);
-
-  // Detección de solapamiento entre subsuelos (estilo Gather: cada celda un solo dueño)
-  const zonasExistentesMundo = useMemo<RectanguloZona[]>(
-    () => zonasEmpresa.filter((z) => z.estado === 'activa').map(zonaDbAMundo),
-    [zonasEmpresa]
-  );
-  const previewOverlap = useMemo(() => {
-    if (!previewZonaStart || !previewZonaCurrent) return false;
-    const minX = Math.min(previewZonaStart.x, previewZonaCurrent.x);
-    const maxX = Math.max(previewZonaStart.x, previewZonaCurrent.x);
-    const minZ = Math.min(previewZonaStart.z, previewZonaCurrent.z);
-    const maxZ = Math.max(previewZonaStart.z, previewZonaCurrent.z);
-    const ancho = maxX - minX;
-    const alto = maxZ - minZ;
-    if (ancho < 0.5 || alto < 0.5) return false;
-    const nueva: RectanguloZona = { x: minX + ancho / 2, z: minZ + alto / 2, ancho, alto };
-    return detectarSolapamientoSubzona(nueva, zonasExistentesMundo);
-  }, [previewZonaStart, previewZonaCurrent, zonasExistentesMundo]);
-  const previewNivelAnidamiento = useMemo(() => {
-    if (!previewZonaRect) return 0;
-    return calcularNivelAnidamientoRectangulo(
-      { x: previewZonaRect.centroX, z: previewZonaRect.centroZ, ancho: previewZonaRect.ancho, alto: previewZonaRect.alto },
-      zonasExistentesMundo
-    );
-  }, [previewZonaRect, zonasExistentesMundo]);
-
-  const zonaPlantillaObjetivo = useMemo(() => {
-    if (!plantillaZonaEnColocacion) return null;
-    return zonasEmpresa.find((zona) => zona.id === plantillaZonaEnColocacion.zonaId) || null;
-  }, [plantillaZonaEnColocacion, zonasEmpresa]);
-
-  const [isDraggingPlantillaZona, setIsDraggingPlantillaZona] = useState(false);
-  const plantillaZonaPointerIdRef = useRef<number | null>(null);
-
-  const actualizarPlantillaZonaRestringida = useCallback((point: THREE.Vector3 | null) => {
-    if (!point || !plantillaZonaEnColocacion || !zonaPlantillaObjetivo || !onActualizarPlantillaZonaEnColocacion) {
-      return;
-    }
-
-    const x = ajustarAGrilla(point.x);
-    const z = ajustarAGrilla(point.z);
-    const centroZonaX = Number(zonaPlantillaObjetivo.posicion_x) / 16;
-    const centroZonaZ = Number(zonaPlantillaObjetivo.posicion_y) / 16;
-    const anchoZona = Math.max(Number(zonaPlantillaObjetivo.ancho) / 16, plantillaZonaEnColocacion.anchoMetros);
-    const altoZona = Math.max(Number(zonaPlantillaObjetivo.alto) / 16, plantillaZonaEnColocacion.altoMetros);
-    const clamp = (valor: number, minimo: number, maximo: number) => Math.min(maximo, Math.max(minimo, valor));
-    const minX = centroZonaX - Math.max((anchoZona - plantillaZonaEnColocacion.anchoMetros) / 2, 0);
-    const maxX = centroZonaX + Math.max((anchoZona - plantillaZonaEnColocacion.anchoMetros) / 2, 0);
-    const minZ = centroZonaZ - Math.max((altoZona - plantillaZonaEnColocacion.altoMetros) / 2, 0);
-    const maxZ = centroZonaZ + Math.max((altoZona - plantillaZonaEnColocacion.altoMetros) / 2, 0);
-
-    onActualizarPlantillaZonaEnColocacion(clamp(x, minX, maxX), clamp(z, minZ, maxZ));
-  }, [onActualizarPlantillaZonaEnColocacion, plantillaZonaEnColocacion, zonaPlantillaObjetivo]);
-
-  const finalizarDragPlantillaZona = useCallback((confirmar: boolean) => {
-    if (!plantillaZonaEnColocacion) {
-      return;
-    }
-
-    setIsDraggingPlantillaZona(false);
-    if (plantillaZonaPointerIdRef.current !== null) {
-      try { gl.domElement.releasePointerCapture(plantillaZonaPointerIdRef.current); } catch {}
-      plantillaZonaPointerIdRef.current = null;
-    }
-
-    if (confirmar) {
-      onConfirmarPlantillaZonaEnColocacion?.();
-    }
-  }, [gl, onConfirmarPlantillaZonaEnColocacion, plantillaZonaEnColocacion]);
-
-  const handlePlantillaPointerDown = useCallback((e: any) => {
-    if (!plantillaZonaEnColocacion) {
-      return;
-    }
-
-    e.stopPropagation();
-    if (e.nativeEvent?.pointerId !== undefined) {
-      plantillaZonaPointerIdRef.current = e.nativeEvent.pointerId;
-      try { gl.domElement.setPointerCapture(e.nativeEvent.pointerId); } catch {}
-    }
-    setIsDraggingPlantillaZona(true);
-    actualizarPlantillaZonaRestringida(obtenerPuntoSueloMundo(e));
-  }, [actualizarPlantillaZonaRestringida, gl, plantillaZonaEnColocacion]);
-
-  const handlePlantillaPointerUp = useCallback((e: any) => {
-    if (!isDraggingPlantillaZona || !plantillaZonaEnColocacion) {
-      return;
-    }
-
-    e.stopPropagation();
-    actualizarPlantillaZonaRestringida(obtenerPuntoSueloMundo(e));
-    finalizarDragPlantillaZona(true);
-  }, [actualizarPlantillaZonaRestringida, finalizarDragPlantillaZona, isDraggingPlantillaZona, plantillaZonaEnColocacion]);
+  // Plantilla-zona drag (drag-to-place) — extraído a hook dedicado
+  // (ITEM 15 P1-07). Devuelve estado + helpers para componer en
+  // `handlePointerMove` y los handlers de pointer down/up del catch-plane.
+  const {
+    isDraggingPlantillaZona,
+    zonaPlantillaObjetivo,
+    actualizarPlantillaZonaRestringida,
+    handlePlantillaPointerDown,
+    handlePlantillaPointerUp,
+  } = usePlantillaZonaDrag({
+    plantillaZonaEnColocacion: plantillaZonaEnColocacion ?? null,
+    zonasEmpresa,
+    onActualizarPlantillaZonaEnColocacion,
+    onConfirmarPlantillaZonaEnColocacion,
+  });
 
   const handlePointerMove = useCallback((e: any) => {
     const point = obtenerPuntoSueloMundo(e);
@@ -1023,35 +881,6 @@ export const Scene: React.FC<SceneProps> = ({
     setPreviewZonaCurrent(null);
   }, [addNotification, isDrawingZone, onDrawZoneEnd, previewZonaStart, paintFloorType, zonasExistentesMundo]);
 
-  useEffect(() => {
-    if (!plantillaZonaEnColocacion && isDraggingPlantillaZona) {
-      setIsDraggingPlantillaZona(false);
-      plantillaZonaPointerIdRef.current = null;
-    }
-  }, [isDraggingPlantillaZona, plantillaZonaEnColocacion]);
-
-  useEffect(() => {
-    if (!isDraggingPlantillaZona) {
-      return;
-    }
-
-    const handleWindowPointerUp = () => {
-      finalizarDragPlantillaZona(true);
-    };
-
-    const handleWindowPointerCancel = () => {
-      finalizarDragPlantillaZona(false);
-    };
-
-    window.addEventListener('pointerup', handleWindowPointerUp);
-    window.addEventListener('pointercancel', handleWindowPointerCancel);
-
-    return () => {
-      window.removeEventListener('pointerup', handleWindowPointerUp);
-      window.removeEventListener('pointercancel', handleWindowPointerCancel);
-    };
-  }, [finalizarDragPlantillaZona, isDraggingPlantillaZona]);
-
   useFrame(() => {
     projectionRef.current.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
     frustumRef.current.setFromProjectionMatrix(projectionRef.current);
@@ -1081,23 +910,9 @@ export const Scene: React.FC<SceneProps> = ({
   }, []);
 
 
-  const handleZoneEnter = useCallback((payload: any) => {
-    const zonaId = payload?.other?.rigidBodyObject?.userData?.zonaId ?? payload?.other?.colliderObject?.userData?.zonaId;
-    if (!zonaId || zonaColisionRef.current === zonaId) return;
-    zonaColisionRef.current = zonaId;
-    onZoneCollision?.(zonaId);
-  }, [onZoneCollision]);
-
-  const handleZoneExit = useCallback((payload: any) => {
-    const zonaId = payload?.other?.rigidBodyObject?.userData?.zonaId ?? payload?.other?.colliderObject?.userData?.zonaId;
-    if (!zonaId || zonaColisionRef.current !== zonaId) return;
-    zonaColisionRef.current = null;
-    onZoneCollision?.(null);
-  }, [onZoneCollision]);
-
-  useEffect(() => {
-    // Si necesitas lógica para mallas instanciadas basadas en asientos dinámicos, agragarla aquí.
-  }, []);
+  // Zone collision tracker (Rapier callbacks) extraído a hook dedicado
+  // (ITEM 15 P1-07) — edge-triggered, filtra callbacks redundantes.
+  const { handleZoneEnter, handleZoneExit } = useZoneCollisionTracker({ onZoneCollision });
 
   // Movement regression (Sketchfab pattern) + interaction timestamp tracking
   // para el auto-return de cámara. Lógica extraída a hook reutilizable
