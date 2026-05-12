@@ -487,21 +487,36 @@ export const CameraFollow: React.FC<{
 
     // Pull-in activo: dentro de recintos compactos (siempre), durante el
     // blend hero-idle (fuera de interior y sin follow), o durante el
-    // auto-return al framing isométrico tras zoom manual. El blend / auto-
-    // return reasignan `cameraDistance/Height/TargetHeight`, pero OrbitControls
-    // no mueve camera.position.y ni la radial automáticamente — hay que
-    // tirarla activamente aquí (pattern Cinemachine dolly).
-    const pullInActive = usarVistaInterior
-      || (!isFollowing && idleBlendRef.current > 0.01)
-      || zoomReturnActive;
+    // auto-return al framing isométrico tras zoom manual.
+    //
+    // Dos modos:
+    //  - **Unidireccional** (`pullInUnidireccional`): solo "tira hacia adentro"
+    //    cuando la cámara está más lejos/alta que el target. Patrón usado por
+    //    idle-hero (dolly-in cinemático) y vista interior (no atravesar techo).
+    //  - **Bidireccional** (`zoomReturnActive`): siempre acerca al target en
+    //    ambas direcciones — el usuario pudo haber hecho zoom IN (más cerca)
+    //    o zoom OUT (más lejos), y en ambos casos queremos volver al default.
+    //    Fix 2026-05-12: antes el branch unidireccional bloqueaba el push-out
+    //    tras zoom-in → la cámara se quedaba pegada al avatar para siempre.
+    const pullInUnidireccional = usarVistaInterior
+      || (!isFollowing && idleBlendRef.current > 0.01);
 
-    if (pullInActive && distanciaHorizontalActual > cameraDistance + 0.08) {
+    if (zoomReturnActive) {
+      // Bidireccional: lerp suave hacia el target distance/height sin importar
+      // el signo de la diferencia. Reutiliza el `smoothing` (0.1 base) — a
+      // ~60fps, alcanza ~99% del target en ~1.5s. Sentido natural.
+      const factorDistancia = cameraDistance / distanciaHorizontalActual;
+      camera.position.x = THREE.MathUtils.lerp(camera.position.x, controls.target.x + (offsetX * factorDistancia), smoothing);
+      camera.position.z = THREE.MathUtils.lerp(camera.position.z, controls.target.z + (offsetZ * factorDistancia), smoothing);
+      const alturaRelativaObjetivo = Math.max(cameraHeight - cameraTargetHeight, 1.05);
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, controls.target.y + alturaRelativaObjetivo, smoothing * 0.9);
+    } else if (pullInUnidireccional && distanciaHorizontalActual > cameraDistance + 0.08) {
       const factorDistancia = cameraDistance / distanciaHorizontalActual;
       camera.position.x = THREE.MathUtils.lerp(camera.position.x, controls.target.x + (offsetX * factorDistancia), smoothing);
       camera.position.z = THREE.MathUtils.lerp(camera.position.z, controls.target.z + (offsetZ * factorDistancia), smoothing);
     }
 
-    if (pullInActive) {
+    if (pullInUnidireccional && !zoomReturnActive) {
       const alturaRelativaObjetivo = Math.max(cameraHeight - cameraTargetHeight, 1.05);
       if (offsetYActual > alturaRelativaObjetivo + 0.35 && distanciaHorizontalActual > cameraDistance + 0.04) {
         camera.position.y = THREE.MathUtils.lerp(camera.position.y, controls.target.y + alturaRelativaObjetivo, smoothing * 0.9);
