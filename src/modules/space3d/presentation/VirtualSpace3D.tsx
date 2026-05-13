@@ -52,6 +52,8 @@ import type { InteraccionObjetoAccion } from '@/src/core/application/usecases/In
 import { EditModeToast, PlacementToast, ToastContainer } from '@/modules/space3d/presentation/world/PlacementHUD';
 import { AdminZoneHUD } from '@/modules/space3d/presentation/world/AdminZoneHUD';
 import { AdminDeskHUD } from '@/modules/space3d/presentation/ui/AdminDeskHUD';
+import { useAreasEscritorio } from '@/modules/space3d/presentation/hooks/useAreasEscritorio';
+import { useMiDeskActual } from '@/modules/space3d/presentation/hooks/useMiDeskActual';
 import type { CatalogoObjeto3D, ObjetoPreview3D } from '@/types/objetos3d';
 import type { AsientoRuntime3D } from '@/modules/space3d/presentation/scene/asientosRuntime';
 // `normalizarInteraccionConfigObjeto` / `resolverDisplayObjeto` / `resolverUseObjeto`
@@ -165,8 +167,6 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
   // los `new … Adapter()` que antes vivían en este componente (violación
   // Clean Arch: Presentation instanciando Infrastructure).
   const {
-    aplicarPlantillaZona: aplicarPlantillaZonaUseCase,
-    eliminarPlantillaZona: eliminarPlantillaZonaUseCase,
     interaccionObjeto: interaccionObjetoUseCase,
     notifications: notificationBus,
     sounds: soundBus,
@@ -307,6 +307,13 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     activeWorkspace?.id || null,
     session?.user?.id || null
   );
+
+  // ─── DeskArea actual del avatar (para el candado del ControlBar) ─────
+  // Suscripción ligera al stream realtime de areas_escritorio. El hook
+  // useMiDeskActual hace polling 5Hz contra el bbox de cada área.
+  const { areas: areasEscritorioParaCandado, toggleAudioAislado: toggleAudioAisladoDesk } =
+    useAreasEscritorio(activeWorkspace?.id || null, session?.user?.id || null);
+  const miDeskActual = useMiDeskActual(areasEscritorioParaCandado);
 
   const handleOcuparAsiento = useCallback(async (asiento: AsientoRuntime3D) => {
     if (!asiento.objetoId) return true;
@@ -540,66 +547,11 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
     setSelectedObjectId(creado.id);
   }, [crearObjetoDesdeCatalogo, objetoEnColocacion, registrarCreacion, setIsEditMode, setSelectedObjectId]);
 
-  const handleConfirmarPlantillaZonaEnColocacion = useCallback(async () => {
-    if (!plantillaZonaEnColocacion || !activeWorkspace?.id || !session?.user?.id) {
-      return;
-    }
-
-    try {
-      const resultado = await aplicarPlantillaZonaUseCase.execute({
-        zonaId: plantillaZonaEnColocacion.zonaId,
-        espacioId: activeWorkspace.id,
-        userId: session.user.id,
-        plantillaId: plantillaZonaEnColocacion.plantillaId,
-        centroXMetros: plantillaZonaEnColocacion.posicionX,
-        centroZMetros: plantillaZonaEnColocacion.posicionZ,
-      });
-
-      clearPlantillaZonaEnColocacion();
-      await Promise.all([refrescarZonasEmpresa(), refrescarObjetos()]);
-      addNotification(`Plantilla ${resultado.plantilla.nombre} aplicada en la posición elegida.`, 'info');
-    } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      log.error('Failed to apply plantilla de zona', { error: errorMsg });
-      addNotification(errorMsg || 'No se pudo aplicar la plantilla de zona.', 'info');
-    }
-  }, [activeWorkspace?.id, addNotification, aplicarPlantillaZonaUseCase, clearPlantillaZonaEnColocacion, plantillaZonaEnColocacion, refrescarObjetos, refrescarZonasEmpresa, session?.user?.id]);
-
-  const handleEliminarPlantillaZonaCompleta = useCallback(async (objeto: EspacioObjeto) => {
-    if (!activeWorkspace?.id || !session?.user?.id) {
-      return false;
-    }
-
-    const coincidenciaPlantilla = (objeto.plantilla_origen || '').match(/^zona:([^:]+):(.+)$/);
-    const metaPlantilla = (objeto.configuracion_geometria as Record<string, unknown> | null)?.meta_plantilla_zona as { zona_id?: string } | undefined;
-    const zonaId = coincidenciaPlantilla?.[2]
-      || metaPlantilla?.zona_id
-      || null;
-
-    if (!zonaId) {
-      addNotification('No se pudo resolver la zona dueña de esta plantilla.', 'info');
-      return false;
-    }
-
-    try {
-      const resultado = await eliminarPlantillaZonaUseCase.execute({
-        zonaId,
-        espacioId: activeWorkspace.id,
-        userId: session.user.id,
-        plantillaOrigen: objeto.plantilla_origen ?? null,
-      });
-
-      clearObjectSelection();
-      await Promise.all([refrescarObjetos(), refrescarZonasEmpresa()]);
-      addNotification(`Plantilla eliminada. Objetos: ${resultado.objetosEliminados}, subzonas: ${resultado.subzonasEliminadas}.`, 'info');
-      return true;
-    } catch (err: unknown) {
-      const errorMsg = err instanceof Error ? err.message : String(err);
-      log.error('Failed to delete plantilla completa', { error: errorMsg });
-      addNotification(errorMsg || 'No se pudo eliminar la plantilla completa.', 'info');
-      return false;
-    }
-  }, [activeWorkspace?.id, addNotification, clearObjectSelection, eliminarPlantillaZonaUseCase, refrescarObjetos, refrescarZonasEmpresa, session?.user?.id]);
+  // Handlers de plantilla legacy eliminados en Fase M (2026-05-13). El
+  // flow Gather-style (DeskArea + AdminDeskHUD) los reemplaza. Stubs
+  // no-op preservados por si props downstream los requieren tipados.
+  const handleConfirmarPlantillaZonaEnColocacion = useCallback(async () => { /* legacy noop */ }, []);
+  const handleEliminarPlantillaZonaCompleta = useCallback(async (_objeto: EspacioObjeto) => false, []);
 
   const handleRotarObjeto = useCallback(async (id: string, rotationY: number) => {
     const objetoAntes = espacioObjetos.find((obj) => obj.id === id);
@@ -1202,9 +1154,17 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
         avatarConfig={currentUser.avatarConfig!}
         showShareButton={usersInCall.length > 0}
         showRecordingButton={usersInCall.length > 0}
-        onToggleLock={bloquearConversacion}
-        isLocked={conversacionBloqueada}
-        showLockButton={usersInCall.length > 0 && !conversacionProximaBloqueada}
+        onToggleLock={miDeskActual
+          ? () => { void toggleAudioAisladoDesk(miDeskActual.id); }
+          : bloquearConversacion}
+        isLocked={miDeskActual ? miDeskActual.audio_aislado : conversacionBloqueada}
+        showLockButton={
+          // Si estoy dentro de un desk Y hay stream proximidad activo → mostrar
+          // candado del desk. Sino, comportamiento legacy.
+          miDeskActual
+            ? usersInCall.length > 0
+            : (usersInCall.length > 0 && !conversacionProximaBloqueada)
+        }
         currentStream={stream}
         onCameraSettingsChange={(newSettings) => { void handleApplyCameraSettings(newSettings); }}
         onAudioSettingsChange={(newSettings) => { void handleApplyAudioSettings(newSettings); }}

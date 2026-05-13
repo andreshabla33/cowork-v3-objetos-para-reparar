@@ -2,22 +2,23 @@
 /**
  * @module space3d/ui/AdminDeskHUD
  *
- * HUD admin para gestionar DeskAreas (estilo Gather Desk Manager):
- *  - Toggle "Designar desk" — entra al modo drag-to-create. El state machine
- *    vive en el `editorSlice`; Scene3D wired los pointer handlers al floor.
- *  - Botón "Gestionar desks" — abre el `DeskManagerPanel` (lista + asignar
- *    / reasignar / eliminar).
- *  - Modal de naming — aparece cuando el state machine pasa a 'naming' (tras
- *    soltar el drag); confirma o cancela el commit al servidor.
+ * HUD admin (HTML, fuera del Canvas) para gestionar DeskAreas:
+ *  - Toggle "Colocar desk" — entra al modo click-to-place. El preview 3D
+ *    vive en Scene3D (DeskPlacerPreview) y sigue el cursor mientras está
+ *    activo. Al hacer click sobre el piso, el state machine pasa a
+ *    `asigning` y este HUD muestra el modal de asignación.
+ *  - "Gestionar desks" — abre DeskManagerPanel (lista + asignar/reasignar).
+ *  - Modal de asignación tras click (DeskAsignarModal).
  *
  * Visible solo para admin/super_admin/owner/creador.
  */
 
 import React, { useEffect, useState } from 'react';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
-import { DeskNamingModal } from './DeskNamingModal';
+import { DeskAsignarModal } from './DeskAsignarModal';
 import { DeskManagerPanel } from './DeskManagerPanel';
 import { useAreasEscritorio } from '@/modules/space3d/presentation/hooks/useAreasEscritorio';
+import { PRESET_DESK_STANDARD } from '@/src/core/domain/entities/espacio3d/PresetDesk';
 
 export interface AdminDeskHUDProps {
   workspaceId: string;
@@ -25,70 +26,65 @@ export interface AdminDeskHUDProps {
 }
 
 export const AdminDeskHUD: React.FC<AdminDeskHUDProps> = ({ workspaceId, miUsuarioId }) => {
-  const isDesignandoDesk = useStore((s) => s.isDesignandoDesk);
-  const setIsDesignandoDesk = useStore((s) => s.setIsDesignandoDesk);
-  const designerEstado = useStore((s) => s.designerEstado);
-  const designerInicio = useStore((s) => s.designerInicio);
-  const designerFin = useStore((s) => s.designerFin);
-  const designerCancelar = useStore((s) => s.designerCancelar);
+  const deskPlacerEstado = useStore((s) => s.deskPlacerEstado);
+  const deskPlacerPosicion = useStore((s) => s.deskPlacerPosicion);
+  const setDeskPlacerActivo = useStore((s) => s.setDeskPlacerActivo);
+  const deskPlacerCancelar = useStore((s) => s.deskPlacerCancelar);
+  const deskPlacerResetTrasCommit = useStore((s) => s.deskPlacerResetTrasCommit);
+  const onlineUsers = useStore((s) => s.onlineUsers);
 
-  // Reusamos el hook pa designar (mantiene una sola suscripción realtime —
-  // si Scene3D también lo llama, son canales hermanos en el mismo espacio:
-  // benign). El admin panel además necesita la LISTA de desks → consume el
-  // mismo hook que ya provee `areas`.
-  const { areas, designar, asignar } = useAreasEscritorio(workspaceId, miUsuarioId);
+  const { areas, colocarConPreset, asignar } = useAreasEscritorio(workspaceId, miUsuarioId);
 
   const [guardando, setGuardando] = useState(false);
   const [errorMensaje, setErrorMensaje] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
 
-  // Reset error al volver a abrir el modal de naming.
+  // Reset error al abrir modal.
   useEffect(() => {
-    if (designerEstado === 'naming') setErrorMensaje(null);
-  }, [designerEstado]);
+    if (deskPlacerEstado === 'asigning') setErrorMensaje(null);
+  }, [deskPlacerEstado]);
 
-  // bbox para el modal (mismo cálculo que Scene3D usa para el preview).
-  const bboxModal = (() => {
-    if (!designerInicio || !designerFin) return null;
-    const ancho = Math.abs(designerFin.x - designerInicio.x);
-    const alto = Math.abs(designerFin.z - designerInicio.z);
-    return { ancho, alto };
-  })();
+  const placerActivo = deskPlacerEstado === 'previewing' || deskPlacerEstado === 'asigning';
 
-  const handleConfirmarNaming = async (nombre: string, audioAislado: boolean) => {
-    if (!designerInicio || !designerFin) return;
-    setGuardando(true);
-    setErrorMensaje(null);
-    const minX = Math.min(designerInicio.x, designerFin.x);
-    const maxX = Math.max(designerInicio.x, designerFin.x);
-    const minZ = Math.min(designerInicio.z, designerFin.z);
-    const maxZ = Math.max(designerInicio.z, designerFin.z);
-    const ancho = maxX - minX;
-    const alto = maxZ - minZ;
-    const bbox = { centroX: minX + ancho / 2, centroZ: minZ + alto / 2, ancho, alto };
-
-    const resultado = await designar({ bbox, nombre, audioAislado });
-    setGuardando(false);
-
-    if (resultado.ok) {
-      // Salir del modo + resetear designer (el estado vuelve a idle).
-      designerCancelar();
-      setIsDesignandoDesk(false);
+  const handleTogglePlacer = () => {
+    if (placerActivo) {
+      deskPlacerCancelar();
+      setDeskPlacerActivo(false);
     } else {
-      const msg =
-        resultado.motivo === 'no_autorizado'
-          ? 'No tienes permisos para designar áreas en este espacio.'
-          : `No se pudo designar el área (${resultado.motivo}).`;
-      setErrorMensaje(msg);
+      setDeskPlacerActivo(true);
     }
   };
 
-  const handleCancelarNaming = () => {
-    designerCancelar();
-  };
+  const handleConfirmarAsignacion = async (input: {
+    nombre: string;
+    asignadoAUsuarioId: string | null;
+    audioAislado: boolean;
+  }) => {
+    if (!deskPlacerPosicion) return;
+    setGuardando(true);
+    setErrorMensaje(null);
 
-  const handleToggleDesigning = () => {
-    setIsDesignandoDesk(!isDesignandoDesk);
+    const resultado = await colocarConPreset({
+      preset: PRESET_DESK_STANDARD,
+      posicion: deskPlacerPosicion,
+      nombre: input.nombre,
+      asignadoAUsuarioId: input.asignadoAUsuarioId,
+      audioAislado: input.audioAislado,
+    });
+    setGuardando(false);
+
+    if (resultado.ok) {
+      // Salir del modo + resetear state machine. El usuario debe volver a
+      // hacer click en "Colocar desk" si quiere agregar otro.
+      deskPlacerResetTrasCommit();
+      setDeskPlacerActivo(false);
+    } else {
+      const msg =
+        resultado.motivo === 'no_autorizado'
+          ? 'No tienes permisos para colocar desks en este espacio.'
+          : `No se pudo colocar el desk (${resultado.motivo}).`;
+      setErrorMensaje(msg);
+    }
   };
 
   const handleAsignar = async (areaId: string, usuarioId: string | null, forzar = false) => {
@@ -98,20 +94,19 @@ export const AdminDeskHUD: React.FC<AdminDeskHUDProps> = ({ workspaceId, miUsuar
 
   return (
     <>
-      {/* Botones flotantes admin */}
       <div className="fixed top-24 right-4 z-[340] flex flex-col gap-2 pointer-events-auto">
         <button
           type="button"
-          onClick={handleToggleDesigning}
+          onClick={handleTogglePlacer}
           className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold shadow-lg transition-all ${
-            isDesignandoDesk
+            placerActivo
               ? 'bg-orange-500/25 border-orange-400 text-orange-100'
               : 'bg-zinc-900/85 border-zinc-700 text-zinc-200 hover:bg-zinc-800'
           }`}
-          title={isDesignandoDesk ? 'Cancelar designación' : 'Designar nuevo escritorio'}
+          title={placerActivo ? 'Cancelar colocación' : 'Colocar nuevo escritorio'}
         >
           <span aria-hidden>📐</span>
-          {isDesignandoDesk ? 'Cancelar' : 'Designar desk'}
+          {placerActivo ? 'Cancelar' : 'Colocar desk'}
         </button>
 
         <button
@@ -125,20 +120,24 @@ export const AdminDeskHUD: React.FC<AdminDeskHUDProps> = ({ workspaceId, miUsuar
         </button>
       </div>
 
-      {isDesignandoDesk && designerEstado === 'idle' && (
+      {deskPlacerEstado === 'previewing' && (
         <div className="fixed top-40 right-4 z-[340] max-w-[260px] pointer-events-none">
           <div className="px-3 py-2 rounded-lg bg-orange-500/15 border border-orange-400/40 text-orange-100 text-[11px] shadow-lg">
-            Arrastra sobre el piso para dibujar el rectángulo del nuevo desk.
+            Mueve el cursor sobre el piso y haz click para colocar el desk.
           </div>
         </div>
       )}
 
-      <DeskNamingModal
-        open={designerEstado === 'naming'}
-        bbox={bboxModal}
+      <DeskAsignarModal
+        open={deskPlacerEstado === 'asigning'}
+        miembros={onlineUsers}
         nombreDefault={`Desk #${areas.length + 1}`}
-        onConfirmar={handleConfirmarNaming}
-        onCancelar={handleCancelarNaming}
+        posicion={deskPlacerPosicion}
+        onConfirmar={handleConfirmarAsignacion}
+        onCancelar={() => {
+          deskPlacerCancelar();
+          setDeskPlacerActivo(false);
+        }}
         guardando={guardando}
         errorMensaje={errorMensaje}
       />

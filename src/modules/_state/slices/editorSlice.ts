@@ -6,15 +6,19 @@
  */
 import type { StateCreator } from 'zustand';
 import { FloorType } from '@/core/domain/entities';
-import type { PlantillaZonaId } from '@/core/domain/entities/plantillasEspacio';
 import type { EspacioObjeto } from '@/modules/space3d/presentation/hooks/useEspacioObjetos';
 
 export type ModoEdicionObjeto = 'mover' | 'rotar' | 'escalar' | 'add';
 
+/**
+ * @deprecated Plantilla de zona legacy (Fase M 2026-05-13). El flow Gather
+ * de DeskAreas la reemplaza. Tipo preservado como `never`-like stub para
+ * que consumers downstream sigan compilando hasta su refactor final.
+ */
 export interface PlantillaZonaEnColocacion {
   zonaId: string;
   workspaceId: string;
-  plantillaId: PlantillaZonaId;
+  plantillaId: string;
   nombrePlantilla: string;
   nombreZona: string;
   posicionX: number;
@@ -32,17 +36,18 @@ export interface EditorSlice {
   isDragging: boolean;
   isDrawingZone: boolean;
   /**
-   * Modo "Designar Desk" — admin arrastra un rectángulo sobre el piso para
-   * crear una nueva AreaEscritorio. Mientras está true, los clicks en el
-   * floor catch-plane se interceptan para el drag-to-create del desk.
+   * Modo "Colocar Desk" (Gather-style click-to-place) — admin elige preset
+   * y hace click sobre el piso para colocar. Mientras `true`, el catch-plane
+   * captura el click. State machine:
+   *   - 'idle'    → admin no está colocando
+   *   - 'previewing' → preview siguiendo el cursor; el siguiente click
+   *                    abre el modal de asignación.
+   *   - 'asigning'   → click confirmado en `posicionPendiente`; modal abierto
+   *                    pidiendo nombre + dropdown de miembro + audio.
    */
-  isDesignandoDesk: boolean;
-  /** State machine del drag-to-create de desks (compartido Scene3D ↔ HUD admin). */
-  designerEstado: 'idle' | 'dragging' | 'naming';
-  /** Punto inicial del drag (world coords). */
-  designerInicio: { x: number; z: number } | null;
-  /** Punto actual del drag (durante dragging) o final (en naming). */
-  designerFin: { x: number; z: number } | null;
+  deskPlacerEstado: 'idle' | 'previewing' | 'asigning';
+  /** Posición confirmada del click (mientras `asigning`). World coords. */
+  deskPlacerPosicion: { x: number; z: number } | null;
   paintFloorType: FloorType;
   plantillaZonaEnColocacion: PlantillaZonaEnColocacion | null;
 
@@ -55,11 +60,14 @@ export interface EditorSlice {
   setCopiedObjects: (objs: EspacioObjeto[]) => void;
   setIsDragging: (val: boolean) => void;
   setIsDrawingZone: (val: boolean) => void;
-  setIsDesignandoDesk: (val: boolean) => void;
-  designerComenzarDrag: (p: { x: number; z: number }) => void;
-  designerActualizarDrag: (p: { x: number; z: number }) => void;
-  designerFinalizarDrag: () => void;
-  designerCancelar: () => void;
+  /** Entra/sale al modo "colocar desk" (toggle desde HUD admin). */
+  setDeskPlacerActivo: (activo: boolean) => void;
+  /** Confirma el click sobre el piso: pasa a `asigning` con la posición. */
+  deskPlacerConfirmarClick: (posicion: { x: number; z: number }) => void;
+  /** Cierra el modal de asignación sin colocar (esc / botón cancelar). */
+  deskPlacerCancelar: () => void;
+  /** Cierra el modal tras colocación exitosa (vuelve a `idle`). */
+  deskPlacerResetTrasCommit: () => void;
   setPaintFloorType: (tipo: FloorType) => void;
   setPlantillaZonaEnColocacion: (plantilla: PlantillaZonaEnColocacion | null) => void;
   actualizarPosicionPlantillaZonaEnColocacion: (x: number, z: number) => void;
@@ -74,10 +82,8 @@ export const createEditorSlice: StateCreator<EditorSlice, [], [], EditorSlice> =
   copiedObjects: [],
   isDragging: false,
   isDrawingZone: false,
-  isDesignandoDesk: false,
-  designerEstado: 'idle',
-  designerInicio: null,
-  designerFin: null,
+  deskPlacerEstado: 'idle',
+  deskPlacerPosicion: null,
   paintFloorType: FloorType.CONCRETE_SMOOTH,
   plantillaZonaEnColocacion: null,
 
@@ -121,37 +127,21 @@ export const createEditorSlice: StateCreator<EditorSlice, [], [], EditorSlice> =
   setCopiedObjects: (objs) => set({ copiedObjects: objs }),
   setIsDragging: (val) => set({ isDragging: val }),
   setIsDrawingZone: (val) => set({ isDrawingZone: val }),
-  setIsDesignandoDesk: (val) => set({
-    isDesignandoDesk: val,
-    // Si se sale del modo, resetea el state machine.
-    ...(val ? {} : { designerEstado: 'idle', designerInicio: null, designerFin: null }),
+  setDeskPlacerActivo: (activo) => set({
+    deskPlacerEstado: activo ? 'previewing' : 'idle',
+    ...(activo ? {} : { deskPlacerPosicion: null }),
   }),
-  designerComenzarDrag: (p) => set({
-    designerEstado: 'dragging',
-    designerInicio: { ...p },
-    designerFin: { ...p },
+  deskPlacerConfirmarClick: (posicion) => set({
+    deskPlacerEstado: 'asigning',
+    deskPlacerPosicion: { ...posicion },
   }),
-  designerActualizarDrag: (p) => set((state) => ({
-    designerFin: state.designerEstado === 'dragging' ? { ...p } : state.designerFin,
-  })),
-  designerFinalizarDrag: () => set((state) => {
-    if (state.designerEstado !== 'dragging' || !state.designerInicio || !state.designerFin) {
-      return { designerEstado: 'idle' as const };
-    }
-    // Gate de tamaño mínimo (anti-click accidental). El componente UI
-    // decide los thresholds visualmente; aquí solo evitamos abrir el modal
-    // con un rect prácticamente cero.
-    const ancho = Math.abs(state.designerFin.x - state.designerInicio.x);
-    const alto = Math.abs(state.designerFin.z - state.designerInicio.z);
-    if (ancho < 1 || alto < 1) {
-      return { designerEstado: 'idle' as const, designerInicio: null, designerFin: null };
-    }
-    return { designerEstado: 'naming' as const };
+  deskPlacerCancelar: () => set({
+    deskPlacerEstado: 'idle',
+    deskPlacerPosicion: null,
   }),
-  designerCancelar: () => set({
-    designerEstado: 'idle',
-    designerInicio: null,
-    designerFin: null,
+  deskPlacerResetTrasCommit: () => set({
+    deskPlacerEstado: 'idle',
+    deskPlacerPosicion: null,
   }),
   setPaintFloorType: (tipo) => set({ paintFloorType: tipo }),
 

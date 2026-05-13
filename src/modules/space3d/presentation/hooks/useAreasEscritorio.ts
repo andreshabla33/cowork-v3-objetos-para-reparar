@@ -21,10 +21,13 @@ import { ReclamarAreaEscritorioUseCase } from '@/src/core/application/usecases/R
 import { LiberarAreaEscritorioUseCase } from '@/src/core/application/usecases/LiberarAreaEscritorioUseCase';
 import { DesignarAreaEscritorioUseCase } from '@/src/core/application/usecases/DesignarAreaEscritorioUseCase';
 import { AsignarAreaEscritorioUseCase } from '@/src/core/application/usecases/AsignarAreaEscritorioUseCase';
+import { ColocarDeskConPresetUseCase } from '@/src/core/application/usecases/ColocarDeskConPresetUseCase';
+import { ToggleAudioAisladoUseCase } from '@/src/core/application/usecases/ToggleAudioAisladoUseCase';
 import type {
   AreaEscritorio,
   BboxAreaEscritorio,
 } from '@/src/core/domain/entities/espacio3d/AreaEscritorio';
+import type { PresetDesk } from '@/src/core/domain/entities/espacio3d/PresetDesk';
 import type { ResultadoMutacionAreaEscritorio } from '@/src/core/domain/ports/IAreaEscritorioRepository';
 
 const log = logger.child('use-areas-escritorio');
@@ -47,6 +50,19 @@ export interface UseAreasEscritorioReturn {
   }) => Promise<ResultadoMutacionAreaEscritorio>;
   /** Admin: pre-asignar (o quitar pre-asignación). */
   asignar: (areaId: string, usuarioId: string | null, forzarReasignacion?: boolean) => Promise<ResultadoMutacionAreaEscritorio>;
+  /**
+   * Admin: coloca atómicamente un desk con preset (área + muebles del
+   * preset) opcionalmente pre-asignado.
+   */
+  colocarConPreset: (input: {
+    preset: PresetDesk;
+    posicion: { x: number; z: number };
+    nombre: string;
+    asignadoAUsuarioId: string | null;
+    audioAislado?: boolean;
+  }) => Promise<ResultadoMutacionAreaEscritorio>;
+  /** Cualquier user: alterna el candado (audio aislado on/off). */
+  toggleAudioAislado: (areaId: string) => Promise<ResultadoMutacionAreaEscritorio>;
 }
 
 export function useAreasEscritorio(
@@ -61,6 +77,8 @@ export function useAreasEscritorio(
   const liberarUC = useMemo(() => new LiberarAreaEscritorioUseCase(areaEscritorioRepository), []);
   const designarUC = useMemo(() => new DesignarAreaEscritorioUseCase(areaEscritorioRepository), []);
   const asignarUC = useMemo(() => new AsignarAreaEscritorioUseCase(areaEscritorioRepository), []);
+  const colocarConPresetUC = useMemo(() => new ColocarDeskConPresetUseCase(areaEscritorioRepository), []);
+  const toggleAudioAisladoUC = useMemo(() => new ToggleAudioAisladoUseCase(areaEscritorioRepository), []);
 
   // ─── Realtime sync ────────────────────────────────────────────────────
   useEffect(() => {
@@ -146,5 +164,27 @@ export function useAreasEscritorio(
     });
   }, [asignarUC]);
 
-  return { areas, miArea, loading, reclamar, liberar, designar, asignar };
+  const colocarConPreset = useCallback(async (input: {
+    preset: PresetDesk;
+    posicion: { x: number; z: number };
+    nombre: string;
+    asignadoAUsuarioId: string | null;
+    audioAislado?: boolean;
+  }) => {
+    if (!espacioId) return { ok: false as const, motivo: 'no_autorizado' as const };
+    return colocarConPresetUC.execute({
+      espacioId,
+      preset: input.preset,
+      posicion: input.posicion,
+      nombre: input.nombre,
+      asignadoAUsuarioId: input.asignadoAUsuarioId,
+      audioAislado: input.audioAislado,
+    });
+  }, [colocarConPresetUC, espacioId]);
+
+  const toggleAudioAislado = useCallback(async (areaId: string) => {
+    return toggleAudioAisladoUC.execute(areaId);
+  }, [toggleAudioAisladoUC]);
+
+  return { areas, miArea, loading, reclamar, liberar, designar, asignar, colocarConPreset, toggleAudioAislado };
 }
