@@ -12,7 +12,7 @@
  * Ref CLEAN-ARCH-F3
  */
 
-import type { ITextureFactory } from '../../domain/ports/ITextureFactory';
+import type { IFloorMaterialFactory } from '../../domain/ports/IFloorMaterialFactory';
 import type { IRenderingOptimizationService } from '../../domain/ports/IRenderingOptimizationService';
 import type { IAuthRepository } from '../../domain/ports/IAuthRepository';
 import type { IWorkspaceRepository } from '../../domain/ports/IWorkspaceRepository';
@@ -33,8 +33,8 @@ import type { IEspacioObjetosRepository } from '../../domain/ports/IEspacioObjet
 // ─── Tipo del contenedor ──────────────────────────────────────────────────────
 
 export interface DIContainer {
-  /** Fábrica de texturas PBR para suelos 3D */
-  textureFactory: ITextureFactory;
+  /** Fábrica de materiales GPU-procedural para suelos 3D (shader GLSL via onBeforeCompile) */
+  floorMaterialFactory: IFloorMaterialFactory;
   /** Servicio de optimización de renderizado (instancing, salud de frame) */
   renderingOptimization: IRenderingOptimizationService;
   /** Repositorio de autenticación */
@@ -84,7 +84,7 @@ export async function getDIContainer(): Promise<DIContainer> {
 
   // Imports dinámicos para evitar circular deps y permitir tree-shaking
   const [
-    { ThreeTextureFactoryAdapter },
+    { getFloorMaterialAdapter },
     { RenderingOptimizationAdapter },
     { AuthSupabaseRepository },
     { WorkspaceSupabaseRepository },
@@ -102,7 +102,7 @@ export async function getDIContainer(): Promise<DIContainer> {
     { TerrenoSupabaseRepository },
     { EspacioObjetosSupabaseRepository },
   ] = await Promise.all([
-    import('../adapters/ThreeTextureFactoryAdapter'),
+    import('../r3f/rendering/floor/FloorMaterialAdapter'),
     import('../adapters/RenderingOptimizationAdapter'),
     import('../adapters/AuthSupabaseRepository'),
     import('../adapters/WorkspaceSupabaseRepository'),
@@ -122,7 +122,7 @@ export async function getDIContainer(): Promise<DIContainer> {
   ]);
 
   _container = {
-    textureFactory: new ThreeTextureFactoryAdapter(),
+    floorMaterialFactory: getFloorMaterialAdapter(),
     renderingOptimization: new RenderingOptimizationAdapter(),
     auth: new AuthSupabaseRepository(),
     workspace: new WorkspaceSupabaseRepository(),

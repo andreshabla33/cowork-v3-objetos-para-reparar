@@ -4,7 +4,7 @@ import { guardarZonaEmpresa, eliminarZonaEmpresa } from '@/core/infrastructure/a
 import { logger } from '@/core/infrastructure/observability/logger';
 import { FloorType, FLOOR_TYPE_LABELS, FLOOR_TYPE_CATEGORIES, normalizarTipoSuelo } from '@/core/domain/entities';
 import { normalizarConfiguracionZonaEmpresa, normalizarTipoSubsueloZona, type TipoSubsueloZona } from '@/core/domain/entities/cerramientosZona';
-import { TEXTURE_REGISTRY } from '@/core/infrastructure/r3f/rendering/textureRegistry';
+import { FLOOR_SPECS } from '@/core/infrastructure/r3f/rendering/floor/floorMaterialSpecs';
 import { ZonaEmpresa } from '@/types';
 import { useAuthSessionGetter } from '@/modules/user/presentation/hooks/useAuthSession';
 
@@ -214,7 +214,7 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
                   <p className="text-[9px] uppercase tracking-widest text-slate-500 font-bold mb-1.5">{categoria}</p>
                   <div className="flex gap-1.5 flex-wrap">
                     {tipos.map((tipo) => {
-                      const config = TEXTURE_REGISTRY[tipo];
+                      const swatch = FLOOR_SPECS[tipo].swatchColor;
                       const label = FLOOR_TYPE_LABELS[tipo];
                       const isSelected = paintFloorType === tipo;
                       return (
@@ -230,7 +230,7 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
                         >
                           <div
                             className="w-7 h-7 rounded-lg flex-shrink-0 border border-white/10"
-                            style={{ backgroundColor: config.fallbackColor }}
+                            style={{ backgroundColor: swatch }}
                           />
                           <span className="text-[8px] text-slate-300 leading-tight max-w-[52px] text-center truncate">
                             {label.split(' ')[0]}
@@ -249,7 +249,7 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
       {isDrawingZone && !nuevaZona && !zonaAEditar && !mostrarSelectorSuelo && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[390] animate-in fade-in slide-in-from-bottom pointer-events-auto">
           <div className="bg-black/80 backdrop-blur-xl border border-indigo-500/25 px-4 py-2.5 rounded-2xl shadow-[0_0_24px_rgba(99,102,241,0.18)] flex items-center gap-3">
-            <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: TEXTURE_REGISTRY[paintFloorType].fallbackColor }} />
+            <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: FLOOR_SPECS[paintFloorType].swatchColor }} />
             <span className="text-sm text-indigo-100/90 font-medium">{FLOOR_TYPE_LABELS[paintFloorType]}</span>
             <button
               onClick={() => setMostrarSelectorSuelo(true)}

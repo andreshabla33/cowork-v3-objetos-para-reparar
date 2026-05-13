@@ -14,7 +14,10 @@
 
 import * as THREE from 'three';
 import { Floor, Subfloor, FloorType } from '../core/domain/entities';
-import { getAlbedoTexture, TEXTURE_REGISTRY } from '@/core/infrastructure/r3f/rendering/textureRegistry';
+import {
+  getFloorMaterialAdapter,
+  FloorMaterialAdapter,
+} from '@/core/infrastructure/r3f/rendering/floor/FloorMaterialAdapter';
 
 // ─── Tipos internos ──────────────────────────────────────────────────────────
 
@@ -282,30 +285,22 @@ export class SpaceManager {
     subfloor: Subfloor,
     typeKey: FloorType | '__fallback__',
   ): THREE.MeshStandardMaterial {
-    const { width, depth } = subfloor.dimensions;
-
-    if (typeKey !== '__fallback__' && TEXTURE_REGISTRY[typeKey as FloorType]) {
-      const typeConfig = TEXTURE_REGISTRY[typeKey as FloorType];
-      const albedoMap = getAlbedoTexture(typeKey as FloorType);
-
-      const localMap = albedoMap.clone();
-      localMap.needsUpdate = true;
-      localMap.repeat.set(width / typeConfig.tileSize, depth / typeConfig.tileSize);
-
-      return new THREE.MeshStandardMaterial({
-        map: localMap,
-        roughness: typeConfig.roughness,
-        metalness: typeConfig.metalness,
-        transparent:
-          typeConfig.transparent ||
-          (subfloor.appearance?.opacity !== undefined && subfloor.appearance.opacity < 1),
-        opacity: subfloor.appearance?.opacity ?? typeConfig.opacity,
-        emissive: typeConfig.emissiveColor
-          ? new THREE.Color(typeConfig.emissiveColor)
-          : new THREE.Color(0x000000),
-        emissiveIntensity: typeConfig.emissiveIntensity || 0,
-        side: THREE.DoubleSide,
-      });
+    if (typeKey !== '__fallback__') {
+      // Material GPU-procedural compartido por FloorType. Lo clonamos para
+      // poder sobreescribir opacity por grupo sin afectar al material base
+      // (los uniforms del shader y customProgramCacheKey se conservan en el
+      // clone → mismo GL program GPU, sin recompilación).
+      const baseMaterial = FloorMaterialAdapter.resolverMaterial(
+        getFloorMaterialAdapter().obtenerMaterial(typeKey),
+      );
+      const overrideOpacity = subfloor.appearance?.opacity;
+      if (overrideOpacity === undefined || overrideOpacity >= 1) {
+        return baseMaterial;
+      }
+      const cloned = baseMaterial.clone();
+      cloned.transparent = true;
+      cloned.opacity = overrideOpacity;
+      return cloned;
     }
 
     return new THREE.MeshStandardMaterial({

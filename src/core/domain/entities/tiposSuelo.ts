@@ -11,6 +11,14 @@ export enum FloorType {
   TILE_WHITE = 'tile_white',
   TILE_HEX = 'tile_hex',
   VINYL_TECH = 'vinyl_tech',
+  // ─── Cartoon / Ilustrativo (GPU procedural) ─────────────────────────────
+  WOOD_PLANKS_GREEN = 'wood_planks_green',
+  WOOD_PLANKS_TEAL = 'wood_planks_teal',
+  WOOD_PLANKS_MUSTARD = 'wood_planks_mustard',
+  WOOD_CHEVRON_BURGUNDY = 'wood_chevron_burgundy',
+  HEX_STYLIZED = 'hex_stylized',
+  STONE_COBBLE_WARM = 'stone_cobble_warm',
+  STONE_PATH_GARDEN = 'stone_path_garden',
 }
 
 export const FLOOR_TYPE_CATEGORIES: Record<string, FloorType[]> = {
@@ -19,6 +27,15 @@ export const FLOOR_TYPE_CATEGORIES: Record<string, FloorType[]> = {
   'Mármol': [FloorType.MARBLE_WHITE, FloorType.MARBLE_BLACK],
   'Concreto': [FloorType.CONCRETE_SMOOTH, FloorType.CONCRETE_ROUGH],
   'Especial': [FloorType.METAL_GRID, FloorType.TILE_WHITE, FloorType.TILE_HEX, FloorType.VINYL_TECH],
+  'Cartoon': [
+    FloorType.WOOD_PLANKS_GREEN,
+    FloorType.WOOD_PLANKS_TEAL,
+    FloorType.WOOD_PLANKS_MUSTARD,
+    FloorType.WOOD_CHEVRON_BURGUNDY,
+    FloorType.HEX_STYLIZED,
+    FloorType.STONE_COBBLE_WARM,
+    FloorType.STONE_PATH_GARDEN,
+  ],
 };
 
 export const FLOOR_TYPE_LABELS: Record<FloorType, string> = {
@@ -34,6 +51,13 @@ export const FLOOR_TYPE_LABELS: Record<FloorType, string> = {
   [FloorType.TILE_WHITE]: 'Baldosa Cerámica',
   [FloorType.TILE_HEX]: 'Baldosa Hexagonal',
   [FloorType.VINYL_TECH]: 'Vinilo Técnico',
+  [FloorType.WOOD_PLANKS_GREEN]: 'Madera Verde',
+  [FloorType.WOOD_PLANKS_TEAL]: 'Madera Petróleo',
+  [FloorType.WOOD_PLANKS_MUSTARD]: 'Madera Mostaza',
+  [FloorType.WOOD_CHEVRON_BURGUNDY]: 'Chevron Burdeos',
+  [FloorType.HEX_STYLIZED]: 'Hexágono Cartoon',
+  [FloorType.STONE_COBBLE_WARM]: 'Adoquín Cálido',
+  [FloorType.STONE_PATH_GARDEN]: 'Sendero con Grama',
 };
 
 export const TIPOS_SUELO = Object.values(FloorType) as FloorType[];

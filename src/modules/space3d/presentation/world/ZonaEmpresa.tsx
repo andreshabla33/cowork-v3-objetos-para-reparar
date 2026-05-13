@@ -1,19 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useGLTF, Text } from '@react-three/drei';
 import * as THREE from 'three';
-import { FloorType, normalizarTipoSuelo } from '@/core/domain/entities';
-import { crearPropsMaterialSueloPbr, TEXTURE_REGISTRY } from '@/core/infrastructure/r3f/rendering/textureRegistry';
+import { useFloorMaterial } from '@/modules/space3d/presentation/hooks/useFloorMaterial';
 
 interface ZonaEmpresaProps {
   posicion: [number, number, number];
   ancho: number;
   alto: number;
-  color: string;
   nombre?: string | null;
   logoUrl?: string | null;
   modeloUrl?: string | null;
   mostrarEtiqueta?: boolean;
-  opacidad?: number;
   esZonaComun?: boolean;
   variante?: 'propia' | 'ajena' | 'comun';
   tipoSuelo?: string | null;
@@ -56,12 +53,10 @@ export const ZonaEmpresa: React.FC<ZonaEmpresaProps> = ({
   posicion,
   ancho,
   alto,
-  color,
   nombre,
   logoUrl,
   modeloUrl,
   mostrarEtiqueta = true,
-  opacidad = 0.35,
   esZonaComun = false,
   variante = 'propia',
   tipoSuelo,
@@ -176,18 +171,10 @@ export const ZonaEmpresa: React.FC<ZonaEmpresaProps> = ({
     return { color: '#a78bfa', opacity: 0.25 };
   }, [variante]);
 
-  const tipoSueloNormalizado = useMemo(() => normalizarTipoSuelo(tipoSuelo), [tipoSuelo]);
-
-  const pbrMaterialProps = useMemo(() => {
-    if (!TEXTURE_REGISTRY[tipoSueloNormalizado]) return null;
-    return crearPropsMaterialSueloPbr(tipoSueloNormalizado, ancho, alto, 1);
-  }, [tipoSueloNormalizado, ancho, alto]);
-
-  useEffect(() => {
-    return () => {
-      pbrMaterialProps?.map?.dispose();
-    };
-  }, [pbrMaterialProps]);
+  // Material GPU-procedural compartido (cache por FloorType en el adapter).
+  // No requiere dispose por instancia: el ciclo de vida lo gestiona el
+  // FloorMaterialAdapter del container DI.
+  const floorMaterial = useFloorMaterial(tipoSuelo);
 
   return (
     <group>
@@ -235,16 +222,13 @@ export const ZonaEmpresa: React.FC<ZonaEmpresaProps> = ({
             onPointerOut={() => setHovered(false)}
           >
             <planeGeometry args={[ancho, alto]} />
-            {pbrMaterialProps ? (
-              <meshStandardMaterial 
-                {...pbrMaterialProps} 
-                color="#ffffff" 
-                side={THREE.DoubleSide} 
-                transparent={pbrMaterialProps.transparent || hovered}
-                opacity={hovered ? Math.min(1, pbrMaterialProps.opacity + 0.12) : pbrMaterialProps.opacity}
-              />
-            ) : (
-              <meshStandardMaterial color={color} transparent opacity={hovered ? Math.min(1, opacidad + 0.12) : opacidad} />
+            <primitive object={floorMaterial} attach="material" />
+            {/* Hover-tint sutil sobre el material compartido (no muta el material) */}
+            {hovered && (
+              <mesh rotation={[0, 0, 0]} position={[0, 0, 0.005]}>
+                <planeGeometry args={[ancho, alto]} />
+                <meshBasicMaterial color="#ffffff" transparent opacity={0.08} side={THREE.DoubleSide} depthWrite={false} />
+              </mesh>
             )}
             
             {/* Outline on hover for admin selection clarity */}

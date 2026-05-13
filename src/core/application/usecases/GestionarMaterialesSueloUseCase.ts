@@ -1,65 +1,45 @@
 /**
  * @module application/usecases/GestionarMaterialesSueloUseCase
  *
- * Caso de uso: Obtiene materiales PBR para suelos del espacio 3D
- * a través del port ITextureFactory.
+ * Caso de uso: gestiona materiales GPU-procedural para suelos del espacio 3D.
  *
  * Clean Architecture:
- *  - Depende del port ITextureFactory (dominio), NO del adapter Three.js.
- *  - Permite cambiar la implementación de renderizado sin modificar este use case.
- *  - Centraliza la lógica de cache y disposición de materiales.
+ *  - Depende del port IFloorMaterialFactory (dominio), NO del adapter Three.js.
+ *  - Centraliza la lógica de cache, precarga y dispose.
+ *  - El adapter compila MeshStandardMaterial + onBeforeCompile con shader
+ *    procedural — coste VRAM ~0 por suelo, PBR completo (luces/sombras).
  */
 
-import type { ITextureFactory, PBRMaterialProps } from '../../domain/ports/ITextureFactory';
+import type {
+  IFloorMaterialFactory,
+  MaterialAbstracto,
+} from '../../domain/ports/IFloorMaterialFactory';
 import type { FloorType } from '../../domain/entities';
 
-// ─── Parámetros ───────────────────────────────────────────────────────────────
-
-export interface ObtenerMaterialParams {
-  floorType: FloorType;
-  ancho: number;
-  alto: number;
-  opacidad?: number;
-}
-
-// ─── Use Case Class ───────────────────────────────────────────────────────────
-
-/**
- * Use case para gestión de materiales de suelo PBR.
- * Se instancia con un ITextureFactory inyectado desde el contenedor DI.
- *
- * @example
- * const uc = new GestionarMaterialesSueloUseCase(diContainer.textureFactory);
- * const props = uc.obtenerPropsMaterial({ floorType, ancho: 10, alto: 10 });
- */
 export class GestionarMaterialesSueloUseCase {
-  constructor(private readonly textureFactory: ITextureFactory) {}
+  constructor(private readonly materialFactory: IFloorMaterialFactory) {}
 
-  /** Obtiene las propiedades PBR para un tipo de suelo */
-  obtenerPropsMaterial(params: ObtenerMaterialParams): PBRMaterialProps {
-    return this.textureFactory.buildMaterialProps(
-      params.floorType,
-      params.ancho,
-      params.alto,
-      params.opacidad,
-    );
+  /** Devuelve el material GPU para un FloorType. Cacheado por tipo. */
+  obtenerMaterialSuelo(floorType: FloorType): MaterialAbstracto {
+    return this.materialFactory.obtenerMaterial(floorType);
   }
 
   /**
-   * Precarga las texturas de los tipos de suelo usados en el espacio.
-   * Llamar después de mount para evitar compilaciones de shader en runtime.
+   * Precarga la compilación de shaders para los tipos indicados. Llamar en
+   * `requestIdleCallback` al mount para evitar stalls al pintar la primera
+   * zona de cada tipo.
    */
-  precargarTexturas(floorTypes: FloorType[]): void {
-    for (const tipo of floorTypes) {
-      this.textureFactory.getAlbedoTexture(tipo);
-    }
+  precargarMateriales(floorTypes: readonly FloorType[]): void {
+    this.materialFactory.precargar(floorTypes);
   }
 
-  /**
-   * Libera todas las texturas cacheadas.
-   * OBLIGATORIO llamar en el cleanup del componente que monta el espacio 3D.
-   */
+  /** Color hex representativo para UIs (swatches de selector). */
+  obtenerColorSwatch(floorType: FloorType): string {
+    return this.materialFactory.obtenerColorSwatch(floorType);
+  }
+
+  /** OBLIGATORIO al desmontar el workspace 3D. */
   dispose(): void {
-    this.textureFactory.dispose();
+    this.materialFactory.dispose();
   }
 }

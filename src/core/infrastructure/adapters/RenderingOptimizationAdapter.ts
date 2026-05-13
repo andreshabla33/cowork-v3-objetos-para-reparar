@@ -78,9 +78,9 @@ export class RenderingOptimizationAdapter implements IRenderingOptimizationServi
     return { saludable: alertas.length === 0, alertas, recomendaciones };
   }
 
-  /** Limpia caches (las texturas THREE se gestionan en ThreeTextureFactoryAdapter) */
+  /** Limpia caches (los materiales GPU se gestionan en FloorMaterialAdapter) */
   limpiarCaches(): void {
     // No-op: este adapter no mantiene cache interno de Three.js
-    // ThreeTextureFactoryAdapter.dispose() maneja las texturas
+    // FloorMaterialAdapter.dispose() libera materiales GPU-procedural de suelos
   }
 }

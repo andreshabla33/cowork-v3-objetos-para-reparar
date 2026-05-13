@@ -136,7 +136,17 @@ export {
   resetBatchMaterialPropertiesAdapter,
 } from './BatchMaterialPropertiesThreeAdapter';
 export { RenderingOptimizationAdapter } from './RenderingOptimizationAdapter';
-export { ThreeTextureFactoryAdapter } from './ThreeTextureFactoryAdapter';
+
+// Floor materials (GPU-procedural via onBeforeCompile)
+export {
+  FloorMaterialAdapter,
+  getFloorMaterialAdapter,
+  resetFloorMaterialAdapter,
+} from '../r3f/rendering/floor/FloorMaterialAdapter';
+export type {
+  IFloorMaterialFactory,
+  MaterialAbstracto as FloorMaterialAbstracto,
+} from '../../domain/ports/IFloorMaterialFactory';
 
 // Bootstrap
 export { WorkspaceBootstrapSupabaseAdapter } from './WorkspaceBootstrapSupabaseAdapter';

@@ -55,7 +55,7 @@ import { useNavigation } from '@/modules/space3d/presentation/hooks/useNavigatio
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import type { ModoEdicionObjeto, PlantillaZonaEnColocacion } from '@/modules/_state/slices';
 import { FloorType, calcularNivelAnidamientoRectangulo, detectarSolapamientoSubzona, zonaDbAMundo, type RectanguloZona, resolverTipoSubsueloZona } from '@/src/core/domain/entities';
-import { crearPropsMaterialSueloPbr } from '@/core/infrastructure/r3f/rendering/textureRegistry';
+import { useFloorMaterial } from '@/modules/space3d/presentation/hooks/useFloorMaterial';
 import {
   getScaledBbox,
   getScaledBboxVersion,
@@ -219,16 +219,8 @@ const PreviewZonaMesh: React.FC<{
   overlap?: boolean;
   elevacionY?: number;
 }> = ({ rect, floorType, overlap = false, elevacionY = 0.02 }) => {
-  const pbrMaterialProps = React.useMemo(() => {
-    if (overlap) return null;
-    return crearPropsMaterialSueloPbr(floorType, rect.ancho, rect.alto, 1);
-  }, [floorType, overlap, rect.alto, rect.ancho]);
-
-  React.useEffect(() => {
-    return () => {
-      pbrMaterialProps?.map?.dispose();
-    };
-  }, [pbrMaterialProps]);
+  // Material GPU-procedural compartido. Cache por FloorType vive en el adapter.
+  const floorMaterial = useFloorMaterial(floorType);
 
   // FASE 5: Usar geometrías cacheadas para evitar fluctuación en renderer-metrics
   const geoPreview = React.useMemo(() => geoPlano(rect.ancho, rect.alto), [rect.ancho, rect.alto]);
@@ -250,12 +242,7 @@ const PreviewZonaMesh: React.FC<{
             depthWrite={false}
           />
         ) : (
-          <meshStandardMaterial
-            {...pbrMaterialProps}
-            color="#ffffff"
-            side={THREE.DoubleSide}
-            depthWrite={false}
-          />
+          <primitive object={floorMaterial} attach="material" />
         )}
       </mesh>
       <mesh
@@ -1057,12 +1044,10 @@ export const Scene: React.FC<SceneProps> = ({
         const altoZona = Math.max(1, Number(zona.alto) / 16);
         const posicionX = Number(zona.posicion_x) / 16;
         const posicionZ = Number(zona.posicion_y) / 16;
-        const colorZona = zona.color || '#64748b';
         const esZonaComun = !!zona.es_comun;
         const esZonaPropia = !!zona.empresa_id && zona.empresa_id === currentUser.empresa_id;
         const variante = esZonaComun ? 'comun' : esZonaPropia ? 'propia' : 'ajena';
         const nombreZona = zona.nombre_zona || (esZonaComun ? 'Zona común' : zona.empresa?.nombre) || undefined;
-        const opacidad = variante === 'propia' ? 0.45 : variante === 'comun' ? 0.2 : 0.28;
         const rectZona: RectanguloZona = { x: posicionX, z: posicionZ, ancho: anchoZona, alto: altoZona };
         const nivelAnidamiento = calcularNivelAnidamientoRectangulo(rectZona, zonasExistentesMundo);
         const tipoSubsuelo = resolverTipoSubsueloZona(zona.configuracion, nivelAnidamiento >= 2 ? 'decorativo' : 'organizacional');
@@ -1074,13 +1059,11 @@ export const Scene: React.FC<SceneProps> = ({
             posicion={[posicionX, elevacionZona, posicionZ]}
             ancho={anchoZona}
             alto={altoZona}
-            color={colorZona}
             nombre={nombreZona}
             logoUrl={zona.empresa?.logo_url ?? null}
             esZonaComun={esZonaComun}
             variante={variante}
             mostrarEtiqueta={tipoSubsuelo !== 'decorativo'}
-            opacidad={opacidad}
             tipoSuelo={zona.tipo_suelo}
             onClick={(e) => {
               if (objetoEnColocacion || plantillaZonaEnColocacion || isDrawingZone) {

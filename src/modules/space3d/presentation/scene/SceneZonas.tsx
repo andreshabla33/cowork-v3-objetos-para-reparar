@@ -90,12 +90,10 @@ export const SceneZonas: React.FC<SceneZonasProps> = ({
         const altoZona = Math.max(1, Number(zona.alto) / 16);
         const posicionX = Number(zona.posicion_x) / 16;
         const posicionZ = Number(zona.posicion_y) / 16;
-        const colorZona = zona.color || '#64748b';
         const esZonaComun = !!zona.es_comun;
         const esZonaPropia = !!currentUserEmpresaId && zona.empresa_id === currentUserEmpresaId;
         const variante = esZonaComun ? 'comun' : esZonaPropia ? 'propia' : 'ajena';
         const nombreZona = zona.nombre_zona || (esZonaComun ? 'Zona común' : zona.empresa?.nombre) || undefined;
-        const opacidad = variante === 'propia' ? 0.45 : variante === 'comun' ? 0.2 : 0.28;
         const rectZona: RectanguloZona = { x: posicionX, z: posicionZ, ancho: anchoZona, alto: altoZona };
         const nivelAnidamiento = calcularNivelAnidamientoRectangulo(rectZona, zonasExistentesMundo);
         const tipoSubsuelo = resolverTipoSubsueloZona(
@@ -110,13 +108,11 @@ export const SceneZonas: React.FC<SceneZonasProps> = ({
             posicion={[posicionX, elevacionZona, posicionZ]}
             ancho={anchoZona}
             alto={altoZona}
-            color={colorZona}
             nombre={nombreZona}
             logoUrl={zona.empresa?.logo_url ?? null}
             esZonaComun={esZonaComun}
             variante={variante}
             mostrarEtiqueta={tipoSubsuelo !== 'decorativo'}
-            opacidad={opacidad}
             tipoSuelo={zona.tipo_suelo}
             onClick={(e) => {
               if (objetoEnColocacion || plantillaZonaEnColocacion || isDrawingZone) {
