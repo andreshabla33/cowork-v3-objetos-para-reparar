@@ -33,6 +33,7 @@ import { getGpuInfoSync } from '@/core/infrastructure/r3f/gpuCapabilities';
 import { AvatarRuntimeScheduler, resolveAvatarRuntimePolicy } from '@/core/infrastructure/r3f/ecs/avatarRuntimeScheduler';
 import { SpatialGrid } from '@/core/infrastructure/r3f/spatial/SpatialGrid';
 import { frameMetrics } from '@/core/infrastructure/observability/frameMetrics';
+import { logger } from '@/core/infrastructure/observability/logger';
 import { AvatarLabels } from '@/modules/space3d/presentation/world/AvatarLabels';
 import { CrowdInstances, type CrowdEntity } from './CrowdInstances';
 import { MidLodInstances, type MidLodEntity } from './MidLodInstances';
@@ -412,6 +413,81 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
 
     return { instancedGroups: groups, instancedUserIds: confirmedInstancedIds };
   }, [fullEntities, usersById, unsupportedInstancedModels, readyInstancedModels]);
+
+  // ── P0 telemetry — detect global instancing fallback ────────────────────────
+  // Si todos los modelos caen a GLTFAvatar (con AnimationMixer individual),
+  // el costo CPU se dispara linealmente (~500 mixers = OOM en PC bajos).
+  // Discourse threejs confirmó este bottleneck. Detectamos cuando:
+  //   - hay > 10 avatares full-tier intentando instanciar
+  //   - pasados 10s ningún modelo confirmó ready (todos en fallback)
+  // → log error + notification visible para que el usuario lo perciba.
+  // Auto-clear cuando el sistema se recupera.
+  const addNotification = useStore((s) => s.addNotification);
+  const fallbackDetectedRef = useRef(false);
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const fullCount = fullEntities.filter((e) => !e.esFantasma).length;
+    const isAttemptingInstancing = instancedGroups.size > 0;
+    const hasAnyReady = readyInstancedModels.size > 0;
+    const shouldArm = fullCount > 10 && !hasAnyReady && isAttemptingInstancing;
+
+    // Recovery branch: limpiamos timer + estado si las condiciones cambiaron.
+    if (!shouldArm) {
+      if (fallbackTimerRef.current !== null) {
+        clearTimeout(fallbackTimerRef.current);
+        fallbackTimerRef.current = null;
+      }
+      if (fallbackDetectedRef.current && hasAnyReady) {
+        logger.info('Instanced avatar fallback resolved', {
+          fullCount,
+          readyModels: readyInstancedModels.size,
+        });
+        fallbackDetectedRef.current = false;
+      }
+      return;
+    }
+
+    if (fallbackDetectedRef.current) return; // ya notificado, no spam
+    if (fallbackTimerRef.current !== null) return; // timer ya armado
+
+    fallbackTimerRef.current = setTimeout(() => {
+      fallbackTimerRef.current = null;
+      // Re-validamos por si el estado cambió dentro de los 10s.
+      if (readyInstancedModels.size > 0) return;
+      const currentFullCount = fullEntities.filter((e) => !e.esFantasma).length;
+      if (currentFullCount <= 10 || instancedGroups.size === 0) return;
+
+      logger.error('Instanced avatar fallback global detected', {
+        fullCount: currentFullCount,
+        modelsAttempted: instancedGroups.size,
+        modelsUnsupported: unsupportedInstancedModels.size,
+        impact:
+          'Todos los avatares renderizan vía GLTFAvatar + AnimationMixer individual — alto costo CPU.',
+      });
+      addNotification(
+        `Renderizado avanzado de avatares no disponible (${currentFullCount} avatares en modo fallback). El rendimiento puede verse afectado en PC de bajos recursos.`,
+        'error',
+      );
+      fallbackDetectedRef.current = true;
+    }, 10_000);
+  }, [
+    fullEntities,
+    readyInstancedModels,
+    instancedGroups,
+    unsupportedInstancedModels,
+    addNotification,
+  ]);
+
+  // Cleanup pendiente al unmount.
+  useEffect(() => {
+    return () => {
+      if (fallbackTimerRef.current !== null) {
+        clearTimeout(fallbackTimerRef.current);
+        fallbackTimerRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <>
