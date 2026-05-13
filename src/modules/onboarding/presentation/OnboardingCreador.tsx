@@ -18,11 +18,9 @@ import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { CargoSelector } from './CargoSelector';
 import type { CargoLaboral, CargoDB } from './CargoSelector';
-import { SelectorPlantillaEspacio } from './SelectorPlantillaEspacio';
-import { recomendarPlantillaEspacio, type PlantillaEspacioId } from '@/src/core/domain/entities/plantillasEspacio';
-import { RegistrarEmpresaConPlantillaUseCase } from '@/src/core/application/usecases/RegistrarEmpresaConPlantillaUseCase';
+import { RegistrarEmpresaConGridDesksUseCase } from '@/src/core/application/usecases/RegistrarEmpresaConGridDesksUseCase';
 import { RepositorioRegistroEmpresaSupabase } from '@/src/core/infrastructure/adapters/RepositorioRegistroEmpresaSupabaseAdapter';
-import { InyectorPlantillaEspacio } from '@/src/core/infrastructure/adapters/InyectorPlantillaEspacioAdapter';
+import { areaEscritorioRepository } from '@/src/core/infrastructure/adapters/AreaEscritorioSupabaseRepository';
 
 const INDUSTRIAS = [
  'Tecnología', 'Finanzas', 'Salud', 'Educación', 'Comercio',
@@ -45,16 +43,16 @@ interface OnboardingCreadorProps {
  onComplete: () => void;
 }
 
-type Paso = 'bienvenida' | 'empresa' | 'plantilla' | 'cargo' | 'invitar' | 'completado';
+type Paso = 'bienvenida' | 'empresa' | 'cantidadMiembros' | 'cargo' | 'invitar' | 'completado';
 
 const ESPACIO_GLOBAL = {
  id: '91887e81-1f26-448c-9d6d-9839e7d83b5d',
  nombre: 'kronos'
 };
 
-const registrarEmpresaConPlantillaUseCase = new RegistrarEmpresaConPlantillaUseCase(
+const registrarEmpresaConGridDesksUseCase = new RegistrarEmpresaConGridDesksUseCase(
  new RepositorioRegistroEmpresaSupabase(),
- new InyectorPlantillaEspacio(),
+ areaEscritorioRepository,
 );
 
 export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
@@ -107,22 +105,17 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
  const [cargosDB, setCargosDB] = useState<CargoDB[]>([]);
  const [miembroId, setMiembroId] = useState<string | null>(null);
  const [empresaId, setEmpresaId] = useState<string | null>(null);
- const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<PlantillaEspacioId>('startup');
- const [plantillaPersonalizada, setPlantillaPersonalizada] = useState(false);
+ /**
+  * Cantidad de miembros que tendrá la empresa (1..100). Define cuántos
+  * desks se generan automáticamente en grilla durante el onboarding.
+  */
+ const [cantidadMiembros, setCantidadMiembros] = useState<number>(10);
  const [empresaData, setEmpresaData] = useState({
  nombre: '',
  industria: '',
  tamano: 'pequena',
  sitio_web: '',
  });
-
- const plantillaRecomendadaId = useMemo(
- () => recomendarPlantillaEspacio({
- industria: empresaData.industria,
- tamano: empresaData.tamano,
- }).id,
- [empresaData.industria, empresaData.tamano],
- );
 
  const cargarCargosDisponibles = async () => {
  if (!espacioCreado) {
@@ -135,10 +128,7 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
  const handleSelectCargo = (cargo: CargoLaboral) => {
  setError(null);
  setCargoSeleccionado(cargo);
- if (!plantillaPersonalizada) {
- setPlantillaSeleccionada(plantillaRecomendadaId);
- }
- setPaso('plantilla');
+ setPaso('cantidadMiembros');
  };
 
  const completarOnboarding = async () => {
@@ -200,9 +190,16 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
  throw new Error('Ingresa el nombre de tu empresa para continuar');
  }
 
- if (!plantillaPersonalizada) {
- setPlantillaSeleccionada(plantillaRecomendadaId);
- }
+ // Auto-sugerir cantidad de miembros según el tamaño elegido.
+ const sugeridoPorTamano: Record<string, number> = {
+ startup: 8,
+ pequena: 25,
+ mediana: 50,
+ grande: 80,
+ enterprise: 100,
+ };
+ const sugerido = sugeridoPorTamano[empresaData.tamano] ?? 10;
+ setCantidadMiembros(Math.min(100, Math.max(1, sugerido)));
 
  await cargarCargosDisponibles();
  setPaso('cargo');
@@ -222,7 +219,7 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
  throw new Error('Espacio global no disponible');
  }
 
- const resultado = await registrarEmpresaConPlantillaUseCase.execute({
+ const resultado = await registrarEmpresaConGridDesksUseCase.execute({
  empresaId,
  userId,
  espacioId: espacioCreado.id,
@@ -231,7 +228,7 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
  tamano: empresaData.tamano,
  sitioWeb: empresaData.sitio_web.trim() || null,
  cargoId: cargoSeleccionado,
- plantillaId: plantillaSeleccionada,
+ cantidadMiembros,
  });
 
  setEmpresaId(resultado.empresaId);
@@ -500,15 +497,15 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
  )}
 
  {/* PASO: Selección de Plantilla */}
- {paso === 'plantilla' && (
+ {paso === 'cantidadMiembros' && (
  <motion.div
- key="plantilla"
+ key="cantidadMiembros"
  initial={{ opacity: 0, x: 100 }}
  animate={{ opacity: 1, x: 0 }}
  exit={{ opacity: 0, x: -100 }}
- className="w-full max-w-3xl relative z-10"
+ className="w-full max-w-2xl relative z-10"
  >
- <div className="absolute -inset-1 bg-gradient-to-r from-[#4FB0FF]/20 /20 to-[#2E96F5]/20 rounded-[40px] lg:rounded-[32px] blur-xl opacity-60" />
+ <div className="absolute -inset-1 bg-gradient-to-r from-[#4FB0FF]/20 to-[#2E96F5]/20 rounded-[40px] lg:rounded-[32px] blur-xl opacity-60" />
  <div className="relative backdrop-blur-xl bg-white/50 border border-[rgba(46,150,245,0.14)] rounded-[36px] lg:rounded-[28px] p-6 lg:p-5">
  <div className="text-center mb-6 lg:mb-5">
  <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-[#4FB0FF]/20 to-[#2E96F5]/20 border border-[rgba(46,150,245,0.3)]/30 rounded-full text-[#1E86E5] text-[9px] lg:text-[8px] font-bold uppercase tracking-wider mb-3">
@@ -517,24 +514,59 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
  <div className="relative group mx-auto w-12 h-12 lg:w-10 lg:h-10 mb-3">
  <div className="absolute -inset-2 bg-gradient-to-r from-[#4FB0FF] to-[#2E96F5] rounded-xl blur-lg opacity-40" />
  <div className="relative w-12 h-12 lg:w-10 lg:h-10 bg-gradient-to-br from-[#4FB0FF] to-[#2E96F5] rounded-xl flex items-center justify-center">
- <Sparkles className="w-6 h-6 lg:w-5 lg:h-5 text-[#0B2240]" />
+ <Users className="w-6 h-6 lg:w-5 lg:h-5 text-white" />
  </div>
  </div>
- <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#0B2240] via-[#1E86E5] to-[#0B2240] mb-1">Selecciona tu plantilla</h2>
+ <h2 className="text-2xl lg:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#0B2240] via-[#1E86E5] to-[#0B2240] mb-1">¿Cuántos miembros tendrá tu oficina?</h2>
  <p className="text-[#4A6485] text-xs lg:text-[10px]">
- Te sugerimos una distribución base para <span className="text-[#1E86E5] font-medium">{espacioCreado?.nombre}</span> según el perfil de tu empresa
+ Vamos a generar automáticamente tu oficina con un escritorio para cada miembro
+ (silla, mesa y monitor incluidos). Podrás colocar más después.
  </p>
  </div>
 
- <SelectorPlantillaEspacio
- value={plantillaSeleccionada}
- onChange={(valor) => {
- setPlantillaPersonalizada(true);
- setPlantillaSeleccionada(valor);
- }}
+ <div className="space-y-3">
+ <div className="flex items-center gap-3">
+ <input
+ type="range"
+ min={1}
+ max={100}
+ step={1}
+ value={cantidadMiembros}
+ onChange={(e) => setCantidadMiembros(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
  disabled={loading}
- recomendadaId={plantillaRecomendadaId}
+ className="flex-1 accent-[#1E86E5]"
  />
+ <input
+ type="number"
+ min={1}
+ max={100}
+ value={cantidadMiembros}
+ onChange={(e) => setCantidadMiembros(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
+ disabled={loading}
+ className="w-20 text-center px-3 py-2 rounded-xl border border-[rgba(46,150,245,0.3)] bg-white text-[#0B2240] font-black text-lg"
+ />
+ </div>
+ <div className="grid grid-cols-5 gap-1.5">
+ {[10, 25, 50, 75, 100].map((v) => (
+ <button
+ key={v}
+ type="button"
+ onClick={() => setCantidadMiembros(v)}
+ disabled={loading}
+ className={`px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+ cantidadMiembros === v
+ ? 'bg-[#1E86E5] text-white shadow'
+ : 'bg-white/70 text-[#1B3A5C] border border-[rgba(46,150,245,0.14)] hover:border-[#1E86E5]'
+ }`}
+ >
+ {v}
+ </button>
+ ))}
+ </div>
+ <div className="text-center text-[10px] text-[#4A6485] mt-1">
+ Vamos a crear <span className="font-bold text-[#1E86E5]">{cantidadMiembros}</span> escritorios en grilla. Cada uno con silla + mesa + monitor.
+ </div>
+ </div>
 
  {error && (
  <div className="mt-4 mb-3 p-2.5 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-[10px] font-bold">
@@ -560,11 +592,11 @@ export const OnboardingCreador: React.FC<OnboardingCreadorProps> = ({
  {loading ? (
  <>
  <div className="w-4 h-4 lg:w-3.5 lg:h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
- Configurando...
+ Creando {cantidadMiembros} escritorios...
  </>
  ) : (
  <>
- Crear oficina inicial
+ Crear oficina con {cantidadMiembros} desks
  <ArrowRight className="w-4 h-4 lg:w-3.5 lg:h-3.5" />
  </>
  )}
