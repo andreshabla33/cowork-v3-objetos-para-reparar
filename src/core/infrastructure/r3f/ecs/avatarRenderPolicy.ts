@@ -75,17 +75,31 @@ export function resolveAvatarRenderPolicy(input: AvatarRenderPolicyInput = {}): 
   const quality = input.graphicsQuality ?? 'medium';
   const avatarCount = input.avatarCount ?? 0;
 
+  // P3 fix (2026-05-13): distancias LOD ~25% más estrictas en quality='low'
+  // para PCs de bajos recursos (Intel UHD, GPUs integradas).
+  //
+  // Justificación: three.js doc oficial NO da números recomendados para LOD
+  // distance. R3F recomienda usar `state.performance.current` (adaptive
+  // dynamic) — pero para hardware que YA está clamped a 'low' estático
+  // (resolveEffectiveGraphicsQuality), conviene baseline más agresiva:
+  //   - menos avatares full-tier (~SkinnedMesh + shader skinning expensive)
+  //   - más al crowd tier (1 draw call shared capsule)
+  // Esto reduce el peor caso si el bake de animaciones falla y se cae al
+  // fallback path con AnimationMixer individual (CPU OOM evidence de
+  // discourse).
+  //
+  // Ref: https://r3f.docs.pmnd.rs/advanced/scaling-performance (adaptive perf)
   const policy: AvatarRenderPolicy = quality === 'low'
     ? {
-        lodNear: 8,
-        lodMid: 18,
-        cullDistance: 50,
+        lodNear: 6,
+        lodMid: 14,
+        cullDistance: 38,
         shadowDistance: 0,
         nearAnimFps: 24,
         midAnimFps: 16,
         farAnimFps: 10,
-        fullAvatarBudget: 14,
-        crowdFallbackDistance: 8,
+        fullAvatarBudget: 10,
+        crowdFallbackDistance: 6,
       }
     : quality === 'high'
       ? {
