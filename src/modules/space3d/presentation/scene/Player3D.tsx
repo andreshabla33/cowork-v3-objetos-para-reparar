@@ -44,7 +44,6 @@ import type { OcupacionAsientoReal } from '@/modules/space3d/presentation/hooks/
 import { statusColors, STATUS_LABELS, type VirtualSpace3DProps } from './spaceTypes';
 import { Avatar, type AvatarProps } from './Avatar3DScene';
 import { TeleportEffect } from './Avatar3DScene';
-import { useSeatDetection } from '@/modules/space3d/presentation/hooks/useSeatDetection';
 
 const log = logger.child('Player3D');
 
@@ -684,24 +683,14 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     }
   }, [contextualAnim, isSitting, seatRuntime]);
 
-  // Fase 2: Sit contextual — sentarse automáticamente al estar idle cerca de una silla
-  // Extracted to useSeatDetection hook for maintainability.
-  useSeatDetection({
-    animationStateRef,
-    contextualAnim,
-    positionRef,
-    asientosRef,
-    seatCaptureCooldownSeatIdRef,
-    seatCaptureCooldownUntilRef,
-    seatApproachDurationMsRef,
-    seatTransitionTimerRef,
-    asientoOcupadoPorOtroUsuario,
-    reservarAsientoPersistente,
-    logSitDebug,
-    setSeatRuntime,
-    setContextualAnim,
-    obtenerOffsetVerticalSentado,
-  });
+  // ─── Auto-sit eliminado 2026-05-12 ──────────────────────────────────────
+  // El sistema "estar idle cerca de una silla → sentarse" se removió en favor
+  // del flow Gather-style de `AreaEscritorio` (claim explícito con botón
+  // "Reclamar"). El hook `useSeatDetection` y `reservarAsientoPersistente`
+  // quedan como código muerto y serán eliminados en una limpieza posterior;
+  // la lógica de animación sit/sit_down/stand_up sigue viva en el componente
+  // para una futura mecánica explícita "Sentarme" que el admin podrá vincular
+  // a sillas dentro de un DeskArea.
 
   useEffect(() => {
     return () => {
