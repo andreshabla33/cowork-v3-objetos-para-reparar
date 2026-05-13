@@ -76,6 +76,60 @@ float worley(vec2 p, out vec3 cellInfo) {
   return sqrt(minDist);
 }
 
+// ─── Two-pass Voronoi (Inigo Quilez) ────────────────────────────────────────
+// Devuelve distancia REAL al borde (línea bisectriz entre celdas vecinas) +
+// id de la celda más cercana. Produce grout afilado y celdas poligonales
+// — no blobs circulares como el smoothstep sobre worley simple.
+// Ref: https://iquilezles.org/articles/voronoilines/
+struct VoronoiResult {
+  float dBorder;
+  vec2 cellId;
+};
+
+VoronoiResult voronoiCells(vec2 x) {
+  vec2 ip = floor(x);
+  vec2 f = fract(x);
+
+  // Pass 1: find closest point
+  vec2 mr = vec2(0.0);
+  vec2 mb = vec2(0.0);
+  float minD2 = 8.0;
+  for (int j = -1; j <= 1; j++) {
+    for (int i = -1; i <= 1; i++) {
+      vec2 b = vec2(float(i), float(j));
+      vec2 o = fhash2(ip + b);
+      vec2 r = b + o - f;
+      float d2 = dot(r, r);
+      if (d2 < minD2) {
+        minD2 = d2;
+        mr = r;
+        mb = b;
+      }
+    }
+  }
+
+  // Pass 2: distance to bisector borders around closest cell
+  float minBorderD = 8.0;
+  for (int j = -2; j <= 2; j++) {
+    for (int i = -2; i <= 2; i++) {
+      vec2 b = mb + vec2(float(i), float(j));
+      if (abs(i) + abs(j) == 0) continue;
+      vec2 o = fhash2(ip + b);
+      vec2 r = b + o - f;
+      vec2 diff = r - mr;
+      float lenDiff = length(diff);
+      if (lenDiff < 0.0001) continue;
+      float d = dot(0.5 * (mr + r), diff / lenDiff);
+      minBorderD = min(minBorderD, d);
+    }
+  }
+
+  VoronoiResult res;
+  res.dBorder = minBorderD;
+  res.cellId = ip + mb;
+  return res;
+}
+
 vec3 pickPalette(float t) {
   t = clamp(t, 0.0, 1.0) * 3.0;
   int idx = int(t);
@@ -129,39 +183,48 @@ vec3 patternPlanks(vec2 uv) {
   return finalColor;
 }
 
-// ─── Pattern: CHEVRON (V-shape) ─────────────────────────────────────────────
+// ─── Pattern: CHEVRON (V-shape blocks) ──────────────────────────────────────
 // Usado por: WOOD_CHEVRON_BURGUNDY
+//
+// Cada celda 1.0 x 1.0 en uv (post-tileSize) es un bloque V con punta hacia
+// arriba. Color random por bloque entre 4 tonos de paleta. Highlight en
+// borde superior (V invertida), shadow en borde inferior (V) → look de tablón
+// en herringbone/parquet francés.
 vec3 patternChevron(vec2 uv) {
-  vec2 cellSize = vec2(0.5, 0.7);
-  vec2 cell = vec2(floor(uv.x / cellSize.x), floor(uv.y / cellSize.y));
-  vec2 local = vec2(fract(uv.x / cellSize.x), fract(uv.y / cellSize.y));
+  vec2 cell = floor(uv);
+  vec2 local = fract(uv);
 
-  // Color por fila (gradiente vertical entre 4 tonos de paleta)
-  float rowT = fract(cell.y * 0.13 + cell.x * 0.07);
-  vec3 base = pickPalette(rowT);
+  // Color por bloque: mezcla de paleta con micro-variación entre vecinos
+  float h = fhash(cell);
+  float h2 = fhash(cell + 11.7);
+  vec3 base = mix(uPalette[0], uPalette[1], h * 0.85);
+  // Algunos bloques tintados hacia palette[2] (highlight rosa/claro) o palette[3] (oscuro)
+  base = mix(base, uPalette[2], step(0.82, h2) * 0.35);
+  base = mix(base, uPalette[3], step(h2, 0.10) * 0.30);
 
-  // Forma chevron: el "diente" sube hasta peak en x=0.5
-  float peak = 0.45;
-  float dCenter = abs(local.x - 0.5);
-  float chevronY = 0.5 + (0.5 - dCenter) * peak;
-  float upperHalf = step(local.y, chevronY);
+  // Forma V: la "punta" sube en el centro (x=0.5). vHeight es 0 en bordes, 0.45 en centro.
+  float xMid = abs(local.x * 2.0 - 1.0); // 0 en centro, 1 en bordes
+  float vHeight = (1.0 - xMid) * 0.45;
 
-  // Borde superior (highlight blanco fino)
-  float dEdgeUp = abs(local.y - chevronY);
-  float highlight = smoothstep(0.04, 0.0, dEdgeUp) * upperHalf * 0.18;
+  // Borde superior (línea V invertida): highlight fino
+  float dTop = abs(local.y - vHeight);
+  float highlight = smoothstep(0.04, 0.0, dTop) * 0.22;
 
-  // Borde inferior (sombra oscura)
-  float chevronYBottom = chevronY + cellSize.y * 0.7;
-  float dEdgeDown = abs(local.y - (chevronYBottom - cellSize.y));
-  float shadow = smoothstep(0.05, 0.0, dEdgeDown) * 0.22;
+  // Borde inferior (línea V que apunta abajo): shadow
+  float dBot = abs(local.y - (1.0 - vHeight));
+  float shadow = smoothstep(0.06, 0.0, dBot) * 0.22;
 
-  // Gradiente interno top→bottom dentro del chevron
-  float vertShade = mix(1.10, 0.86, local.y);
-  vec3 color = base * vertShade;
-  color += vec3(highlight);
-  color -= vec3(shadow);
+  // Sombreado vertical interno: centro más claro, bordes más oscuros
+  float vCenter = 1.0 - abs(local.y - 0.5) * 0.6;
+  vec3 col = base * (0.90 + vCenter * 0.16);
+  col += vec3(highlight);
+  col -= vec3(shadow);
 
-  return color;
+  // Vetas finas longitudinales (madera): seno alto-frec
+  float veta = sin(local.y * 80.0 + h * 31.4) * 0.5 + 0.5;
+  col = mix(col, base * 0.85, pow(veta, 6.0) * 0.10);
+
+  return col;
 }
 
 // ─── Pattern: MARBLE (fbm + domain warp + veins) ────────────────────────────
@@ -280,34 +343,41 @@ vec3 patternHex(vec2 uv) {
   return col;
 }
 
-// ─── Pattern: COBBLE (Voronoi adoquines) ────────────────────────────────────
+// ─── Pattern: COBBLE (Two-pass Voronoi — Inigo Quilez) ──────────────────────
 // Usado por: STONE_COBBLE_WARM (variant=0), STONE_PATH_GARDEN (variant=1)
+//
+// Distancia REAL al bisector (no a centro) → grout afilado uniforme + stones
+// poligonales. Color random por cellId. Sombreado interno via dBorder hace
+// que cada piedra tenga sutil bevel.
 vec3 patternCobble(vec2 uv) {
-  vec3 cellInfo;
-  float w = worley(uv * 1.5, cellInfo);
-
-  // Color random por celda
-  float h = fhash(cellInfo.xy);
+  VoronoiResult v = voronoiCells(uv);
+  float h = fhash(v.cellId);
   vec3 stone = pickPalette(h);
 
-  // Grout: las celdas con distancia alta están cerca del borde
-  float grout = smoothstep(0.35, 0.55, w);
+  // Sutil bevel: piedra más clara cerca del centro, más oscura cerca del borde
+  float bevel = smoothstep(0.0, 0.12, v.dBorder);
+  stone *= 0.92 + bevel * 0.10;
 
   if (uVariant > 0.5) {
-    // STONE_PATH_GARDEN: grout verde + tufts en intersecciones
-    vec3 grass = uPalette[3];
+    // STONE_PATH_GARDEN: grout verde con grass tufts solo en uniones triples
+    vec3 grass = uPalette[3];              // verde medio
+    float grout = 1.0 - smoothstep(0.02, 0.08, v.dBorder);
     vec3 col = mix(stone, grass, grout);
-    // Tufts: en puntos triple (worley con ruido)
-    float tuftMask = smoothstep(0.45, 0.55, w) * step(0.7, fhash(cellInfo.xy + 13.0));
-    col = mix(col, uPalette[2], tuftMask * 0.6);
+
+    // Tufts: solo MUY cerca del borde (uniones triples) + hash random por celda
+    float tuftSeed = fhash(v.cellId * 7.31 + 13.0);
+    float nearEdge = 1.0 - smoothstep(0.0, 0.04, v.dBorder);
+    float tuftMask = nearEdge * step(0.78, tuftSeed);
+    // micro-variación de tamaño con noise para que no sean todos circulitos iguales
+    float tuftJitter = vnoise(v.cellId * 5.0) * 0.4 + 0.6;
+    col = mix(col, uPalette[2], tuftMask * tuftJitter * 0.7);  // paleta[2] = verde oscuro
     return col;
   }
 
-  // STONE_COBBLE_WARM: grout oscuro
-  vec3 col = mix(stone, uPalette[3] * 0.35, grout);
-  // Highlight central por piedra
-  float highlight = smoothstep(0.0, 0.15, w) * (1.0 - smoothstep(0.15, 0.3, w)) * 0.12;
-  col += vec3(highlight);
+  // STONE_COBBLE_WARM: grout oscuro afilado
+  float grout = 1.0 - smoothstep(0.015, 0.055, v.dBorder);
+  vec3 groutColor = uPalette[3] * 0.4;
+  vec3 col = mix(stone, groutColor, grout);
   return col;
 }
 
