@@ -51,6 +51,7 @@ import type { InteraccionObjetoAccion } from '@/src/core/application/usecases/In
 // ya no se importan aquí — viven dentro de <VirtualSpace3DAdminOverlay>.
 import { EditModeToast, PlacementToast, ToastContainer } from '@/modules/space3d/presentation/world/PlacementHUD';
 import { AdminZoneHUD } from '@/modules/space3d/presentation/world/AdminZoneHUD';
+import { AdminDeskHUD } from '@/modules/space3d/presentation/ui/AdminDeskHUD';
 import type { CatalogoObjeto3D, ObjetoPreview3D } from '@/types/objetos3d';
 import type { AsientoRuntime3D } from '@/modules/space3d/presentation/scene/asientosRuntime';
 // `normalizarInteraccionConfigObjeto` / `resolverDisplayObjeto` / `resolverUseObjeto`
@@ -1155,19 +1156,25 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
 
       {/* Admin HUD (Dibujar Zonas Gathering) */}
       {(['admin', 'super_admin', 'owner', 'creador'].includes(currentUser.role?.toLowerCase() || '') || ['admin', 'super_admin', 'owner', 'creador'].includes(userRoleInActiveWorkspace?.toLowerCase() || '')) && activeWorkspace && !showroomMode && (
-        <AdminZoneHUD 
-          workspaceId={activeWorkspace.id} 
-          nuevaZona={nuevaZonaTemp}
-          zonaAEditar={zonaAEditar}
-          onLimpiarNuevaZona={() => {
-            setNuevaZonaTemp(null);
-            setZonaAEditar(null);
-          }}
-          onMaterialSeleccionado={handlePrepararCamaraDibujoZona}
-          onZonaCreada={() => {
-            void refrescarZonasEmpresa();
-          }}
-        />
+        <>
+          <AdminZoneHUD
+            workspaceId={activeWorkspace.id}
+            nuevaZona={nuevaZonaTemp}
+            zonaAEditar={zonaAEditar}
+            onLimpiarNuevaZona={() => {
+              setNuevaZonaTemp(null);
+              setZonaAEditar(null);
+            }}
+            onMaterialSeleccionado={handlePrepararCamaraDibujoZona}
+            onZonaCreada={() => {
+              void refrescarZonasEmpresa();
+            }}
+          />
+          <AdminDeskHUD
+            workspaceId={activeWorkspace.id}
+            miUsuarioId={session?.user?.id || null}
+          />
+        </>
       )}
 
       {/* Banner de proximidad migrado a <VirtualSpace3DStatusBanners> */}

@@ -26,6 +26,7 @@ import { useZoneDrawingPreview } from '@/modules/space3d/presentation/hooks/useZ
 import { useZoneCollisionTracker } from '@/modules/space3d/presentation/hooks/useZoneCollisionTracker';
 import { useAreasEscritorio } from '@/modules/space3d/presentation/hooks/useAreasEscritorio';
 import { DeskAreasLayer } from '@/modules/space3d/presentation/world/DeskAreasLayer';
+import { DeskDesignerOverlay } from '@/modules/space3d/presentation/world/DeskDesignerOverlay';
 import {
   ajustarAGrilla,
   obtenerPuntoSueloMundo,
@@ -691,6 +692,14 @@ export const Scene: React.FC<SceneProps> = ({
   const addNotification = useStore((s) => s.addNotification);
   const isEditMode = useStore((s) => s.isEditMode);
   const selectedObjectId = useStore((s) => s.selectedObjectId);
+  // ─── Desk Designer (admin drag-to-create AreaEscritorio) ─────────────
+  const isDesignandoDesk = useStore((s) => s.isDesignandoDesk);
+  const designerEstado = useStore((s) => s.designerEstado);
+  const designerInicio = useStore((s) => s.designerInicio);
+  const designerFin = useStore((s) => s.designerFin);
+  const designerComenzarDrag = useStore((s) => s.designerComenzarDrag);
+  const designerActualizarDrag = useStore((s) => s.designerActualizarDrag);
+  const designerFinalizarDrag = useStore((s) => s.designerFinalizarDrag);
   // Zone drawing preview — state + memos derivados (rect, overlap, anidamiento)
   // extraídos a hook dedicado (ITEM 15 P1-07).
   const {
@@ -741,6 +750,11 @@ export const Scene: React.FC<SceneProps> = ({
 
     if (isDrawingZone && previewZonaStart) {
       setPreviewZonaCurrent({ x, z });
+      return;
+    }
+
+    if (isDesignandoDesk && designerEstado === 'dragging') {
+      designerActualizarDrag({ x, z });
       return;
     }
 
@@ -821,7 +835,7 @@ export const Scene: React.FC<SceneProps> = ({
         escala_z: siguienteEscala,
       });
     }
-  }, [actualizarPlantillaZonaRestringida, isDragging, isDraggingPlantillaZona, isDrawingZone, previewZonaStart, selectedObjectId, onMoverObjeto, objetoSeleccionado, objetoEnColocacion, onActualizarObjetoEnColocacion, modoEdicionObjeto, onTransformarObjeto, plantillaZonaEnColocacion, objetosColocables]);
+  }, [actualizarPlantillaZonaRestringida, isDragging, isDraggingPlantillaZona, isDrawingZone, previewZonaStart, selectedObjectId, onMoverObjeto, objetoSeleccionado, objetoEnColocacion, onActualizarObjetoEnColocacion, modoEdicionObjeto, onTransformarObjeto, plantillaZonaEnColocacion, objetosColocables, isDesignandoDesk, designerEstado, designerActualizarDrag]);
 
   const handleFloorClick = useCallback((e: any) => {
     e.stopPropagation();
@@ -882,6 +896,25 @@ export const Scene: React.FC<SceneProps> = ({
     setPreviewZonaStart(null);
     setPreviewZonaCurrent(null);
   }, [addNotification, isDrawingZone, onDrawZoneEnd, previewZonaStart, paintFloorType, zonasExistentesMundo]);
+
+  // ─── Desk Designer pointer handlers (admin drag-to-create) ───────────
+  // Solo activos cuando `isDesignandoDesk` está on. Stop propagation evita
+  // que el click pase al floor click handler (que abriría move-target).
+  const handleDeskDesignerDown = useCallback((e: any) => {
+    if (!isDesignandoDesk) return;
+    e.stopPropagation();
+    if (e.nativeEvent?.pointerId !== undefined) {
+      try { gl.domElement.setPointerCapture(e.nativeEvent.pointerId); } catch {}
+    }
+    const point = obtenerPuntoSueloMundo(e);
+    designerComenzarDrag({ x: ajustarAGrilla(point.x), z: ajustarAGrilla(point.z) });
+  }, [isDesignandoDesk, gl, designerComenzarDrag]);
+
+  const handleDeskDesignerUp = useCallback((e: any) => {
+    if (!isDesignandoDesk) return;
+    e.stopPropagation();
+    designerFinalizarDrag();
+  }, [isDesignandoDesk, designerFinalizarDrag]);
 
   useFrame(() => {
     projectionRef.current.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
@@ -1071,6 +1104,23 @@ export const Scene: React.FC<SceneProps> = ({
         onLiberar={liberarAreaEscritorio}
       />
 
+      {/* Preview del Desk Designer (admin drag-to-create AreaEscritorio).
+          Rectángulo naranja con dimensiones flotantes mientras se arrastra. */}
+      {(designerEstado === 'dragging' || designerEstado === 'naming') && designerInicio && designerFin && (
+        <DeskDesignerOverlay
+          bbox={(() => {
+            const minX = Math.min(designerInicio.x, designerFin.x);
+            const maxX = Math.max(designerInicio.x, designerFin.x);
+            const minZ = Math.min(designerInicio.z, designerFin.z);
+            const maxZ = Math.max(designerInicio.z, designerFin.z);
+            const ancho = Math.max(maxX - minX, 0.01);
+            const alto = Math.max(maxZ - minZ, 0.01);
+            return { centroX: minX + ancho / 2, centroZ: minZ + alto / 2, ancho, alto };
+          })()}
+          enArrastre={designerEstado === 'dragging'}
+        />
+      )}
+
       {/* Suelo base invisible para Raycast — FASE 5: geometría cacheada (no crea nueva en cada mount) */}
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
@@ -1078,22 +1128,46 @@ export const Scene: React.FC<SceneProps> = ({
         geometry={geoSueloRaycast()}
         onClick={handleFloorClick}
         onDoubleClick={handleFloorDoubleClick}
-        onPointerDown={plantillaZonaEnColocacion ? handlePlantillaPointerDown : handleZoneDrawStart}
-        onPointerUp={plantillaZonaEnColocacion ? handlePlantillaPointerUp : handleZoneDrawEnd}
+        onPointerDown={
+          plantillaZonaEnColocacion
+            ? handlePlantillaPointerDown
+            : isDesignandoDesk
+              ? handleDeskDesignerDown
+              : handleZoneDrawStart
+        }
+        onPointerUp={
+          plantillaZonaEnColocacion
+            ? handlePlantillaPointerUp
+            : isDesignandoDesk
+              ? handleDeskDesignerUp
+              : handleZoneDrawEnd
+        }
         onPointerMove={handlePointerMove}
       >
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
 
       {/* Plano Atrapa-Eventos para Modo Construcción / Dibujo — FASE 5: geometría cacheada */}
-      {(objetoEnColocacion || plantillaZonaEnColocacion || isDrawingZone || isDragging) && (
+      {(objetoEnColocacion || plantillaZonaEnColocacion || isDrawingZone || isDragging || isDesignandoDesk) && (
         <mesh
           rotation={[-Math.PI / 2, 0, 0]}
           position={[0, 0.5, 0]}
           geometry={geoSueloRaycast()}
           onClick={handleFloorClick}
-          onPointerDown={plantillaZonaEnColocacion ? handlePlantillaPointerDown : handleZoneDrawStart}
-          onPointerUp={plantillaZonaEnColocacion ? handlePlantillaPointerUp : handleZoneDrawEnd}
+          onPointerDown={
+            plantillaZonaEnColocacion
+              ? handlePlantillaPointerDown
+              : isDesignandoDesk
+                ? handleDeskDesignerDown
+                : handleZoneDrawStart
+          }
+          onPointerUp={
+            plantillaZonaEnColocacion
+              ? handlePlantillaPointerUp
+              : isDesignandoDesk
+                ? handleDeskDesignerUp
+                : handleZoneDrawEnd
+          }
           onPointerMove={handlePointerMove}
         >
           <meshBasicMaterial transparent opacity={0} depthWrite={false} />

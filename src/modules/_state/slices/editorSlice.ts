@@ -31,6 +31,18 @@ export interface EditorSlice {
   copiedObjects: EspacioObjeto[];
   isDragging: boolean;
   isDrawingZone: boolean;
+  /**
+   * Modo "Designar Desk" — admin arrastra un rectángulo sobre el piso para
+   * crear una nueva AreaEscritorio. Mientras está true, los clicks en el
+   * floor catch-plane se interceptan para el drag-to-create del desk.
+   */
+  isDesignandoDesk: boolean;
+  /** State machine del drag-to-create de desks (compartido Scene3D ↔ HUD admin). */
+  designerEstado: 'idle' | 'dragging' | 'naming';
+  /** Punto inicial del drag (world coords). */
+  designerInicio: { x: number; z: number } | null;
+  /** Punto actual del drag (durante dragging) o final (en naming). */
+  designerFin: { x: number; z: number } | null;
   paintFloorType: FloorType;
   plantillaZonaEnColocacion: PlantillaZonaEnColocacion | null;
 
@@ -43,6 +55,11 @@ export interface EditorSlice {
   setCopiedObjects: (objs: EspacioObjeto[]) => void;
   setIsDragging: (val: boolean) => void;
   setIsDrawingZone: (val: boolean) => void;
+  setIsDesignandoDesk: (val: boolean) => void;
+  designerComenzarDrag: (p: { x: number; z: number }) => void;
+  designerActualizarDrag: (p: { x: number; z: number }) => void;
+  designerFinalizarDrag: () => void;
+  designerCancelar: () => void;
   setPaintFloorType: (tipo: FloorType) => void;
   setPlantillaZonaEnColocacion: (plantilla: PlantillaZonaEnColocacion | null) => void;
   actualizarPosicionPlantillaZonaEnColocacion: (x: number, z: number) => void;
@@ -57,6 +74,10 @@ export const createEditorSlice: StateCreator<EditorSlice, [], [], EditorSlice> =
   copiedObjects: [],
   isDragging: false,
   isDrawingZone: false,
+  isDesignandoDesk: false,
+  designerEstado: 'idle',
+  designerInicio: null,
+  designerFin: null,
   paintFloorType: FloorType.CONCRETE_SMOOTH,
   plantillaZonaEnColocacion: null,
 
@@ -100,6 +121,38 @@ export const createEditorSlice: StateCreator<EditorSlice, [], [], EditorSlice> =
   setCopiedObjects: (objs) => set({ copiedObjects: objs }),
   setIsDragging: (val) => set({ isDragging: val }),
   setIsDrawingZone: (val) => set({ isDrawingZone: val }),
+  setIsDesignandoDesk: (val) => set({
+    isDesignandoDesk: val,
+    // Si se sale del modo, resetea el state machine.
+    ...(val ? {} : { designerEstado: 'idle', designerInicio: null, designerFin: null }),
+  }),
+  designerComenzarDrag: (p) => set({
+    designerEstado: 'dragging',
+    designerInicio: { ...p },
+    designerFin: { ...p },
+  }),
+  designerActualizarDrag: (p) => set((state) => ({
+    designerFin: state.designerEstado === 'dragging' ? { ...p } : state.designerFin,
+  })),
+  designerFinalizarDrag: () => set((state) => {
+    if (state.designerEstado !== 'dragging' || !state.designerInicio || !state.designerFin) {
+      return { designerEstado: 'idle' as const };
+    }
+    // Gate de tamaño mínimo (anti-click accidental). El componente UI
+    // decide los thresholds visualmente; aquí solo evitamos abrir el modal
+    // con un rect prácticamente cero.
+    const ancho = Math.abs(state.designerFin.x - state.designerInicio.x);
+    const alto = Math.abs(state.designerFin.z - state.designerInicio.z);
+    if (ancho < 1 || alto < 1) {
+      return { designerEstado: 'idle' as const, designerInicio: null, designerFin: null };
+    }
+    return { designerEstado: 'naming' as const };
+  }),
+  designerCancelar: () => set({
+    designerEstado: 'idle',
+    designerInicio: null,
+    designerFin: null,
+  }),
   setPaintFloorType: (tipo) => set({ paintFloorType: tipo }),
 
   setPlantillaZonaEnColocacion: (plantilla) => set({ plantillaZonaEnColocacion: plantilla }),
