@@ -145,6 +145,20 @@ function computeGruposSignature(grupos: Map<string, EspacioObjeto[]>): string {
 /** Full reset de todo el estado cacheado. Llamar SOLO cuando la firma cambia. */
 function resetRegistrationCache(services: SceneOptimizationServices): void {
   if (services.isReady) {
+    // CRITICAL (2026-05-13): detach BatchedMeshes del scene graph ANTES de
+    // dispose(). En three.js r182 `BatchedMesh.dispose()` setea
+    // `_matricesTexture = null` (BatchedMesh.js:1491). Si el mesh queda
+    // attached, el raycaster de cámara (CameraFollow.tsx) — que recorre
+    // `scene.children` recursivamente cada frame — entra a `raycast()` →
+    // `getMatrixAt()` → `this._matricesTexture.image.data` → null deref:
+    // "Cannot read properties of null (reading 'image')" → loop infinito
+    // → canvas en negro. El `MeshAttacher` solo poolea cada 500ms, así
+    // que esa ventana de carrera mata la app. Detach sync cierra el gap.
+    // Ref: https://threejs.org/docs/#api/en/core/Object3D.removeFromParent
+    const meshes = services.multiBatch.obtenerTodosMeshes() as THREE.Object3D[];
+    for (const mesh of meshes) {
+      mesh.removeFromParent();
+    }
     services.multiBatch.limpiar();
     services.materialProps.limpiar();
     services.textureAtlas.limpiar();
@@ -391,18 +405,24 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
   services,
 }) => {
   const { scene: gltfScene } = useGLTF(modeloUrl);
-  const registeredRef = useRef(false);
 
   useEffect(() => {
-    if (!services.isReady || registeredRef.current || objetos.length === 0) return;
+    if (!services.isReady || objetos.length === 0) return;
 
     // P1 FAST-PATH: si este modelo ya fue registrado con la MISMA firma de
     // objetos, omitir todo el trabajo pesado. El cache vive a nivel módulo
     // y sobrevive unmount/remount (StrictMode, edit-toggle).
+    //
+    // FIX 2026-05-13: antes había una guarda extra `registeredRef.current`
+    // early-bail. Tras `resetRegistrationCache` (cambio de firma global),
+    // el módulo-level cache se limpia pero el ref persistía como `true` por
+    // componente, bloqueando la re-registración. Resultado: los nuevos desks
+    // no se renderizaban (e incluso desaparecían los viejos) tras "Generar
+    // oficina". El check signature-based de abajo cubre todos los casos
+    // correctamente (cache hit ⇒ skip; cache miss ⇒ re-register).
     const currentSignature = computeObjetosSignature(objetos);
     const cachedSignature = _registeredModels.get(modeloUrl);
     if (cachedSignature === currentSignature) {
-      registeredRef.current = true;
       log.debug('BatchedGroupLoader cache hit — skipping registration', {
         modeloUrl,
         signature: currentSignature,
@@ -607,7 +627,6 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
       });
     }
 
-    registeredRef.current = true;
     _registeredModels.set(modeloUrl, currentSignature);
 
     log.info('MultiBatch registered', {
@@ -751,7 +770,6 @@ const MeshAttacher: React.FC<{
   services: SceneOptimizationServices;
 }> = ({ services }) => {
   const groupRef = useRef<THREE.Group>(null);
-  const attachedCountRef = useRef(0);
   const lastCheckRef = useRef(0);
 
   useFrame(() => {
@@ -763,12 +781,26 @@ const MeshAttacher: React.FC<{
     lastCheckRef.current = now;
 
     const meshes = services.multiBatch.obtenerTodosMeshes() as THREE.Object3D[];
-    if (meshes.length === attachedCountRef.current) return;
+
+    // Fast-path identity check: si los mismos meshes ya están attached, skip.
+    // FIX 2026-05-13: usábamos `attachedCountRef.current === meshes.length`,
+    // pero tras `resetRegistrationCache` la cantidad puede coincidir aunque
+    // los objetos sean NUEVAS instancias → el bail dejaba la escena sin
+    // batches (ningún mueble visible).
+    const currentChildren = groupRef.current.children;
+    if (meshes.length === currentChildren.length) {
+      const childSet = new Set(currentChildren);
+      let same = true;
+      for (const m of meshes) {
+        if (!childSet.has(m)) { same = false; break; }
+      }
+      if (same) return;
+    }
 
     // Remove old children that are no longer in the mesh list
     const meshSet = new Set(meshes);
     const toRemove: THREE.Object3D[] = [];
-    for (const child of groupRef.current.children) {
+    for (const child of currentChildren) {
       if (!meshSet.has(child)) toRemove.push(child);
     }
     for (const child of toRemove) {
@@ -777,12 +809,10 @@ const MeshAttacher: React.FC<{
 
     // Add new meshes
     for (const mesh of meshes) {
-      if (!groupRef.current.children.includes(mesh)) {
+      if (!currentChildren.includes(mesh)) {
         groupRef.current.add(mesh);
       }
     }
-
-    attachedCountRef.current = meshes.length;
 
     const stats = services.multiBatch.obtenerEstadisticas();
     log.info('MultiBatch meshes attached', {
