@@ -94,8 +94,19 @@ export class AreaEscritorioSupabaseRepository implements IAreaEscritorioReposito
   }
 
   suscribirCambios(espacioId: string, callback: (evento: EventoAreaEscritorio) => void): () => void {
+    // Fix 2026-05-13: `supabase.channel(name)` retorna el canal EXISTENTE si
+    // ya hay uno con ese nombre + state=joined → `.on()` falla con "cannot
+    // add postgres_changes callbacks after subscribe()". Esto pasa cuando
+    // `useAreasEscritorio` se monta múltiples veces en la app (Scene3D +
+    // AdminDeskHUD). Sufijo único por instancia → canales hermanos, sin
+    // colisión. El filtro `espacio_id=eq.X` garantiza que cada canal recibe
+    // las mismas filas. Patrón canónico documented:
+    // https://supabase.com/docs/guides/realtime/concepts#channels
+    const sufijoInstancia = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+      ? crypto.randomUUID().slice(0, 8)
+      : Math.random().toString(36).slice(2, 10);
     const channel = supabase
-      .channel(`areas_escritorio:${espacioId}`)
+      .channel(`areas_escritorio:${espacioId}:${sufijoInstancia}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
