@@ -12,7 +12,10 @@
 
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { logger } from '@/core/infrastructure/observability/logger';
-import type { ITerrenoRepository } from '@/src/core/domain/ports/ITerrenoRepository';
+import type {
+  EventoTerreno,
+  ITerrenoRepository,
+} from '@/src/core/domain/ports/ITerrenoRepository';
 import type {
   TerrenoEntity,
   EscalaTerreno,
@@ -107,5 +110,54 @@ export class TerrenoSupabaseRepository implements ITerrenoRepository {
       log.error('eliminar: error de supabase', { espacioId, error: error.message });
       throw error;
     }
+  }
+
+  /**
+   * Suscribe a cambios Realtime del terreno de un espacio.
+   *
+   * Sufijo único en el nombre del canal por instancia → evita el error
+   * "cannot add postgres_changes callbacks after subscribe()" cuando el
+   * hook `useTerreno` se monta múltiples veces (Scene3D + Settings tab).
+   * El filtro `espacio_id=eq.X` garantiza que cada canal recibe lo mismo.
+   *
+   * Ref: https://supabase.com/docs/guides/realtime/concepts#channels
+   */
+  suscribirCambios(
+    espacioId: string,
+    callback: (evento: EventoTerreno) => void,
+  ): () => void {
+    const sufijo = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+      ? crypto.randomUUID().slice(0, 8)
+      : Math.random().toString(36).slice(2, 10);
+    const channel = supabase
+      .channel(`espacio_terreno:${espacioId}:${sufijo}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: TABLE,
+          filter: `espacio_id=eq.${espacioId}`,
+        },
+        (payload) => {
+          try {
+            if (payload.eventType === 'INSERT') {
+              callback({ tipo: 'INSERT', terreno: rowToEntity(payload.new as DBRow) });
+            } else if (payload.eventType === 'UPDATE') {
+              callback({ tipo: 'UPDATE', terreno: rowToEntity(payload.new as DBRow) });
+            } else if (payload.eventType === 'DELETE') {
+              const oldRow = payload.old as { espacio_id?: string };
+              callback({ tipo: 'DELETE', espacioId: oldRow.espacio_id ?? espacioId });
+            }
+          } catch (err) {
+            log.warn('Payload realtime inválido', {
+              event: payload.eventType,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }
 }

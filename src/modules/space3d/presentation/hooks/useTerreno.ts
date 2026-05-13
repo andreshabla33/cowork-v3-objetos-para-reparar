@@ -75,8 +75,21 @@ export function useTerreno(espacioId: string | null | undefined): UseTerrenoRetu
         if (!cancelado) setLoading(false);
       });
 
+    // Realtime: refresca al recibir UPDATE/INSERT/DELETE de la fila del espacio.
+    // Sin esto, los cambios desde Settings tab solo se ven tras reload manual.
+    const unsubscribe = container.terreno.suscribirCambios(espacioId, (evento) => {
+      if (cancelado) return;
+      if (evento.tipo === 'INSERT' || evento.tipo === 'UPDATE') {
+        setTerreno(evento.terreno);
+      } else {
+        // DELETE → vuelve al fallback flat default.
+        setTerreno(FALLBACK(espacioId));
+      }
+    });
+
     return () => {
       cancelado = true;
+      unsubscribe();
     };
   }, [espacioId, container, tick]);
 
