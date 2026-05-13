@@ -161,7 +161,69 @@ export type MotivoEmision =
   | 'inestable'
   | 'leak-geometrias'
   | 'leak-texturas'
+  | 'budget-recursos-excedido'
   | 'idle-suprimido';
+
+// ─── Resource budget por GPU tier ────────────────────────────────────────────
+//
+// IMPORTANT: three.js r182 NO expone bytes de VRAM oficialmente
+// (`renderer.info.memory.geometries/textures` son COUNTS, no bytes).
+// `performance.memory` solo mide JS heap, no GPU, y es Chromium-only/unreliable.
+//
+// → Como proxy oficial, usamos los COUNTS que three.js sí expone, con umbrales
+// por GPU tier. Es la única señal con respaldo documentado.
+//
+// Refs:
+//   https://threejs.org/docs/#api/en/renderers/WebGLRenderer (info.memory)
+//   https://registry.khronos.org/webgl/extensions/WEBGL_debug_renderer_info/
+//   https://developer.mozilla.org/en-US/docs/Web/API/Performance/memory (unreliable)
+//
+// Tier 0 (unknown) y 1 (low): GPU integrado (Intel UHD, etc).
+// Tier 2 (medium): GPU discreto entry-level.
+// Tier 3 (high): GPU discreto mid+.
+
+export interface UmbralesRecursosPorTier {
+  readonly geometriasMax: number;
+  readonly texturasMax: number;
+  readonly programasMax: number;
+}
+
+/**
+ * Umbrales aproximados de "presupuesto sostenible" por tier.
+ * Excederlos NO es bug — es señal de oportunidad de optimización
+ * (instancing, atlas, batching). El sistema emite alert visible.
+ */
+export const UMBRALES_RECURSOS_POR_TIER: Readonly<Record<number, UmbralesRecursosPorTier>> = Object.freeze({
+  0: { geometriasMax: 300, texturasMax: 80, programasMax: 60 },
+  1: { geometriasMax: 300, texturasMax: 80, programasMax: 60 },
+  2: { geometriasMax: 800, texturasMax: 200, programasMax: 120 },
+  3: { geometriasMax: 2000, texturasMax: 500, programasMax: 250 },
+});
+
+/** Resuelve los umbrales para un GPU tier, con fallback a tier 1 (low). */
+export function obtenerUmbralesPorTier(tier: number): UmbralesRecursosPorTier {
+  return UMBRALES_RECURSOS_POR_TIER[tier] ?? UMBRALES_RECURSOS_POR_TIER[1];
+}
+
+/**
+ * Detecta si las métricas actuales exceden el presupuesto para el GPU tier.
+ * Función pura — sin side effects. La capa de presentación decide qué hacer
+ * con el resultado (alert UI, log, ignore).
+ *
+ * Threshold: cualquiera de los 3 contadores (geometries, textures, programs)
+ * por encima de su umbral dispara el budget-excedido.
+ */
+export function excedeBudgetRecursos(
+  metricas: MetricasRenderizado,
+  tier: number,
+): boolean {
+  const umbrales = obtenerUmbralesPorTier(tier);
+  return (
+    metricas.geometrias > umbrales.geometriasMax ||
+    metricas.texturas > umbrales.texturasMax ||
+    metricas.programas > umbrales.programasMax
+  );
+}
 
 // ─── Constructores puros ──────────────────────────────────────────────────────
 

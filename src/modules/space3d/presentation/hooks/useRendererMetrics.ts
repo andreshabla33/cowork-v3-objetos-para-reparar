@@ -56,10 +56,15 @@ import {
   formatearMetricasParaLog,
 } from '@/core/infrastructure/r3f/rendering/rendererMetricsMonitor';
 import { OptimizarRenderizadoUseCase } from '@/core/application/usecases/OptimizarRenderizadoUseCase';
+import {
+  excedeBudgetRecursos,
+  obtenerUmbralesPorTier,
+} from '@/core/domain/ports/EstabilidadRenderizado';
 import type {
   MuestraRenderizado,
   VentanaEstabilidad,
 } from '@/core/domain/ports/EstabilidadRenderizado';
+import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 
 const log = logger.child('renderer-metrics');
 
@@ -103,6 +108,8 @@ export const useRendererMetrics = ({
   const { gl, scene } = useThree();
   const ultimoSampleRef = useRef(0);
   const alertasEmitidasRef = useRef(new Set<string>());
+  const budgetAlertEmittedRef = useRef(false);
+  const addNotification = useStore((s) => s.addNotification);
 
   // Ring buffer inmutable de la ventana deslizante (cero allocations en frames
   // que no cruzan el throttle; una allocation por sample cruzado).
@@ -211,6 +218,32 @@ export const useRendererMetrics = ({
           alertasEmitidasRef.current.add(alerta);
           log.warn('Renderer performance alert', { alerta, ...datosLog });
         }
+      }
+    }
+
+    // ── P1 budget check — recursos por GPU tier ──────────────────────────────
+    // Three.js NO expone bytes de VRAM (solo counts). Usamos los counts oficiales
+    // que `gl.info.memory` sí da, comparados contra umbrales por GPU tier.
+    // Dispara una vez por sesión (no spamea).
+    //
+    // Refs:
+    //   https://threejs.org/docs/#api/en/renderers/WebGLRenderer (info.memory)
+    if (emitirAlertas && !budgetAlertEmittedRef.current) {
+      if (excedeBudgetRecursos(metricas, gpuTier)) {
+        budgetAlertEmittedRef.current = true;
+        const umbrales = obtenerUmbralesPorTier(gpuTier);
+        log.warn('GPU resource budget exceeded for tier', {
+          gpuTier,
+          metricas: formatearMetricasParaLog(metricas),
+          umbrales,
+          hint:
+            'Considera batching/instancing/atlas. three.js no expone bytes VRAM ' +
+            'oficialmente — counts son el proxy disponible.',
+        });
+        addNotification(
+          `Recursos GPU altos para tu hardware (geometrías ${metricas.geometrias}, texturas ${metricas.texturas}). El rendimiento puede degradarse.`,
+          'error',
+        );
       }
     }
   });
