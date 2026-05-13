@@ -34,6 +34,14 @@ export interface TerrenoEntity {
   ncols: number | null;
   escala: EscalaTerreno;
   zonasAgua: ZonaAgua[];
+  /**
+   * `FloorType` aplicado al PlaneGeometry global del espacio (fuera de zonas).
+   * Las zonas activas se renderizan encima de este suelo. Default
+   * `'concrete_smooth'` para coherencia visual con el resto del sistema.
+   *
+   * Persistido en `espacio_terreno.tipo_suelo_principal`.
+   */
+  tipoSueloPrincipal: string;
   configuracion: Record<string, unknown>;
 }
 
@@ -49,6 +57,7 @@ export const TERRENO_FLAT_DEFAULT: Omit<TerrenoEntity, 'id' | 'espacioId'> = {
   ncols: null,
   escala: { x: 100, y: 10, z: 100 },
   zonasAgua: [],
+  tipoSueloPrincipal: 'concrete_smooth',
   configuracion: {},
 };
 

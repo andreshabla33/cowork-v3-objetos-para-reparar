@@ -32,6 +32,7 @@ interface DBRow {
   ncols: number | null;
   scale_xyz: EscalaTerreno;
   zonas_agua: ZonaAgua[];
+  tipo_suelo_principal: string | null;
   configuracion: Record<string, unknown>;
 }
 
@@ -45,6 +46,7 @@ function rowToEntity(row: DBRow): TerrenoEntity {
     ncols: row.ncols,
     escala: row.scale_xyz,
     zonasAgua: row.zonas_agua ?? [],
+    tipoSueloPrincipal: row.tipo_suelo_principal ?? 'concrete_smooth',
     configuracion: row.configuracion ?? {},
   };
 }
@@ -58,6 +60,7 @@ function entityToInsert(terreno: Omit<TerrenoEntity, 'id'>): Omit<DBRow, 'id'> {
     ncols: terreno.ncols,
     scale_xyz: terreno.escala,
     zonas_agua: terreno.zonasAgua,
+    tipo_suelo_principal: terreno.tipoSueloPrincipal,
     configuracion: terreno.configuracion,
   };
 }

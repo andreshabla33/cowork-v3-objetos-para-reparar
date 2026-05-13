@@ -21,6 +21,7 @@ import { SettingsCargos } from './sections/SettingsCargos';
 import { SettingsDepartamentos } from './sections/SettingsDepartamentos';
 import { SettingsEmpresa } from './sections/SettingsEmpresa';
 import { SettingsTerrenos } from './sections/SettingsTerrenos';
+import { SettingsZonasAccesos } from './sections/SettingsZonasAccesos';
 import { loadCameraSettings } from '@/modules/realtime-room';
 import { createDefaultUserSettings, deepMergeSettings, type UserSettings } from '@/core/infrastructure/userSettings/userSettings';
 
@@ -304,13 +305,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               />
             )}
             {activeTab === 'zonas' && isAdmin && (
-              <div className="p-6 text-sm text-zinc-400">
-                <p className="mb-2 font-semibold text-zinc-200">Gestión de zonas</p>
-                <p>
-                  La gestión de zonas y escritorios se realiza directamente desde el espacio 3D:
-                  usa los botones <em>Designar zona</em>, <em>Colocar desk</em> y <em>Gestionar desks</em> del HUD admin.
-                </p>
-              </div>
+              <SettingsZonasAccesos
+                workspaceId={workspaceId}
+                isAdmin={isAdmin}
+              />
             )}
             {activeTab === 'terrenos' && isAdmin && (
               <SettingsTerrenos

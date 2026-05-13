@@ -26,6 +26,7 @@ import { useZoneCollisionTracker } from '@/modules/space3d/presentation/hooks/us
 import { useAreasEscritorio } from '@/modules/space3d/presentation/hooks/useAreasEscritorio';
 import { DeskAreasLayer } from '@/modules/space3d/presentation/world/DeskAreasLayer';
 import { DeskPlacerPreview } from '@/modules/space3d/presentation/world/DeskPlacerPreview';
+import { SueloPrincipal3D } from '@/modules/space3d/presentation/world/SueloPrincipal3D';
 import { PRESET_DESK_STANDARD } from '@/src/core/domain/entities/espacio3d/PresetDesk';
 import {
   ajustarAGrilla,
@@ -1107,6 +1108,10 @@ export const Scene: React.FC<SceneProps> = ({
 
       {/* PreviewPlantillaZonaMesh eliminado en Fase M — el flow es ahora
           click-to-place del DeskPlacerPreview (Gather-style). */}
+
+      {/* Suelo principal global — background fill del espacio (fuera de zonas).
+          Lee `terreno.tipoSueloPrincipal` del adapter Supabase. */}
+      <SueloPrincipal3D tipoSueloPrincipal={terrenoPersistido.tipoSueloPrincipal} />
 
       <Physics gravity={[0, 0, 0]}>
         <Terrain3D terreno={terrenoPersistido} />
