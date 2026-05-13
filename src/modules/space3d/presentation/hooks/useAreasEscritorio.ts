@@ -23,6 +23,11 @@ import { DesignarAreaEscritorioUseCase } from '@/src/core/application/usecases/D
 import { AsignarAreaEscritorioUseCase } from '@/src/core/application/usecases/AsignarAreaEscritorioUseCase';
 import { ColocarDeskConPresetUseCase } from '@/src/core/application/usecases/ColocarDeskConPresetUseCase';
 import { ToggleAudioAisladoUseCase } from '@/src/core/application/usecases/ToggleAudioAisladoUseCase';
+import {
+  GenerarOficinaTemplateUseCase,
+  type GenerarOficinaTemplateResult,
+} from '@/src/core/application/usecases/GenerarOficinaTemplateUseCase';
+import { PRESET_DESK_STANDARD } from '@/src/core/domain/entities/espacio3d/PresetDesk';
 import type {
   AreaEscritorio,
   BboxAreaEscritorio,
@@ -63,6 +68,16 @@ export interface UseAreasEscritorioReturn {
   }) => Promise<ResultadoMutacionAreaEscritorio>;
   /** Cualquier user: alterna el candado (audio aislado on/off). */
   toggleAudioAislado: (areaId: string) => Promise<ResultadoMutacionAreaEscritorio>;
+  /**
+   * Admin: genera N desks en grilla cuadrada centrada en `centro` (o (0,0)
+   * si se omite). Reusa el use case del onboarding (`PresetDesk.standard`,
+   * separación 1.5m, audio_aislado=true por default). Útil para llenar la
+   * oficina post-onboarding sin tener que colocar uno por uno.
+   */
+  generarOficinaTemplate: (
+    cantidad: number,
+    centro?: { x: number; z: number },
+  ) => Promise<GenerarOficinaTemplateResult>;
 }
 
 export function useAreasEscritorio(
@@ -79,6 +94,7 @@ export function useAreasEscritorio(
   const asignarUC = useMemo(() => new AsignarAreaEscritorioUseCase(areaEscritorioRepository), []);
   const colocarConPresetUC = useMemo(() => new ColocarDeskConPresetUseCase(areaEscritorioRepository), []);
   const toggleAudioAisladoUC = useMemo(() => new ToggleAudioAisladoUseCase(areaEscritorioRepository), []);
+  const generarOficinaUC = useMemo(() => new GenerarOficinaTemplateUseCase(areaEscritorioRepository), []);
 
   // ─── Realtime sync ────────────────────────────────────────────────────
   useEffect(() => {
@@ -186,5 +202,33 @@ export function useAreasEscritorio(
     return toggleAudioAisladoUC.execute(areaId);
   }, [toggleAudioAisladoUC]);
 
-  return { areas, miArea, loading, reclamar, liberar, designar, asignar, colocarConPreset, toggleAudioAislado };
+  const generarOficinaTemplate = useCallback(async (
+    cantidad: number,
+    centro?: { x: number; z: number },
+  ): Promise<GenerarOficinaTemplateResult> => {
+    if (!espacioId) {
+      return { desks: [], cantidadProcesada: 0, errores: [{ indice: -1, motivo: 'no_autorizado' }] };
+    }
+    return generarOficinaUC.execute({
+      espacioId,
+      preset: PRESET_DESK_STANDARD,
+      cantidadMiembros: cantidad,
+      centro,
+      audioAisladoDefault: true,
+      prefijoNombre: 'Desk',
+    });
+  }, [espacioId, generarOficinaUC]);
+
+  return {
+    areas,
+    miArea,
+    loading,
+    reclamar,
+    liberar,
+    designar,
+    asignar,
+    colocarConPreset,
+    toggleAudioAislado,
+    generarOficinaTemplate,
+  };
 }
