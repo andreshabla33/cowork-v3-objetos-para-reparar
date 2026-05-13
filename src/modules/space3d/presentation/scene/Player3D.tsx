@@ -146,7 +146,6 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
   const ocupacionesAsientosRef = useRef(ocupacionesAsientosPorObjetoId);
   const obstaculosRef = useRef(obstaculos);
   const seatRuntimeRef = useRef<AsientoRuntime3D | null>(null);
-  const reservaAsientoEnCursoRef = useRef<string | null>(null);
 
   // Sincronizar refs
   useEffect(() => { zonasRef.current = zonasEmpresa; }, [zonasEmpresa]);
@@ -361,9 +360,6 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
   const seatApproachStartedAtRef = useRef<number | null>(null);
   const seatApproachOriginRef = useRef<{ x: number; z: number } | null>(null);
   const seatApproachDurationMsRef = useRef<number>(ANIMATION_SIT_DOWN_DURATION);
-  const seatCaptureCooldownUntilRef = useRef<number>(0);
-  const seatCaptureCooldownSeatIdRef = useRef<string | null>(null);
-  const lastSitDebugKeyRef = useRef<string>('');
   const previousUsersInCallRef = useRef<Set<string>>(new Set());
   const wavedToUsersRef = useRef<Set<string>>(new Set());
   // Fix B (2026-04-22): timers de debounce por usuario candidato a saludo.
@@ -507,20 +503,6 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     setDirection(proximaDireccion);
   }, []);
 
-  const asientoOcupadoPorOtroUsuario = useCallback((asiento: AsientoRuntime3D | null) => {
-    if (!asiento?.objetoId) return false;
-    const ocupacion = ocupacionesAsientosRef.current.get(asiento.objetoId);
-    return !!ocupacion && ocupacion.usuario_id !== currentUser.id;
-  }, [currentUser.id]);
-
-  const logSitDebug = useCallback((fase: string, payload: Record<string, unknown>) => {
-    const debugKey = `${fase}:${JSON.stringify(payload)}`;
-    if (lastSitDebugKeyRef.current === debugKey) return;
-    lastSitDebugKeyRef.current = debugKey;
-    // P2 (2026-04-10): diagnóstico de posicionamiento al sentarse — debug-level
-    log.debug('SIT_DEBUG[player]', { fase, ...payload });
-  }, []);
-
   const handleAvatarHeightComputed = useCallback((height: number) => {
     if (height > 0.1) {
       avatarHeightRef.current = height;
@@ -555,22 +537,6 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     const pelvisEstimada = alturaAvatar * factorPelvis;
     return asiento.posicion.y - pelvisEstimada - correccionContactoCojin;
   }, []);
-
-  const reservarAsientoPersistente = useCallback(async (asiento: AsientoRuntime3D) => {
-    if (!asiento.objetoId || !onOcuparAsiento) return true;
-    if (asientoOcupadoPorOtroUsuario(asiento)) return false;
-
-    const ocupacionActual = ocupacionesAsientosRef.current.get(asiento.objetoId);
-    if (ocupacionActual?.usuario_id === currentUser.id) return true;
-    if (reservaAsientoEnCursoRef.current === asiento.id) return false;
-
-    reservaAsientoEnCursoRef.current = asiento.id;
-    try {
-      return await onOcuparAsiento(asiento);
-    } finally {
-      reservaAsientoEnCursoRef.current = null;
-    }
-  }, [asientoOcupadoPorOtroUsuario, currentUser.id, onOcuparAsiento]);
 
   // Auto-wave: detectar nuevos usuarios que entran en proximidad.
   // NOTE: the reset timer lives in a separate effect below — coupling it
@@ -951,17 +917,6 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
         : RADIO_COLISION_AVATAR + 0.28;
       const salidaX = currentSeatRuntime.posicion.x + Math.sin(currentSeatRuntime.rotacion) * salidaDistancia;
       const salidaZ = currentSeatRuntime.posicion.z + Math.cos(currentSeatRuntime.rotacion) * salidaDistancia;
-      logSitDebug('stand_up', {
-        asientoId: currentSeatRuntime.id,
-        animacion: effectiveAnimState,
-        salida: {
-          x: Number(salidaX.toFixed(3)),
-          z: Number(salidaZ.toFixed(3)),
-          distancia: Number(salidaDistancia.toFixed(3)),
-        },
-      });
-      seatCaptureCooldownSeatIdRef.current = currentSeatRuntime.id;
-      seatCaptureCooldownUntilRef.current = performance.now() + 1400;
       levantandoseRef.current = Date.now();
       positionRef.current.x = salidaX;
       positionRef.current.z = salidaZ;
