@@ -80,4 +80,33 @@ export interface IAreaEscritorioRepository {
 
   /** Admin borra un área del mapa. */
   eliminar(areaId: string): Promise<{ ok: boolean; motivo?: string }>;
+
+  /**
+   * Admin coloca un desk + N muebles en una transacción atómica. Reemplaza
+   * al flow viejo de `designar` + N inserts separados de muebles.
+   *
+   * `muebles`: lista de slugs del catálogo + offsets relativos al centro
+   * del bbox (en world meters). El server resuelve `slug → catalogo_id`
+   * internamente; si un slug no existe, se omite ese mueble sin abortar.
+   */
+  colocarConPreset(input: {
+    espacioId: string;
+    bbox: BboxAreaEscritorio;
+    nombre: string;
+    audioAislado: boolean;
+    asignadoAUsuarioId: string | null;
+    muebles: ReadonlyArray<{
+      slug: string;
+      offsetX: number;
+      offsetZ: number;
+      rotacionY: number;
+      rol: string;
+    }>;
+  }): Promise<ResultadoMutacionAreaEscritorio>;
+
+  /**
+   * Toggle del flag `audio_aislado`. Cualquier usuario autenticado del
+   * espacio puede ejecutar (decisión social entre los presentes).
+   */
+  toggleAudioAislado(areaId: string): Promise<ResultadoMutacionAreaEscritorio>;
 }

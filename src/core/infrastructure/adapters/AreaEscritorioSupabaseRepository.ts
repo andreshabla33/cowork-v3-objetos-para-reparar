@@ -204,6 +204,55 @@ export class AreaEscritorioSupabaseRepository implements IAreaEscritorioReposito
     }
     return { ok: true };
   }
+
+  async colocarConPreset(input: {
+    espacioId: string;
+    bbox: BboxAreaEscritorio;
+    nombre: string;
+    audioAislado: boolean;
+    asignadoAUsuarioId: string | null;
+    muebles: ReadonlyArray<{
+      slug: string;
+      offsetX: number;
+      offsetZ: number;
+      rotacionY: number;
+      rol: string;
+    }>;
+  }): Promise<ResultadoMutacionAreaEscritorio> {
+    const { data, error } = await supabase.rpc('colocar_desk_con_preset', {
+      p_espacio_id: input.espacioId,
+      p_centro_x: input.bbox.centroX,
+      p_centro_z: input.bbox.centroZ,
+      p_ancho: input.bbox.ancho,
+      p_alto: input.bbox.alto,
+      p_nombre: input.nombre,
+      p_audio_aislado: input.audioAislado,
+      p_asignado_a: input.asignadoAUsuarioId,
+      p_muebles: input.muebles.map((m) => ({
+        slug: m.slug,
+        offset_x: m.offsetX,
+        offset_z: m.offsetZ,
+        rotacion_y: m.rotacionY,
+        rol: m.rol,
+      })),
+    });
+    if (error) {
+      log.warn('Error colocando desk con preset', { error: error.message });
+      return mapearMotivoError(error);
+    }
+    return { ok: true, area: filaAArea(data as Record<string, unknown>) };
+  }
+
+  async toggleAudioAislado(areaId: string): Promise<ResultadoMutacionAreaEscritorio> {
+    const { data, error } = await supabase.rpc('toggle_audio_aislado_area_escritorio', {
+      p_area_id: areaId,
+    });
+    if (error) {
+      log.warn('Error toggling audio aislado', { error: error.message, areaId });
+      return mapearMotivoError(error);
+    }
+    return { ok: true, area: filaAArea(data as Record<string, unknown>) };
+  }
 }
 
 export const areaEscritorioRepository = new AreaEscritorioSupabaseRepository();
