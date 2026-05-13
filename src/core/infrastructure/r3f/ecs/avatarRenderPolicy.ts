@@ -2,7 +2,23 @@ export interface AvatarRenderPolicyInput {
   graphicsQuality?: string;
   avatarCount?: number;
   documentVisible?: boolean;
+  /**
+   * P4: multiplicador opcional para las distancias LOD (lodNear, lodMid,
+   * cullDistance, crowdFallbackDistance). User-tunable desde SettingsSpace3D.
+   *
+   * Rango sano: [0.5, 1.5]. Clamp aplicado para evitar valores absurdos.
+   *   - 0.5: ultra-agresivo (más crowd tier, menos GPU)
+   *   - 1.0: baseline del tier (default)
+   *   - 1.5: visual más rico (más SkinnedMesh full, más GPU)
+   *
+   * Resto del policy (fps, budgets, shadows) no se multiplica — esos son
+   * domain decisions, no preferencia de usuario.
+   */
+  lodDistanceMultiplier?: number;
 }
+
+const LOD_MULTIPLIER_MIN = 0.5;
+const LOD_MULTIPLIER_MAX = 1.5;
 
 /**
  * Resuelve la calidad gráfica efectiva para el LOD policy desde la elección
@@ -151,6 +167,19 @@ export function resolveAvatarRenderPolicy(input: AvatarRenderPolicyInput = {}): 
 
   if (input.documentVisible === false) {
     policy.fullAvatarBudget = 0;
+  }
+
+  // P4: aplicar multiplicador user-tunable a las distancias LOD (clamped).
+  // Solo afecta distancias — fps caps y budgets siguen rigidos por tier.
+  if (input.lodDistanceMultiplier !== undefined && input.lodDistanceMultiplier !== 1.0) {
+    const m = Math.max(
+      LOD_MULTIPLIER_MIN,
+      Math.min(LOD_MULTIPLIER_MAX, input.lodDistanceMultiplier),
+    );
+    policy.lodNear = Math.round(policy.lodNear * m);
+    policy.lodMid = Math.round(policy.lodMid * m);
+    policy.cullDistance = Math.round(policy.cullDistance * m);
+    policy.crowdFallbackDistance = Math.round(policy.crowdFallbackDistance * m);
   }
 
   return policy;

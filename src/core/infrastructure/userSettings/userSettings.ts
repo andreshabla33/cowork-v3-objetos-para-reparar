@@ -91,6 +91,15 @@ export interface UserSettings {
      * Gated por gpuRenderConfig.useDynamicFov (tier ≥ 2).
      */
     cameraShoulderMode?: 'center' | 'left' | 'right';
+    /**
+     * Multiplicador de distancia LOD para avatares (0.5–1.5).
+     * `1.0` = baseline del policy según GPU tier.
+     * `<1.0` = LOD más agresivo (más avatares en crowd tier, menos GPU).
+     * `>1.0` = LOD más generoso (más avatares full-tier, más calidad visual).
+     * Útil para que power users ajusten manualmente la trade-off
+     * calidad/performance según hardware específico.
+     */
+    lodDistanceMultiplier?: number;
   };
   calendar: {
     googleConnected: boolean;
@@ -239,7 +248,8 @@ export const defaultUserSettings: UserSettings = {
     proximityRadius: 130,
     radioInteresChunks: 1,
     enableDayNightCycle: false,
-    cameraShoulderMode: 'center'
+    cameraShoulderMode: 'center',
+    lodDistanceMultiplier: 1.0
   },
   calendar: {
     googleConnected: false,

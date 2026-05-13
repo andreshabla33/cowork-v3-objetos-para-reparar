@@ -103,6 +103,7 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
     return cb;
   }, []);
   const performanceSettings = useMemo(() => getSettingsSection('performance'), [settingsVersion]);
+  const space3dSettings = useMemo(() => getSettingsSection('space3d'), [settingsVersion]);
 
   // Clamp graphicsQuality por GPU tier detectado (getGpuInfoSync lee cache
   // poblada al boot por detectGpuCapabilities). En GPU tier ≤ 1 fuerza 'low'
@@ -271,6 +272,7 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
         graphicsQuality: effectiveGraphicsQuality,
         avatarCount: avatarStore.size,
         documentVisible: isDocumentVisibleRef.current,
+        lodDistanceMultiplier: space3dSettings.lodDistanceMultiplier,
       });
     }
 
@@ -294,7 +296,8 @@ export const RemoteUsers: React.FC<RemoteUsersProps> = ({
     graphicsQuality: effectiveGraphicsQuality,
     avatarCount: visibleEntities.length,
     documentVisible: isDocumentVisibleRef.current,
-  }), [effectiveGraphicsQuality, visibleEntities.length]);
+    lodDistanceMultiplier: space3dSettings.lodDistanceMultiplier,
+  }), [effectiveGraphicsQuality, visibleEntities.length, space3dSettings.lodDistanceMultiplier]);
   const prioritizedEntities = useMemo(
     () => [...visibleEntities].sort((a, b) => a.distanceToCamera - b.distanceToCamera),
     [visibleEntities, renderVersion]

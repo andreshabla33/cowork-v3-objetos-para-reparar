@@ -17,6 +17,11 @@ interface Space3DSettings {
   radioInteresChunks: number;
   /** OTS offset cámara — 'center' | 'left' | 'right'. Tier 2 feature. */
   cameraShoulderMode?: 'center' | 'left' | 'right';
+  /**
+   * P4: multiplicador LOD avatares (0.5–1.5). 1.0 = baseline tier.
+   * <1.0 = más performance, >1.0 = más calidad visual.
+   */
+  lodDistanceMultiplier?: number;
 }
 
 interface SettingsSpace3DProps {
@@ -141,6 +146,24 @@ export const SettingsSpace3D: React.FC<SettingsSpace3DProps> = ({
           step={1}
           unit="chunks"
           onChange={(v) => updateSetting('radioInteresChunks', v)}
+        />
+        <SettingSlider
+          label={currentLang === 'en'
+            ? 'Avatar LOD quality (tradeoff)'
+            : currentLang === 'pt'
+              ? 'Qualidade LOD de avatares (tradeoff)'
+              : 'Calidad LOD de avatares (tradeoff)'}
+          description={currentLang === 'en'
+            ? '0.5×: aggressive (more performance) — 1.5×: generous (more visual fidelity at distance)'
+            : currentLang === 'pt'
+              ? '0,5×: agressivo (mais performance) — 1,5×: generoso (mais qualidade à distância)'
+              : '0.5×: agresivo (más rendimiento) — 1.5×: generoso (más detalle a distancia)'}
+          value={settings.lodDistanceMultiplier ?? 1.0}
+          min={0.5}
+          max={1.5}
+          step={0.1}
+          unit="×"
+          onChange={(v) => updateSetting('lodDistanceMultiplier', v)}
         />
       </SettingSection>
 
