@@ -392,7 +392,11 @@ vec3 patternCobble(vec2 uv) {
 
 // ─── Entry point ────────────────────────────────────────────────────────────
 vec3 evaluateFloorPattern(vec2 worldXZ) {
-  vec2 uv = worldXZ / uTileSize;
+  // Defensive: max(vec2(0.0001), ...) silencia X4008 del compilador HLSL
+  // (D3D11 via ANGLE). uTileSize siempre es > 0 por floorMaterialSpecs
+  // (rangos [0.22, 1.5]), pero el compilador no puede garantizarlo
+  // estáticamente. Ref three.js issue 32692.
+  vec2 uv = worldXZ / max(vec2(0.0001), uTileSize);
 
   #if defined(FLOOR_PATTERN_PLANKS)
     return patternPlanks(uv);

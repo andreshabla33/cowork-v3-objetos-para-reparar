@@ -107,8 +107,15 @@ varying vec3 vViewPosition;
 mat4 getBoneMatrix(float boneIndex, float frame) {
   float frameRow = floor(frame);
   float pixelX = boneIndex * 4.0;
-  float texelSize = 1.0 / animTexSize.x;
-  float texelSizeY = 1.0 / animTexSize.y;
+  // Defensive: max(1.0, ...) impide al compilador HLSL (D3D11 via ANGLE)
+  // emitir X4008 "floating point division by zero". animTexSize siempre
+  // es > 0 en runtime (init en AnimationBaker), pero el compilador no lo
+  // garantiza estáticamente. D3D10 float rules: div-by-0 produce INF/NaN
+  // que se propagan silenciosamente. max(1.0, ...) no cambia comportamiento
+  // (textura mínima 1x1) pero silencia el warning.
+  // Ref: github.com/mrdoob/three.js/issues/32692
+  float texelSize = 1.0 / max(1.0, animTexSize.x);
+  float texelSizeY = 1.0 / max(1.0, animTexSize.y);
   
   float y = (frameRow + 0.5) * texelSizeY;
   

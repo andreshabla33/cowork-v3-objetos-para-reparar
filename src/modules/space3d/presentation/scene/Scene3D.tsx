@@ -543,22 +543,6 @@ export const Scene: React.FC<SceneProps> = ({
         topYOverride,
       });
     }
-    // Diagnóstico temporal: confirmar que es_superficie + topYOverride llegan.
-    if (typeof window !== 'undefined') {
-      const superficies = out.filter((o) => o.esSuperficie);
-      console.log(
-        `[DIAG-SNAP] objetosColocables=${out.length} | superficies=${superficies.length}`,
-        superficies.length > 0
-          ? superficies
-              .map(
-                (s) =>
-                  `${s.id.slice(0, 8)}@y=${s.posicionY.toFixed(2)}+h=${s.alto.toFixed(2)}` +
-                  (typeof s.topYOverride === 'number' ? ` topVisible=${s.topYOverride.toFixed(3)}` : ' (sin GLB-bbox)'),
-              )
-              .join(', ')
-          : '(ninguna)',
-      );
-    }
     return out;
   }, [espacioObjetos, scaledBboxVersion]);
 
