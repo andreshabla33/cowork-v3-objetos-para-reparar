@@ -298,6 +298,9 @@ vec3 patternCarpet(vec2 uv) {
 
 // ─── Pattern: HEX (hexagonal SDF + bevel) ───────────────────────────────────
 // Usado por: TILE_HEX (variant=0), HEX_STYLIZED (variant=1), METAL_GRID (variant=2)
+//
+// Bordes anti-aliasados con fwidth() — el grosor del borde se adapta al
+// footprint del pixel para evitar shimmer/granulado a distancia.
 vec3 patternHex(vec2 uv) {
   // Transform a coordenadas de grid hexagonal
   vec2 h = vec2(1.7320508, 1.0);
@@ -312,6 +315,9 @@ vec3 patternHex(vec2 uv) {
   dEdge = max(dEdge, absHex.z);
   float fromEdge = 0.5 - dEdge;
 
+  // Pixel footprint para AA adaptativo de los bordes hex
+  float aaW = max(fwidth(fromEdge), 0.001);
+
   // Color random por hexágono entre paleta[0] y paleta[1]
   float h2 = fhash(cellCenter);
   vec3 base = mix(uPalette[0], uPalette[1], step(0.5, h2));
@@ -322,8 +328,8 @@ vec3 patternHex(vec2 uv) {
     float bevelTop = smoothstep(0.0, 0.08, fromEdge) * step(0.0, hex.y) * 0.18;
     float bevelBot = smoothstep(0.0, 0.08, fromEdge) * step(hex.y, 0.0) * 0.15;
     col += vec3(bevelTop) - vec3(bevelBot);
-    // Borde oscuro fino
-    float border = smoothstep(0.0, 0.025, fromEdge);
+    // Borde oscuro fino AA
+    float border = smoothstep(0.0125 - aaW, 0.0125 + aaW, fromEdge);
     col = mix(uPalette[3] * 0.3, col, border);
   } else if (uVariant > 1.5) {
     // METAL_GRID: hexágono oscuro con highlight metálico al centro
@@ -331,12 +337,12 @@ vec3 patternHex(vec2 uv) {
     col = mix(uPalette[0], uPalette[1], center);
     float metalHi = pow(center, 4.0) * 0.55;
     col += uPalette[2] * metalHi;
-    // borde luminoso emisivo
-    float wire = smoothstep(0.02, 0.0, fromEdge);
+    // borde luminoso emisivo AA
+    float wire = 1.0 - smoothstep(0.01 - aaW, 0.01 + aaW, fromEdge);
     col = mix(col, uPalette[2], wire * 0.6);
   } else {
-    // TILE_HEX: liso, solo borde gris
-    float border = smoothstep(0.0, 0.02, fromEdge);
+    // TILE_HEX: liso, solo borde gris AA
+    float border = smoothstep(0.01 - aaW, 0.01 + aaW, fromEdge);
     col = mix(uPalette[3] * 0.6, col, border);
   }
 
@@ -347,35 +353,38 @@ vec3 patternHex(vec2 uv) {
 // Usado por: STONE_COBBLE_WARM (variant=0), STONE_PATH_GARDEN (variant=1)
 //
 // Distancia REAL al bisector (no a centro) → grout afilado uniforme + stones
-// poligonales. Color random por cellId. Sombreado interno via dBorder hace
-// que cada piedra tenga sutil bevel.
+// poligonales. Color random por cellId. Bordes anti-aliasados con fwidth()
+// que escala la transición según el footprint del pixel en pattern-space
+// (técnica IQ "Filtering procedural textures").
 vec3 patternCobble(vec2 uv) {
   VoronoiResult v = voronoiCells(uv);
   float h = fhash(v.cellId);
   vec3 stone = pickPalette(h);
 
-  // Sutil bevel: piedra más clara cerca del centro, más oscura cerca del borde
+  // Pixel footprint en pattern-space → ancho del smoothstep adaptativo
+  float aaW = max(fwidth(v.dBorder), 0.001);
+
+  // Bevel sutil: piedra más clara cerca del centro, más oscura cerca del borde
   float bevel = smoothstep(0.0, 0.12, v.dBorder);
   stone *= 0.92 + bevel * 0.10;
 
   if (uVariant > 0.5) {
-    // STONE_PATH_GARDEN: grout verde con grass tufts solo en uniones triples
-    vec3 grass = uPalette[3];              // verde medio
-    float grout = 1.0 - smoothstep(0.02, 0.08, v.dBorder);
+    // STONE_PATH_GARDEN: grout verde + tufts en uniones triples
+    vec3 grass = uPalette[3];
+    float grout = 1.0 - smoothstep(0.04 - aaW, 0.04 + aaW, v.dBorder);
     vec3 col = mix(stone, grass, grout);
 
-    // Tufts: solo MUY cerca del borde (uniones triples) + hash random por celda
+    // Tufts: solo MUY cerca del borde + hash random por celda
     float tuftSeed = fhash(v.cellId * 7.31 + 13.0);
     float nearEdge = 1.0 - smoothstep(0.0, 0.04, v.dBorder);
     float tuftMask = nearEdge * step(0.78, tuftSeed);
-    // micro-variación de tamaño con noise para que no sean todos circulitos iguales
     float tuftJitter = vnoise(v.cellId * 5.0) * 0.4 + 0.6;
-    col = mix(col, uPalette[2], tuftMask * tuftJitter * 0.7);  // paleta[2] = verde oscuro
+    col = mix(col, uPalette[2], tuftMask * tuftJitter * 0.7);
     return col;
   }
 
-  // STONE_COBBLE_WARM: grout oscuro afilado
-  float grout = 1.0 - smoothstep(0.015, 0.055, v.dBorder);
+  // STONE_COBBLE_WARM: grout oscuro AA
+  float grout = 1.0 - smoothstep(0.035 - aaW, 0.035 + aaW, v.dBorder);
   vec3 groutColor = uPalette[3] * 0.4;
   vec3 col = mix(stone, groutColor, grout);
   return col;

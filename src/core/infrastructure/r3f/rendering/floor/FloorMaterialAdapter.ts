@@ -82,6 +82,10 @@ function construirMaterial(floorType: FloorType): THREE.MeshStandardMaterial {
       );
 
     // ─── FRAGMENT: inyectar lib + reemplazar map_fragment ─────────────────
+    // Distance-based LOD fade: a >15m del shading point la cámara, mezclamos
+    // hacia el color promedio de la paleta. Elimina moiré/shimmer porque
+    // los pixeles lejanos ya no muestrean detalle sub-pixel del patrón.
+    // `cameraPosition` es uniform built-in de Three.js — auto-inyectado.
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
@@ -95,6 +99,10 @@ ${FLOOR_SHADER_LIB}`,
       .replace(
         '#include <map_fragment>',
         `vec3 floorPattern = evaluateFloorPattern(vFloorWorldPos.xz);
+float distToCam = length(vFloorWorldPos - cameraPosition);
+float lodFade = smoothstep(15.0, 40.0, distToCam);
+vec3 avgFloorColor = (uPalette[0] + uPalette[1]) * 0.5;
+floorPattern = mix(floorPattern, avgFloorColor, lodFade);
 diffuseColor.rgb *= floorPattern;`,
       );
   };
