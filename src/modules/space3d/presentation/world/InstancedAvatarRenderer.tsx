@@ -219,6 +219,21 @@ export const InstancedAvatarRenderer: React.FC<InstancedAvatarRendererProps> = (
     if (!geo.getAttribute('animTime')) {
       geo.setAttribute('animTime', animAttributes.animTime);
     }
+    // ── P2 fix (2026-05-13): bounding sphere world-envelope ─────────────────
+    // Issue mrdoob/three.js#18412: si el bounding sphere se calcula del
+    // T-pose en origen, las instancias movidas por setMatrixAt "desaparecen"
+    // cuando la cámara apunta lejos del origen. Workaround oficial de
+    // WestLangley (issue #18412):
+    //   `mesh.geometry.boundingSphere = new THREE.Sphere(center, radius)`
+    // con un radio grande que envuelva todo el world razonable.
+    //
+    // Nuestro cowork cabe en ~50m radius alrededor del origen. Usamos 200m
+    // para dejar margen ante zonas grandes / multi-empresa.
+    //
+    // Refs:
+    //   https://threejs.org/docs/#api/en/objects/InstancedMesh.computeBoundingSphere
+    //   https://github.com/mrdoob/three.js/issues/18412
+    geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 1, 0), 200);
     return geo;
   }, [bakedSet, animAttributes]);
 
@@ -317,7 +332,13 @@ export const InstancedAvatarRenderer: React.FC<InstancedAvatarRendererProps> = (
     <instancedMesh
       ref={instancedMeshRef}
       args={[geometry, material, MAX_INSTANCES]}
-      frustumCulled={false}
+      // P2 (2026-05-13): habilitamos frustumCulled (default oficial=true).
+      // Antes era `false` por el bug del bounding sphere en T-pose en origen.
+      // Lo fixeamos seteando `geometry.boundingSphere` manualmente arriba
+      // (workaround oficial WestLangley en issue #18412). Ahora el mesh entero
+      // se puede cull cuando la cámara mira fuera del world envelope (200m),
+      // ahorrando GPU work en cámaras lejanas/horizonte.
+      frustumCulled={true}
       onClick={handleClick}
     />
   );
