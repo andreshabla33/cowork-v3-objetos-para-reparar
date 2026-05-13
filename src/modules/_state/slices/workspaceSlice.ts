@@ -16,18 +16,38 @@ interface WorkspaceSliceDependencies {
 
 const STORAGE_WS_KEY = 'cowork_active_workspace_id';
 
+/**
+ * Snapshot mínimo de un AreaEscritorio con audio aislado para que `useProximity`
+ * pueda gatear streams sin depender del Domain completo. Compatible con el
+ * shape de `isPointInZone` del hook (acepta string|number en las coords).
+ */
+export interface AreaAudioAisladaSnapshot {
+  id: string;
+  posicion_x: number;
+  posicion_y: number;
+  ancho: number;
+  alto: number;
+}
+
 export interface WorkspaceSlice {
   workspaces: Workspace[];
   activeWorkspace: Workspace | null;
   userRoleInActiveWorkspace: Role | null;
   zonasEmpresa: ZonaEmpresa[];
   empresasAutorizadas: string[];
+  /**
+   * Áreas escritorio con `audio_aislado=true` del espacio actual. Lo escribe
+   * `Scene3D` cada vez que `useAreasEscritorio` resync. Lo lee `useProximity`
+   * para gatear audio (mismo patrón que `meetingZones`).
+   */
+  areasAudioAisladas: AreaAudioAisladaSnapshot[];
 
   setWorkspaces: (workspaces: Workspace[]) => void;
   fetchWorkspaces: () => Promise<Workspace[]>;
   setActiveWorkspace: (workspace: Workspace | null, role?: Role) => void;
   setZonasEmpresa: (zonas: ZonaEmpresa[]) => void;
   setEmpresasAutorizadas: (empresas: string[]) => void;
+  setAreasAudioAisladas: (areas: AreaAudioAisladaSnapshot[]) => void;
   addSpaceItem: (item: SpaceItem) => void;
   updateSpaceItem: (id: string, updates: Partial<SpaceItem>) => void;
   removeSpaceItem: (id: string) => void;
@@ -39,10 +59,12 @@ export const createWorkspaceSlice: StateCreator<WorkspaceSliceDependencies & Wor
   userRoleInActiveWorkspace: null,
   zonasEmpresa: [],
   empresasAutorizadas: [],
+  areasAudioAisladas: [],
 
   setWorkspaces: (workspaces) => set({ workspaces }),
   setZonasEmpresa: (zonas) => set({ zonasEmpresa: zonas }),
   setEmpresasAutorizadas: (empresas) => set({ empresasAutorizadas: empresas }),
+  setAreasAudioAisladas: (areas) => set({ areasAudioAisladas: areas }),
 
   // Implementación real se inyecta desde orchestrators/workspaceStore
   fetchWorkspaces: async () => [],

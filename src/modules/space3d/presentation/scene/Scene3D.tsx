@@ -24,6 +24,8 @@ import { useSceneReadySignal } from '@/modules/space3d/presentation/hooks/useSce
 import { usePlantillaZonaDrag } from '@/modules/space3d/presentation/hooks/usePlantillaZonaDrag';
 import { useZoneDrawingPreview } from '@/modules/space3d/presentation/hooks/useZoneDrawingPreview';
 import { useZoneCollisionTracker } from '@/modules/space3d/presentation/hooks/useZoneCollisionTracker';
+import { useAreasEscritorio } from '@/modules/space3d/presentation/hooks/useAreasEscritorio';
+import { DeskAreasLayer } from '@/modules/space3d/presentation/world/DeskAreasLayer';
 import {
   ajustarAGrilla,
   obtenerPuntoSueloMundo,
@@ -910,6 +912,36 @@ export const Scene: React.FC<SceneProps> = ({
   }, []);
 
 
+  // ─── Áreas de escritorio (Gather-style claim) ────────────────────────
+  // Provee la lista realtime + acciones (reclamar/liberar/admin). El
+  // DeskAreasLayer renderiza overlays + tooltip + botón.
+  const {
+    areas: areasEscritorio,
+    reclamar: reclamarAreaEscritorio,
+    liberar: liberarAreaEscritorio,
+  } = useAreasEscritorio(espacioIdPerimeter, currentUser?.id ?? null);
+
+  // Publica al store las áreas con audio_aislado=true. `useProximity` las lee
+  // y gatea el audio de proximidad (mismo patrón que meeting zones).
+  //
+  // ESCALA: useProximity opera en coords DB (×16) — `currentUser.x` y
+  // `usuariosEnChunks[].x` se sincronizan con `setPosition(x*16, z*16, ...)`
+  // desde Player3D. Nuestro bbox del Domain está en world meters → convertir
+  // ×16 antes de publicar para que `isPointInZone` matche correctamente.
+  const setAreasAudioAisladas = useStore((s) => s.setAreasAudioAisladas);
+  useEffect(() => {
+    const snapshot = areasEscritorio
+      .filter((a) => a.audio_aislado)
+      .map((a) => ({
+        id: a.id,
+        posicion_x: a.bbox.centroX * 16,
+        posicion_y: a.bbox.centroZ * 16,
+        ancho: a.bbox.ancho * 16,
+        alto: a.bbox.alto * 16,
+      }));
+    setAreasAudioAisladas(snapshot);
+  }, [areasEscritorio, setAreasAudioAisladas]);
+
   // Zone collision tracker (Rapier callbacks) extraído a hook dedicado
   // (ITEM 15 P1-07) — edge-triggered, filtra callbacks redundantes.
   const { handleZoneEnter, handleZoneExit } = useZoneCollisionTracker({ onZoneCollision });
@@ -1026,6 +1058,18 @@ export const Scene: React.FC<SceneProps> = ({
           onPointerMove={handlePointerMove}
         />
       </group>
+
+      {/* Overlays de áreas de escritorio reclamables (Gather-style).
+          Rectángulos color-coded + tooltip "Reclamar/Liberar" cuando el
+          avatar local está cerca. */}
+      <DeskAreasLayer
+        areas={areasEscritorio}
+        playerPosRef={playerColliderPositionRef}
+        miUsuarioId={currentUser?.id ?? null}
+        onlineUsers={onlineUsers}
+        onReclamar={reclamarAreaEscritorio}
+        onLiberar={liberarAreaEscritorio}
+      />
 
       {/* Suelo base invisible para Raycast — FASE 5: geometría cacheada (no crea nueva en cada mount) */}
       <mesh

@@ -155,6 +155,10 @@ export function useProximity(params: {
 
   // Store for getting current active zones
   const zonasEmpresa = useStore((state) => state.zonasEmpresa);
+  // Áreas de escritorio con audio aislado (Gather-style Private Area). Mismo
+  // patrón de exclusión que meetingZones: si un usuario está adentro, se gate
+  // del cómputo de proximidad para que nadie afuera lo escuche.
+  const areasAudioAisladas = useStore((state) => state.areasAudioAisladas);
 
   // ========== Pre-filtro: zonas de tipo meeting ==========
   // Delegado a Domain classifier (2026-04-23 Fase 1 refactor). La whitelist
@@ -426,10 +430,28 @@ export function useProximity(params: {
       // Don't include users who are themselves inside a meeting zone (they're isolated)
       const userInAnyMeeting = meetingZones.some(z => isPointInZone(u.x, u.y, z));
       if (userInAnyMeeting) return false;
+      // Igual gate para áreas escritorio con audio_aislado=true (Gather Private Area).
+      // Si el remoto está adentro de una Private Area y yo NO estoy adentro de la
+      // misma, no debo escucharlo. (Si yo estoy adentro, otro check más abajo me
+      // permitirá escuchar solo a quienes comparten la misma área.)
+      const userInAislada = areasAudioAisladas.some(a => isPointInZone(u.x, u.y, a));
+      const yoEnAislada = areasAudioAisladas.some(a =>
+        isPointInZone(stableProximityCoords.x, stableProximityCoords.y, a),
+      );
+      if (userInAislada && !yoEnAislada) return false;
+      if (yoEnAislada && !userInAislada) return false;
+      // Si ambos en áreas aisladas, deben compartir la MISMA área.
+      if (userInAislada && yoEnAislada) {
+        const compartenArea = areasAudioAisladas.some(a =>
+          isPointInZone(u.x, u.y, a) &&
+          isPointInZone(stableProximityCoords.x, stableProximityCoords.y, a),
+        );
+        if (!compartenArea) return false;
+      }
       const dist = Math.sqrt(Math.pow(u.x - stableProximityCoords.x, 2) + Math.pow(u.y - stableProximityCoords.y, 2));
       return dist < audioRadius;
     });
-  }, [isHydrated, usuariosEnChunks, stableProximityCoords.x, stableProximityCoords.y, session?.user?.id, userProximityRadius, usersInCall, effectiveZone, meetingZones]);
+  }, [isHydrated, usuariosEnChunks, stableProximityCoords.x, stableProximityCoords.y, session?.user?.id, userProximityRadius, usersInCall, effectiveZone, meetingZones, areasAudioAisladas]);
 
   const usersInAudioRangeIds = useMemo(() => new Set(usersInAudioRange.map(u => u.id)), [usersInAudioRange]);
 
