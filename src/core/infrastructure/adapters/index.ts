@@ -95,11 +95,8 @@ export { OnboardingSupabaseRepository } from './OnboardingSupabaseRepository';
 export { CargoSupabaseRepository, cargoRepository } from './CargoSupabaseRepository';
 export { DepartamentoSupabaseRepository, departamentoRepository } from './DepartamentoSupabaseRepository';
 
-// Spaces & Templates
+// Spaces & Registro Empresa
 export { spaceRepository } from './SpaceSupabaseRepository';
-export { InyectorPlantillaEspacio } from './InyectorPlantillaEspacioAdapter';
-export { InyectorPlantillaZona } from './InyectorPlantillaZonaAdapter';
-export { RepositorioPlantillaZonaSupabase } from './RepositorioPlantillaZonaSupabaseAdapter';
 export { RepositorioRegistroEmpresaSupabase } from './RepositorioRegistroEmpresaSupabaseAdapter';
 
 // Invitations

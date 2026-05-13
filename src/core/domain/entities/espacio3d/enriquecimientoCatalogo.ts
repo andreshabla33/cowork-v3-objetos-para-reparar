@@ -20,7 +20,6 @@
 
 import type { ObjetoEspacio3D } from './index';
 import type { CatalogoObjeto3DRuntime } from '@/src/core/domain/ports/IEspacioObjetosRepository';
-import { obtenerPlantillaZona } from '../plantillasEspacio';
 import { ResolverModeloUrlObjetoUseCase } from '@/src/core/application/usecases/ResolverModeloUrlObjetoUseCase';
 
 // ─── Indexación del catálogo ─────────────────────────────────────────────────
@@ -96,9 +95,13 @@ export function resolverSlugCatalogoPlantilla(objeto: ObjetoEspacio3D): string {
     : null;
   if (!plantillaId || !claveInstancia) return '';
 
-  const plantilla = obtenerPlantillaZona(plantillaId);
-  const definicion = plantilla?.objetos.find((item) => item.clave === claveInstancia);
-  return (definicion?.slug_catalogo || '').trim().toLowerCase();
+  // Plantillas legacy eliminadas (Fase M 2026-05-13). El binomio
+  // `(plantilla_id, clave_instancia)` ya no resuelve a un slug porque
+  // no quedan plantillas estáticas. Objetos legacy en DB devuelven
+  // string vacío y caen al path de resolución default por modelo_url.
+  void plantillaId;
+  void claveInstancia;
+  return '';
 }
 
 // ─── Enriquecimiento ─────────────────────────────────────────────────────────

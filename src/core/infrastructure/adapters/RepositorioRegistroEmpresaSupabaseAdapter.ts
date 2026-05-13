@@ -10,8 +10,8 @@
 import { supabase } from '@/core/infrastructure/supabase/supabaseClient';
 import { zonaEmpresaRepository } from './ZonaEmpresaSupabaseRepository';
 import type { ZonaEmpresa } from '@/types';
-import type { PlantillaEspacio } from '../../domain/entities/plantillasEspacio';
-import type { IRegistroEmpresaRepositorio } from '../../application/usecases/RegistrarEmpresaConPlantillaUseCase';
+import type { FloorType } from '../../domain/entities';
+import type { IRegistroEmpresaRepositorio } from '../../application/usecases/RegistrarEmpresaConGridDesksUseCase';
 
 interface EmpresaPersistida {
   id: string;
@@ -214,7 +214,12 @@ export class RepositorioRegistroEmpresaSupabase implements IRegistroEmpresaRepos
     empresaId: string;
     nombreEmpresa: string;
     usuarioId: string;
-    plantilla: PlantillaEspacio;
+    zonaParams: {
+      anchoMetros: number;
+      altoMetros: number;
+      color: string;
+      tipoSuelo: FloorType;
+    };
   }): Promise<ZonaEmpresa> {
     const { data, error } = await supabase
       .from('zonas_empresa')
@@ -241,11 +246,11 @@ export class RepositorioRegistroEmpresaSupabase implements IRegistroEmpresaRepos
         posicionY: Number(zonaPorEmpresa.posicion_y),
         ancho: Number(zonaPorEmpresa.ancho),
         alto: Number(zonaPorEmpresa.alto),
-        color: params.plantilla.zona.color,
+        color: params.zonaParams.color,
         usuarioId: params.usuarioId,
         spawnX,
         spawnY,
-        tipoSuelo: params.plantilla.tipo_suelo,
+        tipoSuelo: params.zonaParams.tipoSuelo,
       });
 
       if (!actualizada) {
@@ -269,11 +274,11 @@ export class RepositorioRegistroEmpresaSupabase implements IRegistroEmpresaRepos
         posicionY: Number(zonaPorNombre.posicion_y),
         ancho: Number(zonaPorNombre.ancho),
         alto: Number(zonaPorNombre.alto),
-        color: params.plantilla.zona.color,
+        color: params.zonaParams.color,
         usuarioId: params.usuarioId,
         spawnX,
         spawnY,
-        tipoSuelo: params.plantilla.tipo_suelo,
+        tipoSuelo: params.zonaParams.tipoSuelo,
       });
 
       if (!adoptada) {
@@ -283,8 +288,8 @@ export class RepositorioRegistroEmpresaSupabase implements IRegistroEmpresaRepos
       return adoptada;
     }
 
-    const ancho = Math.round(params.plantilla.zona.ancho_metros * 16);
-    const alto = Math.round(params.plantilla.zona.alto_metros * 16);
+    const ancho = Math.round(params.zonaParams.anchoMetros * 16);
+    const alto = Math.round(params.zonaParams.altoMetros * 16);
     const posicion = encontrarPosicionDisponible(zonas, ancho, alto);
 
     if (!posicion) {
@@ -299,11 +304,11 @@ export class RepositorioRegistroEmpresaSupabase implements IRegistroEmpresaRepos
       posicionY: posicion.centroY,
       ancho,
       alto,
-      color: params.plantilla.zona.color,
+      color: params.zonaParams.color,
       usuarioId: params.usuarioId,
       spawnX: posicion.centroX,
       spawnY: posicion.centroY,
-      tipoSuelo: params.plantilla.tipo_suelo,
+      tipoSuelo: params.zonaParams.tipoSuelo,
     });
 
     if (!creada) {

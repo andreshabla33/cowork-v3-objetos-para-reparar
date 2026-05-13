@@ -21,11 +21,7 @@
  *   for singletons that don't change; use module-level state instead).
  */
 
-import { AplicarPlantillaZonaUseCase } from './usecases/AplicarPlantillaZonaUseCase';
-import { EliminarPlantillaZonaUseCase } from './usecases/EliminarPlantillaZonaUseCase';
 import { InteraccionObjetoUseCase } from './usecases/InteraccionObjetoUseCase';
-import { InyectorPlantillaZona } from '../infrastructure/adapters/InyectorPlantillaZonaAdapter';
-import { RepositorioPlantillaZonaSupabase } from '../infrastructure/adapters/RepositorioPlantillaZonaSupabaseAdapter';
 import { ToastEmitterAdapter } from '../infrastructure/adapters/ToastEmitterAdapter';
 import { WebAudioSoundAdapter } from '../infrastructure/adapters/WebAudioSoundAdapter';
 import type { INotificationBus } from '../domain/ports/INotificationBus';
@@ -35,8 +31,6 @@ import type { INavigationService } from '../domain/ports/INavigationService';
 // ─── Contrato público ─────────────────────────────────────────────────────────
 
 export interface ApplicationServices {
-  readonly aplicarPlantillaZona: AplicarPlantillaZonaUseCase;
-  readonly eliminarPlantillaZona: EliminarPlantillaZonaUseCase;
   readonly interaccionObjeto: InteraccionObjetoUseCase;
   /** Port para emitir notificaciones (toasts) sin conocer la implementación. */
   readonly notifications: INotificationBus;
@@ -61,36 +55,13 @@ export interface ApplicationServices {
 class ApplicationServicesContainerImpl implements ApplicationServices {
   // Getters con caché interna. La primera lectura construye la cadena de
   // dependencias; las subsecuentes devuelven la misma instancia.
-  private _aplicarPlantillaZona: AplicarPlantillaZonaUseCase | null = null;
-  private _eliminarPlantillaZona: EliminarPlantillaZonaUseCase | null = null;
   private _interaccionObjeto: InteraccionObjetoUseCase | null = null;
 
   // Adapters compartidos (singleton a nivel de container para evitar
   // duplicar conexiones a Supabase / estado de caché):
-  private _repositorioPlantilla: RepositorioPlantillaZonaSupabase | null = null;
-  private _inyectorPlantilla: InyectorPlantillaZona | null = null;
   private _notifications: INotificationBus | null = null;
   private _sounds: ISoundBus | null = null;
   private _navigation: INavigationService | null = null;
-
-  get aplicarPlantillaZona(): AplicarPlantillaZonaUseCase {
-    if (!this._aplicarPlantillaZona) {
-      this._aplicarPlantillaZona = new AplicarPlantillaZonaUseCase(
-        this.repositorioPlantilla,
-        this.inyectorPlantilla,
-      );
-    }
-    return this._aplicarPlantillaZona;
-  }
-
-  get eliminarPlantillaZona(): EliminarPlantillaZonaUseCase {
-    if (!this._eliminarPlantillaZona) {
-      this._eliminarPlantillaZona = new EliminarPlantillaZonaUseCase(
-        this.repositorioPlantilla,
-      );
-    }
-    return this._eliminarPlantillaZona;
-  }
 
   get interaccionObjeto(): InteraccionObjetoUseCase {
     if (!this._interaccionObjeto) {
@@ -126,19 +97,6 @@ class ApplicationServicesContainerImpl implements ApplicationServices {
     return this._navigation;
   }
 
-  private get repositorioPlantilla(): RepositorioPlantillaZonaSupabase {
-    if (!this._repositorioPlantilla) {
-      this._repositorioPlantilla = new RepositorioPlantillaZonaSupabase();
-    }
-    return this._repositorioPlantilla;
-  }
-
-  private get inyectorPlantilla(): InyectorPlantillaZona {
-    if (!this._inyectorPlantilla) {
-      this._inyectorPlantilla = new InyectorPlantillaZona();
-    }
-    return this._inyectorPlantilla;
-  }
 }
 
 // ─── Singleton global ─────────────────────────────────────────────────────────
