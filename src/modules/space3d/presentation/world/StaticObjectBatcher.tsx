@@ -30,7 +30,7 @@
 
 'use client';
 
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { useGLTF } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -78,6 +78,13 @@ interface BatchedGroupProps {
   modeloUrl: string;
   objetos: EspacioObjeto[];
   services: SceneOptimizationServices;
+  /**
+   * Notifica al padre que la lista interna de `BatchedMesh` cambió
+   * (registro nuevo o cache-hit tras reset). El padre re-fetcha
+   * `obtenerTodosMeshes()` y actualiza el state que renderiza los
+   * `<primitive>` declarativos.
+   */
+  onMeshesChanged?: () => void;
 }
 
 /** Tracked instance for frustum culling + LOD */
@@ -146,15 +153,30 @@ function computeGruposSignature(grupos: Map<string, EspacioObjeto[]>): string {
 function resetRegistrationCache(services: SceneOptimizationServices): void {
   if (services.isReady) {
     // CRITICAL (2026-05-13): detach BatchedMeshes del scene graph ANTES de
-    // dispose(). En three.js r182 `BatchedMesh.dispose()` setea
-    // `_matricesTexture = null` (BatchedMesh.js:1491). Si el mesh queda
-    // attached, el raycaster de cámara (CameraFollow.tsx) — que recorre
-    // `scene.children` recursivamente cada frame — entra a `raycast()` →
-    // `getMatrixAt()` → `this._matricesTexture.image.data` → null deref:
-    // "Cannot read properties of null (reading 'image')" → loop infinito
-    // → canvas en negro. El `MeshAttacher` solo poolea cada 500ms, así
-    // que esa ventana de carrera mata la app. Detach sync cierra el gap.
-    // Ref: https://threejs.org/docs/#api/en/core/Object3D.removeFromParent
+    // dispose(). Tres razones documentadas en doc oficial:
+    //
+    // (1) three.js r182 `BatchedMesh.dispose()` setea `_matricesTexture = null`
+    //     (BatchedMesh.js:1491). Doc oficial NO advierte sobre raycast post-
+    //     dispose, pero el `getMatrixAt()` interno lee `_matricesTexture.image.data`
+    //     → null deref. Es un footgun no documentado upstream.
+    //
+    // (2) Aunque el `MeshAttacher` ahora es declarativo (`<primitive>`), el
+    //     detach del primitive ocurre en commit-phase asíncrono de React.
+    //     Entre `limpiar()` (sync, render-phase) y commit-phase hay frames
+    //     donde los meshes están disposed pero todavía attached al scene.
+    //     El raycaster de cámara (CameraFollow.tsx) corre cada frame →
+    //     null deref en esos frames intermedios.
+    //
+    // (3) Doc R3F oficial confirma que `<primitive>` no dispone si hay
+    //     `dispose={null}` — el lifecycle del mesh es responsabilidad nuestra.
+    //
+    // Detach sync con `removeFromParent()` (API estable r182, doc:
+    // Object3D.html:981-993) cierra el gap. `removeFromParent()` con
+    // parent=null es no-op idempotente — seguro de llamar siempre.
+    //
+    // Refs:
+    //   https://threejs.org/docs/#api/en/core/Object3D.removeFromParent
+    //   https://r3f.docs.pmnd.rs/api/objects#disposal
     const meshes = services.multiBatch.obtenerTodosMeshes() as THREE.Object3D[];
     for (const mesh of meshes) {
       mesh.removeFromParent();
@@ -403,6 +425,7 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
   modeloUrl,
   objetos,
   services,
+  onMeshesChanged,
 }) => {
   const { scene: gltfScene } = useGLTF(modeloUrl);
 
@@ -427,6 +450,7 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
         modeloUrl,
         signature: currentSignature,
       });
+      onMeshesChanged?.();
       return;
     }
 
@@ -637,7 +661,9 @@ const BatchedGroupLoader: React.FC<BatchedGroupProps> = ({
       atlasTextures: atlasTextureCount,
       dataTextureGroups: colorGroupsCreatedHere,
     });
-  }, [services.isReady, gltfScene, modeloUrl, objetos, services]);
+
+    onMeshesChanged?.();
+  }, [services.isReady, gltfScene, modeloUrl, objetos, services, onMeshesChanged]);
 
   return null;
 };
@@ -753,89 +779,26 @@ const FrustumCuller: React.FC<{
 };
 
 // ─── Main component ───────────────────────────────────────────────────────────
-
-/**
- * MeshAttacher — Imperatively adds/removes BatchedMesh objects to the R3F scene.
- *
- * R3F best practice (official docs): "primitives will NOT dispose of the object
- * they carry on unmount — you are responsible for disposing of it."
- *
- * Instead of useState + setTimeout (anti-pattern in R3F), we use useFrame with
- * direct mutation to detect when new groups appear and attach them to the scene.
- *
- * Ref: https://r3f.docs.pmnd.rs/api/objects — "Primitives"
- * Ref: https://r3f.docs.pmnd.rs/advanced/pitfalls — "Mutate in useFrame, don't setState"
- */
-const MeshAttacher: React.FC<{
-  services: SceneOptimizationServices;
-}> = ({ services }) => {
-  const groupRef = useRef<THREE.Group>(null);
-  const lastCheckRef = useRef(0);
-
-  useFrame(() => {
-    if (!services.isReady || !groupRef.current) return;
-
-    // Check every 500ms if new groups were added (avoids per-frame overhead)
-    const now = performance.now();
-    if (now - lastCheckRef.current < 500) return;
-    lastCheckRef.current = now;
-
-    const meshes = services.multiBatch.obtenerTodosMeshes() as THREE.Object3D[];
-
-    // Fast-path identity check: si los mismos meshes ya están attached, skip.
-    // FIX 2026-05-13: usábamos `attachedCountRef.current === meshes.length`,
-    // pero tras `resetRegistrationCache` la cantidad puede coincidir aunque
-    // los objetos sean NUEVAS instancias → el bail dejaba la escena sin
-    // batches (ningún mueble visible).
-    const currentChildren = groupRef.current.children;
-    if (meshes.length === currentChildren.length) {
-      const childSet = new Set(currentChildren);
-      let same = true;
-      for (const m of meshes) {
-        if (!childSet.has(m)) { same = false; break; }
-      }
-      if (same) return;
-    }
-
-    // Remove old children that are no longer in the mesh list
-    const meshSet = new Set(meshes);
-    const toRemove: THREE.Object3D[] = [];
-    for (const child of currentChildren) {
-      if (!meshSet.has(child)) toRemove.push(child);
-    }
-    for (const child of toRemove) {
-      groupRef.current.remove(child);
-    }
-
-    // Add new meshes
-    for (const mesh of meshes) {
-      if (!currentChildren.includes(mesh)) {
-        groupRef.current.add(mesh);
-      }
-    }
-
-    const stats = services.multiBatch.obtenerEstadisticas();
-    log.info('MultiBatch meshes attached', {
-      groups: stats.groupCount,
-      totalInstances: stats.totalInstances,
-      drawCalls: stats.groupCount,
-    });
-  });
-
-  // Manual disposal on unmount — R3F <primitive> does NOT auto-dispose
-  useEffect(() => {
-    return () => {
-      if (groupRef.current) {
-        // Detach all children but DON'T dispose — MultiBatch adapter owns disposal
-        while (groupRef.current.children.length > 0) {
-          groupRef.current.remove(groupRef.current.children[0]);
-        }
-      }
-    };
-  }, []);
-
-  return <group ref={groupRef} />;
-};
+//
+// FIX 2026-05-13 (pagando deuda R3F): el `MeshAttacher` previo era imperativo
+// (useRef<Group> + groupRef.current.add(mesh) en useFrame con polling de 500ms).
+// Ese patrón NO aparece en doc oficial R3F v9.5.0. La doc oficial respalda
+// solo dos vías para attachar Three.js objects pre-existentes a la escena:
+//
+//   1. `<primitive object={mesh}>` (declarativo) ← canonical
+//   2. `attach={(parent, self) => { parent.add(self); return () => parent.remove(self) }}` (callback)
+//
+// Migramos a (1) — eliminamos el polling de 500ms, el race window de 500ms,
+// y delegamos el attach/detach a R3F + React. Cada `<primitive dispose={null}>`
+// es declarativo: R3F lo attacha al mount y lo detacha al unmount sin que
+// nosotros gestionemos refs. `dispose={null}` desactiva el auto-dispose de R3F
+// porque el `MultiBatch` adapter es el owner del lifecycle de los meshes.
+//
+// Ref oficial R3F v9.5.0 — docs/API/objects.mdx "Putting already existing
+// objects into the scene-graph":
+//   https://r3f.docs.pmnd.rs/api/objects#putting-already-existing-objects-into-the-scene-graph
+// Ref oficial R3F v9.5.0 — Disposal:
+//   https://r3f.docs.pmnd.rs/api/objects#disposal
 
 export const StaticObjectBatcher: React.FC<StaticObjectBatcherProps> = ({
   gruposPorModelo,
@@ -896,6 +859,39 @@ export const StaticObjectBatcher: React.FC<StaticObjectBatcherProps> = ({
   // Ref oficial React 19 — "You Might Not Need an Effect · Adjusting state
   // when a prop changes":
   //   https://react.dev/learn/you-might-not-need-an-effect#adjusting-state-when-a-prop-changes
+  // ─── Estado reactivo de meshes para renderizado declarativo ─────────────
+  //
+  // FIX 2026-05-13 (deuda R3F): antes el `MeshAttacher` poolea cada 500ms
+  // `obtenerTodosMeshes()` y los attachaba imperativamente a un `<group ref>`.
+  // Ese patrón no aparece en doc oficial R3F y abría un race window de 500ms
+  // entre `multiBatch.limpiar()` (sync dispose) y el detach del scene tree.
+  //
+  // Ahora: state-driven. Los `BatchedGroupLoader` llaman `onMeshesChanged`
+  // cuando crean grupos nuevos o detectan cache-hit → padre re-fetcha la
+  // lista y dispara setState → re-render → `<primitive>` declarativos.
+  // R3F gestiona attach/detach automático.
+  const [renderedMeshes, setRenderedMeshes] = useState<THREE.Object3D[]>([]);
+
+  const refrescarListaMeshes = useCallback(() => {
+    if (!services.isReady) {
+      setRenderedMeshes((prev) => (prev.length === 0 ? prev : []));
+      return;
+    }
+    const nuevos = services.multiBatch.obtenerTodosMeshes() as THREE.Object3D[];
+    setRenderedMeshes((prev) => {
+      // Identity-equal check para evitar re-renders inútiles (la lista
+      // suele ser estable entre frames; solo cambia tras reset/registro).
+      if (prev.length === nuevos.length && nuevos.every((m, i) => m === prev[i])) {
+        return prev;
+      }
+      log.info('MultiBatch primitives updated', {
+        previous: prev.length,
+        current: nuevos.length,
+      });
+      return nuevos;
+    });
+  }, [services]);
+
   if (services.isReady && _registration.signature !== currentSignature) {
     const hadPreviousData =
       _registration.signature !== null && _registration.signature !== '';
@@ -915,6 +911,14 @@ export const StaticObjectBatcher: React.FC<StaticObjectBatcherProps> = ({
     _registration.services = services;
   }
 
+  // Tras un reset (signature change), la lista interna del adapter quedó
+  // vacía. Sincronizamos el state en useEffect para no llamar setState durante
+  // render. Los Loaders dispararán `onMeshesChanged` cuando re-registren,
+  // pero este effect también cubre el caso "todos los objetos se borraron".
+  useEffect(() => {
+    refrescarListaMeshes();
+  }, [currentSignature, refrescarListaMeshes]);
+
   // NO efecto de unmount destructivo: el cache vive a nivel módulo y
   // sobrevive remounts. Solo se invalida cuando cambia la firma (detección
   // en render-phase arriba) o cuando la página se descarga (GC del navegador).
@@ -930,14 +934,18 @@ export const StaticObjectBatcher: React.FC<StaticObjectBatcherProps> = ({
           modeloUrl={modeloUrl}
           objetos={objetos}
           services={services}
+          onMeshesChanged={refrescarListaMeshes}
         />
       ))}
 
       {/* Fase 4C — Per-instance frustum culling + LOD distance */}
       <FrustumCuller services={services} playerPosition={playerPosition} />
 
-      {/* Render BatchedMesh groups via imperative scene attachment (R3F best practice) */}
-      <MeshAttacher services={services} />
+      {/* BatchedMesh groups attached declarativamente (R3F-canonical).
+          `dispose={null}` porque MultiBatch adapter es el owner del lifecycle. */}
+      {renderedMeshes.map((mesh) => (
+        <primitive key={mesh.uuid} object={mesh} dispose={null} />
+      ))}
     </>
   );
 };
