@@ -210,16 +210,35 @@ vec3 patternPlanks(vec2 uv) {
   veta = pow(veta, 4.0) * 0.08 * (1.0 - vetaFade);
   base = mix(base, uPalette[3], veta);
 
-  // Grout / separación entre tablones. AA con fwidth: el grosor del grout se
-  // adapta al footprint del pixel → líneas limpias sin shimmer.
-  float aaW = max(fp * 0.5, 0.001);
-  float groutXEdge = smoothstep(0.025 + aaW, 0.025 - aaW, abs(local.x - 0.5) - 0.475);
-  float groutYEdge = smoothstep(0.08 + aaW, 0.08 - aaW, abs(local.y - 0.5) - 0.42);
-  // Hard fallback: invariante con el original cuando aaW → 0
-  float groutX = smoothstep(0.0, 0.025, local.x) * smoothstep(1.0, 0.975, local.x);
-  float groutY = smoothstep(0.0, 0.08, local.y) * smoothstep(1.0, 0.92, local.y);
-  float grout = groutX * groutY;
-  vec3 groutColor = uPalette[3] * 0.35;
+  // Grout / separación entre tablones. Refinado vs versión anterior:
+  //
+  //  1. Color del grout = 'base * 0.6' (misma hue que la madera, 40% más
+  //     oscuro). El grout 'uPalette[3] * 0.35' (near-black) anterior creaba
+  //     ALTO contraste wood/near-black → moiré perceptible aún con fwidth-AA
+  //     porque cada pixel oscila entre claro/oscuro fuerte. Same-hue shadow
+  //     line es lo que hacen real-world wood floors (hairline gaps).
+  //     Ref: https://substance3d.adobe.com/community-assets (Wood Planks)
+  //
+  //  2. Grout más fino: thickX 0.025→0.012 (de 1.7cm a 8mm para plank de
+  //     70cm), thickY 0.08→0.05 (de 1.4cm a 9mm para plank de 17cm). Más
+  //     cercano a un piso real con tablones largos.
+  //
+  //  3. AA con fwidth REALMENTE aplicado (en la versión previa estaba como
+  //     dead code). 'bodyX/Y' usan smoothstep(edge - aaW, edge + aaW, x)
+  //     correctamente — edge0 < edge1 — para gradient suave en el borde
+  //     del plank que se adapta al footprint del pixel.
+  float fpForGrout = pixelFootprint(uv);  // re-read fp en scope local
+  float aaW = max(fpForGrout * 0.5, 0.001);
+  const float groutThickX = 0.012;
+  const float groutThickY = 0.05;
+  // bodyX = 1 dentro del plank, 0 en grout. Smoothstep AA-adaptive.
+  // 'local' es fract → [0,1] dentro de la celda. groutThick es la distancia
+  // del borde a considerar como "grout". Body = [groutThick, 1-groutThick].
+  float bodyX = smoothstep(groutThickX - aaW, groutThickX + aaW, local.x)
+              * smoothstep(groutThickX - aaW, groutThickX + aaW, 1.0 - local.x);
+  float bodyY = smoothstep(groutThickY - aaW, groutThickY + aaW, local.y)
+              * smoothstep(groutThickY - aaW, groutThickY + aaW, 1.0 - local.y);
+  float body = bodyX * bodyY;
 
   // Highlight gradient interno (arriba claro, abajo oscuro)
   float shade = mix(1.08, 0.88, local.y);
@@ -234,7 +253,12 @@ vec3 patternPlanks(vec2 uv) {
     base = mix(base, uPalette[3] * 0.6, nodo);
   }
 
-  vec3 finalColor = mix(groutColor, base * shade, grout);
+  // Grout color = hue de la madera del plank actual (per-plank), 40% más
+  // oscuro. Calculado DESPUÉS de aplicar veta+nodo para que la sombra del
+  // gap herede esas variaciones — más natural.
+  vec3 groutColor = base * 0.6;
+
+  vec3 finalColor = mix(groutColor, base * shade, body);
   return finalColor;
 }
 
