@@ -32,6 +32,10 @@ export const AdminDeskHUD: React.FC<AdminDeskHUDProps> = ({ workspaceId, miUsuar
   const setDeskPlacerActivo = useStore((s) => s.setDeskPlacerActivo);
   const deskPlacerCancelar = useStore((s) => s.deskPlacerCancelar);
   const deskPlacerResetTrasCommit = useStore((s) => s.deskPlacerResetTrasCommit);
+  const isPaintingDecorativeFloor = useStore((s) => s.isPaintingDecorativeFloor);
+  const setIsPaintingDecorativeFloor = useStore((s) => s.setIsPaintingDecorativeFloor);
+  const isDrawingZone = useStore((s) => s.isDrawingZone);
+  const setIsDrawingZone = useStore((s) => s.setIsDrawingZone);
   const onlineUsers = useStore((s) => s.onlineUsers);
 
   const { areas, colocarConPreset, asignar, generarOficinaTemplate } = useAreasEscritorio(
@@ -113,7 +117,22 @@ export const AdminDeskHUD: React.FC<AdminDeskHUDProps> = ({ workspaceId, miUsuar
       deskPlacerCancelar();
       setDeskPlacerActivo(false);
     } else {
+      // Mutua exclusión: salir de otros modos antes de entrar al placer.
+      if (isPaintingDecorativeFloor) setIsPaintingDecorativeFloor(false);
+      if (isDrawingZone) setIsDrawingZone(false);
       setDeskPlacerActivo(true);
+    }
+  };
+
+  /** Entra/sale del modo "decorar piso" global (zonaId=null → pinta donde sea). */
+  const handleTogglePaintFloor = () => {
+    if (isPaintingDecorativeFloor) {
+      setIsPaintingDecorativeFloor(false);
+    } else {
+      // Mutua exclusión: cancelar desk placer + dibujo de zona si estaban activos.
+      if (placerActivo) { deskPlacerCancelar(); setDeskPlacerActivo(false); }
+      if (isDrawingZone) setIsDrawingZone(false);
+      setIsPaintingDecorativeFloor(true, null);
     }
   };
 
@@ -173,6 +192,20 @@ export const AdminDeskHUD: React.FC<AdminDeskHUDProps> = ({ workspaceId, miUsuar
 
         <button
           type="button"
+          onClick={handleTogglePaintFloor}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold shadow-lg transition-all ${
+            isPaintingDecorativeFloor
+              ? 'bg-indigo-500/25 border-indigo-400 text-indigo-100 animate-pulse'
+              : 'bg-zinc-900/85 border-zinc-700 text-zinc-200 hover:bg-zinc-800'
+          }`}
+          title={isPaintingDecorativeFloor ? 'Cancelar decoración' : 'Pintar piso decorativo (alfombra / parche)'}
+        >
+          <span aria-hidden>🎨</span>
+          {isPaintingDecorativeFloor ? 'Cancelar' : 'Decorar piso'}
+        </button>
+
+        <button
+          type="button"
           onClick={() => setPanelOpen(true)}
           className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-zinc-900/85 border-zinc-700 text-zinc-200 hover:bg-zinc-800 text-xs font-semibold shadow-lg"
           title="Gestionar desks (asignar, reasignar, eliminar)"
@@ -196,6 +229,14 @@ export const AdminDeskHUD: React.FC<AdminDeskHUDProps> = ({ workspaceId, miUsuar
         <div className="fixed top-40 right-4 z-[340] max-w-[260px] pointer-events-none">
           <div className="px-3 py-2 rounded-lg bg-orange-500/15 border border-orange-400/40 text-orange-100 text-[11px] shadow-lg">
             Mueve el cursor sobre el piso y haz click para colocar el desk.
+          </div>
+        </div>
+      )}
+
+      {isPaintingDecorativeFloor && (
+        <div className="fixed top-40 right-4 z-[340] max-w-[260px] pointer-events-none">
+          <div className="px-3 py-2 rounded-lg bg-indigo-500/15 border border-indigo-400/40 text-indigo-100 text-[11px] shadow-lg">
+            Arrastra sobre el piso para pintar un parche decorativo donde quieras.
           </div>
         </div>
       )}
