@@ -7,5 +7,6 @@ export { Modal } from './Modal';
 export { Card } from './Card';
 export { Button } from './Button';
 export { Input } from './Input';
+export { ConfirmDialog } from './ConfirmDialog';
 export { AnimatedBackground } from './AnimatedBackground';
 export { AICopilotSlot } from './AICopilotSlot';
