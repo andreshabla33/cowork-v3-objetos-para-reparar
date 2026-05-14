@@ -554,7 +554,7 @@ export const ExploradorPublico3D: React.FC = () => {
           near: 0.1,
           far: 500,
         }}
-        shadows
+        shadows="percentage"
         dpr={[1, 1.5]}
         gl={{ antialias: true, alpha: false }}
       >

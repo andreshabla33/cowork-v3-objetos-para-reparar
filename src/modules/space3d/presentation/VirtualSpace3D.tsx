@@ -885,7 +885,7 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
       />
       <Canvas
         frameloop="demand"
-        shadows={gpuRenderConfig ? gpuRenderConfig.shadows : performanceSettings.graphicsQuality !== 'low'}
+        shadows={(gpuRenderConfig ? gpuRenderConfig.shadows : performanceSettings.graphicsQuality !== 'low') ? 'percentage' : false}
         dpr={adaptiveDpr}
         style={{ background: themeColors[theme] || '#000000' }}
         gl={{ 

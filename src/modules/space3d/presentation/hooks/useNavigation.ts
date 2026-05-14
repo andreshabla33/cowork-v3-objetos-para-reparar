@@ -75,6 +75,37 @@ function buildPlanarWalkableSurface(bounds: {
 }
 
 /**
+ * Selecciona los `maxCount` obstáculos más cercanos al anchor (player spawn).
+ *
+ * Why: recast TileCache cap absoluto upstream = 64 (DT_BUFFER_TOO_SMALL al
+ * superar). Sin prioridad, recast acepta los primeros 64 en orden de inserción
+ * (DB ordering, no determinístico) y descarta el resto silenciosamente con un
+ * warn. Priorizar por distancia² al anchor garantiza que los obstáculos
+ * relevantes al pathfinding del jugador local queden incluidos.
+ *
+ * Ref: https://github.com/isaac-mason/recast-navigation-js — README, TileCache.
+ */
+export function selectObstaculosByPriority(
+  obstaculos: readonly NavigationObstaculo[],
+  anchor: { x: number; z: number },
+  maxCount: number,
+): { selected: NavigationObstaculo[]; deprioritized: number } {
+  if (obstaculos.length <= maxCount) {
+    return { selected: [...obstaculos], deprioritized: 0 };
+  }
+  const withDistSq = obstaculos.map((o) => {
+    const dx = o.position.x - anchor.x;
+    const dz = o.position.z - anchor.z;
+    return { obs: o, dSq: dx * dx + dz * dz };
+  });
+  withDistSq.sort((a, b) => a.dSq - b.dSq);
+  return {
+    selected: withDistSq.slice(0, maxCount).map((w) => w.obs),
+    deprioritized: obstaculos.length - maxCount,
+  };
+}
+
+/**
  * Mapea un `EspacioObjeto` (configuracion runtime de un mueble) a un
  * `NavigationObstaculo` (AABB axis-aligned + rotationY).
  *
@@ -207,9 +238,28 @@ export function useNavigation(params: UseNavigationParams): UseNavigationReturn 
       return;
     }
     const walkable = buildPlanarWalkableSurface(terrainBounds);
-    const initialObstaculos = espacioObjetos.map((o) =>
+    const allObstaculos = espacioObjetos.map((o) =>
       mapEspacioObjetoAObstaculo(o, terrainBounds.y),
     );
+
+    // Recast TileCache cap absoluto upstream = maxObstacles (64). Priorizamos
+    // por proximidad al spawn local: los obstáculos lejanos quedan fuera del
+    // pathfinding pero no afectan al jugador hasta que se acerque. Ver
+    // selectObstaculosByPriority() para el rationale.
+    const anchor = localPositionRef.current ?? { x: 0, z: 0 };
+    const { selected: initialObstaculos, deprioritized } = selectObstaculosByPriority(
+      allObstaculos,
+      anchor,
+      DEFAULT_NAVIGATION_CONFIG.maxObstacles,
+    );
+    if (deprioritized > 0) {
+      log.info('Obstáculos priorizados por distancia al spawn', {
+        total: allObstaculos.length,
+        selected: initialObstaculos.length,
+        deprioritized,
+        cap: DEFAULT_NAVIGATION_CONFIG.maxObstacles,
+      });
+    }
 
     const result = service.build(walkable, initialObstaculos, DEFAULT_NAVIGATION_CONFIG);
     if (!result.success) {
@@ -245,26 +295,40 @@ export function useNavigation(params: UseNavigationParams): UseNavigationReturn 
   // Se ejecuta cuando ya hay navmesh built y la lista de objetos cambia.
   // Diff incremental para no rebuildear el navmesh entero — el TileCache
   // procesa add/remove en sus queued updates (cap 64).
+  //
+  // Importante: aplicamos el MISMO filtro de prioridad que el build inicial
+  // para garantizar coherencia. Sin esto, los obstáculos deprioritized
+  // intentarían registrarse en cada render → bucle de warns "TileCache
+  // saturated".
   useEffect(() => {
     if (!service || !built || !terrainBounds) return;
 
-    const currentIds = new Set(espacioObjetos.map((o) => o.id));
+    const allObstaculos = espacioObjetos.map((o) =>
+      mapEspacioObjetoAObstaculo(o, terrainBounds.y),
+    );
+    const anchor = localPositionRef.current ?? { x: 0, z: 0 };
+    const { selected: prioritizedObstaculos } = selectObstaculosByPriority(
+      allObstaculos,
+      anchor,
+      DEFAULT_NAVIGATION_CONFIG.maxObstacles,
+    );
+    const prioritizedIds = new Set(prioritizedObstaculos.map((o) => o.id));
     const registered = registeredObstaclesRef.current;
 
-    // Agregar nuevos
-    espacioObjetos.forEach((obj) => {
-      if (!registered.has(obj.id)) {
-        const obstaculo = mapEspacioObjetoAObstaculo(obj, terrainBounds.y);
-        const ok = service.addObstacle(obstaculo);
-        if (ok) registered.add(obj.id);
+    // Remover los que ya no están (eliminados O deprioritized por desplazamiento
+    // del set top-N, p.ej. admin agregó un mueble más cercano al spawn).
+    Array.from(registered).forEach((id) => {
+      if (!prioritizedIds.has(id)) {
+        service.removeObstacle(id);
+        registered.delete(id);
       }
     });
 
-    // Remover los que ya no están
-    Array.from(registered).forEach((id) => {
-      if (!currentIds.has(id)) {
-        service.removeObstacle(id);
-        registered.delete(id);
+    // Agregar los que están en el set prioritized pero aún no registrados.
+    prioritizedObstaculos.forEach((obstaculo) => {
+      if (!registered.has(obstaculo.id)) {
+        const ok = service.addObstacle(obstaculo);
+        if (ok) registered.add(obstaculo.id);
       }
     });
   }, [built, espacioObjetos, terrainBounds, service]);
