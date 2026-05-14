@@ -17,22 +17,25 @@
  * no conoce detalles del SDK de LiveKit.
  *
  * ════════════════════════════════════════════════════════════════
- * CICLO DE VIDA (patrón oficial LiveKit track-processors-js)
+ * CICLO DE VIDA (detach-on-disable, 2026-05-14)
  * ════════════════════════════════════════════════════════════════
  *
- *   attachToTrack(track)   → setProcessor(BackgroundProcessor({ mode: 'disabled' }))
- *   setEffect(track, cfg)  → processor.switchTo({ mode: 'background-blur' | ... })
- *   disableEffect(track)   → processor.switchTo({ mode: 'disabled' }) — processor vivo
- *   detachFromTrack(track) → stopProcessor() — libera WASM/WebGL (solo en unmount)
+ *   setEffect(track, cfg)  → attach implícito + switchTo(blur|vbg)
+ *   disableEffect(track)   → stopProcessor() — libera GPU/WebGL del processor
+ *   detachFromTrack(track) → stopProcessor() (cleanup final si quedó sesión)
+ *
+ * Cambio clave: cuando effectType === 'none', el processor se LIBERA
+ * (no se mantiene en passthrough). Razón: en GPU integrada el MediaPipe
+ * graph cuesta 5-15 ms/frame aunque esté en 'disabled' mode. Re-activar
+ * blur reattach con WASM cacheado (~100 ms) — UX aceptable.
  *
  * Garantías:
- *   ✅ WASM de MediaPipe se inicializa 1 sola vez por track.
- *   ✅ Cambios de efecto son hot-swaps O(1) — sin re-init de GPU/WebGL.
- *   ✅ Deferred detach (setTimeout 0) que tolera React Strict Mode.
- *   ✅ Reactivo a cambios de identidad del track (remount/republish):
- *      detach del anterior → attach del nuevo antes de aplicar el efecto.
+ *   ✅ Sin attach proactivo: el processor solo existe cuando se usa.
+ *   ✅ Deferred detach (setTimeout 0) tolera React Strict Mode.
+ *   ✅ Reactivo a cambios de identidad del track.
  *
  * @see https://github.com/livekit/track-processors-js
+ * @see src/core/infrastructure/adapters/LiveKitOfficialBackgroundAdapter.ts
  * @see src/core/application/usecases/GestionarBackgroundVideoUseCase.ts
  */
 
@@ -137,35 +140,38 @@ export function useLiveKitVideoBackground(
           return;
         }
 
-        // ── Attach idempotente al track actual ────────────────────────────
-        if (attachedTrackRef.current !== track) {
-          if (attachedTrackRef.current) {
-            await useCase.detachFromTrack(attachedTrackRef.current);
-          }
-          await useCase.attachToTrack(track);
+        // ── Cleanup del track anterior si cambió ──────────────────────────
+        // No hay attach proactivo: setEffect() hace attach implícito cuando
+        // se necesita. Si effect=none, el processor NO se crea.
+        if (attachedTrackRef.current && attachedTrackRef.current !== track) {
+          await useCase.detachFromTrack(attachedTrackRef.current);
           if (cancelled) return;
-          attachedTrackRef.current = track;
-          log.info('processor attached', {
-            trackId: track.sid ?? track.mediaStreamTrack.id,
-          });
+          log.info('previous track detached');
         }
+        attachedTrackRef.current = track;
 
         if (cancelled) return;
 
         // ── Aplicar o desactivar el efecto ────────────────────────────────
         if (wantEffect) {
+          // setEffect hace attach implícito si no hay sesión (WASM cached → ~100ms)
           await useCase.setEffect(track, {
             effectType,
             blurRadius,
             backgroundImageUrl: backgroundImage ?? undefined,
           });
           if (!cancelled) {
-            log.info('effect applied', { effectType });
+            log.info('effect applied', {
+              effectType,
+              trackId: track.sid ?? track.mediaStreamTrack.id,
+            });
           }
         } else {
+          // disableEffect libera el processor real (stopProcessor),
+          // no lo deja en passthrough. Ahorra 5-15ms/frame de GPU.
           await useCase.disableEffect(track);
           if (!cancelled) {
-            log.info('effect disabled (passthrough)');
+            log.info('effect disabled (processor released)');
           }
         }
       } catch (err) {
