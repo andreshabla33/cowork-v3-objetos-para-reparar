@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, useDragControls } from 'framer-motion';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { guardarZonaEmpresa, eliminarZonaEmpresa } from '@/core/infrastructure/adapters/autorizacionesEmpresaFacade';
 import { logger } from '@/core/infrastructure/observability/logger';
@@ -45,6 +46,13 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [mostrarSelectorSuelo, setMostrarSelectorSuelo] = useState(true);
+
+  // Paint panel UX: draggable + collapsible. Default position bottom-right
+  // (clear of center canvas). Drag handle = solo el header — el contenido
+  // sigue siendo clickeable normal.
+  const paintPanelRef = useRef<HTMLDivElement>(null);
+  const paintPanelDragControls = useDragControls();
+  const [paintPanelCollapsed, setPaintPanelCollapsed] = useState(false);
   const getAuthSession = useAuthSessionGetter();
   const anidamientoDecorativoForzado = (nuevaZona?.nivelAnidamiento ?? 0) >= 2;
 
@@ -394,17 +402,65 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
             </button>
           </div>
 
-          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[390] animate-in fade-in slide-in-from-bottom pointer-events-auto">
-            <div className="bg-black/88 backdrop-blur-xl border border-indigo-500/30 px-5 py-4 rounded-2xl shadow-[0_0_30px_rgba(99,102,241,0.25)] flex flex-col gap-3" style={{ minWidth: 420 }}>
-              <div className="flex items-center gap-3">
-                <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse ${
+          <motion.div
+            ref={paintPanelRef}
+            drag
+            dragControls={paintPanelDragControls}
+            dragListener={false}
+            dragMomentum={false}
+            dragElastic={0}
+            // Default position: bottom-right, libra centro del canvas para pintar.
+            // El usuario puede arrastrarlo por el header a cualquier lado.
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed bottom-24 right-4 z-[390] pointer-events-auto select-none"
+          >
+            <div className="bg-black/88 backdrop-blur-xl border border-indigo-500/30 rounded-2xl shadow-[0_0_30px_rgba(99,102,241,0.25)] flex flex-col" style={{ width: 340 }}>
+              {/* Header — drag handle + collapse toggle */}
+              <div
+                onPointerDown={(e) => paintPanelDragControls.start(e)}
+                className="flex items-center gap-2 px-4 py-2.5 border-b border-indigo-500/20 cursor-move touch-none"
+                title="Arrastrá para mover este panel"
+              >
+                {/* Grip icon (drag affordance) */}
+                <svg width="12" height="12" viewBox="0 0 12 12" className="text-slate-500 flex-shrink-0">
+                  <circle cx="3" cy="3" r="1" fill="currentColor" />
+                  <circle cx="9" cy="3" r="1" fill="currentColor" />
+                  <circle cx="3" cy="6" r="1" fill="currentColor" />
+                  <circle cx="9" cy="6" r="1" fill="currentColor" />
+                  <circle cx="3" cy="9" r="1" fill="currentColor" />
+                  <circle cx="9" cy="9" r="1" fill="currentColor" />
+                </svg>
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 animate-pulse ${
                   decorativeFloorStencilId === 'eraser' ? 'bg-rose-400' : 'bg-indigo-400'
                 }`} />
-                <span className={`font-medium text-sm ${
+                <span className="text-[11px] font-semibold text-slate-200 flex-1">
+                  {decorativeFloorStencilId === 'eraser' ? 'Modo borrar' : 'Decorar piso'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPaintPanelCollapsed((v) => !v)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  className="p-1 rounded hover:bg-slate-700/50 text-slate-400 hover:text-slate-200 transition-colors"
+                  title={paintPanelCollapsed ? 'Expandir panel' : 'Minimizar panel'}
+                  aria-label={paintPanelCollapsed ? 'Expandir' : 'Minimizar'}
+                >
+                  <svg width="14" height="14" viewBox="0 0 14 14" className={`transition-transform ${paintPanelCollapsed ? '' : 'rotate-180'}`}>
+                    <path d="M3 5 L7 9 L11 5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Contenido — oculto cuando minimizado */}
+              {!paintPanelCollapsed && (
+                <div className="flex flex-col gap-3 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <span className={`text-[11px] font-medium leading-tight ${
                   decorativeFloorStencilId === 'eraser' ? 'text-rose-100/90' : 'text-indigo-100/90'
                 }`}>
                   {decorativeFloorStencilId === 'eraser'
-                    ? 'Click sobre un piso decorativo existente para eliminarlo'
+                    ? 'Click sobre un piso existente para eliminarlo'
                     : decorativeFloorStencilId === 'custom'
                       ? 'Modo libre — arrastrá un rectángulo donde quieras'
                       : 'Click sobre el piso para colocar el parche del tamaño elegido'}
@@ -475,8 +531,10 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
                   </div>
                 ))}
               </div>
+                </div>
+              )}
             </div>
-          </div>
+          </motion.div>
         </>
       )}
     </>
