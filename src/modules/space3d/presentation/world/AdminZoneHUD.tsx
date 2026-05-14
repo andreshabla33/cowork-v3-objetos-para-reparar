@@ -397,11 +397,17 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
           <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[390] animate-in fade-in slide-in-from-bottom pointer-events-auto">
             <div className="bg-black/88 backdrop-blur-xl border border-indigo-500/30 px-5 py-4 rounded-2xl shadow-[0_0_30px_rgba(99,102,241,0.25)] flex flex-col gap-3" style={{ minWidth: 420 }}>
               <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse flex-shrink-0" />
-                <span className="text-indigo-100/90 font-medium text-sm">
-                  {decorativeFloorStencilId === 'custom'
-                    ? 'Modo libre — arrastrá un rectángulo donde quieras'
-                    : 'Click sobre el piso para colocar el parche del tamaño elegido'}
+                <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 animate-pulse ${
+                  decorativeFloorStencilId === 'eraser' ? 'bg-rose-400' : 'bg-indigo-400'
+                }`} />
+                <span className={`font-medium text-sm ${
+                  decorativeFloorStencilId === 'eraser' ? 'text-rose-100/90' : 'text-indigo-100/90'
+                }`}>
+                  {decorativeFloorStencilId === 'eraser'
+                    ? 'Click sobre un piso decorativo existente para eliminarlo'
+                    : decorativeFloorStencilId === 'custom'
+                      ? 'Modo libre — arrastrá un rectángulo donde quieras'
+                      : 'Click sobre el piso para colocar el parche del tamaño elegido'}
                 </span>
               </div>
 
@@ -411,6 +417,10 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
                 <div className="flex gap-1.5 flex-wrap">
                   {STENCILS_PISO.map((s) => {
                     const isSelected = decorativeFloorStencilId === s.id;
+                    const isEraser = s.id === 'eraser';
+                    const selectedClasses = isEraser
+                      ? 'border-rose-400 bg-rose-500/25 text-rose-100 shadow-[0_0_8px_rgba(244,63,94,0.5)]'
+                      : 'border-indigo-400 bg-indigo-500/25 text-indigo-100 shadow-[0_0_8px_rgba(99,102,241,0.5)]';
                     return (
                       <button
                         key={s.id}
@@ -418,7 +428,7 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
                         title={s.nombre}
                         className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[10px] font-semibold transition-all ${
                           isSelected
-                            ? 'border-indigo-400 bg-indigo-500/25 text-indigo-100 shadow-[0_0_8px_rgba(99,102,241,0.5)]'
+                            ? selectedClasses
                             : 'border-slate-700/50 bg-slate-800/40 text-slate-300 hover:border-slate-500 hover:bg-slate-700/40'
                         }`}
                       >

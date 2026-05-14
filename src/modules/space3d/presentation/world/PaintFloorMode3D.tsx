@@ -32,7 +32,7 @@ import * as THREE from 'three';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { usePisosDecorativos } from '@/modules/space3d/presentation/hooks/usePisosDecorativos';
 import { useFloorMaterial } from '@/modules/space3d/presentation/hooks/useFloorMaterial';
-import { PISO_DECORATIVO_Y_OFFSET } from '@/core/domain/entities/espacio3d/PisoDecorativo';
+import { PISO_DECORATIVO_Y_OFFSET, pisoEnPunto } from '@/core/domain/entities/espacio3d/PisoDecorativo';
 import {
   obtenerStencil,
   PISO_CUSTOM_TAMANO_MIN_M,
@@ -72,13 +72,14 @@ export const PaintFloorMode3D: React.FC<PaintFloorMode3DProps> = ({ espacioId })
     zonaId: s.decorativeFloorZonaId,
     stencilId: s.decorativeFloorStencilId,
   })));
-  const { crear } = usePisosDecorativos(espacioId);
+  const { pisos, crear, eliminar } = usePisosDecorativos(espacioId);
   const previewMaterial = useFloorMaterial(paintFloorType);
   const { gl } = useThree();
 
   const captureMeshRef = useRef<THREE.Mesh>(null);
   const stencil = useMemo(() => obtenerStencil(stencilId), [stencilId]);
   const isCustomMode = stencil.id === 'custom';
+  const isEraserMode = stencil.id === 'eraser';
 
   // ── State del cursor + drag ──────────────────────────────────────────────
   const [cursor, setCursor] = useState<{ x: number; z: number } | null>(null);
@@ -102,14 +103,14 @@ export const PaintFloorMode3D: React.FC<PaintFloorMode3DProps> = ({ espacioId })
 
   /** Stencil mode: rectángulo centrado en el cursor con dimensiones predefinidas. */
   const rectFromStencil = useMemo(() => {
-    if (!cursor || isCustomMode || stencil.ancho === null || stencil.profundidad === null) return null;
+    if (!cursor || isCustomMode || isEraserMode || stencil.ancho === null || stencil.profundidad === null) return null;
     return {
       centroX: cursor.x,
       centroZ: cursor.z,
       ancho: stencil.ancho,
       profundidad: stencil.profundidad,
     };
-  }, [cursor, isCustomMode, stencil]);
+  }, [cursor, isCustomMode, isEraserMode, stencil]);
 
   /** Custom mode: rectángulo del drag (start → current). */
   const rectFromDrag = useMemo(() => {
@@ -166,12 +167,26 @@ export const PaintFloorMode3D: React.FC<PaintFloorMode3DProps> = ({ espacioId })
       setDragStart(p);
       setDragCurrent(p);
     }
-    // Stencil mode: el placement se confirma en pointerUp (un click).
+    // Stencil + eraser modes: la acción se confirma en pointerUp (un click).
   }, [isActive, isCustomMode, gl]);
 
   const handlePointerUp = useCallback(async (e: ThreeEvent<PointerEvent>) => {
     if (!isActive) return;
     e.stopPropagation();
+
+    if (isEraserMode) {
+      // Eraser: encontrar piso bajo el cursor y eliminarlo. Sin confirm porque
+      // la intención es explícita (el admin eligió el stencil borrador).
+      const p = projectToGround(e);
+      if (!p) return;
+      const piso = pisoEnPunto(p.x, p.z, pisos);
+      if (!piso) return;
+      const resultado = await eliminar(piso.id);
+      if (!resultado.ok) {
+        log.warn('Error eliminando piso decorativo', { motivo: resultado.motivo, pisoId: piso.id });
+      }
+      return;
+    }
 
     if (isCustomMode) {
       // Finalizar drag
@@ -196,7 +211,7 @@ export const PaintFloorMode3D: React.FC<PaintFloorMode3DProps> = ({ espacioId })
       if (!rectFromStencil) return;
       await persistir(rectFromStencil);
     }
-  }, [isActive, isCustomMode, dragStart, dragCurrent, rectFromStencil, persistir]);
+  }, [isActive, isCustomMode, isEraserMode, dragStart, dragCurrent, rectFromStencil, persistir, pisos, eliminar]);
 
   if (!isActive) return null;
 

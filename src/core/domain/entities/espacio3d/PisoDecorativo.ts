@@ -57,3 +57,46 @@ export interface CrearPisoDecorativoInput {
  * Ref: https://threejs.org/manual/#en/cameras (sección "Z-Fighting")
  */
 export const PISO_DECORATIVO_Y_OFFSET = 0.05;
+
+/**
+ * Determina si el punto world (X,Z) cae dentro de un piso decorativo.
+ * Considera la rotación Y del piso (transforma el punto al frame local
+ * del piso antes del bbox test). Función pura — Domain only.
+ */
+export function puntoEnPiso(
+  puntoX: number,
+  puntoZ: number,
+  piso: Pick<PisoDecorativo, 'centroX' | 'centroZ' | 'ancho' | 'profundidad' | 'rotacionY'>,
+): boolean {
+  // Trasladar el punto al frame local del piso (centrado en origen).
+  const dx = puntoX - piso.centroX;
+  const dz = puntoZ - piso.centroZ;
+  // Rotar -rotacionY para deshacer la rotación del piso.
+  const cos = Math.cos(-piso.rotacionY);
+  const sin = Math.sin(-piso.rotacionY);
+  const localX = dx * cos - dz * sin;
+  const localZ = dx * sin + dz * cos;
+  return (
+    localX >= -piso.ancho / 2 &&
+    localX <= piso.ancho / 2 &&
+    localZ >= -piso.profundidad / 2 &&
+    localZ <= piso.profundidad / 2
+  );
+}
+
+/**
+ * Busca el piso decorativo bajo el punto (X,Z). Retorna el de mayor `orden`
+ * cuando hay varios apilados (el visible "encima"). null si ninguno.
+ */
+export function pisoEnPunto(
+  puntoX: number,
+  puntoZ: number,
+  pisos: ReadonlyArray<PisoDecorativo>,
+): PisoDecorativo | null {
+  let mejor: PisoDecorativo | null = null;
+  for (const p of pisos) {
+    if (!puntoEnPiso(puntoX, puntoZ, p)) continue;
+    if (mejor === null || p.orden > mejor.orden) mejor = p;
+  }
+  return mejor;
+}

@@ -272,15 +272,19 @@ export const CameraFollow: React.FC<{
         const cx = terrainCenter?.x ?? playerPos.x;
         const cz = terrainCenter?.z ?? playerPos.z;
         const toTarget = new THREE.Vector3(cx, framing.targetHeight, cz);
-        // Cámara: en paint floor mode, casi directamente arriba (offset mínimo
-        // en X/Z para evitar singularidad de OrbitControls cuando camera=target).
-        // En drawing zone mode, mantiene el ángulo isométrico desde el SO.
-        const horizontalOffset = isInPaintFloorMode ? framing.distance : framing.distance * 0.7;
-        const toCamPos = new THREE.Vector3(
-          cx - horizontalOffset,
-          framing.height,
-          cz + horizontalOffset,
-        );
+        // Posición de cámara:
+        //  - Paint floor: SOLO offset en +Z (no X) → vista axis-aligned (no diamante).
+        //    El espacio se ve como rectángulo alineado al grid de mundo:
+        //    +X = derecha, -Z = arriba en pantalla.
+        //  - Drawing zone: mantiene offset diagonal SW para mostrar volumen 3D
+        //    (paredes, cerramientos) al definir zonas.
+        const toCamPos = isInPaintFloorMode
+          ? new THREE.Vector3(cx, framing.height, cz + framing.distance)
+          : new THREE.Vector3(
+              cx - framing.distance * 0.7,
+              framing.height,
+              cz + framing.distance * 0.7,
+            );
         controls.target.lerpVectors(from.target, toTarget, eased);
         camera.position.lerpVectors(from.camPos, toCamPos, eased);
         controls.update();

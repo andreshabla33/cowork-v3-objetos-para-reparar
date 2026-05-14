@@ -18,7 +18,8 @@ export type StencilPisoId =
   | 'large'     // alfombra sala
   | 'xlarge'    // alfombra mega salón
   | 'square'    // tile cuadrado
-  | 'custom';   // drag-to-draw libre
+  | 'custom'    // drag-to-draw libre
+  | 'eraser';   // click sobre piso existente → eliminar
 
 export interface StencilPiso {
   readonly id: StencilPisoId;
@@ -39,6 +40,7 @@ export const STENCILS_PISO: ReadonlyArray<StencilPiso> = Object.freeze([
   { id: 'xlarge', nombre: 'Alfombra XL',        ancho: 6, profundidad: 8, label: 'XL · 6×8m' },
   { id: 'square', nombre: 'Tile cuadrado',      ancho: 3, profundidad: 3, label: '□ · 3×3m' },
   { id: 'custom', nombre: 'Personalizado',      ancho: null, profundidad: null, label: '✏ Custom' },
+  { id: 'eraser', nombre: 'Borrar pisos',       ancho: null, profundidad: null, label: '🗑 Borrar' },
 ]);
 
 export const STENCIL_DEFAULT: StencilPisoId = 'medium';
