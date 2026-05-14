@@ -235,8 +235,13 @@ export const AdminDeskHUD: React.FC<AdminDeskHUDProps> = ({ workspaceId, miUsuar
 
       {isPaintingDecorativeFloor && (
         <div className="fixed top-40 right-4 z-[340] max-w-[260px] pointer-events-none">
-          <div className="px-3 py-2 rounded-lg bg-indigo-500/15 border border-indigo-400/40 text-indigo-100 text-[11px] shadow-lg">
-            Vista cenital activada. Elegí tamaño y click para colocar (o &quot;Custom&quot; + drag para libre).
+          <div className="px-3 py-2 rounded-lg bg-indigo-500/15 border border-indigo-400/40 text-indigo-100 text-[11px] shadow-lg space-y-1">
+            <div>Vista cenital activada. Elegí tamaño y click para colocar.</div>
+            <div className="text-indigo-200/80 text-[10px]">
+              <kbd className="px-1 py-0.5 bg-indigo-500/20 rounded">WASD</kbd> /{' '}
+              <kbd className="px-1 py-0.5 bg-indigo-500/20 rounded">↑←↓→</kbd> mueven la vista —{' '}
+              <kbd className="px-1 py-0.5 bg-indigo-500/20 rounded">Shift</kbd> rápido
+            </div>
           </div>
         </div>
       )}

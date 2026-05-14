@@ -29,6 +29,7 @@ import { DeskPlacerPreview } from '@/modules/space3d/presentation/world/DeskPlac
 import { SueloPrincipal3D } from '@/modules/space3d/presentation/world/SueloPrincipal3D';
 import { PisosDecorativos3D } from '@/modules/space3d/presentation/world/PisosDecorativos3D';
 import { PaintFloorMode3D } from '@/modules/space3d/presentation/world/PaintFloorMode3D';
+import { PaintFloorCameraPan } from '@/modules/space3d/presentation/world/PaintFloorCameraPan';
 import { PRESET_DESK_STANDARD } from '@/src/core/domain/entities/espacio3d/PresetDesk';
 import {
   ajustarAGrilla,
@@ -1108,6 +1109,11 @@ export const Scene: React.FC<SceneProps> = ({
 
       {/* Capture-plane activo solo en modo "Decorar piso" (admin). */}
       <PaintFloorMode3D espacioId={espacioIdPerimeter} />
+
+      {/* Pan de cámara cenital con WASD / arrows en modo paint. Patrón
+          industria (Sims/Roblox/Sketchup): teclas de movimiento se
+          repurposean cuando el avatar no se mueve. */}
+      <PaintFloorCameraPan />
 
       <Physics gravity={[0, 0, 0]}>
         <Terrain3D terreno={terrenoPersistido} />
