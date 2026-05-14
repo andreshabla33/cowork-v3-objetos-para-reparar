@@ -188,8 +188,9 @@ vec3 patternPlanks(vec2 uv) {
   if (uVariant > 1.5) cellSize = vec2(0.5, 0.5);                    // small checker
 
   float fp = pixelFootprint(uv);
-  // Fade detalle sub-celda cuando pixel > 25% de la altura del plank
-  float plankFade = detailFadeFactor(fp, cellSize.y * 0.25, cellSize.y * 1.0);
+  // Fade detalle sub-celda EARLIER (15% en vez de 25% de la altura del
+  // plank). Más agresivo → kill sparkle perceptible al caminar.
+  float plankFade = detailFadeFactor(fp, cellSize.y * 0.15, cellSize.y * 0.7);
 
   float row = floor(uv.y / cellSize.y);
   float offsetX = mod(row, 2.0) * cellSize.x * 0.5;
@@ -197,17 +198,19 @@ vec3 patternPlanks(vec2 uv) {
   vec2 local = vec2(fract((uv.x + offsetX) / cellSize.x), fract(uv.y / cellSize.y));
 
   // Color base aleatorio entre uPalette[0] y uPalette[1] por tablón.
-  // AA: fade a color promedio para evitar sparkle/strobe a distancia.
+  // Variance reducida 0.85→0.55: cada plank tiene menor contraste vs sus
+  // vecinos → reduce el ruido visual perceptible al caminar (cada pixel
+  // oscila entre tonos menos extremos). AA: fade a mean a distancia.
   float h = fhash(cell);
-  vec3 baseRandom = mix(uPalette[0], uPalette[1], h * 0.85);
-  vec3 baseMean = mix(uPalette[0], uPalette[1], 0.425);
+  vec3 baseRandom = mix(uPalette[0], uPalette[1], h * 0.55);
+  vec3 baseMean = mix(uPalette[0], uPalette[1], 0.275);
   vec3 base = mix(baseRandom, baseMean, plankFade);
 
   // Vetas longitudinales (madera): seno de alta frecuencia por tablón.
-  // Período en local.x ≈ 0.105 → fade rápido cuando pixel > 5% del plank.
-  float vetaFade = detailFadeFactor(fp, 0.05, 0.2);
+  // Período en local.x ≈ 0.105 → fade rápido cuando pixel > 4% del plank.
+  float vetaFade = detailFadeFactor(fp, 0.04, 0.16);
   float veta = sin(local.x * 60.0 + h * 31.4) * 0.5 + 0.5;
-  veta = pow(veta, 4.0) * 0.08 * (1.0 - vetaFade);
+  veta = pow(veta, 4.0) * 0.06 * (1.0 - vetaFade);  // 0.08 → 0.06
   base = mix(base, uPalette[3], veta);
 
   // Grout / separación entre tablones. Refinado vs versión anterior:
@@ -240,8 +243,10 @@ vec3 patternPlanks(vec2 uv) {
               * smoothstep(groutThickY - aaW, groutThickY + aaW, 1.0 - local.y);
   float body = bodyX * bodyY;
 
-  // Highlight gradient interno (arriba claro, abajo oscuro)
-  float shade = mix(1.08, 0.88, local.y);
+  // Highlight gradient interno (arriba claro, abajo oscuro). Rango
+  // reducido 1.08/0.88 → 1.04/0.94: mismo cue visual de profundidad por
+  // tablón pero sin crear contraste vertical que amplifica moiré.
+  float shade = mix(1.04, 0.94, local.y);
 
   // Sutil nodo cada N tablones (madera real). AA: kill cuando lejos.
   float nodo = 0.0;
@@ -273,20 +278,31 @@ vec3 patternChevron(vec2 uv) {
   vec2 local = fract(uv);
 
   float fp = pixelFootprint(uv);
-  // Bloques son 1×1 unidades. Fade per-cell randomness cuando pixel cubre >25%
-  // del bloque (cuando dejan de verse individualmente las celdas).
-  float cellFade = detailFadeFactor(fp, 0.25, 1.0);
-  // Veta de alta frecuencia: período en local.y ~0.08 → fade temprano.
-  float vetaFade = detailFadeFactor(fp, 0.04, 0.18);
+  // Fade MÁS AGRESIVO para CHEVRON: tileSize 0.22m es el más chico del
+  // catálogo, así que fwidth-AA debe empezar más temprano. 0.25→0.12.
+  float cellFade = detailFadeFactor(fp, 0.12, 0.6);
+  // Veta de alta frecuencia: período en local.y ~0.08 → fade muy temprano.
+  float vetaFade = detailFadeFactor(fp, 0.025, 0.14);
 
-  // Color por bloque: mezcla de paleta con micro-variación entre vecinos.
+  // Color por bloque: paleta con variance REDUCIDA y transitions SUAVES.
+  // Cambios vs versión anterior:
+  //   - 'h * 0.85' → 'h * 0.55': menor contraste entre planks vecinos.
+  //   - step() → smoothstep(): el spike de palette[2]/palette[3] ya no es
+  //     binario (algunas celdas pink puro, otras burgundy puro) sino una
+  //     transition suave de palette[1] → palette[2] solo en ~6% del rango
+  //     de h2. Elimina salt-and-pepper sparkle al caminar.
+  //   - Magnitudes 0.35 → 0.22 (pink) y 0.30 → 0.18 (very dark): menos
+  //     intensidad cuando aparece el accent → contraste percibido reducido.
+  //
+  // Ref smoothstep aplicado a per-cell color jitter:
+  //   https://iquilezles.org/articles/smoothsteps/
   float h = fhash(cell);
   float h2 = fhash(cell + 11.7);
-  vec3 baseRandom = mix(uPalette[0], uPalette[1], h * 0.85);
-  baseRandom = mix(baseRandom, uPalette[2], step(0.82, h2) * 0.35);
-  baseRandom = mix(baseRandom, uPalette[3], step(h2, 0.10) * 0.30);
+  vec3 baseRandom = mix(uPalette[0], uPalette[1], h * 0.55);
+  baseRandom = mix(baseRandom, uPalette[2], smoothstep(0.88, 0.94, h2) * 0.22);
+  baseRandom = mix(baseRandom, uPalette[3], smoothstep(0.10, 0.04, h2) * 0.18);
   // Color promedio para fade a distancia (kill salt-and-pepper sparkle)
-  vec3 baseMean = mix(uPalette[0], uPalette[1], 0.425);
+  vec3 baseMean = mix(uPalette[0], uPalette[1], 0.275);
   vec3 base = mix(baseRandom, baseMean, cellFade);
 
   // Forma V. AA con fwidth para edges limpios sin stairstepping.
@@ -294,17 +310,19 @@ vec3 patternChevron(vec2 uv) {
   float vHeight = (1.0 - xMid) * 0.45;
   float aaW = max(fp * 0.5, 0.001);
 
-  // Borde superior (línea V invertida): highlight fino, fade a distancia.
+  // Borde superior + inferior: highlight/shadow intensidad reducida
+  // 0.22 → 0.12 — eran demasiado contrastosos contra burgundy oscuro y
+  // creaban líneas brillantes/oscuras finas que aliasan.
   float dTop = abs(local.y - vHeight);
-  float highlight = smoothstep(0.04 + aaW, aaW, dTop) * 0.22 * (1.0 - cellFade);
+  float highlight = smoothstep(0.04 + aaW, aaW, dTop) * 0.12 * (1.0 - cellFade);
 
-  // Borde inferior (línea V que apunta abajo): shadow, fade a distancia.
   float dBot = abs(local.y - (1.0 - vHeight));
-  float shadow = smoothstep(0.06 + aaW, aaW, dBot) * 0.22 * (1.0 - cellFade);
+  float shadow = smoothstep(0.06 + aaW, aaW, dBot) * 0.12 * (1.0 - cellFade);
 
-  // Sombreado vertical interno: centro más claro, bordes más oscuros
-  float vCenter = 1.0 - abs(local.y - 0.5) * 0.6;
-  vec3 col = base * (0.90 + vCenter * 0.16);
+  // Sombreado vertical interno: rango reducido 0.6 → 0.4 para menor
+  // contraste vertical (eran 16% peak-to-peak, ahora ~10%).
+  float vCenter = 1.0 - abs(local.y - 0.5) * 0.4;
+  vec3 col = base * (0.94 + vCenter * 0.10);
   col += vec3(highlight);
   col -= vec3(shadow);
 
