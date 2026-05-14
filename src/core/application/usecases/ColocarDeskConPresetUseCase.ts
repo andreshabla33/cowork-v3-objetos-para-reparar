@@ -52,6 +52,7 @@ export class ColocarDeskConPresetUseCase {
       muebles: input.preset.muebles.map((m) => ({
         slug: m.slugCatalogo,
         offsetX: m.offsetX,
+        offsetY: m.offsetY,
         offsetZ: m.offsetZ,
         rotacionY: m.rotacionY,
         rol: m.rol,

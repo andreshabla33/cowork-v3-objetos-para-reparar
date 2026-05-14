@@ -98,6 +98,7 @@ export interface IAreaEscritorioRepository {
     muebles: ReadonlyArray<{
       slug: string;
       offsetX: number;
+      offsetY: number;
       offsetZ: number;
       rotacionY: number;
       rol: string;

@@ -22,20 +22,21 @@
  * Application capa pueda resolver el `slug_catalogo` real desde el DB en
  * runtime (los slugs son data, pueden mudar; los roles son estables).
  */
-export type RolMueblePreset = 'silla' | 'mesa' | 'monitor';
+export type RolMueblePreset = 'mesa' | 'monitor';
 
 // ─── Componente del preset (1 mueble) ───────────────────────────────────────
 
 /**
  * Un mueble del preset. Coordenadas relativas al CENTRO del bbox del desk.
- * Por convención del Domain, +Z = hacia el "fondo" del desk (donde va el
- * monitor); -Z = hacia la "silla". Rotación en radianes alrededor de Y.
+ * `offsetY` es la Y world absoluta del pivot del mueble (0 = en el suelo).
+ * Rotación en radianes alrededor de Y (Three.js r183, eje Y vertical).
  */
 export interface MueblePreset {
   readonly rol: RolMueblePreset;
   /** Slug del catálogo (`catalogo_objetos_3d.slug` / `nombre`). */
   readonly slugCatalogo: string;
   readonly offsetX: number;
+  readonly offsetY: number;
   readonly offsetZ: number;
   readonly rotacionY: number;
 }
@@ -53,48 +54,30 @@ export interface PresetDesk {
 // ─── Catálogo de presets ────────────────────────────────────────────────────
 
 /**
- * Preset único 2026-05-13. Tamaño confirmado por el usuario: 4.5×4.0m.
- *
- * Layout del desk (top-down, mirando desde arriba):
- *
- *   ┌─────────────────┐  ← parte trasera (z+)
- *   │     [monitor]    │
- *   │       [mesa]     │
- *   │       [silla]    │  ← parte frontal (z-)
- *   └─────────────────┘
- *
- * Los offsets están normalizados al ancho/alto del bbox para que si más
- * adelante se agregan presets de otros tamaños la distribución relativa se
- * mantenga visualmente coherente.
+ * Preset 2026-05-14. Mesa horizontal con monitor encima. Sin silla — el
+ * avatar interactúa parado frente a la mesa. Offsets calibrados contra la
+ * mesa+monitor manualmente alineada en el espacio de referencia.
  */
 export const PRESET_DESK_STANDARD: PresetDesk = Object.freeze({
   id: 'standard',
   nombre: 'Escritorio estándar',
   bbox: Object.freeze({ ancho: 4.5, alto: 4.0 }),
   muebles: Object.freeze([
-    // Mesa en el centro (slug real del catálogo público).
     {
       rol: 'mesa',
       slugCatalogo: 'small_table_normalized',
       offsetX: 0,
+      offsetY: 0.375,
       offsetZ: 0,
-      rotacionY: 0,
+      rotacionY: Math.PI / 2,
     },
-    // Silla "delante" de la mesa (hacia -Z, donde se sienta el avatar).
-    {
-      rol: 'silla',
-      slugCatalogo: 'office_chair_normalized',
-      offsetX: 0,
-      offsetZ: -1.0,
-      rotacionY: Math.PI, // mirando al monitor
-    },
-    // Monitor "detrás" de la mesa (hacia +Z).
     {
       rol: 'monitor',
       slugCatalogo: 'computer_screen_normalized',
-      offsetX: 0,
-      offsetZ: 0.7,
-      rotacionY: 0, // pantalla mirando al avatar (hacia -Z)
+      offsetX: -0.53,
+      offsetY: 0.74,
+      offsetZ: 0.18,
+      rotacionY: Math.PI,
     },
   ]) as ReadonlyArray<MueblePreset>,
 });

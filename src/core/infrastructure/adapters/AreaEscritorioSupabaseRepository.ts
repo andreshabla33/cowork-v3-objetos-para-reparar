@@ -214,6 +214,7 @@ export class AreaEscritorioSupabaseRepository implements IAreaEscritorioReposito
     muebles: ReadonlyArray<{
       slug: string;
       offsetX: number;
+      offsetY: number;
       offsetZ: number;
       rotacionY: number;
       rol: string;
@@ -231,6 +232,7 @@ export class AreaEscritorioSupabaseRepository implements IAreaEscritorioReposito
       p_muebles: input.muebles.map((m) => ({
         slug: m.slug,
         offset_x: m.offsetX,
+        offset_y: m.offsetY,
         offset_z: m.offsetZ,
         rotacion_y: m.rotacionY,
         rol: m.rol,
