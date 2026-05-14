@@ -1,0 +1,28 @@
+-- Migration: 20260514170000_zona_pisos_decorativos_replica_identity
+--
+-- Fix realtime DELETE events para `zona_pisos_decorativos`.
+--
+-- Síntoma: el admin borra un piso decorativo desde la UI, el RPC
+-- `eliminar_piso_decorativo` ejecuta correctamente y la fila desaparece de
+-- la BD, pero el avatar lo sigue viendo hasta refrescar la página.
+--
+-- Causa: el hook `usePisosDecorativos` se suscribe a postgres_changes con
+-- filter server-side `espacio_id=eq.${espacioId}` para no recibir eventos
+-- de otros espacios. Pero con `REPLICA IDENTITY = DEFAULT` (el default de
+-- Postgres), el WAL solo incluye la primary key en `old` para eventos
+-- DELETE. El filtro espacio_id=eq.X NUNCA matchea porque `old.espacio_id`
+-- es undefined → Supabase Realtime descarta el evento server-side antes
+-- de enviarlo a los subscribers.
+--
+-- Fix: `REPLICA IDENTITY FULL` hace que el WAL incluya la fila entera en
+-- `old` para DELETE events → el filter matchea → el evento llega al
+-- cliente → el hook actualiza `pisos` → el mesh desmonta → UX correcta.
+--
+-- Trade-off: FULL aumenta el tamaño del WAL para esta tabla en DELETE/UPDATE.
+-- Aceptable para tablas con cardinalidad baja y filas chicas como esta
+-- (~5-50 filas típicas por espacio, fila < 200 bytes).
+--
+-- Ref: https://supabase.com/docs/guides/realtime/postgres-changes#delete-events
+-- Ref: https://www.postgresql.org/docs/current/sql-altertable.html#SQL-ALTERTABLE-REPLICA-IDENTITY
+
+ALTER TABLE public.zona_pisos_decorativos REPLICA IDENTITY FULL;
