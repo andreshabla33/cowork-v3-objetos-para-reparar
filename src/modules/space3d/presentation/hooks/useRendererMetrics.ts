@@ -55,6 +55,10 @@ import {
   evaluarFrameRenderer,
   formatearMetricasParaLog,
 } from '@/core/infrastructure/r3f/rendering/rendererMetricsMonitor';
+import {
+  categorizarMeshesEnEscena,
+  resumirBreakdownParaLog,
+} from '@/core/infrastructure/r3f/rendering/sceneBreakdown';
 import { OptimizarRenderizadoUseCase } from '@/core/application/usecases/OptimizarRenderizadoUseCase';
 import {
   excedeBudgetRecursos,
@@ -217,6 +221,18 @@ export const useRendererMetrics = ({
         if (!alertasEmitidasRef.current.has(alerta)) {
           alertasEmitidasRef.current.add(alerta);
           log.warn('Renderer performance alert', { alerta, ...datosLog });
+
+          // Breakdown auditable por categoría — UNA vez por tipo de alerta
+          // por sesión, solo cuando saludable=false (no contamina logs OK).
+          // Coste: O(meshes visibles) — solo se ejecuta en alerta.
+          const breakdown = resumirBreakdownParaLog(
+            categorizarMeshesEnEscena(scene),
+          );
+          log.info('Renderer breakdown (audit)', {
+            alerta,
+            categorias: breakdown,
+            hint: 'Ordenado por estDrawCalls desc. Buscar categorías con muchos meshes y pocos instances → candidato a instancing/batching.',
+          });
         }
       }
     }
