@@ -3,22 +3,33 @@
  *
  * Biblioteca GLSL de patrones procedurales para suelos.
  *
- * Cada función `pattern*` recibe coordenadas en metros de mundo y devuelve
- * un `vec3` RGB en espacio lineal. La selección de patrón se hace en
- * compile-time vía `#define PATTERN_*` (sin branching dinámico en GPU).
+ * ## Anti-aliasing & auto-fit (industria-grade)
  *
- * Uniforms esperados por el shader:
+ * **A. fwidth-based AA (Inigo Quilez "Filtering procedural textures")**
+ * Cada pattern usa `fwidth(uv)` para estimar el footprint del pixel en
+ * pattern-space y atenúa detalle sub-pixel (vetas, weave, per-cell color
+ * randomness, grain). Elimina moiré/shimmer al caminar sin perder detalle
+ * de cerca. Ref: https://iquilezles.org/articles/filtering/
+ *
+ * **B. Mesh-local auto-fit (Sims/Roblox pattern)**
+ * Si `vPisoSize.x > 0`, el shader entra en modo mesh-local: calcula
+ * `cellCount = round(pisoSize / idealTile)` y usa `actualTile = pisoSize /
+ * cellCount` para garantizar tiles enteros que encajan exactamente en el
+ * piso. Bordes limpios, sin tiles partidos. Para el suelo principal (sin
+ * `aPisoSize` attribute → defaults a 0) se mantiene el modo world-space.
+ *
+ * Uniforms del shader:
  *   uniform vec3  uPalette[4];   // 4 tonos base del FloorType
- *   uniform vec2  uTileSize;     // metros por ciclo de patrón
+ *   uniform vec2  uTileSize;     // metros por ciclo de patrón (ideal)
  *   uniform float uVariant;      // sub-variante (0,1,2…) según pattern
  *
- * El vertex shader provee:
- *   varying vec3 vWorldPosition;
- *
- * Inyectado en MeshStandardMaterial vía onBeforeCompile en:
- *   src/core/infrastructure/r3f/rendering/floor/FloorMaterialAdapter.ts
+ * Varyings del vertex shader (inyectados por FloorMaterialAdapter):
+ *   varying vec3 vFloorWorldPos; // posición de mundo del fragment
+ *   varying vec2 vPisoCenter;    // centro del piso en world XZ (0 → world-mode)
+ *   varying vec2 vPisoSize;      // dimensiones del piso en metros (0 → world-mode)
  *
  * @see https://threejs.org/docs/#api/en/materials/Material.onBeforeCompile
+ * @see https://iquilezles.org/articles/filtering/
  */
 
 /* eslint-disable no-irregular-whitespace */
@@ -81,12 +92,19 @@ float worley(vec2 p, out vec3 cellInfo) {
 // id de la celda más cercana. Produce grout afilado y celdas poligonales
 // — no blobs circulares como el smoothstep sobre worley simple.
 // Ref: https://iquilezles.org/articles/voronoilines/
+//
+// Nota: ANGLE/D3D11 (Windows Intel) lanza warning X4000 si la struct se
+// declara sin constructor explícito. Usamos VoronoiResult(0.0, vec2(0.0))
+// al inicio para evitar potencial NaN/garbage en drivers estrictos.
 struct VoronoiResult {
   float dBorder;
   vec2 cellId;
 };
 
 VoronoiResult voronoiCells(vec2 x) {
+  // Init explícito de la struct — evita warning X4000 ANGLE/D3D11 Intel
+  VoronoiResult res = VoronoiResult(8.0, vec2(0.0));
+
   vec2 ip = floor(x);
   vec2 f = fract(x);
 
@@ -124,7 +142,6 @@ VoronoiResult voronoiCells(vec2 x) {
     }
   }
 
-  VoronoiResult res;
   res.dBorder = minBorderD;
   res.cellId = ip + mb;
   return res;
@@ -138,29 +155,67 @@ vec3 pickPalette(float t) {
   return mix(uPalette[idx], uPalette[idx + 1], fract(t));
 }
 
+// ─── AA Helpers ─────────────────────────────────────────────────────────────
+// Footprint del pixel en pattern-space (en unidades de tile). Si el footprint
+// es mayor que la frecuencia de un detalle, ese detalle alias → lo desvanecemos.
+float pixelFootprint(vec2 uv) {
+  vec2 fw = fwidth(uv);
+  return max(fw.x, fw.y);
+}
+
+// Factor de fade [0,1] para componentes de alta frecuencia. Empieza a aplicar
+// cuando el pixel cubre 'start' unidades del patrón, full-fade en 'end'.
+// start/end son fracciones del tile-space (típicamente ~0.05 → ~0.5).
+float detailFadeFactor(float footprint, float start, float end) {
+  return smoothstep(start, end, footprint);
+}
+
+// Promedio de la paleta — color al que converger al desvanecer detalle.
+vec3 paletteAverage() {
+  return (uPalette[0] + uPalette[1] + uPalette[2] + uPalette[3]) * 0.25;
+}
+
 // ─── Pattern: PLANKS (brick offset) ─────────────────────────────────────────
 // Usado por: WOOD_OAK, WOOD_DARK, WOOD_PLANKS_GREEN/TEAL/MUSTARD,
 //            TILE_WHITE (variant=1 cuadrado), VINYL_TECH (variant=2 checker)
+//
+// AA: per-plank random color → fade a mean(p0,p1) cuando pixel > 30% del plank.
+// Veta sin(60·local.x) (período ~0.10 local) → kill cuando pixel > 0.05.
+// Grout edges → smoothstep adaptivo con fwidth.
 vec3 patternPlanks(vec2 uv) {
   vec2 cellSize = vec2(1.0, 0.25);   // 4 tablones por unidad de tileSize
   if (uVariant > 0.5 && uVariant < 1.5) cellSize = vec2(1.0, 1.0);  // square tile
   if (uVariant > 1.5) cellSize = vec2(0.5, 0.5);                    // small checker
+
+  float fp = pixelFootprint(uv);
+  // Fade detalle sub-celda cuando pixel > 25% de la altura del plank
+  float plankFade = detailFadeFactor(fp, cellSize.y * 0.25, cellSize.y * 1.0);
 
   float row = floor(uv.y / cellSize.y);
   float offsetX = mod(row, 2.0) * cellSize.x * 0.5;
   vec2 cell = vec2(floor((uv.x + offsetX) / cellSize.x), row);
   vec2 local = vec2(fract((uv.x + offsetX) / cellSize.x), fract(uv.y / cellSize.y));
 
-  // Color base aleatorio entre uPalette[0] y uPalette[1] por tablón
+  // Color base aleatorio entre uPalette[0] y uPalette[1] por tablón.
+  // AA: fade a color promedio para evitar sparkle/strobe a distancia.
   float h = fhash(cell);
-  vec3 base = mix(uPalette[0], uPalette[1], h * 0.85);
+  vec3 baseRandom = mix(uPalette[0], uPalette[1], h * 0.85);
+  vec3 baseMean = mix(uPalette[0], uPalette[1], 0.425);
+  vec3 base = mix(baseRandom, baseMean, plankFade);
 
-  // Vetas longitudinales (madera): seno de alta frecuencia por tablón
+  // Vetas longitudinales (madera): seno de alta frecuencia por tablón.
+  // Período en local.x ≈ 0.105 → fade rápido cuando pixel > 5% del plank.
+  float vetaFade = detailFadeFactor(fp, 0.05, 0.2);
   float veta = sin(local.x * 60.0 + h * 31.4) * 0.5 + 0.5;
-  veta = pow(veta, 4.0) * 0.08;
+  veta = pow(veta, 4.0) * 0.08 * (1.0 - vetaFade);
   base = mix(base, uPalette[3], veta);
 
-  // Grout / separación entre tablones (oscuro)
+  // Grout / separación entre tablones. AA con fwidth: el grosor del grout se
+  // adapta al footprint del pixel → líneas limpias sin shimmer.
+  float aaW = max(fp * 0.5, 0.001);
+  float groutXEdge = smoothstep(0.025 + aaW, 0.025 - aaW, abs(local.x - 0.5) - 0.475);
+  float groutYEdge = smoothstep(0.08 + aaW, 0.08 - aaW, abs(local.y - 0.5) - 0.42);
+  // Hard fallback: invariante con el original cuando aaW → 0
   float groutX = smoothstep(0.0, 0.025, local.x) * smoothstep(1.0, 0.975, local.x);
   float groutY = smoothstep(0.0, 0.08, local.y) * smoothstep(1.0, 0.92, local.y);
   float grout = groutX * groutY;
@@ -169,13 +224,13 @@ vec3 patternPlanks(vec2 uv) {
   // Highlight gradient interno (arriba claro, abajo oscuro)
   float shade = mix(1.08, 0.88, local.y);
 
-  // Sutil nodo cada N tablones (madera real)
+  // Sutil nodo cada N tablones (madera real). AA: kill cuando lejos.
   float nodo = 0.0;
   if (uVariant < 0.5) {
     float nodoMask = step(0.85, fhash(cell + 7.31));
     vec2 nLocal = local - vec2(0.5, 0.5);
     float nDist = length(nLocal * vec2(1.0, 2.0));
-    nodo = nodoMask * smoothstep(0.18, 0.06, nDist) * 0.25;
+    nodo = nodoMask * smoothstep(0.18, 0.06, nDist) * 0.25 * (1.0 - plankFade);
     base = mix(base, uPalette[3] * 0.6, nodo);
   }
 
@@ -186,33 +241,42 @@ vec3 patternPlanks(vec2 uv) {
 // ─── Pattern: CHEVRON (V-shape blocks) ──────────────────────────────────────
 // Usado por: WOOD_CHEVRON_BURGUNDY
 //
-// Cada celda 1.0 x 1.0 en uv (post-tileSize) es un bloque V con punta hacia
-// arriba. Color random por bloque entre 4 tonos de paleta. Highlight en
-// borde superior (V invertida), shadow en borde inferior (V) → look de tablón
-// en herringbone/parquet francés.
+// AA: per-block random color fade a mean(p0,p1) cuando pixel > 25% del bloque.
+// V-edge highlight/shadow smoothstep widths adaptados con fwidth.
+// Veta sin(80·local.y) → kill cuando pixel > 0.04 (período del seno ≈ 0.08).
 vec3 patternChevron(vec2 uv) {
   vec2 cell = floor(uv);
   vec2 local = fract(uv);
 
-  // Color por bloque: mezcla de paleta con micro-variación entre vecinos
+  float fp = pixelFootprint(uv);
+  // Bloques son 1×1 unidades. Fade per-cell randomness cuando pixel cubre >25%
+  // del bloque (cuando dejan de verse individualmente las celdas).
+  float cellFade = detailFadeFactor(fp, 0.25, 1.0);
+  // Veta de alta frecuencia: período en local.y ~0.08 → fade temprano.
+  float vetaFade = detailFadeFactor(fp, 0.04, 0.18);
+
+  // Color por bloque: mezcla de paleta con micro-variación entre vecinos.
   float h = fhash(cell);
   float h2 = fhash(cell + 11.7);
-  vec3 base = mix(uPalette[0], uPalette[1], h * 0.85);
-  // Algunos bloques tintados hacia palette[2] (highlight rosa/claro) o palette[3] (oscuro)
-  base = mix(base, uPalette[2], step(0.82, h2) * 0.35);
-  base = mix(base, uPalette[3], step(h2, 0.10) * 0.30);
+  vec3 baseRandom = mix(uPalette[0], uPalette[1], h * 0.85);
+  baseRandom = mix(baseRandom, uPalette[2], step(0.82, h2) * 0.35);
+  baseRandom = mix(baseRandom, uPalette[3], step(h2, 0.10) * 0.30);
+  // Color promedio para fade a distancia (kill salt-and-pepper sparkle)
+  vec3 baseMean = mix(uPalette[0], uPalette[1], 0.425);
+  vec3 base = mix(baseRandom, baseMean, cellFade);
 
-  // Forma V: la "punta" sube en el centro (x=0.5). vHeight es 0 en bordes, 0.45 en centro.
-  float xMid = abs(local.x * 2.0 - 1.0); // 0 en centro, 1 en bordes
+  // Forma V. AA con fwidth para edges limpios sin stairstepping.
+  float xMid = abs(local.x * 2.0 - 1.0);
   float vHeight = (1.0 - xMid) * 0.45;
+  float aaW = max(fp * 0.5, 0.001);
 
-  // Borde superior (línea V invertida): highlight fino
+  // Borde superior (línea V invertida): highlight fino, fade a distancia.
   float dTop = abs(local.y - vHeight);
-  float highlight = smoothstep(0.04, 0.0, dTop) * 0.22;
+  float highlight = smoothstep(0.04 + aaW, aaW, dTop) * 0.22 * (1.0 - cellFade);
 
-  // Borde inferior (línea V que apunta abajo): shadow
+  // Borde inferior (línea V que apunta abajo): shadow, fade a distancia.
   float dBot = abs(local.y - (1.0 - vHeight));
-  float shadow = smoothstep(0.06, 0.0, dBot) * 0.22;
+  float shadow = smoothstep(0.06 + aaW, aaW, dBot) * 0.22 * (1.0 - cellFade);
 
   // Sombreado vertical interno: centro más claro, bordes más oscuros
   float vCenter = 1.0 - abs(local.y - 0.5) * 0.6;
@@ -220,23 +284,29 @@ vec3 patternChevron(vec2 uv) {
   col += vec3(highlight);
   col -= vec3(shadow);
 
-  // Vetas finas longitudinales (madera): seno alto-frec
+  // Vetas finas longitudinales — fade rápido cuando pixel > período de la veta.
   float veta = sin(local.y * 80.0 + h * 31.4) * 0.5 + 0.5;
-  col = mix(col, base * 0.85, pow(veta, 6.0) * 0.10);
+  col = mix(col, base * 0.85, pow(veta, 6.0) * 0.10 * (1.0 - vetaFade));
 
   return col;
 }
 
 // ─── Pattern: MARBLE (fbm + domain warp + veins) ────────────────────────────
 // Usado por: MARBLE_WHITE, MARBLE_BLACK
+//
+// fbm es naturalmente low-freq (multi-octave) → menos aliasing-prone.
+// Pero las venas (pow agudizado) sí alias → fade cuando pixel > 0.08.
 vec3 patternMarble(vec2 uv) {
+  float fp = pixelFootprint(uv);
+  float veinFade = detailFadeFactor(fp, 0.08, 0.4);
+
   // Domain warp para que las venas no se vean repetitivas
   vec2 q = vec2(fbm(uv), fbm(uv + vec2(5.2, 1.3)));
   vec2 r = vec2(fbm(uv + 4.0 * q + vec2(1.7, 9.2)), fbm(uv + 4.0 * q + vec2(8.3, 2.8)));
   float n = fbm(uv + 4.0 * r);
 
   // Veins: derivada agudizada
-  float veins = pow(1.0 - abs(n - 0.5) * 2.0, 8.0);
+  float veins = pow(1.0 - abs(n - 0.5) * 2.0, 8.0) * (1.0 - veinFade);
 
   // Mezcla base (uPalette[0]) con vena (uPalette[1])
   vec3 col = mix(uPalette[0], uPalette[1], n * 0.5);
@@ -244,7 +314,7 @@ vec3 patternMarble(vec2 uv) {
 
   // Variant 1 → marble black con venas doradas adicionales
   if (uVariant > 0.5) {
-    float goldVein = pow(1.0 - abs(fbm(uv * 1.3 + r) - 0.5) * 2.0, 12.0);
+    float goldVein = pow(1.0 - abs(fbm(uv * 1.3 + r) - 0.5) * 2.0, 12.0) * (1.0 - veinFade);
     col = mix(col, uPalette[3], goldVein * 0.6);
   }
 
@@ -253,7 +323,14 @@ vec3 patternMarble(vec2 uv) {
 
 // ─── Pattern: CONCRETE (Worley + radial blobs) ──────────────────────────────
 // Usado por: CONCRETE_SMOOTH (variant=0), CONCRETE_ROUGH (variant=1)
+//
+// AA: ROUGH grain 'vnoise(uv*80)' → período 0.0125 → fade cuando pixel > 0.01.
+// Worley/fbm naturalmente low-freq.
 vec3 patternConcrete(vec2 uv) {
+  float fp = pixelFootprint(uv);
+  float grainFade = detailFadeFactor(fp, 0.015, 0.08);
+  float crackFade = detailFadeFactor(fp, 0.04, 0.2);
+
   vec3 cellInfo;
   float w = worley(uv * 1.3, cellInfo);
   float n = fbm(uv * 2.0);
@@ -264,15 +341,15 @@ vec3 patternConcrete(vec2 uv) {
   col = mix(col, uPalette[2] * 0.85, smoothstep(0.0, 0.15, w) * 0.0 + (1.0 - smoothstep(0.0, 0.4, w)) * 0.18);
 
   if (uVariant > 0.5) {
-    // ROUGH: añadir grietas usando worley borde
-    float crackEdge = smoothstep(0.05, 0.0, abs(w - 0.5));
+    // ROUGH: añadir grietas usando worley borde — fade a distancia
+    float crackEdge = smoothstep(0.05, 0.0, abs(w - 0.5)) * (1.0 - crackFade);
     col = mix(col, uPalette[3] * 0.4, crackEdge * 0.35);
-    // grain extra
-    float grain = vnoise(uv * 80.0) * 0.06;
-    col += vec3(grain - 0.03);
+    // Grain extra — fade rápido, es el principal culpable de moiré en CONCRETE.
+    float grain = vnoise(uv * 80.0) * 0.06 * (1.0 - grainFade);
+    col += vec3(grain - 0.03 * (1.0 - grainFade));
   } else {
-    // SMOOTH: líneas de encofrado horizontales sutiles
-    float seam = smoothstep(0.02, 0.0, abs(fract(uv.y * 0.5) - 0.5));
+    // SMOOTH: líneas de encofrado horizontales sutiles — fade a distancia
+    float seam = smoothstep(0.02, 0.0, abs(fract(uv.y * 0.5) - 0.5)) * (1.0 - crackFade);
     col = mix(col, uPalette[3] * 0.55, seam * 0.08);
   }
 
@@ -281,15 +358,27 @@ vec3 patternConcrete(vec2 uv) {
 
 // ─── Pattern: CARPET (fbm pile) ─────────────────────────────────────────────
 // Usado por: CARPET_OFFICE, CARPET_SOFT_GRAY
+//
+// El weave era el principal culpable de moiré: sin(x*90)·sin(y*90) tiene
+// período ~0.07 y al caminar entra/sale del cycle cada 2-3 pixels.
+// Fade weave cuando pixel > 0.04; fade pile (período 0.04) cuando > 0.025.
 vec3 patternCarpet(vec2 uv) {
+  float fp = pixelFootprint(uv);
+  float weaveFade = detailFadeFactor(fp, 0.025, 0.12);
+  float pileFade = detailFadeFactor(fp, 0.04, 0.25);
+  float diagFade = detailFadeFactor(fp, 0.08, 0.4);
+
   float pile = fbm(uv * 25.0);
-  float weave = sin(uv.x * 90.0) * sin(uv.y * 90.0) * 0.5 + 0.5;
-  vec3 col = mix(uPalette[0], uPalette[1], pile);
+  // Pile fade: al desvanecer, n → 0.5 (mean) → color base medio.
+  float pileBlend = mix(pile, 0.5, pileFade);
+
+  float weave = (sin(uv.x * 90.0) * sin(uv.y * 90.0) * 0.5 + 0.5) * (1.0 - weaveFade);
+  vec3 col = mix(uPalette[0], uPalette[1], pileBlend);
   col = mix(col, uPalette[2], weave * 0.12);
 
   // Líneas diagonales muy sutiles (patrón decorativo)
   if (uVariant < 0.5) {
-    float diag = smoothstep(0.98, 1.0, sin((uv.x + uv.y) * 8.0) * 0.5 + 0.5);
+    float diag = smoothstep(0.98, 1.0, sin((uv.x + uv.y) * 8.0) * 0.5 + 0.5) * (1.0 - diagFade);
     col = mix(col, uPalette[3] * 0.7, diag * 0.06);
   }
 
@@ -299,9 +388,13 @@ vec3 patternCarpet(vec2 uv) {
 // ─── Pattern: HEX (hexagonal SDF + bevel) ───────────────────────────────────
 // Usado por: TILE_HEX (variant=0), HEX_STYLIZED (variant=1), METAL_GRID (variant=2)
 //
-// Bordes anti-aliasados con fwidth() — el grosor del borde se adapta al
-// footprint del pixel para evitar shimmer/granulado a distancia.
+// HEX ya tenía AA en bordes con fwidth(fromEdge). Reforzado: per-cell random
+// color ('step(0.5, h2)') también fade a mean cuando pixel cubre la celda
+// entera (elimina sparkle a distancia).
 vec3 patternHex(vec2 uv) {
+  float fp = pixelFootprint(uv);
+  float cellFade = detailFadeFactor(fp, 0.3, 1.2);
+
   // Transform a coordenadas de grid hexagonal
   vec2 h = vec2(1.7320508, 1.0);
   vec2 a = mod(uv, h) - h * 0.5;
@@ -315,18 +408,20 @@ vec3 patternHex(vec2 uv) {
   dEdge = max(dEdge, absHex.z);
   float fromEdge = 0.5 - dEdge;
 
-  // Pixel footprint para AA adaptativo de los bordes hex
+  // Pixel footprint para AA adaptativo de los bordes hex (ya existía)
   float aaW = max(fwidth(fromEdge), 0.001);
 
   // Color random por hexágono entre paleta[0] y paleta[1]
+  // AA: fade a 50/50 mean cuando pixel > celda
   float h2 = fhash(cellCenter);
-  vec3 base = mix(uPalette[0], uPalette[1], step(0.5, h2));
+  float blend = mix(step(0.5, h2), 0.5, cellFade);
+  vec3 base = mix(uPalette[0], uPalette[1], blend);
 
   // Variant 1 (stylized): bevel highlight arriba + sombra abajo
   vec3 col = base;
   if (uVariant > 0.5 && uVariant < 1.5) {
-    float bevelTop = smoothstep(0.0, 0.08, fromEdge) * step(0.0, hex.y) * 0.18;
-    float bevelBot = smoothstep(0.0, 0.08, fromEdge) * step(hex.y, 0.0) * 0.15;
+    float bevelTop = smoothstep(0.0, 0.08, fromEdge) * step(0.0, hex.y) * 0.18 * (1.0 - cellFade);
+    float bevelBot = smoothstep(0.0, 0.08, fromEdge) * step(hex.y, 0.0) * 0.15 * (1.0 - cellFade);
     col += vec3(bevelTop) - vec3(bevelBot);
     // Borde oscuro fino AA
     float border = smoothstep(0.0125 - aaW, 0.0125 + aaW, fromEdge);
@@ -335,9 +430,9 @@ vec3 patternHex(vec2 uv) {
     // METAL_GRID: hexágono oscuro con highlight metálico al centro
     float center = smoothstep(0.0, 0.35, fromEdge);
     col = mix(uPalette[0], uPalette[1], center);
-    float metalHi = pow(center, 4.0) * 0.55;
+    float metalHi = pow(center, 4.0) * 0.55 * (1.0 - cellFade);
     col += uPalette[2] * metalHi;
-    // borde luminoso emisivo AA
+    // Borde luminoso emisivo AA
     float wire = 1.0 - smoothstep(0.01 - aaW, 0.01 + aaW, fromEdge);
     col = mix(col, uPalette[2], wire * 0.6);
   } else {
@@ -352,14 +447,18 @@ vec3 patternHex(vec2 uv) {
 // ─── Pattern: COBBLE (Two-pass Voronoi — Inigo Quilez) ──────────────────────
 // Usado por: STONE_COBBLE_WARM (variant=0), STONE_PATH_GARDEN (variant=1)
 //
-// Distancia REAL al bisector (no a centro) → grout afilado uniforme + stones
-// poligonales. Color random por cellId. Bordes anti-aliasados con fwidth()
-// que escala la transición según el footprint del pixel en pattern-space
-// (técnica IQ "Filtering procedural textures").
+// COBBLE ya tenía AA en bordes. Reforzado: per-cell random color también
+// fade a paleta[1] (mean stone) cuando pixel > celda.
 vec3 patternCobble(vec2 uv) {
+  float fp = pixelFootprint(uv);
+  float cellFade = detailFadeFactor(fp, 0.3, 1.2);
+
   VoronoiResult v = voronoiCells(uv);
   float h = fhash(v.cellId);
-  vec3 stone = pickPalette(h);
+  vec3 stoneRandom = pickPalette(h);
+  // AA: cuando pixel cubre celda entera, converger al stone medio
+  vec3 stoneMean = mix(uPalette[0], uPalette[1], 0.5);
+  vec3 stone = mix(stoneRandom, stoneMean, cellFade);
 
   // Pixel footprint en pattern-space → ancho del smoothstep adaptativo
   float aaW = max(fwidth(v.dBorder), 0.001);
@@ -374,12 +473,12 @@ vec3 patternCobble(vec2 uv) {
     float grout = 1.0 - smoothstep(0.04 - aaW, 0.04 + aaW, v.dBorder);
     vec3 col = mix(stone, grass, grout);
 
-    // Tufts: solo MUY cerca del borde + hash random por celda
+    // Tufts: solo MUY cerca del borde + hash random por celda. Fade a distancia.
     float tuftSeed = fhash(v.cellId * 7.31 + 13.0);
     float nearEdge = 1.0 - smoothstep(0.0, 0.04, v.dBorder);
     float tuftMask = nearEdge * step(0.78, tuftSeed);
     float tuftJitter = vnoise(v.cellId * 5.0) * 0.4 + 0.6;
-    col = mix(col, uPalette[2], tuftMask * tuftJitter * 0.7);
+    col = mix(col, uPalette[2], tuftMask * tuftJitter * 0.7 * (1.0 - cellFade));
     return col;
   }
 
@@ -391,12 +490,35 @@ vec3 patternCobble(vec2 uv) {
 }
 
 // ─── Entry point ────────────────────────────────────────────────────────────
+// UV calc en 2 modos:
+//   - vPisoSize > 0  → MESH-LOCAL AUTO-FIT: tiles enteros encajan en el piso,
+//     bordes limpios sin tiles partidos. Usado por pisos decorativos.
+//   - vPisoSize == 0 → WORLD-SPACE: patrón infinito, tile fijo en metros.
+//     Usado por SueloPrincipal3D y cualquier mesh sin aPisoSize attribute.
+//
+// Refs:
+//   - https://iquilezles.org/articles/filtering/
+//   - https://docs.unrealengine.com/5.5/en-US/world-aligned-textures-in-unreal-engine/
 vec3 evaluateFloorPattern(vec2 worldXZ) {
   // Defensive: max(vec2(0.0001), ...) silencia X4008 del compilador HLSL
   // (D3D11 via ANGLE). uTileSize siempre es > 0 por floorMaterialSpecs
   // (rangos [0.22, 1.5]), pero el compilador no puede garantizarlo
   // estáticamente. Ref three.js issue 32692.
-  vec2 uv = worldXZ / max(vec2(0.0001), uTileSize);
+  vec2 idealTile = max(vec2(0.0001), uTileSize);
+  vec2 uv;
+
+  // Mesh-local auto-fit: cellCount = round(pisoSize / idealTile), clamped a >=1.
+  // actualTile = pisoSize / cellCount → garantiza tiles enteros en bordes.
+  // Distorsión visible solo si piso << idealTile (e.g. piso 0.3m con
+  // idealTile 0.7m → tile estirado a 0.3m. Aceptable en pisos chicos donde
+  // el detalle igual no se percibe).
+  if (vPisoSize.x > 0.01 && vPisoSize.y > 0.01) {
+    vec2 cellCount = max(vec2(1.0), floor(vPisoSize / idealTile + 0.5));
+    vec2 actualTile = vPisoSize / cellCount;
+    uv = (worldXZ - vPisoCenter) / actualTile;
+  } else {
+    uv = worldXZ / idealTile;
+  }
 
   #if defined(FLOOR_PATTERN_PLANKS)
     return patternPlanks(uv);

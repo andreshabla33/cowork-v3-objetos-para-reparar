@@ -70,27 +70,51 @@ function construirMaterial(floorType: FloorType): THREE.MeshStandardMaterial {
     shader.uniforms.uTileSize = mat.userData.floorUniforms.uTileSize;
     shader.uniforms.uVariant = mat.userData.floorUniforms.uVariant;
 
-    // ─── VERTEX: pasar posición de mundo al fragment ──────────────────────
+    // ─── VERTEX: pasar posición de mundo, piso center y piso size al fragment ───
+    //
+    // `aPisoSize` (vec2): attribute opcional por geometry — si está set, el
+    // fragment shader entra en modo mesh-local auto-fit (tiles enteros encajan
+    // en el piso). Si NO está set, WebGL devuelve vec2(0) por default y el
+    // fragment cae al modo world-space (suelo principal infinito).
+    //
+    // `vPisoCenter` se deriva de `modelMatrix[3].xz` — la translation del
+    // mesh en world space, que es exactamente el centro del piso.
+    //
+    // Ref: https://threejs.org/docs/#api/en/core/BufferAttribute
     shader.vertexShader = shader.vertexShader
       .replace(
         '#include <common>',
-        `#include <common>\nvarying vec3 vFloorWorldPos;`,
+        `#include <common>
+attribute vec2 aPisoSize;
+varying vec3 vFloorWorldPos;
+varying vec2 vPisoCenter;
+varying vec2 vPisoSize;`,
       )
       .replace(
         '#include <worldpos_vertex>',
-        `#include <worldpos_vertex>\nvFloorWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;`,
+        `#include <worldpos_vertex>
+vFloorWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+vPisoCenter = vec2(modelMatrix[3].x, modelMatrix[3].z);
+vPisoSize = aPisoSize;`,
       );
 
     // ─── FRAGMENT: inyectar lib + reemplazar map_fragment ─────────────────
-    // Distance-based LOD fade: a >15m del shading point la cámara, mezclamos
-    // hacia el color promedio de la paleta. Elimina moiré/shimmer porque
-    // los pixeles lejanos ya no muestrean detalle sub-pixel del patrón.
+    //
+    // El shader procedural ahora tiene 2 capas de anti-aliasing:
+    //   1. fwidth-based AA dentro de cada pattern function — kill detalle
+    //      sub-pixel adaptivamente según footprint del pixel en pattern-space.
+    //      Ref: https://iquilezles.org/articles/filtering/
+    //   2. Distance-based LOD fade aquí abajo — backup para distancias muy
+    //      grandes donde fwidth no es suficiente (mountains lejanas).
+    //
     // `cameraPosition` es uniform built-in de Three.js — auto-inyectado.
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
         `#include <common>
 varying vec3 vFloorWorldPos;
+varying vec2 vPisoCenter;
+varying vec2 vPisoSize;
 uniform vec3 uPalette[4];
 uniform vec2 uTileSize;
 uniform float uVariant;
@@ -99,8 +123,10 @@ ${FLOOR_SHADER_LIB}`,
       .replace(
         '#include <map_fragment>',
         `vec3 floorPattern = evaluateFloorPattern(vFloorWorldPos.xz);
+// Distance-based LOD: backup para distancias > 20m donde fwidth alone no
+// alcanza (ej. suelo principal extendiéndose a 100m+). Fade a paleta media.
 float distToCam = length(vFloorWorldPos - cameraPosition);
-float lodFade = smoothstep(15.0, 40.0, distToCam);
+float lodFade = smoothstep(20.0, 50.0, distToCam);
 vec3 avgFloorColor = (uPalette[0] + uPalette[1]) * 0.5;
 floorPattern = mix(floorPattern, avgFloorColor, lodFade);
 diffuseColor.rgb *= floorPattern;`,
