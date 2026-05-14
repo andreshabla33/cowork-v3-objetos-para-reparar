@@ -1277,6 +1277,7 @@ export const Scene: React.FC<SceneProps> = ({
         gpuRenderConfig={gpuRenderConfig}
         cameraShoulderMode={cameraShoulderMode}
         isInDrawingMode={isDrawingZone || isDraggingPlantillaZona || !!plantillaZonaEnColocacion || isPaintingDecorativeFloor}
+        isInPaintFloorMode={isPaintingDecorativeFloor}
         isEditMode={isEditMode}
         terrainCenter={{ x: terrainBounds.centerX, z: terrainBounds.centerZ }}
         userInteractionTimestampRef={userInteractionTimestampRef}

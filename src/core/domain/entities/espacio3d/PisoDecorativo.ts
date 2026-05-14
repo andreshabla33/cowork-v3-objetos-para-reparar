@@ -45,5 +45,15 @@ export interface CrearPisoDecorativoInput {
   orden?: number;
 }
 
-/** Y offset world del piso decorativo sobre el suelo base. */
-export const PISO_DECORATIVO_Y_OFFSET = 0.01;
+/**
+ * Y offset world del piso decorativo sobre el suelo base.
+ *
+ * Subido a 0.05m (de 0.01m) el 2026-05-14 para eliminar z-fighting que
+ * causaba parpadeo cuando el avatar caminaba sobre los pisos. Con la
+ * precisión del depth buffer 24-bit en escenas con `far ~1000m`, una
+ * separación de 1cm es marginal y depende del driver/GPU; 5cm garantiza
+ * estabilidad visual sin cambiar la percepción ("apenas sobre el piso").
+ *
+ * Ref: https://threejs.org/manual/#en/cameras (sección "Z-Fighting")
+ */
+export const PISO_DECORATIVO_Y_OFFSET = 0.05;

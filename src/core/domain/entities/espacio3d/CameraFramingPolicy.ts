@@ -186,6 +186,27 @@ export const DRAWING_OVERVIEW_FRAMING: CameraFraming = Object.freeze({
 /** Max distance permitido en OrbitControls durante drawing mode (zoom manual extra). */
 export const DRAWING_MAX_ORBIT_DISTANCE = 80;
 
+/**
+ * Vista cenital pura para el modo "decorar piso". Cámara casi directamente
+ * arriba del target (polar angle ≈ 1.6° desde la vertical) para que el admin
+ * vea el espacio en 2D top-down y pueda colocar pisos sin distorsión de
+ * perspectiva. distance > 0 obligatorio (OrbitControls requiere camera != target);
+ * 0.5m es el mínimo práctico sin afectar la visual.
+ *
+ * Diferencia con DRAWING_OVERVIEW_FRAMING:
+ *  - Drawing zone: distance=22 height=32 → polar ≈ 34° (isométrico picado,
+ *    deja ver paredes y volumen 3D al definir zonas)
+ *  - Paint floor: distance=0.5 height=35 → polar ≈ 0.8° (cenital plano,
+ *    ideal para 2D layout de alfombras donde el volumen no aporta).
+ *
+ * Ref: https://threejs.org/docs/#examples/en/controls/OrbitControls.minPolarAngle
+ */
+export const PAINT_FLOOR_FRAMING: CameraFraming = Object.freeze({
+  distance: 0.5,
+  height: 35,
+  targetHeight: 0,
+});
+
 /** Transición hacia/desde el overview framing (ms). */
 export const TRANSITION_TO_DRAWING_MS = 500;
 

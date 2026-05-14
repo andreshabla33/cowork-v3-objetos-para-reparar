@@ -36,6 +36,7 @@ import {
   TRANSITION_TO_IDLE_MS,
   TRANSITION_TO_MOVING_MS,
   DRAWING_OVERVIEW_FRAMING,
+  PAINT_FLOOR_FRAMING,
   TRANSITION_TO_DRAWING_MS,
   ZOOM_RETURN_IDLE_MS,
   type CameraMode,
@@ -83,6 +84,15 @@ export const CameraFollow: React.FC<{
    */
   isInDrawingMode?: boolean;
   /**
+   * Sub-modo de `isInDrawingMode` específico para "decorar piso". Cuando `true`,
+   * la transición a overview usa `PAINT_FLOOR_FRAMING` (cenital puro ~0.8° polar)
+   * en lugar de `DRAWING_OVERVIEW_FRAMING` (isométrico ~34° polar). Razón: para
+   * pintar alfombras el admin necesita vista 2D top-down sin distorsión de
+   * perspectiva — el modo isométrico de drawing zone tiene tilt para mostrar
+   * volumen 3D al definir paredes/cerramientos, lo que es ruido en paint mode.
+   */
+  isInPaintFloorMode?: boolean;
+  /**
    * Admin con `isEditMode` activo (colocando/moviendo objetos individuales).
    * En modo `free` se usa como guard adicional para deshabilitar el idle-hero
    * blend — sin esto, el admin que se queda quieto frente al objeto que coloca
@@ -100,7 +110,7 @@ export const CameraFollow: React.FC<{
    * canónico tipo Unity Cinemachine FreeLook).
    */
   userInteractionTimestampRef?: React.MutableRefObject<number>;
-}> = ({ controlsRef, cameraMode = 'isometric', zonasEmpresa = [], empresaId = null, espacioObjetos = [], usersInCallIds, usersInAudioRangeIds, followTargetId = null, getFollowTargetPosition, gpuRenderConfig, cameraShoulderMode = 'center', isInDrawingMode = false, isEditMode = false, terrainCenter, userInteractionTimestampRef }) => {
+}> = ({ controlsRef, cameraMode = 'isometric', zonasEmpresa = [], empresaId = null, espacioObjetos = [], usersInCallIds, usersInAudioRangeIds, followTargetId = null, getFollowTargetPosition, gpuRenderConfig, cameraShoulderMode = 'center', isInDrawingMode = false, isInPaintFloorMode = false, isEditMode = false, terrainCenter, userInteractionTimestampRef }) => {
   const { camera, scene } = useThree();
   const baseFovRef = useRef<number | null>(null);
 
@@ -256,14 +266,20 @@ export const CameraFollow: React.FC<{
       if (dir === 'to-overview') {
         // Destino: bird's-eye del centro del terreno. Si no hay terrainCenter
         // (edge case), usamos la posición actual del jugador como fallback.
+        // En paint-floor mode usamos PAINT_FLOOR_FRAMING (cenital puro) en
+        // lugar de DRAWING_OVERVIEW_FRAMING (isométrico picado).
+        const framing = isInPaintFloorMode ? PAINT_FLOOR_FRAMING : DRAWING_OVERVIEW_FRAMING;
         const cx = terrainCenter?.x ?? playerPos.x;
         const cz = terrainCenter?.z ?? playerPos.z;
-        const toTarget = new THREE.Vector3(cx, DRAWING_OVERVIEW_FRAMING.targetHeight, cz);
-        // Cámara en ángulo isométrico desde el sur-oeste del centro.
+        const toTarget = new THREE.Vector3(cx, framing.targetHeight, cz);
+        // Cámara: en paint floor mode, casi directamente arriba (offset mínimo
+        // en X/Z para evitar singularidad de OrbitControls cuando camera=target).
+        // En drawing zone mode, mantiene el ángulo isométrico desde el SO.
+        const horizontalOffset = isInPaintFloorMode ? framing.distance : framing.distance * 0.7;
         const toCamPos = new THREE.Vector3(
-          cx - DRAWING_OVERVIEW_FRAMING.distance * 0.7,
-          DRAWING_OVERVIEW_FRAMING.height,
-          cz + DRAWING_OVERVIEW_FRAMING.distance * 0.7,
+          cx - horizontalOffset,
+          framing.height,
+          cz + horizontalOffset,
         );
         controls.target.lerpVectors(from.target, toTarget, eased);
         camera.position.lerpVectors(from.camPos, toCamPos, eased);

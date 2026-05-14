@@ -72,7 +72,21 @@ function resolveOrbitLimits(
   mode: CameraMode,
   isDrawingZone: boolean,
   isDraggingPlantillaZona: boolean,
+  isPaintingDecorativeFloor: boolean = false,
 ): OrbitLimits {
+  // Paint floor mode: cenital puro. Permitimos polar=0 (cámara directamente
+  // arriba) para vista 2D top-down sin distorsión. Sin esto, OrbitControls
+  // clampearía a 0.05 rad y se vería ligeramente picada (~3°).
+  if (isPaintingDecorativeFloor) {
+    return {
+      enablePan: true,
+      enableRotate: false,
+      minDistance: 1.1,
+      maxDistance: DRAWING_MAX_ORBIT_DISTANCE,
+      minPolarAngle: 0,
+      maxPolarAngle: Math.PI / 8, // hasta ~22° si el admin quiere algo de perspectiva al zoom out
+    };
+  }
   // Drawing mode: bird's-eye automático en CameraFollow. Aquí ampliamos los
   // rangos de input para que el admin pueda zoom-out y picar más vertical
   // sin que el clamp de OrbitControls lo bloquee.
@@ -124,12 +138,13 @@ export const SceneCamera: React.FC<SceneCameraProps> = ({
   onStart,
   onEnd,
 }) => {
-  // Paint mode reusa el bird's-eye framing del drawing mode para que el admin
-  // vea el espacio completo de arriba mientras pinta.
+  // Paint mode tiene su propio set de límites (cenital puro). Drawing mode
+  // mantiene los suyos (isométrico picado). Mutuamente excluyentes en la práctica.
   const limits = resolveOrbitLimits(
     cameraMode,
-    isDrawingZone || isPaintingDecorativeFloor,
+    isDrawingZone,
     isDraggingPlantillaZona,
+    isPaintingDecorativeFloor,
   );
 
   return (
