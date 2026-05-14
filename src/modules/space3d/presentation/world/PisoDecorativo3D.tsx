@@ -6,31 +6,31 @@
  *
  * Modelo Gather-style — visual only, sin colisión ni nav.
  *
- * ## Fix definitivo z-fighting (2026-05-14)
- * 1. **Material clonado por piso**: `useFloorMaterial` retorna un singleton
- *    compartido con SueloPrincipal3D. Mutar `depthWrite/polygonOffset` en él
- *    afectaría también al suelo base. Clonamos vía useMemo — clone() preserva
- *    `onBeforeCompile` así que el shader procedural sigue funcionando.
- * 2. **`depthWrite=false`**: el piso no escribe al z-buffer. Múltiples pisos
- *    apilados no compiten en depth (causa raíz del flicker/ruido).
- * 3. **`renderOrder=10+orden`**: control determinista del orden visual.
- *    SueloPrincipal renderea con renderOrder=0 (default) → pisos siempre
- *    encima. Entre pisos, mayor `orden` = renderea después = on top.
- * 4. **Y-step = 0.02m** por orden (antes 0.001m): defensa adicional contra
- *    z-fight si algún driver ignora depthWrite=false.
+ * ## Estrategia anti z-fighting
  *
- * El avatar / muebles renderean con `depthWrite=true` y se ven correctamente
- * encima — los pisos NO los ocultan porque no escriben depth, y el avatar/
- * muebles ganan por estar más cerca de la cámara cuando aplica.
+ * **NO clonar el material**: el factory `useFloorMaterial` retorna materiales
+ * con un `onBeforeCompile` que inyecta GLSL procedural. Three.js `.clone()`
+ * preserva la función pero NO deep-copia `userData.uniforms` que el callback
+ * usa — el material clonado renderea blanco (todos los uniforms en 0).
+ *
+ * En vez de clonar:
+ *  - **`renderOrder = 10 + orden`** (mesh-level, sin tocar el material):
+ *    el piso renderea después del SueloPrincipal (renderOrder=0) y, entre
+ *    pisos, los de mayor `orden` quedan on top. Determinístico, sin depender
+ *    del orden de inserción en el array de Three.js.
+ *  - **Y-step = 0.02m por orden** (1 cm pisos consecutivos): visible para
+ *    stacks (cada piso ligeramente más alto) pero imperceptible al caminar.
+ *    Suficiente para que el depth buffer 24-bit los distinga sin z-fight.
+ *  - **Y base = 0.05m** sobre el suelo principal (PISO_DECORATIVO_Y_OFFSET):
+ *    separación robusta del suelo (Y=0) en cualquier zoom/GPU.
  *
  * Refs:
- *  - https://threejs.org/docs/#api/en/materials/Material.depthWrite
  *  - https://threejs.org/docs/#api/en/core/Object3D.renderOrder
- *  - https://threejs.org/docs/#api/en/materials/Material.polygonOffset
+ *  - https://threejs.org/docs/#api/en/materials/Material.clone (caveat onBeforeCompile)
  *  - https://r3f.docs.pmnd.rs/ (mesh, primitive)
  */
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useFloorMaterial } from '@/modules/space3d/presentation/hooks/useFloorMaterial';
 import {
   PISO_DECORATIVO_Y_OFFSET,
@@ -57,20 +57,9 @@ export const PisoDecorativo3D: React.FC<PisoDecorativo3DProps> = React.memo(({
   yBase = 0,
   onClick,
 }) => {
-  const sharedMaterial = useFloorMaterial(piso.tipoSuelo);
-
-  // Material clonado por piso para no contaminar el singleton usado por
-  // SueloPrincipal3D. clone() preserva onBeforeCompile (función refs) →
-  // el shader procedural PBR sigue idéntico, pero depthWrite/polygonOffset
-  // son independientes.
-  const material = useMemo(() => {
-    const m = sharedMaterial.clone();
-    m.depthWrite = false;
-    m.polygonOffset = true;
-    m.polygonOffsetFactor = -2;
-    m.polygonOffsetUnits = -2;
-    return m;
-  }, [sharedMaterial]);
+  // Material compartido (singleton del factory). No clonamos — el shader
+  // procedural se rompería al perder los uniforms en userData.
+  const material = useFloorMaterial(piso.tipoSuelo);
 
   const y = yBase + PISO_DECORATIVO_Y_OFFSET + piso.orden * Y_STEP_POR_ORDEN_M;
 
