@@ -2,125 +2,211 @@
  * @module space3d/world/PaintFloorMode3D
  *
  * Capture-plane R3F que se activa cuando `isPaintingDecorativeFloor=true`.
- * Maneja drag-to-draw para crear un piso decorativo. Mientras hay drag activo,
- * renderiza un preview translúcido del rectángulo final.
+ * Implementa dos modos según `decorativeFloorStencilId`:
+ *  - **Stencil (preset)**: cursor muestra ghost del rectángulo predefinido;
+ *    click coloca. Allow multiple placements hasta que el admin salga.
+ *  - **Custom (drag)**: drag dibuja rectángulo libre; release coloca.
  *
- * No interfiere con el resto de pointer events del scene porque sólo monta
- * el Plane invisible mientras el modo está activo (R3F unmount = no raycast).
+ * Fix raycast (2026-05-14): el capture-plane se mueve via useFrame para
+ * quedar justo debajo de la cámara (Y = camera.y - 0.5), garantizando que
+ * sea el primer hit del raycaster sobre cualquier otra geometría
+ * (escritorios, avatares, zonas) que estaría más lejos de la cámara.
+ * Luego proyectamos el ray al plano Y=0 para obtener las coords del piso.
  *
- * Clean Architecture: presentation. Toda I/O via `usePisosDecorativos` hook.
+ * Coordina con `SceneCamera.tsx` que libera el LEFT mouse de OrbitControls
+ * en modo paint, garantizando que el drag/click llegue al plano R3F.
+ *
+ * Clean Architecture: presentation. Toda I/O via `usePisosDecorativos` hook;
+ * lógica de stencils via Domain (`StencilsPiso`).
+ *
  * Refs:
  *  - https://r3f.docs.pmnd.rs/tutorials/events-and-interaction
  *  - https://threejs.org/docs/#api/en/core/Raycaster
+ *  - https://threejs.org/docs/#api/en/math/Ray.intersectPlane
  */
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { useShallow } from 'zustand/shallow';
-import { useThree, type ThreeEvent } from '@react-three/fiber';
+import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { usePisosDecorativos } from '@/modules/space3d/presentation/hooks/usePisosDecorativos';
 import { useFloorMaterial } from '@/modules/space3d/presentation/hooks/useFloorMaterial';
 import { PISO_DECORATIVO_Y_OFFSET } from '@/core/domain/entities/espacio3d/PisoDecorativo';
+import {
+  obtenerStencil,
+  PISO_CUSTOM_TAMANO_MIN_M,
+} from '@/core/domain/entities/espacio3d/StencilsPiso';
 import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('paint-floor-mode-3d');
 
-const MIN_TAMANO_M = 0.5;
-/** Plano capture: cubre todo el world. Suficientemente grande para cualquier espacio. */
+/** Tamaño del capture plane: cubre todo el world sin importar zoom. */
 const CAPTURE_SIZE_M = 2000;
+/** Distancia debajo de la cámara para colocar el capture plane (m). */
+const CAPTURE_PLANE_CAMERA_OFFSET_M = 0.5;
+/** Y mínimo del capture plane (clamp para casos extremos de zoom-in). */
+const CAPTURE_PLANE_MIN_Y = 1.5;
 
 interface PaintFloorMode3DProps {
   espacioId: string | null;
 }
 
+/**
+ * Helper: proyecta el ray del evento al plano horizontal Y=0 para obtener
+ * coords del piso (X, Z). Esto funciona independiente de dónde esté el
+ * capture plane físicamente, lo importante es que el ray pase por el cursor.
+ */
+const GROUND_PLANE = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
+function projectToGround(e: ThreeEvent<PointerEvent>): { x: number; z: number } | null {
+  const target = new THREE.Vector3();
+  if (!e.ray.intersectPlane(GROUND_PLANE, target)) return null;
+  return { x: target.x, z: target.z };
+}
+
 export const PaintFloorMode3D: React.FC<PaintFloorMode3DProps> = ({ espacioId }) => {
-  const { isActive, paintFloorType, zonaId } = useStore(useShallow((s) => ({
+  const { isActive, paintFloorType, zonaId, stencilId } = useStore(useShallow((s) => ({
     isActive: s.isPaintingDecorativeFloor,
     paintFloorType: s.paintFloorType,
     zonaId: s.decorativeFloorZonaId,
+    stencilId: s.decorativeFloorStencilId,
   })));
-  const setIsPaintingDecorativeFloor = useStore((s) => s.setIsPaintingDecorativeFloor);
   const { crear } = usePisosDecorativos(espacioId);
   const previewMaterial = useFloorMaterial(paintFloorType);
   const { gl } = useThree();
 
+  const captureMeshRef = useRef<THREE.Mesh>(null);
+  const stencil = useMemo(() => obtenerStencil(stencilId), [stencilId]);
+  const isCustomMode = stencil.id === 'custom';
+
+  // ── State del cursor + drag ──────────────────────────────────────────────
+  const [cursor, setCursor] = useState<{ x: number; z: number } | null>(null);
   const [dragStart, setDragStart] = useState<{ x: number; z: number } | null>(null);
   const [dragCurrent, setDragCurrent] = useState<{ x: number; z: number } | null>(null);
   const pointerIdRef = useRef<number | null>(null);
 
-  const obtenerPunto = (e: ThreeEvent<PointerEvent>): { x: number; z: number } => ({
-    x: e.point.x,
-    z: e.point.z,
+  // ── useFrame: mantener el capture plane justo debajo de la cámara ────────
+  // Garantiza que sea el primer hit del raycaster sobre cualquier otra
+  // geometría (que queda más lejos de la cámara). El plano sigue siendo
+  // horizontal — sólo cambia su Y.
+  useFrame(({ camera }) => {
+    if (!isActive || !captureMeshRef.current) return;
+    const desiredY = Math.max(camera.position.y - CAPTURE_PLANE_CAMERA_OFFSET_M, CAPTURE_PLANE_MIN_Y);
+    if (captureMeshRef.current.position.y !== desiredY) {
+      captureMeshRef.current.position.y = desiredY;
+    }
   });
+
+  // ── Cálculo del rectángulo final según el modo ───────────────────────────
+
+  /** Stencil mode: rectángulo centrado en el cursor con dimensiones predefinidas. */
+  const rectFromStencil = useMemo(() => {
+    if (!cursor || isCustomMode || stencil.ancho === null || stencil.profundidad === null) return null;
+    return {
+      centroX: cursor.x,
+      centroZ: cursor.z,
+      ancho: stencil.ancho,
+      profundidad: stencil.profundidad,
+    };
+  }, [cursor, isCustomMode, stencil]);
+
+  /** Custom mode: rectángulo del drag (start → current). */
+  const rectFromDrag = useMemo(() => {
+    if (!dragStart || !dragCurrent || !isCustomMode) return null;
+    return {
+      centroX: (dragStart.x + dragCurrent.x) / 2,
+      centroZ: (dragStart.z + dragCurrent.z) / 2,
+      ancho: Math.abs(dragCurrent.x - dragStart.x),
+      profundidad: Math.abs(dragCurrent.z - dragStart.z),
+    };
+  }, [dragStart, dragCurrent, isCustomMode]);
+
+  const previewRect = isCustomMode ? rectFromDrag : rectFromStencil;
+
+  // ── Persistencia del piso (común a ambos modos) ──────────────────────────
+  const persistir = useCallback(async (rect: { centroX: number; centroZ: number; ancho: number; profundidad: number }) => {
+    const resultado = await crear({
+      zonaId,
+      tipoSuelo: paintFloorType,
+      centroX: rect.centroX,
+      centroZ: rect.centroZ,
+      ancho: rect.ancho,
+      profundidad: rect.profundidad,
+    });
+    if (!resultado.ok) {
+      log.warn('Error creando piso decorativo', { motivo: resultado.motivo });
+    }
+    // NO salimos del modo tras placement — admin puede colocar varios.
+    // Sale cuando hace click en "Cancelar decoración".
+  }, [crear, paintFloorType, zonaId]);
+
+  // ── Handlers ─────────────────────────────────────────────────────────────
+
+  const handlePointerMove = useCallback((e: ThreeEvent<PointerEvent>) => {
+    if (!isActive) return;
+    const p = projectToGround(e);
+    if (!p) return;
+    setCursor(p);
+    if (isCustomMode && dragStart) {
+      setDragCurrent(p);
+    }
+  }, [isActive, isCustomMode, dragStart]);
 
   const handlePointerDown = useCallback((e: ThreeEvent<PointerEvent>) => {
     if (!isActive) return;
     e.stopPropagation();
-    pointerIdRef.current = e.nativeEvent.pointerId;
-    try { gl.domElement.setPointerCapture(e.nativeEvent.pointerId); } catch {}
-    const p = obtenerPunto(e);
-    setDragStart(p);
-    setDragCurrent(p);
-  }, [isActive, gl]);
+    const p = projectToGround(e);
+    if (!p) return;
 
-  const handlePointerMove = useCallback((e: ThreeEvent<PointerEvent>) => {
-    if (!isActive || !dragStart) return;
-    setDragCurrent(obtenerPunto(e));
-  }, [isActive, dragStart]);
+    if (isCustomMode) {
+      // Drag start: capturamos el pointer para no perder eventos al salirse del plano.
+      pointerIdRef.current = e.nativeEvent.pointerId;
+      try { gl.domElement.setPointerCapture(e.nativeEvent.pointerId); } catch {}
+      setDragStart(p);
+      setDragCurrent(p);
+    }
+    // Stencil mode: el placement se confirma en pointerUp (un click).
+  }, [isActive, isCustomMode, gl]);
 
   const handlePointerUp = useCallback(async (e: ThreeEvent<PointerEvent>) => {
-    if (!isActive || !dragStart) return;
+    if (!isActive) return;
     e.stopPropagation();
-    const end = obtenerPunto(e);
-    const minX = Math.min(dragStart.x, end.x);
-    const maxX = Math.max(dragStart.x, end.x);
-    const minZ = Math.min(dragStart.z, end.z);
-    const maxZ = Math.max(dragStart.z, end.z);
-    const ancho = Math.abs(maxX - minX);
-    const profundidad = Math.abs(maxZ - minZ);
 
-    setDragStart(null);
-    setDragCurrent(null);
-    pointerIdRef.current = null;
-
-    if (ancho < MIN_TAMANO_M || profundidad < MIN_TAMANO_M) return;
-
-    const centroX = minX + ancho / 2;
-    const centroZ = minZ + profundidad / 2;
-
-    const resultado = await crear({
-      zonaId,
-      tipoSuelo: paintFloorType,
-      centroX,
-      centroZ,
-      ancho,
-      profundidad,
-    });
-
-    if (!resultado.ok) {
-      log.warn('Error creando piso decorativo', { motivo: resultado.motivo });
+    if (isCustomMode) {
+      // Finalizar drag
+      if (!dragStart) return;
+      const end = projectToGround(e) ?? dragCurrent;
+      if (!end) return;
+      const ancho = Math.abs(end.x - dragStart.x);
+      const profundidad = Math.abs(end.z - dragStart.z);
+      setDragStart(null);
+      setDragCurrent(null);
+      pointerIdRef.current = null;
+      if (ancho < PISO_CUSTOM_TAMANO_MIN_M || profundidad < PISO_CUSTOM_TAMANO_MIN_M) return;
+      await persistir({
+        centroX: (dragStart.x + end.x) / 2,
+        centroZ: (dragStart.z + end.z) / 2,
+        ancho,
+        profundidad,
+      });
+    } else {
+      // Stencil click-to-place: confirmamos en pointerUp para evitar placement
+      // accidental durante drag de cámara con right-click.
+      if (!rectFromStencil) return;
+      await persistir(rectFromStencil);
     }
-    // Salir del modo tras crear uno (admin re-activa si quiere otro).
-    setIsPaintingDecorativeFloor(false);
-  }, [crear, dragStart, isActive, paintFloorType, setIsPaintingDecorativeFloor, zonaId]);
+  }, [isActive, isCustomMode, dragStart, dragCurrent, rectFromStencil, persistir]);
 
   if (!isActive) return null;
 
-  const previewRect = dragStart && dragCurrent
-    ? {
-        centroX: (dragStart.x + dragCurrent.x) / 2,
-        centroZ: (dragStart.z + dragCurrent.z) / 2,
-        ancho: Math.abs(dragCurrent.x - dragStart.x),
-        profundidad: Math.abs(dragCurrent.z - dragStart.z),
-      }
-    : null;
-
   return (
     <group>
-      {/* Capture plane — invisible pero recibe pointer events. */}
+      {/* Capture plane: invisible, dinámicamente posicionado justo debajo de
+          la cámara (via useFrame) para garantizar primer hit del raycaster. */}
       <mesh
-        position={[0, PISO_DECORATIVO_Y_OFFSET, 0]}
+        ref={captureMeshRef}
+        position={[0, CAPTURE_PLANE_MIN_Y, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -130,14 +216,23 @@ export const PaintFloorMode3D: React.FC<PaintFloorMode3DProps> = ({ espacioId })
         <meshBasicMaterial transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
       </mesh>
 
-      {/* Preview translúcido del rectángulo a crear. */}
+      {/* Preview translúcido del rectángulo a crear. Y=0.005 más alto que
+          PISO_DECORATIVO_Y_OFFSET para no z-fightear contra pisos ya colocados. */}
       {previewRect && previewRect.ancho > 0.05 && previewRect.profundidad > 0.05 && (
         <mesh
-          position={[previewRect.centroX, PISO_DECORATIVO_Y_OFFSET + 0.005, previewRect.centroZ]}
+          position={[previewRect.centroX, PISO_DECORATIVO_Y_OFFSET + 0.02, previewRect.centroZ]}
           rotation={[-Math.PI / 2, 0, 0]}
         >
           <planeGeometry args={[previewRect.ancho, previewRect.profundidad]} />
-          <primitive object={previewMaterial} attach="material" transparent opacity={0.7} />
+          <primitive
+            object={previewMaterial}
+            attach="material"
+            transparent
+            opacity={0.65}
+            polygonOffset
+            polygonOffsetFactor={-2}
+            polygonOffsetUnits={-2}
+          />
         </mesh>
       )}
     </group>

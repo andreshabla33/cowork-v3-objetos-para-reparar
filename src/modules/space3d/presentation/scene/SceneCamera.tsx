@@ -45,6 +45,12 @@ export interface SceneCameraProps {
   isDrawingZone?: boolean;
   /** Admin arrastrando una plantilla de zona pre-existente. */
   isDraggingPlantillaZona?: boolean;
+  /**
+   * Admin en modo "decorar piso" — el LEFT mouse button queda liberado
+   * (no rotate) para que el capture-plane R3F lo intercepte. Pan via
+   * RIGHT button + zoom siguen disponibles para navegar.
+   */
+  isPaintingDecorativeFloor?: boolean;
   /** Disparado al iniciar input manual (mouse down sobre la cámara). */
   onStart?: () => void;
   /** Disparado al soltar input manual. */
@@ -114,10 +120,17 @@ export const SceneCamera: React.FC<SceneCameraProps> = ({
   cameraSensitivity = 5,
   isDrawingZone = false,
   isDraggingPlantillaZona = false,
+  isPaintingDecorativeFloor = false,
   onStart,
   onEnd,
 }) => {
-  const limits = resolveOrbitLimits(cameraMode, isDrawingZone, isDraggingPlantillaZona);
+  // Paint mode reusa el bird's-eye framing del drawing mode para que el admin
+  // vea el espacio completo de arriba mientras pinta.
+  const limits = resolveOrbitLimits(
+    cameraMode,
+    isDrawingZone || isPaintingDecorativeFloor,
+    isDraggingPlantillaZona,
+  );
 
   return (
     <OrbitControls
@@ -128,7 +141,7 @@ export const SceneCamera: React.FC<SceneCameraProps> = ({
       minPolarAngle={limits.minPolarAngle}
       maxPolarAngle={limits.maxPolarAngle}
       enablePan={limits.enablePan}
-      enableRotate={limits.enableRotate}
+      enableRotate={isPaintingDecorativeFloor ? false : limits.enableRotate}
       rotateSpeed={cameraSensitivity / 10}
       zoomSpeed={0.8}
       enableDamping={true}

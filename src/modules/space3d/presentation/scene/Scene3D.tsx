@@ -596,6 +596,7 @@ export const Scene: React.FC<SceneProps> = ({
   // --- Hito 8: Edit Mode dragging ---
   const isDragging = useStore((s) => s.isDragging);
   const isDrawingZone = useStore((s) => s.isDrawingZone);
+  const isPaintingDecorativeFloor = useStore((s) => s.isPaintingDecorativeFloor);
   const paintFloorType = useStore((s) => s.paintFloorType);
   const addNotification = useStore((s) => s.addNotification);
   const isEditMode = useStore((s) => s.isEditMode);
@@ -937,6 +938,7 @@ export const Scene: React.FC<SceneProps> = ({
         cameraSensitivity={cameraSensitivity}
         isDrawingZone={isDrawingZone}
         isDraggingPlantillaZona={isDraggingPlantillaZona}
+        isPaintingDecorativeFloor={isPaintingDecorativeFloor}
         onStart={handleOrbitStart}
         onEnd={handleOrbitEnd}
       />
@@ -1274,7 +1276,7 @@ export const Scene: React.FC<SceneProps> = ({
         getFollowTargetPosition={getFollowTargetPosition}
         gpuRenderConfig={gpuRenderConfig}
         cameraShoulderMode={cameraShoulderMode}
-        isInDrawingMode={isDrawingZone || isDraggingPlantillaZona || !!plantillaZonaEnColocacion}
+        isInDrawingMode={isDrawingZone || isDraggingPlantillaZona || !!plantillaZonaEnColocacion || isPaintingDecorativeFloor}
         isEditMode={isEditMode}
         terrainCenter={{ x: terrainBounds.centerX, z: terrainBounds.centerZ }}
         userInteractionTimestampRef={userInteractionTimestampRef}

@@ -6,6 +6,7 @@
  */
 import type { StateCreator } from 'zustand';
 import { FloorType } from '@/core/domain/entities';
+import { STENCIL_DEFAULT, type StencilPisoId } from '@/core/domain/entities/espacio3d/StencilsPiso';
 import type { EspacioObjeto } from '@/modules/space3d/presentation/hooks/useEspacioObjetos';
 
 export type ModoEdicionObjeto = 'mover' | 'rotar' | 'escalar' | 'add';
@@ -59,6 +60,13 @@ export interface EditorSlice {
   isPaintingDecorativeFloor: boolean;
   /** Si el modo está scopeado a una zona específica, su id; `null` = suelo principal. */
   decorativeFloorZonaId: string | null;
+  /**
+   * Stencil de tamaño activo en modo decorar piso. `'custom'` = drag-to-draw
+   * libre. Los demás = click-to-place con dimensiones predefinidas. Patrón
+   * Sims build-mode: el 90% del tiempo el admin usa un preset; custom es
+   * escape hatch para casos especiales.
+   */
+  decorativeFloorStencilId: StencilPisoId;
 
   setIsEditMode: (val: boolean) => void;
   setModoEdicionObjeto: (modo: ModoEdicionObjeto) => void;
@@ -86,6 +94,9 @@ export interface EditorSlice {
    * se aplica al suelo principal; si es una zona-empresa, se confina a ella.
    */
   setIsPaintingDecorativeFloor: (val: boolean, zonaId?: string | null) => void;
+
+  /** Cambia el stencil activo (tamaño preset o `custom` para drag libre). */
+  setDecorativeFloorStencilId: (id: StencilPisoId) => void;
 }
 
 export const createEditorSlice: StateCreator<EditorSlice, [], [], EditorSlice> = (set) => ({
@@ -102,6 +113,7 @@ export const createEditorSlice: StateCreator<EditorSlice, [], [], EditorSlice> =
   plantillaZonaEnColocacion: null,
   isPaintingDecorativeFloor: false,
   decorativeFloorZonaId: null,
+  decorativeFloorStencilId: STENCIL_DEFAULT,
 
   setIsEditMode: (val) =>
     set({
@@ -177,4 +189,6 @@ export const createEditorSlice: StateCreator<EditorSlice, [], [], EditorSlice> =
       isPaintingDecorativeFloor: val,
       decorativeFloorZonaId: val ? zonaId : null,
     }),
+
+  setDecorativeFloorStencilId: (id) => set({ decorativeFloorStencilId: id }),
 });

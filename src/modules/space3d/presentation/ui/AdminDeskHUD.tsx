@@ -236,7 +236,7 @@ export const AdminDeskHUD: React.FC<AdminDeskHUDProps> = ({ workspaceId, miUsuar
       {isPaintingDecorativeFloor && (
         <div className="fixed top-40 right-4 z-[340] max-w-[260px] pointer-events-none">
           <div className="px-3 py-2 rounded-lg bg-indigo-500/15 border border-indigo-400/40 text-indigo-100 text-[11px] shadow-lg">
-            Arrastra sobre el piso para pintar un parche decorativo donde quieras.
+            Vista cenital activada. Elegí tamaño y click para colocar (o &quot;Custom&quot; + drag para libre).
           </div>
         </div>
       )}

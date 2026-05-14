@@ -98,3 +98,11 @@ export {
 // ─── Pisos decorativos ───────────────────────────────────────────────────────
 export type { PisoDecorativo, CrearPisoDecorativoInput } from './PisoDecorativo';
 export { PISO_DECORATIVO_Y_OFFSET } from './PisoDecorativo';
+
+export type { StencilPiso, StencilPisoId } from './StencilsPiso';
+export {
+  STENCILS_PISO,
+  STENCIL_DEFAULT,
+  obtenerStencil,
+  PISO_CUSTOM_TAMANO_MIN_M,
+} from './StencilsPiso';

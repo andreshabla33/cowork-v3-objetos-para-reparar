@@ -3,6 +3,7 @@ import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { guardarZonaEmpresa, eliminarZonaEmpresa } from '@/core/infrastructure/adapters/autorizacionesEmpresaFacade';
 import { logger } from '@/core/infrastructure/observability/logger';
 import { FloorType, FLOOR_TYPE_LABELS, FLOOR_TYPE_CATEGORIES, normalizarTipoSuelo } from '@/core/domain/entities';
+import { STENCILS_PISO } from '@/core/domain/entities/espacio3d/StencilsPiso';
 import { normalizarConfiguracionZonaEmpresa, normalizarTipoSubsueloZona, type TipoSubsueloZona } from '@/core/domain/entities/cerramientosZona';
 import { FLOOR_SPECS } from '@/core/infrastructure/r3f/rendering/floor/floorMaterialSpecs';
 import { ZonaEmpresa } from '@/types';
@@ -32,6 +33,8 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
   const setPaintFloorType = useStore((s) => s.setPaintFloorType);
   const isPaintingDecorativeFloor = useStore((s) => s.isPaintingDecorativeFloor);
   const setIsPaintingDecorativeFloor = useStore((s) => s.setIsPaintingDecorativeFloor);
+  const decorativeFloorStencilId = useStore((s) => s.decorativeFloorStencilId);
+  const setDecorativeFloorStencilId = useStore((s) => s.setDecorativeFloorStencilId);
   const currentUser = useStore((s) => s.currentUser);
   
   const [nombre, setNombre] = useState('');
@@ -392,17 +395,46 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
           </div>
 
           <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[390] animate-in fade-in slide-in-from-bottom pointer-events-auto">
-            <div className="bg-black/88 backdrop-blur-xl border border-indigo-500/30 px-5 py-4 rounded-2xl shadow-[0_0_30px_rgba(99,102,241,0.25)] flex flex-col gap-3" style={{ minWidth: 380 }}>
+            <div className="bg-black/88 backdrop-blur-xl border border-indigo-500/30 px-5 py-4 rounded-2xl shadow-[0_0_30px_rgba(99,102,241,0.25)] flex flex-col gap-3" style={{ minWidth: 420 }}>
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse flex-shrink-0" />
                 <span className="text-indigo-100/90 font-medium text-sm">
-                  Elige material y arrastra para decorar el piso
+                  {decorativeFloorStencilId === 'custom'
+                    ? 'Modo libre — arrastrá un rectángulo donde quieras'
+                    : 'Click sobre el piso para colocar el parche del tamaño elegido'}
                 </span>
               </div>
-              <div className="flex flex-col gap-2 max-h-[40vh] overflow-y-auto pr-1">
+
+              {/* Stencil picker — tamaños predefinidos + custom */}
+              <div>
+                <p className="text-[9px] uppercase tracking-widest text-slate-500 font-bold mb-1.5">Tamaño</p>
+                <div className="flex gap-1.5 flex-wrap">
+                  {STENCILS_PISO.map((s) => {
+                    const isSelected = decorativeFloorStencilId === s.id;
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => setDecorativeFloorStencilId(s.id)}
+                        title={s.nombre}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[10px] font-semibold transition-all ${
+                          isSelected
+                            ? 'border-indigo-400 bg-indigo-500/25 text-indigo-100 shadow-[0_0_8px_rgba(99,102,241,0.5)]'
+                            : 'border-slate-700/50 bg-slate-800/40 text-slate-300 hover:border-slate-500 hover:bg-slate-700/40'
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Material picker — agnóstico al modo stencil/custom */}
+              <div className="flex flex-col gap-2 max-h-[35vh] overflow-y-auto pr-1">
+                <p className="text-[9px] uppercase tracking-widest text-slate-500 font-bold">Material</p>
                 {Object.entries(FLOOR_TYPE_CATEGORIES).map(([categoria, tipos]) => (
                   <div key={categoria}>
-                    <p className="text-[9px] uppercase tracking-widest text-slate-500 font-bold mb-1.5">{categoria}</p>
+                    <p className="text-[9px] uppercase tracking-widest text-slate-500/70 font-bold mb-1">{categoria}</p>
                     <div className="flex gap-1.5 flex-wrap">
                       {tipos.map((tipo) => {
                         const swatch = FLOOR_SPECS[tipo].swatchColor;

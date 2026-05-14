@@ -737,6 +737,10 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
   // broadcast timer so the next frame's idle heartbeat fires immediately,
   // exposing our current position without waiting the full 2s tick.
   const participantJoinVersion = useStore((s) => s.participantJoinVersion);
+  // Modo "decorar piso": admin activa vista cenital + click-to-place. Mientras
+  // está activo bloqueamos el movimiento del avatar para evitar que WASD se
+  // dispare al pulsar teclas (típicamente al abrir DevTools / shortcuts).
+  const isPaintingDecorativeFloor = useStore((s) => s.isPaintingDecorativeFloor);
   useEffect(() => {
     lastBroadcastTime.current = 0;
   }, [participantJoinVersion]);
@@ -877,16 +881,19 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     const baseRunSpeed = runSpeed ?? RUN_SPEED;
     const speed = isRunningRef.current ? baseRunSpeed : baseMoveSpeed;
 
-    // Movimiento por teclado
-    const keyW = keysPressed.current.has('KeyW') || keysPressed.current.has('ArrowUp');
-    const keyS = keysPressed.current.has('KeyS') || keysPressed.current.has('ArrowDown');
-    const keyA = keysPressed.current.has('KeyA') || keysPressed.current.has('ArrowLeft');
-    const keyD = keysPressed.current.has('KeyD') || keysPressed.current.has('ArrowRight');
+    // Movimiento por teclado — anulado en modo "decorar piso" para evitar que
+    // el avatar se mueva mientras el admin pinta desde la vista cenital.
+    const inputsBloqueados = isPaintingDecorativeFloor;
+    const keyW = !inputsBloqueados && (keysPressed.current.has('KeyW') || keysPressed.current.has('ArrowUp'));
+    const keyS = !inputsBloqueados && (keysPressed.current.has('KeyS') || keysPressed.current.has('ArrowDown'));
+    const keyA = !inputsBloqueados && (keysPressed.current.has('KeyA') || keysPressed.current.has('ArrowLeft'));
+    const keyD = !inputsBloqueados && (keysPressed.current.has('KeyD') || keysPressed.current.has('ArrowRight'));
     const hasKeyboardInput = keyW || keyS || keyA || keyD;
 
-    // Movimiento por joystick mobile (solo si no hay input de teclado)
+    // Movimiento por joystick mobile (solo si no hay input de teclado).
+    // Mismo bloqueo durante decorar piso.
     const joystick = mobileInputRef?.current;
-    const hasJoystickInput = !hasKeyboardInput && joystick && joystick.active && joystick.magnitude > 0;
+    const hasJoystickInput = !inputsBloqueados && !hasKeyboardInput && joystick && joystick.active && joystick.magnitude > 0;
 
     const currentSeatRuntime = seatRuntimeRef.current;
     // PR-1: Usar effectiveAnimStateRef.current en lugar de effectiveAnimState (closure stale)
