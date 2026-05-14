@@ -24,13 +24,17 @@ import { LoginScreen } from '@/modules/user/presentation/LoginScreen';
 import { PantallaAccesoRecuperacionContrasena } from '@/modules/user/presentation/PantallaAccesoRecuperacionContrasena';
 import { ResetPasswordScreen } from '@/modules/user/presentation/ResetPasswordScreen';
 import { InvitationProcessor } from '@/modules/invitation/presentation/InvitationProcessor';
-import { OnboardingCargoView } from '@/modules/onboarding/presentation/OnboardingCargoView';
 import { ThankYouScreen } from '@/modules/meetings/presentation/ThankYouScreen';
 
 // ─── Lazy-loaded routes ─────────────────────────────────────────────────
 const Dashboard = lazy(() => import('@/modules/workspace/presentation/Dashboard').then((m) => ({ default: m.Dashboard })));
 const WorkspaceLayout = lazy(() => import('@/modules/ui-shell/presentation/WorkspaceLayout').then((m) => ({ default: m.WorkspaceLayout })));
 const OnboardingCreador = lazy(() => import('@/modules/onboarding/presentation/OnboardingCreador').then((m) => ({ default: m.OnboardingCreador })));
+// OnboardingCargoView se vuelve lazy: arrastra OnboardingAvatarStep →
+// PreviewCanvas → @react-three/fiber + @react-three/drei + three. Estático,
+// preloadeaba ~1.3 MB de R3F/Three al boot incluso en LoginScreen.
+// Ref: https://react.dev/reference/react/lazy
+const OnboardingCargoView = lazy(() => import('@/modules/onboarding/presentation/OnboardingCargoView').then((m) => ({ default: m.OnboardingCargoView })));
 const MeetingLobby = lazy(() => import('@/modules/meetings/presentation/videocall/MeetingLobby').then((m) => ({ default: m.MeetingLobby })));
 const MeetingRoom = lazy(() => import('@/modules/meetings/presentation/videocall/MeetingRoom'));
 const ExploradorPublico3D = lazy(() => import('@/modules/marketplace/presentation/ExploradorPublico3D').then((m) => ({ default: m.ExploradorPublico3D })));
@@ -194,7 +198,9 @@ const App: React.FC = () => {
           )}
 
           {route === 'invitation' && <InvitationProcessor />}
-          {route === 'onboarding' && <OnboardingCargoView />}
+          {route === 'onboarding' && (
+            <Suspense fallback={<FallbackPantalla />}><OnboardingCargoView /></Suspense>
+          )}
 
           {route === 'onboarding_creador' && session && (
             <Suspense fallback={<FallbackPantalla />}>

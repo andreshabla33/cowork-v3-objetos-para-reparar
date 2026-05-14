@@ -14,7 +14,10 @@ import type { Avatar3DConfig } from '@/modules/avatar3d/presentation/shared';
 import type { UserAvatarData } from './userDataLoader';
 import { avatarCatalogRepository } from '@/core/infrastructure/adapters/AvatarCatalogSupabaseRepository';
 import { logger } from '@/core/infrastructure/observability/logger';
-import { preloadUniversalAnimations } from '@/core/infrastructure/r3f/avatar3d/universalAnimationsPreloader';
+// NOTE: `universalAnimationsPreloader` se importa DINÁMICAMENTE en el cuerpo
+// del use case (no statically) para que `three-stdlib` (GLTFLoader, 925 KB
+// pulled into vendor-three) viva en su propio chunk y NO se preloadee al boot.
+// Ref: https://vite.dev/guide/features.html#dynamic-import
 
 const log = logger.child('avatar-loader');
 
@@ -112,11 +115,16 @@ export async function cargarAvatar(
   // closing the race window that produced T-pose on avatars without native
   // animations (doc: fix-tpose-universal-anims-preload-2026-04-20).
   // Non-blocking: bootstrap continues immediately.
-  preloadUniversalAnimations().catch((err) => {
-    log.warn('Universal animations preload failed', {
-      error: err instanceof Error ? err.message : String(err),
+  // Dynamic import: el preloader importa `three-stdlib` (GLTFLoader) que
+  // arrastra ~925 KB de vendor-three. Aislarlo en su chunk evita preload
+  // al boot — solo se descarga cuando el avatar real lo necesita.
+  void import('@/core/infrastructure/r3f/avatar3d/universalAnimationsPreloader')
+    .then((m) => m.preloadUniversalAnimations())
+    .catch((err) => {
+      log.warn('Universal animations preload failed', {
+        error: err instanceof Error ? err.message : String(err),
+      });
     });
-  });
 
   return { avatarConfig, avatar3DConfig };
 }

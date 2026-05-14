@@ -16,10 +16,18 @@ installSuppressRapierDeprecationWarning();
 // Override global de Mesh.prototype.raycast para que todos los meshes
 // soporten BVH. Sin overhead si la geometry no tiene árbol; con árbol
 // es ~100x más rápido — crítico para R3F event system en hardware bajo.
+//
+// Dynamic import: el install pulla `three` + `three-mesh-bvh` (~950 KB
+// gz: 260 KB combinado). Boot inicial (login/dashboard) NO necesita BVH
+// — solo se requiere antes de que R3F monte un Canvas, lo cual ocurre
+// dentro de `WorkspaceLayout` (lazy) o `OnboardingCargoView` (lazy).
+// La install corre fire-and-forget aquí y la promesa termina mucho
+// antes de que cualquier R3F lazy chunk se cargue.
+//
 // Ref: https://github.com/gkjohnson/three-mesh-bvh
-import { installAcceleratedRaycast } from '@/core/infrastructure/r3f/rendering/installAcceleratedRaycast';
-
-installAcceleratedRaycast();
+// Ref: https://vite.dev/guide/features.html#dynamic-import
+void import('@/core/infrastructure/r3f/rendering/installAcceleratedRaycast')
+  .then((m) => m.installAcceleratedRaycast());
 
 // ─── Retry fetch para Supabase Storage ─────────────────────────────────────
 // Evita que un 429/500 transitorio en un GLB tumbe toda la escena (observado
