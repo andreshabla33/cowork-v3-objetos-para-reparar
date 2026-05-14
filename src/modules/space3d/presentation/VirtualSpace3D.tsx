@@ -13,6 +13,7 @@ import type { CargoLaboral } from '@/modules/meetings/presentation/recording/typ
 import { BottomControlBar } from '@/modules/realtime-room/presentation/BottomControlBar';
 import { StressFase1Panel } from '@/tests/stress/fase1-local/presentation/StressFase1Panel';
 import { VirtualSpace3DModals } from '@/modules/space3d/presentation/scene/root/VirtualSpace3DModals';
+import { PisoDecorativoDeleteConfirmHost } from '@/modules/space3d/presentation/world/PisoDecorativoDeleteConfirmHost';
 import { VirtualSpace3DAdminOverlay } from '@/modules/space3d/presentation/scene/root/VirtualSpace3DAdminOverlay';
 import { VirtualSpace3DStatusBanners } from '@/modules/space3d/presentation/scene/root/VirtualSpace3DStatusBanners';
 import { MovingToRoomBanner } from '@/modules/space3d/presentation/scene/root/MovingToRoomBanner';
@@ -1341,6 +1342,11 @@ const VirtualSpace3D: React.FC<VirtualSpace3DProps> = ({ theme = 'dark', isGameH
         }}
       />
       
+      {/* Host HTML del dialog para borrar piso decorativo. Vive fuera del
+          <Canvas> porque el reconciler de R3F crashea con elementos DOM
+          (`<h2>`, `<div>`...). El bridge es vía store global. */}
+      <PisoDecorativoDeleteConfirmHost espacioId={activeWorkspace?.id ?? null} />
+
       {/* Modales (Recording, Consentimiento, Avatar/Perfil) — F4 */}
       <VirtualSpace3DModals
         hasActiveCall={hasActiveCall}

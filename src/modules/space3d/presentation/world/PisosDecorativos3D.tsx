@@ -3,18 +3,21 @@
  *
  * Capa de pisos decorativos del espacio. Suscribe via realtime y renderiza
  * un `<PisoDecorativo3D>` por cada fila. Vive como sibling de `<SueloPrincipal3D>`
- * + `<ZonaEmpresa3D>` en el árbol de Scene3D.
+ * + `<ZonaEmpresa3D>` en el árbol de Scene3D — DENTRO del `<Canvas>` R3F.
  *
  * Clean Architecture: Presentation. Toda la I/O via `usePisosDecorativos`
- * (hook DI que orquesta repo + use cases). El `<ConfirmDialog>` para borrar
- * usa `createPortal` internamente — funciona aunque este componente esté
- * dentro del `<Canvas>` de R3F (donde un mesh no puede contener `<div>`).
+ * (hook DI que orquesta repo + use cases).
+ *
+ * IMPORTANTE: este componente NO puede renderizar HTML (Modal, ConfirmDialog,
+ * etc.) porque vive dentro de `<Canvas>` y el reconciler de R3F crashea con
+ * elementos HTML (`<h2>`, `<div>`...). Para confirmar borrado, setea el id
+ * pendiente en el store global; `<PisoDecorativoDeleteConfirmHost>` (HTML,
+ * rendered fuera del Canvas) consume ese state y muestra el `<ConfirmDialog>`.
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { usePisosDecorativos } from '@/modules/space3d/presentation/hooks/usePisosDecorativos';
 import { useComposedStore as useStore } from '@/modules/_state/composedStore';
-import { ConfirmDialog } from '@/modules/ui/presentation';
 import { PisoDecorativo3D } from './PisoDecorativo3D';
 
 interface PisosDecorativos3DProps {
@@ -22,26 +25,17 @@ interface PisosDecorativos3DProps {
 }
 
 export const PisosDecorativos3D: React.FC<PisosDecorativos3DProps> = ({ espacioId }) => {
-  const { pisos, eliminar } = usePisosDecorativos(espacioId);
+  const { pisos } = usePisosDecorativos(espacioId);
   const isEditMode = useStore((s) => s.isEditMode);
+  const setPisoDecorativoPendingDeleteId = useStore((s) => s.setPisoDecorativoPendingDeleteId);
 
-  const [pendingPisoId, setPendingPisoId] = useState<string | null>(null);
-  const [borrando, setBorrando] = useState(false);
+  if (pisos.length === 0) return null;
 
   const handleClick = (pisoId: string) => {
     if (!isEditMode) return;
-    setPendingPisoId(pisoId);
+    // R3F-safe: solo seteamos state. El host HTML muestra el ConfirmDialog.
+    setPisoDecorativoPendingDeleteId(pisoId);
   };
-
-  const confirmar = async () => {
-    if (!pendingPisoId) return;
-    setBorrando(true);
-    await eliminar(pendingPisoId);
-    setBorrando(false);
-    setPendingPisoId(null);
-  };
-
-  if (pisos.length === 0 && pendingPisoId === null) return null;
 
   return (
     <>
@@ -52,18 +46,6 @@ export const PisosDecorativos3D: React.FC<PisosDecorativos3DProps> = ({ espacioI
           onClick={isEditMode ? handleClick : undefined}
         />
       ))}
-
-      <ConfirmDialog
-        isOpen={pendingPisoId !== null}
-        onConfirm={() => { void confirmar(); }}
-        onCancel={() => setPendingPisoId(null)}
-        title="Eliminar piso decorativo"
-        message="¿Querés eliminar este parche del piso? Esta acción no se puede deshacer."
-        confirmLabel="Eliminar"
-        cancelLabel="Cancelar"
-        confirmVariant="danger"
-        loading={borrando}
-      />
     </>
   );
 };

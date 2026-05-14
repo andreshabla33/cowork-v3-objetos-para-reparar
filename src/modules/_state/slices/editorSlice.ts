@@ -67,6 +67,15 @@ export interface EditorSlice {
    * escape hatch para casos especiales.
    */
   decorativeFloorStencilId: StencilPisoId;
+  /**
+   * Id del piso decorativo pendiente de confirmación de borrado.
+   * Lo setean los click handlers DENTRO del `<Canvas>` R3F. Lo consume un
+   * host HTML rendered como sibling del Canvas (donde sí puede vivir un
+   * `<ConfirmDialog>` con `<h2>` etc.). null = sin diálogo abierto.
+   * Bridge necesaria porque el reconciler de R3F no soporta react-dom
+   * createPortal: el JSX HTML del Modal explota al procesarse adentro.
+   */
+  pisoDecorativoPendingDeleteId: string | null;
 
   setIsEditMode: (val: boolean) => void;
   setModoEdicionObjeto: (modo: ModoEdicionObjeto) => void;
@@ -97,6 +106,8 @@ export interface EditorSlice {
 
   /** Cambia el stencil activo (tamaño preset o `custom` para drag libre). */
   setDecorativeFloorStencilId: (id: StencilPisoId) => void;
+  /** Pide confirmación de borrado de un piso decorativo (null = cerrar). */
+  setPisoDecorativoPendingDeleteId: (id: string | null) => void;
 }
 
 export const createEditorSlice: StateCreator<EditorSlice, [], [], EditorSlice> = (set) => ({
@@ -114,6 +125,7 @@ export const createEditorSlice: StateCreator<EditorSlice, [], [], EditorSlice> =
   isPaintingDecorativeFloor: false,
   decorativeFloorZonaId: null,
   decorativeFloorStencilId: STENCIL_DEFAULT,
+  pisoDecorativoPendingDeleteId: null,
 
   setIsEditMode: (val) =>
     set({
@@ -191,4 +203,6 @@ export const createEditorSlice: StateCreator<EditorSlice, [], [], EditorSlice> =
     }),
 
   setDecorativeFloorStencilId: (id) => set({ decorativeFloorStencilId: id }),
+
+  setPisoDecorativoPendingDeleteId: (id) => set({ pisoDecorativoPendingDeleteId: id }),
 });
