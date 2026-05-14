@@ -12,6 +12,7 @@
 
 import React, { useMemo } from 'react';
 import { DeskAreaOverlay } from './DeskAreaOverlay';
+import { DeskAreasInstancedFill } from './DeskAreasInstancedFill';
 import type { AreaEscritorio } from '@/src/core/domain/entities/espacio3d/AreaEscritorio';
 import type { ResultadoMutacionAreaEscritorio } from '@/src/core/domain/ports/IAreaEscritorioRepository';
 import type { User } from '@/types';
@@ -48,6 +49,13 @@ export const DeskAreasLayer: React.FC<DeskAreasLayerProps> = ({
 
   return (
     <>
+      {/* 1 InstancedMesh para TODOS los rellenos (N áreas → 1 draw call).
+          Reemplaza los N planos individuales que cada DeskAreaOverlay
+          renderizaba antes. */}
+      <DeskAreasInstancedFill areas={areas} miUsuarioId={miUsuarioId} />
+
+      {/* Por área: borde lineLoop + HTML labels/tooltips + hover state.
+          (El mesh fill se delegó a DeskAreasInstancedFill arriba). */}
       {areas.map((area) => {
         const ocupanteId = area.reclamado_por_usuario_id ?? area.asignado_a_usuario_id;
         const ocupante = ocupanteId ? usuariosPorId.get(ocupanteId) : null;

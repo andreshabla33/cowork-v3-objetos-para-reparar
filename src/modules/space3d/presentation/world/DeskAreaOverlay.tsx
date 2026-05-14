@@ -139,7 +139,7 @@ export const DeskAreaOverlay: React.FC<DeskAreaOverlayProps> = ({
   });
 
   // ─── Geometría memoizada (line loop del borde) ─────────────────────────
-  const planeArgs: [number, number] = useMemo(() => [ancho, alto], [ancho, alto]);
+  // planeArgs eliminado: el relleno ya no se renderiza acá (DeskAreasInstancedFill).
   const lineGeo = useMemo(() => {
     const halfW = ancho / 2;
     const halfH = alto / 2;
@@ -161,21 +161,10 @@ export const DeskAreaOverlay: React.FC<DeskAreaOverlayProps> = ({
 
   return (
     <group position={[centroX, 0.02, centroZ]}>
-      {/* Relleno semitransparente sobre el piso */}
-      <mesh
-        rotation={[-Math.PI / 2, 0, 0]}
-        userData={{ batchCategory: 'desk-area-overlay' }}
-      >
-        <planeGeometry args={planeArgs} />
-        <meshBasicMaterial
-          name="desk-area-fill"
-          color={paleta.relleno}
-          transparent
-          opacity={paleta.rellenoOpacidad}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
+      {/* El RELLENO ahora es renderizado por DeskAreasInstancedFill
+          (1 InstancedMesh para todas las áreas → 1 draw call total).
+          Este overlay mantiene SOLO borde + labels HTML + tooltip.
+          Ver src/modules/space3d/presentation/world/DeskAreasInstancedFill.tsx */}
 
       {/* Borde del rectángulo (line loop) */}
       <lineLoop geometry={lineGeo}>
