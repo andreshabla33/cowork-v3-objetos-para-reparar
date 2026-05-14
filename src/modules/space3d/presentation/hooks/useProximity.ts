@@ -129,7 +129,9 @@ export function useProximity(params: {
 
   useEffect(() => {
     if (isHydrated) return;
-    // (a) Hidratación por validez: coords salieron del sentinel (0,0).
+    // (a) Hidratación por ECS: stableProximityCoords (derivado de currentUserEcs)
+    // salió del sentinel (0,0). Path canónico cuando el ECS emite el primer
+    // snapshot real.
     if (stableProximityCoords.x !== 0 || stableProximityCoords.y !== 0) {
       setIsHydrated(true);
       log.info('Proximity hydrated via valid coords', {
@@ -141,8 +143,25 @@ export function useProximity(params: {
 
   useEffect(() => {
     if (isHydrated) return;
+    // (a') Fast-path: hidratación por spawn persistido (currentUser desde
+    // workspace/auth, NO mezclado con ECS). Cubre el race observado 2026-05-14
+    // donde el ECS emite (0,0) inicial antes del primer snapshot real → el
+    // path (a) quedaba esperando hasta caer al grace period (b).
+    // currentUser viene del workspace store con spawn_x/spawn_y persistido en DB.
+    if (currentUser.x !== 0 || currentUser.y !== 0) {
+      setIsHydrated(true);
+      log.info('Proximity hydrated via currentUser spawn (pre-ECS)', {
+        x: currentUser.x,
+        y: currentUser.y,
+      });
+    }
+  }, [currentUser.x, currentUser.y, isHydrated]);
+
+  useEffect(() => {
+    if (isHydrated) return;
     // (b) Safety-net grace period: 5s. Cubre el edge case donde el spawn
-    // legítimamente es (0,0) o donde la hidratación por coords nunca llega.
+    // legítimamente es (0,0) Y el ECS también es (0,0). Triggered solo si
+    // ni (a) ni (a') hidratan antes.
     const timer = setTimeout(() => {
       setIsHydrated(true);
       log.info('Proximity hydrated via grace period (5000ms safety net)');
