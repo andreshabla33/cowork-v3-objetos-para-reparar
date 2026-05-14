@@ -637,7 +637,12 @@ export function usePresenceChannels({
         })
         .on('presence', { event: 'leave' }, (payload) => {
           const keys = Object.keys(payload.leftPresences || {});
-          log.info('Global channel presence:leave event', { channelName: globalChannelName, keys });
+          // Supabase docs: "During a sync event, you may receive join and leave
+          // events simultaneously, even though no users are actually joining or
+          // leaving. This is expected behavior—Presence reconciles its local
+          // state with the server state." → log.debug, no log.info.
+          // Ref: https://supabase.com/docs/guides/realtime/presence
+          log.debug('Global channel presence:leave event', { channelName: globalChannelName, keys });
           recalcularUsuarios();
         })
         .subscribe(async (status: string) => {
@@ -729,7 +734,9 @@ export function usePresenceChannels({
           })
           .on('presence', { event: 'leave' }, (payload) => {
             const keys = Object.keys(payload.leftPresences || {});
-            log.info('Chunk channel presence:leave event', { channelName: canalNombre, keys });
+            // Spurious leave events durante sync — coherente con join/sync que
+            // ya están en log.debug. Ref Supabase docs realtime presence.
+            log.debug('Chunk channel presence:leave event', { channelName: canalNombre, keys });
             recalcularUsuarios();
           })
           .subscribe(async (status: string) => {
