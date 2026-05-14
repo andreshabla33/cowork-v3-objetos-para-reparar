@@ -392,7 +392,7 @@ export function useCalendarPanel(): UseCalendarPanelReturn {
         try {
           const googleEvent = await googleCalendar.createEvent({
             summary: newMeeting.titulo.trim(),
-            description: newMeeting.descripcion.trim() || 'Reunión creada en Cowork Virtual',
+            description: newMeeting.descripcion.trim() || 'Reunión creada en urpeverso',
             start: fechaInicio.toISOString(),
             end: fechaFin.toISOString(),
             attendees: newMeeting.participantes.length > 0 ? [] : undefined, // TODO: fetch emails

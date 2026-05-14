@@ -82,9 +82,9 @@ export const ScheduledMeetings: React.FC<ScheduledMeetingsProps> = ({ onJoinMeet
     // Crear evento en Google Calendar si está conectado
     if (googleConnected) {
       try {
-        const descripcionCompleta = newMeeting.descripcion.trim() 
-          ? `${newMeeting.descripcion.trim()}\n\n---\nReunión creada en Cowork Virtual`
-          : 'Reunión creada en Cowork Virtual';
+        const descripcionCompleta = newMeeting.descripcion.trim()
+          ? `${newMeeting.descripcion.trim()}\n\n---\nReunión creada en urpeverso`
+          : 'Reunión creada en urpeverso';
 
         const googleEvent = await googleCalendar.createEvent({
           summary: newMeeting.titulo.trim(),

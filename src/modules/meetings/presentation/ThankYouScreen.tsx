@@ -31,7 +31,7 @@ export const ThankYouScreen: React.FC<ThankYouScreenProps> = ({ onClose }) => (
       >
         Cerrar
       </button>
-      <p className="text-white/30 text-xs mt-8">Powered by Cowork</p>
+      <p className="text-white/30 text-xs mt-8">Powered by urpeverso</p>
     </div>
   </div>
 );

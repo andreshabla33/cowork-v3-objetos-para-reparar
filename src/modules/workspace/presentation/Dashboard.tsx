@@ -189,9 +189,9 @@ interface DashboardHeaderProps {
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({ userName, onSignOut }) => (
   <header className="ag-anim-up flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
     <div className="flex items-center gap-4">
-      <div className="ag-logo" aria-hidden="true">C</div>
+      <div className="ag-logo" aria-hidden="true">U</div>
       <div>
-        <span className="ag-eyebrow">Cowork · Aurora</span>
+        <span className="ag-eyebrow">urpeverso · Aurora</span>
         <h1 className="ag-h1">
           Hola, <span style={{ color: 'var(--cw-blue-600)' }}>{userName}</span>
         </h1>

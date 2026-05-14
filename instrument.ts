@@ -27,7 +27,7 @@ if (dsn) {
   Sentry.init({
     dsn,
     environment,
-    release: release ? `cowork@${release}` : undefined,
+    release: release ? `urpeverso@${release}` : undefined,
 
     // Enviar PII por defecto (IP, user agent) — facilita debugging de freezes
     sendDefaultPii: true,

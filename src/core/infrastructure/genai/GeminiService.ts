@@ -10,7 +10,7 @@ const SUPABASE_ANON_KEY = CONFIG_PUBLICA_APP.claveAnonSupabase;
 const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/monica-ai-proxy`;
 
 
-const SYSTEM_PROMPT = (context: any) => `Eres Mónica, la asistente de IA del espacio de trabajo virtual "Cowork".
+const SYSTEM_PROMPT = (context: any) => `Eres Mónica, la asistente de IA del espacio de trabajo virtual "urpeverso".
 
 Contexto del usuario actual:
 - Nombre: ${context.userName}

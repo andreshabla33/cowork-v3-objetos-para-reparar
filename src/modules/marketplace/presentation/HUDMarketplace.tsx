@@ -40,7 +40,7 @@ export const HUDMarketplace: React.FC<HUDMarketplaceProps> = ({
         </button>
         <div className="px-4 py-2.5 bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl">
           <h1 className="text-sm font-black text-white tracking-tight">
-            <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">Cowork</span>
+            <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">urpeverso</span>
             <span className="text-zinc-400 font-normal ml-1.5">Marketplace</span>
           </h1>
         </div>

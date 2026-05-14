@@ -139,7 +139,7 @@ export const googleCalendar = {
     // Construir descripción con link de videollamada interno
     let descripcionFinal = event.description || '';
     if (event.meetingLink) {
-      const linkSection = `\n\n🎥 UNIRSE A LA VIDEOLLAMADA:\n${event.meetingLink}\n\n(Esta reunión usa la sala de videollamada de Cowork Virtual con grabación y análisis AI)`;
+      const linkSection = `\n\n🎥 UNIRSE A LA VIDEOLLAMADA:\n${event.meetingLink}\n\n(Esta reunión usa la sala de videollamada de urpeverso con grabación y análisis AI)`;
       descripcionFinal = descripcionFinal + linkSection;
     }
     
