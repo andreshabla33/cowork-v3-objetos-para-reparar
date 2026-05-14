@@ -231,6 +231,25 @@ export function useNavigation(params: UseNavigationParams): UseNavigationReturn 
     localPositionRef.current = localPosition;
   }, [localPosition]);
 
+  // Snapshot ref para espacioObjetos. CRÍTICO: si esto estuviera en el dep
+  // array del build effect, agregar/quitar UN solo obstáculo dispararía un
+  // FULL REBUILD del navmesh (dispose + build + addAgent → setState →
+  // re-render → nueva ref de espacioObjetos → loop infinito).
+  //
+  // Bug observado 2026-05-14 al colocar una silla: storm de 32 rebuilds en 8s
+  // (agent-90 → agent-121). Cada iteración recreaba el agent en posición
+  // potencialmente stale → camera follow drifteaba → frustum cull 100% →
+  // pantalla negra + avatar congelado.
+  //
+  // Fix: el build effect snapshot via ref el contenido actual. Los add/remove
+  // incrementales viven en el effect §3 (diff sync) que SÍ tiene espacioObjetos
+  // como dep — pero solo llama addObstacle/removeObstacle (incremental, sin
+  // rebuild ni dispose).
+  const espacioObjetosRef = useRef(espacioObjetos);
+  useEffect(() => {
+    espacioObjetosRef.current = espacioObjetos;
+  }, [espacioObjetos]);
+
   useEffect(() => {
     if (!service || !initialized || !terrainBounds) {
       setBuilt(false);
@@ -238,7 +257,7 @@ export function useNavigation(params: UseNavigationParams): UseNavigationReturn 
       return;
     }
     const walkable = buildPlanarWalkableSurface(terrainBounds);
-    const allObstaculos = espacioObjetos.map((o) =>
+    const allObstaculos = espacioObjetosRef.current.map((o) =>
       mapEspacioObjetoAObstaculo(o, terrainBounds.y),
     );
 
@@ -289,7 +308,7 @@ export function useNavigation(params: UseNavigationParams): UseNavigationReturn 
       service.removeAgent(agentId);
       setLocalAgentId(null);
     };
-  }, [initialized, terrainBounds, espacioObjetos, service]);
+  }, [initialized, terrainBounds, service]);
 
   // ─── 3. Sync diferencial de obstáculos (admin coloca/quita muebles) ───────
   // Se ejecuta cuando ya hay navmesh built y la lista de objetos cambia.
