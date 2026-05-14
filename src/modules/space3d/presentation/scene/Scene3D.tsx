@@ -51,6 +51,7 @@ import type { ObjetoColocable, Rayo } from '@/src/core/domain/entities/espacio3d
 import { useConfiguracionPerimetro } from '@/modules/space3d/presentation/hooks/useConfiguracionPerimetro';
 import { useTerreno } from '@/modules/space3d/presentation/hooks/useTerreno';
 import { Terrain3D } from './Terrain3D';
+import { ShaderPrecompile } from './ShaderPrecompile';
 import { EmoteSync, useSyncEffects } from '@/modules/space3d/presentation/world/EmoteSync';
 import { hapticFeedback, isMobileDevice } from '@/core/infrastructure/platform/mobileDetect';
 import type { CameraMode } from '@/src/core/domain/entities/espacio3d/CameraFramingPolicy';
@@ -1298,6 +1299,13 @@ export const Scene: React.FC<SceneProps> = ({
         centro={playerColliderPositionRef.current}
       />
       */}
+
+      {/* Pre-compila shaders/programas WebGL upfront para eliminar lag
+          inicial (~5-8s en GPU integrada / ANGLE D3D11). Montado al final
+          del árbol para que TODOS los componentes hijos hayan registrado
+          sus materiales antes del compileAsync.
+          Ref: https://threejs.org/docs/#api/en/renderers/WebGLRenderer.compileAsync */}
+      <ShaderPrecompile />
     </>
   );
 };
