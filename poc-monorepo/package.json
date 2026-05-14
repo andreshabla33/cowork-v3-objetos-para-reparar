@@ -1,0 +1,16 @@
+{
+  "name": "cowork-monorepo-poc",
+  "version": "0.0.1",
+  "private": true,
+  "description": "POC para validar arquitectura monorepo Cowork v3.7 con app 2D en Phaser.",
+  "scripts": {
+    "dev:2d": "pnpm --filter cowork-2d dev",
+    "build:2d": "pnpm --filter cowork-2d build",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
+  },
+  "packageManager": "pnpm@10.33.2"
+}
