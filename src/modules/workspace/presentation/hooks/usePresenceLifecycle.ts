@@ -27,6 +27,7 @@
 import { useEffect, useRef } from 'react';
 import type { User } from '@/types';
 import { logger } from '@/core/infrastructure/observability/logger';
+import type { ForceRetrackReason } from './usePresenceChannels';
 
 const log = logger.child('presence-lifecycle');
 
@@ -71,7 +72,7 @@ interface UsePresenceLifecycleParams {
   currentUser: User;
   syncPresenceByChunk: (options?: { force?: boolean }) => void;
   updatePresenceInChannels: (nivel: 'publico' | 'empresa') => Promise<void>;
-  forceRetrackAll: () => void;
+  forceRetrackAll: (reason: ForceRetrackReason) => void;
   cleanup: () => void;
   /**
    * Inspects channels for dead states and purges them.
@@ -159,7 +160,7 @@ export function usePresenceLifecycle({
     if (currentUser.x === 0 && currentUser.y === 0) return;
     positionHydratedRef.current = true;
     syncPresenceByChunk({ force: true });
-    forceRetrackAll();
+    forceRetrackAll('position-hydrated');
   }, [activeWorkspaceId, userId, currentUser.x, currentUser.y, syncPresenceByChunk, forceRetrackAll]);
 
   // ── 3. Force re-track when empresa_id loads for the first time ────────
@@ -168,7 +169,7 @@ export function usePresenceLifecycle({
   useEffect(() => {
     if (currentUser.empresa_id && !empresaIdLoadedRef.current) {
       empresaIdLoadedRef.current = true;
-      const timer = setTimeout(() => forceRetrackAll(), 500);
+      const timer = setTimeout(() => forceRetrackAll('empresa-id-loaded'), 500);
       return () => clearTimeout(timer);
     }
     if (!currentUser.empresa_id) {
@@ -227,7 +228,7 @@ export function usePresenceLifecycle({
   // Ref: Supabase Presence — "track(): Send presence to the channel."
   useEffect(() => {
     if (!activeWorkspaceId || !userId) return;
-    const interval = setInterval(forceRetrackAll, PRESENCE_REFRESH_MS);
+    const interval = setInterval(() => forceRetrackAll('keep-alive'), PRESENCE_REFRESH_MS);
     return () => clearInterval(interval);
   }, [activeWorkspaceId, userId, forceRetrackAll]);
 }

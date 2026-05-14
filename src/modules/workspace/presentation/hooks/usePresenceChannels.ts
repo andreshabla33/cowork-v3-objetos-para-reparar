@@ -109,6 +109,13 @@ const ERRORED_CHANNEL_PURGE_THRESHOLD_MS = 20_000;
  */
 const STALE_PRESENCE_MS = 60_000;
 
+/**
+ * Razones por las que se invoca `forceRetrackAll`. Discriminated union para
+ * que los logs en producción reflejen el call site real (antes el mensaje
+ * decía siempre "empresa_id change" aunque fuera keep-alive).
+ */
+export type ForceRetrackReason = 'empresa-id-loaded' | 'position-hydrated' | 'keep-alive';
+
 interface UsePresenceChannelsProps {
   activeWorkspaceId: string | undefined;
   userId: string | undefined;
@@ -127,7 +134,7 @@ interface UsePresenceChannelsReturn {
    */
   syncPresenceByChunk: (options?: { force?: boolean }) => void;
   updatePresenceInChannels: (nivelDetalle: 'publico' | 'empresa') => Promise<void>;
-  forceRetrackAll: () => void;
+  forceRetrackAll: (reason: ForceRetrackReason) => void;
   cleanup: () => void;
   /**
    * Inspects all presence channels and purges any in dead states
@@ -811,18 +818,21 @@ export function usePresenceChannels({
   /**
    * Force re-track in ALL joined channels, bypassing the throttle.
    *
-   * Casos de uso:
-   *  1. empresa_id loads: garantiza payloads con empresa_id correcta sin esperar
-   *     al próximo update throttled.
-   *  2. Keep-alive periódico (usePresenceLifecycle, 45s) para refrescar
-   *     `last_seen` y evitar que peers nos marquen como ghost (umbral 60s).
+   * Casos de uso (pasar via `reason` para que los logs lo reflejen):
+   *  1. `empresa-id-loaded`: empresa_id se cargó por primera vez → garantiza
+   *     payloads con empresa_id correcta sin esperar al próximo update throttled.
+   *  2. `position-hydrated`: la posición inicial del avatar quedó establecida →
+   *     primer track con coords reales (no sentinel 0,0).
+   *  3. `keep-alive`: refresh periódico (usePresenceLifecycle, 45s) para
+   *     refrescar `last_seen` y evitar que peers nos marquen como ghost
+   *     (umbral 60s).
    *
    * NOTE: cada track() genera nuevo presence_ref server-side → fire LEAVE del
    * ref previo en cada channel. Por eso el interval es 45s (no más frecuente);
    * con N=15 channels eso es ~0.3 tracks/seg. Iter previo con 5s saturó canales.
    * Ref: realtime-js RealtimePresence.ts ~L290 (filter presenceRefsToRemove).
    */
-  const forceRetrackAll = useCallback((): void => {
+  const forceRetrackAll = useCallback((reason: ForceRetrackReason): void => {
     if (!userId) return;
     lastTrackRef.current = Date.now();
     // Re-track chunk-based channels
@@ -840,7 +850,7 @@ export function usePresenceChannels({
     }
     // Force recalculation with updated empresa_id
     recalcularUsuarios();
-    log.info('Force re-tracked all channels after empresa_id change');
+    log.info('Force re-tracked all channels', { reason });
   }, [userId, trackPresenceEnCanal, recalcularUsuarios]);
 
   /**
