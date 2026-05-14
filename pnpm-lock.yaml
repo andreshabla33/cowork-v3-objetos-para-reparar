@@ -27,7 +27,7 @@ importers:
         specifier: ^10.7.7
         version: 10.7.7(@react-three/fiber@9.6.1(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(three@0.183.2))(@types/react@19.2.14)(@types/three@0.183.1)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(three@0.183.2)
       '@react-three/fiber':
-        specifier: ^9.5.0
+        specifier: ^9.6.1
         version: 9.6.1(@types/react@19.2.14)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(three@0.183.2)
       '@react-three/rapier':
         specifier: ^2.2.0
