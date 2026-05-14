@@ -162,9 +162,13 @@ export const DeskAreaOverlay: React.FC<DeskAreaOverlayProps> = ({
   return (
     <group position={[centroX, 0.02, centroZ]}>
       {/* Relleno semitransparente sobre el piso */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        userData={{ batchCategory: 'desk-area-overlay' }}
+      >
         <planeGeometry args={planeArgs} />
         <meshBasicMaterial
+          name="desk-area-fill"
           color={paleta.relleno}
           transparent
           opacity={paleta.rellenoOpacidad}

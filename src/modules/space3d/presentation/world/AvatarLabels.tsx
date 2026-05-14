@@ -194,8 +194,9 @@ const AvatarLabel: React.FC<AvatarLabelProps> = React.memo(({ label }) => {
           <mesh
             position={[label.name.length * 0.08 + 0.05, 0, 0]}
             geometry={statusDotGeometry}
+            userData={{ batchCategory: 'avatar-status-dot' }}
           >
-            <meshBasicMaterial color={statusColor} />
+            <meshBasicMaterial name="avatar-status-dot" color={statusColor} />
           </mesh>
         </group>
 

@@ -40,7 +40,7 @@ export type SceneBreakdown = Record<string, CategoriaMeshes>;
  *   4. fallback por tipo (SkinnedMesh → avatar, InstancedMesh → instanced)
  */
 function detectarCategoria(mesh: THREE.Mesh): string {
-  // Por material.name (los adapters setean este campo)
+  // 1. material.name con prefijos conocidos (adapters setean este campo)
   const materialName = Array.isArray(mesh.material)
     ? mesh.material[0]?.name
     : mesh.material?.name;
@@ -49,13 +49,15 @@ function detectarCategoria(mesh: THREE.Mesh): string {
     if (materialName.startsWith('floor:')) return 'floor';
     if (materialName.startsWith('wall-')) return 'wall';
     if (materialName.startsWith('gltf-')) return 'gltf-batched';
+    if (materialName === 'desk-area-fill') return 'desk-area-overlay';
+    if (materialName === 'avatar-status-dot') return 'avatar-status-dot';
   }
 
-  // Por userData.batchCategory (si los adapters lo marcan)
+  // 2. userData.batchCategory (marcado por componentes específicos)
   const userCat = mesh.userData?.batchCategory;
   if (typeof userCat === 'string') return userCat;
 
-  // Por mesh.name patterns
+  // 3. mesh.name patterns
   const name = mesh.name?.toLowerCase() ?? '';
   if (name.includes('avatar')) return 'avatar';
   if (name.includes('sky') || name.includes('dome')) return 'sky-dome';
@@ -64,19 +66,51 @@ function detectarCategoria(mesh: THREE.Mesh): string {
   if (name.includes('helper') || name.includes('grid')) return 'helper';
   if (name.includes('logo')) return 'logo-plane';
 
-  // Por tipo
+  // 4. Detección por tipo de mesh
   if ((mesh as THREE.SkinnedMesh).isSkinnedMesh) return 'skinned-avatar';
   if ((mesh as THREE.InstancedMesh).isInstancedMesh) return 'instanced-other';
   if ((mesh as THREE.BatchedMesh).isBatchedMesh) return 'batched-other';
 
+  // 5. Troika Text (drei <Text>): el mesh interno expone isTroikaText
+  if ((mesh as unknown as { isTroikaText?: boolean }).isTroikaText) {
+    return 'troika-text';
+  }
+
+  // 6. Fallback con geometry.type para diagnóstico granular
+  // (ej. "plane-uncategorized", "sphere-uncategorized", "buffer-uncategorized")
+  // — más informativo que "uncategorized" sin agregar nuevas categorías
+  // semánticas. Si una categoría crece mucho, se debe etiquetar el componente.
+  const geomType = mesh.geometry?.type ?? '';
+  if (geomType === 'PlaneGeometry') return 'plane-uncategorized';
+  if (geomType === 'SphereGeometry') return 'sphere-uncategorized';
+  if (geomType === 'BoxGeometry') return 'box-uncategorized';
+  if (geomType === 'CylinderGeometry') return 'cylinder-uncategorized';
+  if (geomType === 'BufferGeometry') return 'buffer-uncategorized';
+
   return 'uncategorized';
 }
 
-function contarTriangulos(geometry: THREE.BufferGeometry, instances: number): number {
+/**
+ * Cuenta triángulos según el tipo de mesh.
+ *
+ * - InstancedMesh: geometry es per-instance → triangles = (verts/3) × instances.
+ * - BatchedMesh: geometry YA contiene todos los sub-meshes batched
+ *   (Three.js r183 docs confirm) → triangles = verts/3, NO multiplicar.
+ *   Ref: https://threejs.org/docs/#api/en/objects/BatchedMesh
+ * - Mesh normal: instances=1 trivialmente.
+ */
+function contarTriangulos(
+  geometry: THREE.BufferGeometry,
+  instances: number,
+  isBatched: boolean,
+): number {
   const indexCount = geometry.index?.count ?? 0;
   const posCount = geometry.attributes.position?.count ?? 0;
   const verts = indexCount > 0 ? indexCount : posCount;
-  return Math.floor((verts / 3) * Math.max(1, instances));
+  // BatchedMesh: geometry total ya contempla todas las sub-meshes batched.
+  // NO multiplicar por instances (causaría overflow ej. 142M triangles).
+  const multiplier = isBatched ? 1 : Math.max(1, instances);
+  return Math.floor((verts / 3) * multiplier);
 }
 
 /**
@@ -101,16 +135,18 @@ export function categorizarMeshesEnEscena(scene: THREE.Object3D): SceneBreakdown
 
     const instancedMesh = mesh as THREE.InstancedMesh;
     const batchedMesh = mesh as THREE.BatchedMesh;
+    const isBatched = batchedMesh.isBatchedMesh === true;
+    const isInstanced = instancedMesh.isInstancedMesh === true;
 
-    const instances = instancedMesh.isInstancedMesh
+    const instances = isInstanced
       ? instancedMesh.count
-      : batchedMesh.isBatchedMesh
+      : isBatched
         ? batchedMesh.instanceCount ?? 1
         : 1;
 
     entry.meshes += 1;
     entry.instances += instances;
-    entry.triangles += contarTriangulos(mesh.geometry, instances);
+    entry.triangles += contarTriangulos(mesh.geometry, instances, isBatched);
     // 1 draw call por mesh visible: instanced + batched colapsan en 1.
     entry.estDrawCalls += 1;
 
