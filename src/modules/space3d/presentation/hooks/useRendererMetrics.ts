@@ -147,6 +147,25 @@ export const useRendererMetrics = ({
     const resultadoFrame = evaluarFrameRenderer(gl, gpuTier, scene);
     const metricas = resultadoFrame.metricas;
 
+    // ── Test instrumentation ─────────────────────────────────────────
+    // Exponer métricas al window global para que Playwright / DevTools
+    // CDP pueda hacer assertions automáticos. Solo en dev/staging — en
+    // producción no se expone para no añadir attack surface.
+    // Ref: scripts/stress-iris-xe.ts + tests/stress/fase3-playwright/
+    if (typeof window !== 'undefined' && import.meta.env.MODE !== 'production') {
+      (window as Window & { __cowork_metrics?: unknown }).__cowork_metrics = {
+        calls: metricas.drawCalls,
+        triangles: metricas.triangulos,
+        geometries: metricas.geometrias,
+        textures: metricas.texturas,
+        programs: metricas.programas,
+        sceneObjects: metricas.objetosEscena,
+        gpuTier: metricas.gpuTier,
+        dpr: adaptiveDpr ?? 1,
+        ts: ahora,
+      };
+    }
+
     // ── Application: sliding-window stability decision ──────────────
     const muestra: MuestraRenderizado = {
       metricas,

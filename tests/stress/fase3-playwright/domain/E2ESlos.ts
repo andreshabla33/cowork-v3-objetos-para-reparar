@@ -30,6 +30,12 @@ export interface JourneyResult {
     readonly moveParticipantSucceeded: number;
     readonly fpsP99: number;
     readonly ghostCleanupDetectedMs: number | null;
+    /** Draw calls P99 sampleado desde window.__cowork_metrics. */
+    readonly drawCallsP99?: number;
+    /** JS heap usado P99 en MB (Performance.getMetrics CDP). */
+    readonly jsHeapMbP99?: number;
+    /** Time-to-scene-ready en ms desde canvas creado. */
+    readonly sceneReadyMs?: number;
   };
 }
 
@@ -39,6 +45,14 @@ export interface E2ESlos {
   readonly minMoveParticipantRate: number;
   readonly minFpsP99Desktop: number;
   readonly minFpsP99Laptop: number;
+  /** SLO iris-xe: peor caso documentado en logs (Intel Iris Xe + ANGLE). */
+  readonly minFpsP99IrisXe: number;
+  /** Draw calls P99 máximo permitido (cualquier perfil). */
+  readonly maxDrawCallsP99: number;
+  /** JS heap usado máximo en MB. */
+  readonly maxJsHeapMb: number;
+  /** Tiempo a "scene ready" en ms (desde canvas creado). */
+  readonly maxSceneReadyMs: number;
   readonly maxGhostCleanupMs: number;
 }
 
@@ -48,6 +62,10 @@ export const DEFAULT_E2E_SLOS: E2ESlos = {
   minMoveParticipantRate: 0.98,
   minFpsP99Desktop: 40,
   minFpsP99Laptop: 25,
+  minFpsP99IrisXe: 22, // baseline real medido en logs Iris Xe — margen pequeño
+  maxDrawCallsP99: 200, // sale de zona alerta (umbral interno renderer-metrics)
+  maxJsHeapMb: 500,
+  maxSceneReadyMs: 4_000,
   maxGhostCleanupMs: 5_000,
 };
 
@@ -58,18 +76,30 @@ export interface E2EVerdict {
   readonly passedJourneys: number;
 }
 
+export type HardwareProfile = 'desktop' | 'laptop' | 'iris-xe';
+
+function resolveMinFps(slos: E2ESlos, profile: HardwareProfile): number {
+  if (profile === 'iris-xe') return slos.minFpsP99IrisXe;
+  if (profile === 'laptop') return slos.minFpsP99Laptop;
+  return slos.minFpsP99Desktop;
+}
+
 /** Evalúa múltiples journeys agregados contra los SLOs. Pure function. */
 export function evaluateE2EAggregate(
   journeys: readonly JourneyResult[],
   slos: E2ESlos,
-  isLaptopProfile: boolean,
+  isLaptopProfile: boolean | HardwareProfile,
 ): E2EVerdict {
   const reasons: string[] = [];
   if (journeys.length === 0) {
     return { pass: false, reasons: ['no_journeys_executed'], totalJourneys: 0, passedJourneys: 0 };
   }
 
-  const minFps = isLaptopProfile ? slos.minFpsP99Laptop : slos.minFpsP99Desktop;
+  // Backwards-compat: si recibe boolean usa el comportamiento previo.
+  const profile: HardwareProfile = typeof isLaptopProfile === 'boolean'
+    ? (isLaptopProfile ? 'laptop' : 'desktop')
+    : isLaptopProfile;
+  const minFps = resolveMinFps(slos, profile);
 
   let chatAttempts = 0;
   let chatSucceeded = 0;
@@ -77,6 +107,9 @@ export function evaluateE2EAggregate(
   let moveSucceeded = 0;
   let roomConnectedViolations = 0;
   let fpsViolations = 0;
+  let dcViolations = 0;
+  let heapViolations = 0;
+  let sceneReadyViolations = 0;
   let ghostCleanupViolations = 0;
   let journeysAllStepsOk = 0;
 
@@ -92,6 +125,18 @@ export function evaluateE2EAggregate(
     }
     if (j.observedMetrics.fpsP99 > 0 && j.observedMetrics.fpsP99 < minFps) {
       fpsViolations++;
+    }
+    if (j.observedMetrics.drawCallsP99 !== undefined &&
+        j.observedMetrics.drawCallsP99 > slos.maxDrawCallsP99) {
+      dcViolations++;
+    }
+    if (j.observedMetrics.jsHeapMbP99 !== undefined &&
+        j.observedMetrics.jsHeapMbP99 > slos.maxJsHeapMb) {
+      heapViolations++;
+    }
+    if (j.observedMetrics.sceneReadyMs !== undefined &&
+        j.observedMetrics.sceneReadyMs > slos.maxSceneReadyMs) {
+      sceneReadyViolations++;
     }
     if (j.observedMetrics.ghostCleanupDetectedMs !== null &&
         j.observedMetrics.ghostCleanupDetectedMs > slos.maxGhostCleanupMs) {
@@ -113,7 +158,16 @@ export function evaluateE2EAggregate(
     reasons.push(`room_connected_slow_${roomConnectedViolations}_of_${journeys.length}`);
   }
   if (fpsViolations > 0) {
-    reasons.push(`fps_below_threshold_${fpsViolations}_of_${journeys.length}`);
+    reasons.push(`fps_below_${minFps}fps_${fpsViolations}_of_${journeys.length}_(profile:${profile})`);
+  }
+  if (dcViolations > 0) {
+    reasons.push(`draw_calls_above_${slos.maxDrawCallsP99}_in_${dcViolations}_of_${journeys.length}`);
+  }
+  if (heapViolations > 0) {
+    reasons.push(`js_heap_above_${slos.maxJsHeapMb}mb_in_${heapViolations}_of_${journeys.length}`);
+  }
+  if (sceneReadyViolations > 0) {
+    reasons.push(`scene_ready_slow_${sceneReadyViolations}_of_${journeys.length}`);
   }
   if (ghostCleanupViolations > 0) {
     reasons.push(`ghost_cleanup_slow_${ghostCleanupViolations}_of_${journeys.length}`);

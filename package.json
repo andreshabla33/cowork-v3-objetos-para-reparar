@@ -24,6 +24,7 @@
     "test:debug": "npx playwright test --debug",
     "test:report": "npx playwright show-report",
     "test:seed": "node tests/scripts/seed-test-users.mjs",
+    "test:stress:iris-xe": "tsx tests/stress/fase3-playwright/scripts/run-stress-iris-xe.ts",
     "assets:premerge-keyboard": "node --env-file=.env scripts/assets/premerge-glb.mjs --input Keyboard.glb --output Keyboard.merged.glb",
     "assets:premerge-keyboard:dry": "node --env-file=.env scripts/assets/premerge-glb.mjs --input Keyboard.glb --output Keyboard.merged.glb --dry-run",
     "assets:premerge-computer": "node --env-file=.env scripts/assets/premerge-glb.mjs --input \"Simple computer.glb\" --output \"Simple computer.merged.glb\"",
@@ -80,8 +81,10 @@
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.5.0",
     "jsdom": "^29.0.1",
+    "playwright": "^1.60.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.19",
+    "tsx": "^4.22.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "vitest": "^4.1.2"
