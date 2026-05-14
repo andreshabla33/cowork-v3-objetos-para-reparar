@@ -50,6 +50,15 @@ export interface EditorSlice {
   deskPlacerPosicion: { x: number; z: number } | null;
   paintFloorType: FloorType;
   plantillaZonaEnColocacion: PlantillaZonaEnColocacion | null;
+  /**
+   * Modo "Decorar piso" (Gather-style paint). Admin elige FloorType y
+   * arrastra un rectángulo sobre el suelo del espacio o dentro de una
+   * zona-empresa. Mientras `true`, el catch-plane captura drag para crear
+   * un piso decorativo.
+   */
+  isPaintingDecorativeFloor: boolean;
+  /** Si el modo está scopeado a una zona específica, su id; `null` = suelo principal. */
+  decorativeFloorZonaId: string | null;
 
   setIsEditMode: (val: boolean) => void;
   setModoEdicionObjeto: (modo: ModoEdicionObjeto) => void;
@@ -72,6 +81,11 @@ export interface EditorSlice {
   setPlantillaZonaEnColocacion: (plantilla: PlantillaZonaEnColocacion | null) => void;
   actualizarPosicionPlantillaZonaEnColocacion: (x: number, z: number) => void;
   clearPlantillaZonaEnColocacion: () => void;
+  /**
+   * Inicia/finaliza el modo "decorar piso". Si `zonaId` es `null` el painting
+   * se aplica al suelo principal; si es una zona-empresa, se confina a ella.
+   */
+  setIsPaintingDecorativeFloor: (val: boolean, zonaId?: string | null) => void;
 }
 
 export const createEditorSlice: StateCreator<EditorSlice, [], [], EditorSlice> = (set) => ({
@@ -86,6 +100,8 @@ export const createEditorSlice: StateCreator<EditorSlice, [], [], EditorSlice> =
   deskPlacerPosicion: null,
   paintFloorType: FloorType.CONCRETE_SMOOTH,
   plantillaZonaEnColocacion: null,
+  isPaintingDecorativeFloor: false,
+  decorativeFloorZonaId: null,
 
   setIsEditMode: (val) =>
     set({
@@ -155,4 +171,10 @@ export const createEditorSlice: StateCreator<EditorSlice, [], [], EditorSlice> =
     })),
 
   clearPlantillaZonaEnColocacion: () => set({ plantillaZonaEnColocacion: null }),
+
+  setIsPaintingDecorativeFloor: (val, zonaId = null) =>
+    set({
+      isPaintingDecorativeFloor: val,
+      decorativeFloorZonaId: val ? zonaId : null,
+    }),
 });

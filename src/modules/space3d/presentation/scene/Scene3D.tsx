@@ -27,6 +27,8 @@ import { useAreasEscritorio } from '@/modules/space3d/presentation/hooks/useArea
 import { DeskAreasLayer } from '@/modules/space3d/presentation/world/DeskAreasLayer';
 import { DeskPlacerPreview } from '@/modules/space3d/presentation/world/DeskPlacerPreview';
 import { SueloPrincipal3D } from '@/modules/space3d/presentation/world/SueloPrincipal3D';
+import { PisosDecorativos3D } from '@/modules/space3d/presentation/world/PisosDecorativos3D';
+import { PaintFloorMode3D } from '@/modules/space3d/presentation/world/PaintFloorMode3D';
 import { PRESET_DESK_STANDARD } from '@/src/core/domain/entities/espacio3d/PresetDesk';
 import {
   ajustarAGrilla,
@@ -1096,6 +1098,13 @@ export const Scene: React.FC<SceneProps> = ({
       {/* Suelo principal global — background fill del espacio (fuera de zonas).
           Lee `terreno.tipoSueloPrincipal` del adapter Supabase. */}
       <SueloPrincipal3D tipoSueloPrincipal={terrenoPersistido.tipoSueloPrincipal} />
+
+      {/* Pisos decorativos (alfombras/parches) — sobre suelo principal o dentro
+          de zonas-empresa. Y offset ~0.01 más z-order. */}
+      <PisosDecorativos3D espacioId={espacioIdPerimeter} />
+
+      {/* Capture-plane activo solo en modo "Decorar piso" (admin). */}
+      <PaintFloorMode3D espacioId={espacioIdPerimeter} />
 
       <Physics gravity={[0, 0, 0]}>
         <Terrain3D terreno={terrenoPersistido} />

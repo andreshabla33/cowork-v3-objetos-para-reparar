@@ -94,3 +94,7 @@ export {
   DEFAULT_SCENE_POLICY,
   resolveSkyColors,
 } from './ScenePolicy';
+
+// ─── Pisos decorativos ───────────────────────────────────────────────────────
+export type { PisoDecorativo, CrearPisoDecorativoInput } from './PisoDecorativo';
+export { PISO_DECORATIVO_Y_OFFSET } from './PisoDecorativo';

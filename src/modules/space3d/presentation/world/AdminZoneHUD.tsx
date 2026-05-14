@@ -30,6 +30,8 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
   const setIsDrawingZone = useStore((s) => s.setIsDrawingZone);
   const paintFloorType = useStore((s) => s.paintFloorType);
   const setPaintFloorType = useStore((s) => s.setPaintFloorType);
+  const isPaintingDecorativeFloor = useStore((s) => s.isPaintingDecorativeFloor);
+  const setIsPaintingDecorativeFloor = useStore((s) => s.setIsPaintingDecorativeFloor);
   const currentUser = useStore((s) => s.currentUser);
   
   const [nombre, setNombre] = useState('');
@@ -184,6 +186,15 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
   };
 
   const showModal = !!nuevaZona || !!zonaAEditar;
+
+  /** Activa el modo "Decorar piso" scopeado a la zona actual (si hay zonaAEditar) o al suelo principal. */
+  const handleTogglePaintDecorative = () => {
+    if (isPaintingDecorativeFloor) {
+      setIsPaintingDecorativeFloor(false);
+    } else {
+      setIsPaintingDecorativeFloor(true, zonaAEditar?.id ?? null);
+    }
+  };
 
   return (
     <>
@@ -342,7 +353,7 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
               >
                 CANCELAR
               </button>
-              <button 
+              <button
                 onClick={handleGuardar}
                 disabled={((anidamientoDecorativoForzado ? 'decorativo' : tipoSubsuelo) === 'organizacional' && !nombre.trim()) || isSaving || isDeleting}
                 className="flex-1 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
@@ -350,8 +361,81 @@ export const AdminZoneHUD: React.FC<AdminZoneHUDProps> = ({
                 {isSaving ? 'GUARDANDO...' : (zonaAEditar ? 'GUARDAR CAMBIOS' : 'CREAR ZONA')}
               </button>
             </div>
+
+            {/* Botón "Decorar piso" — solo en modo edición de zona existente. */}
+            {zonaAEditar && (
+              <button
+                onClick={() => {
+                  onLimpiarNuevaZona();
+                  setIsPaintingDecorativeFloor(true, zonaAEditar.id);
+                }}
+                className="w-full py-2 text-xs font-bold text-indigo-200 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-400/30 rounded-xl transition-all"
+              >
+                🎨 Decorar piso de esta zona
+              </button>
+            )}
           </div>
         </div>
+      )}
+
+      {/* Modo "Decorar piso" — selector flotante para elegir material + cancelar. */}
+      {isPaintingDecorativeFloor && (
+        <>
+          <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[390] flex flex-col gap-2 pointer-events-auto">
+            <button
+              onClick={() => setIsPaintingDecorativeFloor(false)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border font-semibold text-sm transition-all duration-200 shadow-lg bg-red-500/20 border-red-400 text-red-200"
+            >
+              <span className="text-lg">❌</span>
+              Cancelar decoración
+            </button>
+          </div>
+
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[390] animate-in fade-in slide-in-from-bottom pointer-events-auto">
+            <div className="bg-black/88 backdrop-blur-xl border border-indigo-500/30 px-5 py-4 rounded-2xl shadow-[0_0_30px_rgba(99,102,241,0.25)] flex flex-col gap-3" style={{ minWidth: 380 }}>
+              <div className="flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-pulse flex-shrink-0" />
+                <span className="text-indigo-100/90 font-medium text-sm">
+                  Elige material y arrastra para decorar el piso
+                </span>
+              </div>
+              <div className="flex flex-col gap-2 max-h-[40vh] overflow-y-auto pr-1">
+                {Object.entries(FLOOR_TYPE_CATEGORIES).map(([categoria, tipos]) => (
+                  <div key={categoria}>
+                    <p className="text-[9px] uppercase tracking-widest text-slate-500 font-bold mb-1.5">{categoria}</p>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {tipos.map((tipo) => {
+                        const swatch = FLOOR_SPECS[tipo].swatchColor;
+                        const label = FLOOR_TYPE_LABELS[tipo];
+                        const isSelected = paintFloorType === tipo;
+                        return (
+                          <button
+                            key={tipo}
+                            onClick={() => setPaintFloorType(tipo)}
+                            title={label}
+                            className={`flex flex-col items-center gap-1 px-2 py-1.5 rounded-xl border transition-all ${
+                              isSelected
+                                ? 'border-indigo-400 bg-indigo-500/25 shadow-[0_0_8px_rgba(99,102,241,0.5)]'
+                                : 'border-slate-700/50 bg-slate-800/40 hover:border-slate-500 hover:bg-slate-700/40'
+                            }`}
+                          >
+                            <div
+                              className="w-7 h-7 rounded-lg flex-shrink-0 border border-white/10"
+                              style={{ backgroundColor: swatch }}
+                            />
+                            <span className="text-[8px] text-slate-300 leading-tight max-w-[52px] text-center truncate">
+                              {label.split(' ')[0]}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </>
   );
