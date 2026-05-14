@@ -1198,8 +1198,44 @@ export const Player: React.FC<PlayerProps> = ({ currentUser, setPosition, stream
     const deltaMovimientoZ = positionRef.current.z - previousZ;
     const huboMovimientoReal = Math.abs(deltaMovimientoX) > 0.0001 || Math.abs(deltaMovimientoZ) > 0.0001;
 
-    if (huboMovimientoReal) {
-      newDirection = obtenerDireccionDesdeVector(deltaMovimientoX, deltaMovimientoZ, direccionActual as DireccionAvatar);
+    // ── Facing direction: INPUT INTENT > delta observado ────────────────────
+    //
+    // Bug 2026-05-14: al cambiar dirección manteniendo tecla (LEFT→RIGHT),
+    // moveVec sumaba vectores opuestos → magnitud ≈ 0 → dx/dy ≈ 0 → recast
+    // crowd aplicaba velocity (0,0) → delta de posición no detectaba cambio
+    // → newDirection quedaba "stale" en LEFT mientras la posición ya avanzaba
+    // a la derecha → animación walk-left + movimiento opuesto = "camina hacia
+    // atrás".
+    //
+    // Fix: cuando hay input directo de teclado/joystick CON intent activo
+    // (moveVec.lengthSq() > 0), derivar dirección del moveVec (intent) en
+    // lugar del delta observado. Esto refleja la intención del usuario
+    // INMEDIATAMENTE, sin esperar a que la física aplique el cambio.
+    //
+    // Fallback al delta observado cuando NO hay input directo (movimiento
+    // automático por click-to-move / navmesh / pose sync), donde el delta
+    // SÍ es la verdad porque no hay disconnect intent↔física.
+    const tieneInputVector =
+      (hasKeyboardInput || hasJoystickInput) && moveVec.lengthSq() > 0.001;
+
+    if (tieneInputVector) {
+      // moveVec.xz es el vector world post-camera-relative (ya normalizado).
+      // positionRef cambia: z = z - dy = z + moveVec.z*speed*delta.
+      // Por tanto el world delta-z es +moveVec.z (no negado).
+      newDirection = obtenerDireccionDesdeVector(
+        moveVec.x,
+        moveVec.z,
+        direccionActual as DireccionAvatar,
+      );
+      if (huboMovimientoReal) {
+        persistirPosicion(positionRef.current.x, positionRef.current.z);
+      }
+    } else if (huboMovimientoReal) {
+      newDirection = obtenerDireccionDesdeVector(
+        deltaMovimientoX,
+        deltaMovimientoZ,
+        direccionActual as DireccionAvatar,
+      );
       persistirPosicion(positionRef.current.x, positionRef.current.z);
     }
 
