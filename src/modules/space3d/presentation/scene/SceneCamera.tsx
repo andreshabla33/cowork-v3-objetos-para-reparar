@@ -115,11 +115,15 @@ function resolveOrbitLimits(
       };
     case 'free':
     default:
+      // Free mode (legacy): rotate 360° permitido pero MISMO maxDistance que
+      // el modo isométrico para evitar el borde feo del terrain también en
+      // este modo. Antes era 50 hardcoded → user reporte 2026-05-15 de zoom
+      // infinito en cámara orbital incluso tras bajar ISOMETRIC_MAX_ZOOM.
       return {
         enablePan: true,
         enableRotate: true,
         minDistance: 1.1,
-        maxDistance: 50,
+        maxDistance: ISOMETRIC_MAX_ZOOM,
         minPolarAngle: Math.PI / 6,
         maxPolarAngle: Math.PI / 2 - 0.1,
       };
