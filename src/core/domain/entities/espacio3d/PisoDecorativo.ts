@@ -53,13 +53,16 @@ export interface CrearPisoDecorativoInput {
  *     activo en el material). Side effect: pisos quedaban 5cm sobre el suelo
  *     → cubrían zapatos del avatar y patas de las mesas en vista de juego.
  *   - 2026-05-15: bajado a 0.003 (3mm) tras remover polygonOffset del
- *     material. Ahora flush con el suelo principal (estilo Gather/Sims4
- *     flat decal). Z-fight evitado por renderOrder + depth buffer precision
- *     sub-mm a viewing distance ~5-10m.
+ *     material. Demasiado tight — algunos drivers AMD/ANGLE tenían trouble
+ *     renderizando consistentemente con margen tan chico.
+ *   - 2026-05-15 (later): subido a 0.01 (1cm). Balance entre "flush enough"
+ *     (avatar no parece flotando) y depth-safe (drivers AMD ANGLE consistent).
+ *     1cm sobre el suelo = imperceptible en vista de juego (cámara ~5m de
+ *     altura) pero suficiente separación para que ningún driver dude.
  *
  * Ref: https://threejs.org/manual/#en/cameras (sección "Z-Fighting")
  */
-export const PISO_DECORATIVO_Y_OFFSET = 0.003;
+export const PISO_DECORATIVO_Y_OFFSET = 0.01;
 
 /**
  * Determina si el punto world (X,Z) cae dentro de un piso decorativo.

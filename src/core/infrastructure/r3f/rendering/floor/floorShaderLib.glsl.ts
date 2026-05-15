@@ -649,26 +649,34 @@ vec3 patternStylized(vec2 uv) {
 
   // ─── Subdivision: 3 layouts hash-driven ────────────────────────────────
   // 55% single big tile / 25% 2 horizontal halves / 20% 2 vertical halves.
-  // Gap entre sub-tiles dentro del cell = gap entre cells = 0.08 uniforme.
+  //
+  // Importante: usamos asignaciones FULL vec2 en cada branch (no parciales
+  // tipo 'center.y = X') para evitar HLSL warning X4000 "potentially
+  // uninitialized variable" — bug observado en driver ANGLE/AMD que en
+  // algunos casos degrada el output del fragment.
+  // Ref: https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/
   float cellHash = fhash(cellId * 1.379);
-  vec2 center = vec2(0.0);
-  vec2 halfExt = vec2(0.46);
-  vec2 subTileId = cellId;
+  vec2 center;
+  vec2 halfExt;
+  vec2 subTileId;
 
   if (cellHash < 0.55) {
-    // Layout A: single big tile (default)
+    // Layout A: single big tile
+    center = vec2(0.0);
+    halfExt = vec2(0.46);
+    subTileId = cellId;
   } else if (cellHash < 0.80) {
-    // Layout B: 2 horizontal tiles
+    // Layout B: 2 horizontal tiles (top/bottom)
     float subY = step(0.0, local.y);
-    center.y = (subY - 0.5) * 0.5;
+    center = vec2(0.0, (subY - 0.5) * 0.5);
     halfExt = vec2(0.46, 0.21);
-    subTileId.y += subY * 0.5;
+    subTileId = vec2(cellId.x, cellId.y + subY * 0.5);
   } else {
-    // Layout C: 2 vertical tiles
+    // Layout C: 2 vertical tiles (left/right)
     float subX = step(0.0, local.x);
-    center.x = (subX - 0.5) * 0.5;
+    center = vec2((subX - 0.5) * 0.5, 0.0);
     halfExt = vec2(0.21, 0.46);
-    subTileId.x += subX * 0.5;
+    subTileId = vec2(cellId.x + subX * 0.5, cellId.y);
   }
 
   // ─── SDF rounded rectangle (Inigo Quilez) ──────────────────────────────
@@ -694,8 +702,14 @@ vec3 patternStylized(vec2 uv) {
   // Fake-normal: para SDF interior, normalize(p) approximates outward normal
   // de la "puffy hemisphere". Light desde upper-left → bordes top-left
   // brillan, bordes bottom-right en sombra. Bevel pronunciado, no sutil.
+  //
+  // Safe-normalize: si length(p) ≤ ε el fragment está en el centro EXACTO
+  // del tile (sin dirección preferida). Usamos surfaceNorm=(0.707,0.707)
+  // como default para evitar NaN propagation (GLSL normalize() de vec2(0)
+  // es undefined → NaN en algunos drivers AMD).
   vec2 lightDir = vec2(-0.5, 0.866);  // 30° from vertical, upper-left
-  vec2 surfaceNorm = normalize(p + vec2(0.0001));
+  float pLen = length(p);
+  vec2 surfaceNorm = pLen > 0.001 ? (p / pLen) : vec2(0.7071, 0.7071);
   float ndotl = dot(surfaceNorm, lightDir);  // -1 (away) to 1 (toward)
 
   // Edge proximity: 1 al borde (sdf=0), 0 deep inside. Banda 13% = pronunciado.
