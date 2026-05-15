@@ -40,11 +40,20 @@ export interface TerrainBounds {
  * Cambiar el mapeo aquí NO requiere cambios en Presentation ni Infra.
  */
 const STYLE_TO_GEOMETRY: Record<PerimeterWallStyle, string> = {
+  // Estilos sin aberturas (recomendados para perímetro continuo)
   glass: 'wall-glass',
   brick: 'wall-brick',
   panel: 'wall-panel',
   'half-wall': 'wall-half',
   basic: 'box',
+  stripe: 'wall-stripe',
+  column: 'wall-column',
+  // Estilos con aberturas (cada segmento tendrá las aberturas → look industrial)
+  window: 'wall-window',
+  'window-double': 'wall-window-double',
+  door: 'wall-door',
+  'door-double': 'wall-door-double',
+  arch: 'wall-arch',
 };
 
 /** Profundidad fija de pared (consistente con catálogo). */

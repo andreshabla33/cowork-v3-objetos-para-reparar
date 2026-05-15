@@ -25,6 +25,7 @@ import { ActualizarSueloPrincipalUseCase } from '@/src/core/application/usecases
 import { FloorType, FLOOR_TYPE_LABELS, FLOOR_TYPE_CATEGORIES, normalizarTipoSuelo } from '@/core/domain/entities';
 import { FLOOR_SPECS } from '@/core/infrastructure/r3f/rendering/floor/floorMaterialSpecs';
 import { logger } from '@/core/infrastructure/observability/logger';
+import { SettingsParedesPerimetro } from './SettingsParedesPerimetro';
 
 const log = logger.child('settings-zonas-accesos');
 
@@ -210,6 +211,9 @@ export const SettingsZonasAccesos: React.FC<SettingsZonasAccesosProps> = ({
           </div>
         </>
       )}
+
+      {/* ── Paredes perimetrales del espacio (sección complementaria) ── */}
+      <SettingsParedesPerimetro workspaceId={workspaceId} isAdmin={isAdmin} />
     </div>
   );
 };

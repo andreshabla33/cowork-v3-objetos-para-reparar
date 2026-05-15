@@ -28,9 +28,25 @@
 
 /**
  * Estilo visual de las paredes perimetrales. Se mapea a `built_in_geometry`
- * del catálogo existente (pared_vidrio, pared_basica, etc.).
+ * del catálogo de objetos arquitectónicos existente — reutilizamos las mismas
+ * 11 geometrías que ofrece el modal "Paredes" en BuildModePanel para mantener
+ * consistencia visual y cero duplicación de assets.
+ *
+ * Mapeo style → built_in_geometry en `GenerarParedesPerimetralesUseCase`.
  */
-export type PerimeterWallStyle = 'glass' | 'brick' | 'panel' | 'half-wall' | 'basic';
+export type PerimeterWallStyle =
+  | 'glass'          // wall-glass — mampara/vidrio
+  | 'brick'          // wall-brick — ladrillo
+  | 'panel'          // wall-panel — panel de madera
+  | 'half-wall'      // wall-half — media pared
+  | 'basic'          // box — caja básica
+  | 'window'         // wall-window — pared con 1 ventana
+  | 'window-double'  // wall-window-double — pared con 2 ventanas
+  | 'door'           // wall-door — pared con 1 puerta
+  | 'door-double'   // wall-door-double — pared con 2 puertas
+  | 'arch'           // wall-arch — pared con arco
+  | 'stripe'         // wall-stripe — franja decorativa
+  | 'column';        // wall-column — columna estructural
 
 /** Estilos permitidos — fuente única de verdad usada por el factory. */
 export const ALLOWED_PERIMETER_STYLES: readonly PerimeterWallStyle[] = [
@@ -39,6 +55,13 @@ export const ALLOWED_PERIMETER_STYLES: readonly PerimeterWallStyle[] = [
   'panel',
   'half-wall',
   'basic',
+  'window',
+  'window-double',
+  'door',
+  'door-double',
+  'arch',
+  'stripe',
+  'column',
 ] as const;
 
 /**
