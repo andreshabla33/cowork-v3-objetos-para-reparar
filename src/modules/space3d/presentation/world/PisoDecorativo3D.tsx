@@ -51,9 +51,11 @@ import {
   type PisoDecorativo,
 } from '@/core/domain/entities/espacio3d/PisoDecorativo';
 
-/** Y step (m) por cada nivel de `orden`. 2cm = visible para stacks pero
- *  imperceptible para el avatar al caminar. */
-const Y_STEP_POR_ORDEN_M = 0.02;
+/** Y step (m) por cada nivel de `orden`. 3mm = sub-perceptible para
+ *  el avatar (queda flush) pero suficiente para que el depth buffer
+ *  distinga stacks. renderOrder garantiza orden de pintado;
+ *  Y-step suficiente para evitar z-fight entre pisos consecutivos. */
+const Y_STEP_POR_ORDEN_M = 0.003;
 
 /** Base renderOrder de pisos (mayor que SueloPrincipal3D que es 0). */
 const PISO_RENDER_ORDER_BASE = 10;

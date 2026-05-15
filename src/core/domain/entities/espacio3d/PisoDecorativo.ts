@@ -48,15 +48,18 @@ export interface CrearPisoDecorativoInput {
 /**
  * Y offset world del piso decorativo sobre el suelo base.
  *
- * Subido a 0.05m (de 0.01m) el 2026-05-14 para eliminar z-fighting que
- * causaba parpadeo cuando el avatar caminaba sobre los pisos. Con la
- * precisión del depth buffer 24-bit en escenas con `far ~1000m`, una
- * separación de 1cm es marginal y depende del driver/GPU; 5cm garantiza
- * estabilidad visual sin cambiar la percepción ("apenas sobre el piso").
+ * Historia:
+ *   - 2026-05-14: subido de 0.01 → 0.05 para fight z-fighting (con polygonOffset
+ *     activo en el material). Side effect: pisos quedaban 5cm sobre el suelo
+ *     → cubrían zapatos del avatar y patas de las mesas en vista de juego.
+ *   - 2026-05-15: bajado a 0.003 (3mm) tras remover polygonOffset del
+ *     material. Ahora flush con el suelo principal (estilo Gather/Sims4
+ *     flat decal). Z-fight evitado por renderOrder + depth buffer precision
+ *     sub-mm a viewing distance ~5-10m.
  *
  * Ref: https://threejs.org/manual/#en/cameras (sección "Z-Fighting")
  */
-export const PISO_DECORATIVO_Y_OFFSET = 0.05;
+export const PISO_DECORATIVO_Y_OFFSET = 0.003;
 
 /**
  * Determina si el punto world (X,Z) cae dentro de un piso decorativo.

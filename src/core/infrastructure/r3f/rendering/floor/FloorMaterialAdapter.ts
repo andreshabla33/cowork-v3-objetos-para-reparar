@@ -44,10 +44,17 @@ function construirMaterial(floorType: FloorType): THREE.MeshStandardMaterial {
     emissive: spec.emissive ? new THREE.Color(spec.emissive) : new THREE.Color(0x000000),
     emissiveIntensity: spec.emissiveIntensity ?? 0,
     side: THREE.DoubleSide,
-    // polygonOffset evita z-fighting con el plano base de Scene3D (y=-0.01)
-    polygonOffset: true,
-    polygonOffsetFactor: -1,
-    polygonOffsetUnits: -1,
+    // Explicit depth/transparency defaults — claros para evitar regresión.
+    // NO polygonOffset: causaba dos issues simultáneos antes del 2026-05-15:
+    //  1. "Transparencia" perceptible — el bias de -1 confundía el depth
+    //     test en ángulos bajos, generando flicker que el ojo lee como
+    //     semi-transparencia.
+    //  2. Piso decorativo "ganaba" depth contra avatar/tablas en perspectiva
+    //     baja, cubriendo zapatos y patas.
+    // El Y-offset del piso (renderOrder + 3mm sobre el suelo principal) ya
+    // es suficiente para z-fight con precision sub-mm del depth buffer 24-bit
+    // a viewing distance ~5-10m. polygonOffset era over-engineering.
+    depthWrite: true,
   });
 
   // Defines compile-time: el shader elige patrón sin branching dinámico
