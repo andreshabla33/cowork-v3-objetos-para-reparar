@@ -267,115 +267,6 @@ vec3 patternPlanks(vec2 uv) {
   return finalColor;
 }
 
-// ─── Pattern: BASKETWEAVE (parquet de bloques perpendiculares) ──────────────
-// Usado por: WOOD_OAK, WOOD_DARK, WOOD_PLANKS_GREEN/TEAL/MUSTARD.
-//
-// Cada bloque de 1×1 (en tileSize units) contiene 2 planks paralelos. Bloques
-// adyacentes alternan orientación (checkerboard) — los planks de un bloque
-// son horizontales y los del bloque vecino son verticales. Resultado: NO hay
-// líneas continuas largas a través del piso → moiré direccional eliminado.
-//
-// Layout esquemático (4 bloques visibles):
-//   +----+----+   ← Block (0,0): horizontal | Block (1,0): vertical
-//   |====| || |
-//   |====| || |
-//   +----+----+
-//   | || |====|   ← Block (0,1): vertical | Block (1,1): horizontal
-//   | || |====|
-//   +----+----+
-//
-// Anti-moiré inherente:
-//   - Sin líneas paralelas largas que crucen todo el piso
-//   - Cada bloque es self-contained — bordes claros sin patrón infinito
-//   - Visualmente "premium parquet" (Versailles-lite)
-//
-// Refs:
-//   - https://www.bona.com/professional/training/wood-floor-101/
-//   - https://substance3d.adobe.com/community-assets/ (Wood Parquet)
-vec3 patternBasketweave(vec2 uv) {
-  vec2 blockId = floor(uv);
-  vec2 blockLocal = fract(uv);
-  float fp = pixelFootprint(uv);
-
-  // Checkerboard: alternar orientación según paridad del bloque.
-  // parity=0 → horizontal (planks a lo largo de X)
-  // parity=1 → vertical   (planks a lo largo de Y)
-  float parity = mod(blockId.x + blockId.y, 2.0);
-  bool rotated = parity > 0.5;
-
-  // Normalizar a coordenadas de plank:
-  //   plankUV.x = a lo largo de la veta (long axis del plank)
-  //   plankUV.y = a lo ancho del block — 3 grout lines en y={0, 0.5, 1}
-  vec2 plankUV = rotated ? blockLocal.yx : blockLocal.xy;
-
-  // ID por plank: distingue cada uno de los 2 planks dentro del bloque
-  // según en qué mitad del bloque (y<0.5 vs y>=0.5) está el fragment.
-  float plankIdxShort = step(0.5, plankUV.y);
-
-  // ID único para color random: combina block + orientación + sub-plank.
-  // Multiplicadores tipo-primos para descorrelacionar bloques vecinos.
-  vec2 plankCell = vec2(
-    blockId.x * 2.137 + blockId.y * 5.829,
-    blockId.x * 7.913 + blockId.y * 1.379 + plankIdxShort * 3.0 + parity * 11.0
-  );
-
-  // ─── Color base random por plank (variance reducida) ────────────────────
-  float h = fhash(plankCell);
-  vec3 baseRandom = mix(uPalette[0], uPalette[1], h * 0.55);
-
-  // Plank fade — kill detalle sub-plank cuando pixel grande.
-  float plankFade = detailFadeFactor(fp, 0.075, 0.4);
-  vec3 baseMean = mix(uPalette[0], uPalette[1], 0.275);
-  vec3 base = mix(baseRandom, baseMean, plankFade);
-
-  // ─── Veta longitudinal (a lo largo del plank) ───────────────────────────
-  float vetaFade = detailFadeFactor(fp, 0.04, 0.16);
-  float veta = sin(plankUV.x * 60.0 + h * 31.4) * 0.5 + 0.5;
-  veta = pow(veta, 4.0) * 0.06 * (1.0 - vetaFade);
-  base = mix(base, uPalette[3], veta);
-
-  // ─── Grout: distance-based para grosor UNIFORME en todas las líneas ─────
-  //
-  // Fix del commit anterior: la versión con subdivide-and-fract sumaba
-  // grouts de ambos planks en el divider interno → línea 4× más gruesa
-  // que los bordes externos (las "líneas distorsionadas" que se veían).
-  //
-  // Nueva estrategia (Inigo Quilez distance-to-grid):
-  //   - distLong: distancia a la línea grout más cercana en X
-  //     (líneas en plankUV.x = 0 y 1 → extremos del plank).
-  //   - distShort: distancia a la línea grout más cercana en Y
-  //     (líneas en plankUV.y = 0, 0.5, 1 → bordes del bloque + divider).
-  //   - body = smoothstep(width, dist) → uniforme en TODAS las líneas.
-  //
-  // Ref: https://iquilezles.org/articles/distfunctions2d/
-  float distLong = min(plankUV.x, 1.0 - plankUV.x);
-  float distShort = min(
-    min(plankUV.y, 1.0 - plankUV.y),  // dist a y=0 o y=1 (bordes del bloque)
-    abs(plankUV.y - 0.5)                // dist a y=0.5 (divider interno)
-  );
-
-  float aaW = max(fp * 0.5, 0.001);
-  // Grout uniforme: 1.8% del block = ~8mm en un block de 45cm. Visible
-  // pero discreto. Mismo valor para X (plank ends) y Y (plank sides +
-  // internal divider) → todas las líneas se ven idénticas.
-  const float groutWidth = 0.018;
-  float bodyLong = smoothstep(groutWidth - aaW, groutWidth + aaW, distLong);
-  float bodyShort = smoothstep(groutWidth - aaW, groutWidth + aaW, distShort);
-  float body = bodyLong * bodyShort;
-
-  // Shade sutil — gradient a lo ancho del plank para profundidad.
-  // plankShortLocal: posición [0,1] DENTRO del plank actual (no del block).
-  // Para plank 0 (y<0.5): plankShortLocal = plankUV.y * 2 → [0,1].
-  // Para plank 1 (y>=0.5): plankShortLocal = (plankUV.y - 0.5) * 2 → [0,1].
-  float plankShortLocal = (plankUV.y - plankIdxShort * 0.5) * 2.0;
-  float shade = mix(1.03, 0.97, plankShortLocal);
-
-  // Grout color = mismo hue de la madera, 40% más oscuro (same-hue shadow)
-  vec3 groutColor = base * 0.6;
-
-  return mix(groutColor, base * shade, body);
-}
-
 // ─── Pattern: CHEVRON (V-shape blocks) ──────────────────────────────────────
 // Usado por: WOOD_CHEVRON_BURGUNDY
 //
@@ -673,8 +564,6 @@ vec3 evaluateFloorPattern(vec2 worldXZ) {
 
   #if defined(FLOOR_PATTERN_PLANKS)
     return patternPlanks(uv);
-  #elif defined(FLOOR_PATTERN_BASKETWEAVE)
-    return patternBasketweave(uv);
   #elif defined(FLOOR_PATTERN_CHEVRON)
     return patternChevron(uv);
   #elif defined(FLOOR_PATTERN_MARBLE)
