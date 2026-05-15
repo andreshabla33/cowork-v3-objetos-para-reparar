@@ -57,19 +57,22 @@ export interface FogZoomControllerProps {
   baseFar: number;
 }
 
-/** Valor de `fog.far` al zoom-out máximo — ocluye el borde del terrain. */
-const MIN_FAR_AT_ZOOMOUT_M = 80;
+/** Valor de `fog.far` al zoom-out máximo — agresivo para ocluir el borde
+ *  del terrain + cubrir el horizonte del sky shader. Valor calibrado para
+ *  que el patron AAA "atmósfera unificada al zoom-out" funcione visualmente. */
+const MIN_FAR_AT_ZOOMOUT_M = 50;
 
 /** Valor de `fog.near` al zoom-out máximo — niebla arranca cerca de cámara.
  *  Debe ser MENOR que MIN_FAR_AT_ZOOMOUT_M para no invertir la fog math. */
-const MIN_NEAR_AT_ZOOMOUT_M = 30;
+const MIN_NEAR_AT_ZOOMOUT_M = 15;
 
 /** % del rango de zoom (0..1) a partir del cual arranca el cierre de niebla.
- *  En isometric (5–18 m), 0.5 = 11.5 m — zoom medio aún claro, máximo cerrado. */
-const ZOOMOUT_TRIGGER_RATIO = 0.5;
+ *  0.6 = solo el último 40% del rango. En isometric (5–18 m), 0.6 ≈ 12.8 m
+ *  → zoom in/mid totalmente claro, solo el zoom alto cierra fog. */
+const ZOOMOUT_TRIGGER_RATIO = 0.6;
 
-/** Lerp por frame — 0.10 da transición suave (~15-20 frames a 60 fps). */
-const FOG_LERP_FACTOR = 0.1;
+/** Lerp por frame — 0.12 da transición suave (~12-15 frames a 60 fps). */
+const FOG_LERP_FACTOR = 0.12;
 
 export const FogZoomController: React.FC<FogZoomControllerProps> = ({
   orbitControlsRef,
