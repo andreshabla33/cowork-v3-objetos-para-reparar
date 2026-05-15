@@ -24,7 +24,8 @@ export type FloorPattern =
   | 'CONCRETE'
   | 'CARPET'
   | 'HEX'
-  | 'COBBLE';
+  | 'COBBLE'
+  | 'STYLIZED';
 
 export interface FloorSpec {
   /** Familia GLSL — determina el `#define FLOOR_PATTERN_*` */
@@ -264,6 +265,26 @@ export const FLOOR_SPECS: Record<FloorType, FloorSpec> = {
     metalness: 0.0,
     opacity: 1,
     swatchColor: '#a06850',
+  },
+
+  // ── STYLIZED (cartoon puffy tile — Pixar/Genshin/Royal Match style) ──────
+  // Look "stylized stone" referencia AAA: tile cuadrado con rounded corners,
+  // fake-sphere bevel (light top, dark bottom), edge rim highlight superior,
+  // shadow rim inferior. Mismo material singleton + mesh-local auto-fit
+  // → tiles enteros en cualquier piso decorativo sin tiles partidos.
+  //
+  // Palette warm terracotta (matched-set, contraste bajo → no aliasea):
+  //  [0] base orange,  [1] base ligeramente más claro (per-tile jitter),
+  //  [2] highlight cream/peach,  [3] grout deep brown.
+  [FloorType.STONE_STYLIZED_WARM]: {
+    pattern: 'STYLIZED',
+    palette: ['#cc7848', '#e89060', '#f9c599', '#5a3015'],
+    variant: 0,
+    tileSize: 0.7,
+    roughness: 0.85,
+    metalness: 0.0,
+    opacity: 1,
+    swatchColor: '#cc7848',
   },
 };
 

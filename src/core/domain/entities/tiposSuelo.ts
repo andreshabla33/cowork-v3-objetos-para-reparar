@@ -19,6 +19,7 @@ export enum FloorType {
   HEX_STYLIZED = 'hex_stylized',
   STONE_COBBLE_WARM = 'stone_cobble_warm',
   STONE_PATH_GARDEN = 'stone_path_garden',
+  STONE_STYLIZED_WARM = 'stone_stylized_warm',
 }
 
 export const FLOOR_TYPE_CATEGORIES: Record<string, FloorType[]> = {
@@ -35,6 +36,7 @@ export const FLOOR_TYPE_CATEGORIES: Record<string, FloorType[]> = {
     FloorType.HEX_STYLIZED,
     FloorType.STONE_COBBLE_WARM,
     FloorType.STONE_PATH_GARDEN,
+    FloorType.STONE_STYLIZED_WARM,
   ],
 };
 
@@ -58,6 +60,7 @@ export const FLOOR_TYPE_LABELS: Record<FloorType, string> = {
   [FloorType.HEX_STYLIZED]: 'Hexágono Cartoon',
   [FloorType.STONE_COBBLE_WARM]: 'Adoquín Cálido',
   [FloorType.STONE_PATH_GARDEN]: 'Sendero con Grama',
+  [FloorType.STONE_STYLIZED_WARM]: 'Piedra Estilizada Cálida',
 };
 
 export const TIPOS_SUELO = Object.values(FloorType) as FloorType[];

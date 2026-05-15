@@ -184,6 +184,15 @@ const PERFILES_PARED_POR_SUELO: Record<FloorType, PerfilEsteticoParedPorSuelo> =
     rugosidad: 0.88,
     metalicidad: 0.01,
   },
+  [FloorType.STONE_STYLIZED_WARM]: {
+    tipo_suelo: FloorType.STONE_STYLIZED_WARM,
+    estilo_visual: 'minimalista',
+    tipo_material: 'concreto',
+    color_base: '#cc7848',
+    escala_textura: 1.1,
+    rugosidad: 0.85,
+    metalicidad: 0.0,
+  },
 };
 
 export const resolverPerfilEsteticoParedPorSuelo = (tipoSuelo: string | null | undefined): PerfilEsteticoParedPorSuelo => {

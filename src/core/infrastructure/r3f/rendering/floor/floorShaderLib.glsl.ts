@@ -531,6 +531,87 @@ vec3 patternCobble(vec2 uv) {
   return col;
 }
 
+// ─── Pattern: STYLIZED (cartoon "puffy" tile — Pixar/Genshin/Royal Match) ───
+// Usado por: STONE_STYLIZED_WARM.
+//
+// Estilo AAA stylized stone — tile cuadrado con esquinas redondeadas, fake
+// hemisphere shading (top brillante, bottom oscuro), edge rim highlight en
+// bordes superiores y shadow rim en inferiores. Sin texturas, sin maps —
+// 100% procedural via SDF + Y-bias.
+//
+// Capas de shading (de adentro hacia afuera):
+//  1. Per-tile base color (jitter low-variance entre uPalette[0] y [1])
+//  2. Y-gradient soft → fake hemisphere (top lit, bottom shadowed)
+//  3. Edge-proximity rim → highlight (uPalette[2]) en bordes top, shadow
+//     (uPalette[3]) en bordes bottom
+//  4. Low-freq wear noise → micro-variación sin aliasing
+//
+// AA: SDF body con fwidth-AA + per-cell color con bajo contraste → cero moiré.
+//
+// Refs:
+//  - https://iquilezles.org/articles/distfunctions2d/  (SDF rounded box)
+//  - https://substance3d.adobe.com/tutorials/courses/foundations-stylized-shading
+vec3 patternStylized(vec2 uv) {
+  vec2 cellId = floor(uv);
+  vec2 local = fract(uv) - 0.5;  // [-0.5, 0.5] centered
+  float fp = pixelFootprint(uv);
+
+  // ─── SDF rounded square (Inigo Quilez) ─────────────────────────────────
+  // tileHalf=0.42 → tile cubre 84% de la celda, 16% de grout total.
+  // cornerR=0.06 → esquinas suavemente redondeadas (look "puffy").
+  const float tileHalf = 0.42;
+  const float cornerR = 0.06;
+  vec2 q = abs(local) - vec2(tileHalf - cornerR);
+  float sdf = min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - cornerR;
+  // sdf < 0 = dentro del tile, > 0 = en grout
+
+  // ─── Per-tile random color (variance baja — matched-set look) ──────────
+  float h = fhash(cellId);
+  // h*0.4 → cada tile varía solo ±20% entre uPalette[0] y uPalette[1].
+  // Tight palette = no salt-and-pepper sparkle entre tiles vecinos.
+  vec3 tileBase = mix(uPalette[0], uPalette[1], h * 0.4);
+
+  // ─── Y-gradient soft (fake hemisphere shading) ─────────────────────────
+  // ySoft: 0 en bottom del tile, 1 en top, suavizado para look puffy.
+  // Aplica AÚN DENTRO del centro → el tile entero tiene gradient sutil.
+  float yNorm = clamp(local.y / tileHalf, -1.0, 1.0);
+  float ySoft = clamp(yNorm * 0.55 + 0.5, 0.0, 1.0);
+
+  // ─── Edge-proximity rim (highlight top, shadow bottom) ─────────────────
+  // edgeProx: 0 deep inside, 1 right at edge. -0.10 = banda de 10% del cell.
+  float edgeProx = 1.0 - smoothstep(0.0, -0.10, sdf);
+
+  // Colors auxiliares (mezclas de paleta para no introducir hues nuevos)
+  vec3 highlightCol = mix(uPalette[1], uPalette[2], 0.7);  // cream warm
+  vec3 shadowCol = mix(uPalette[0], uPalette[3], 0.45);    // dark warm
+
+  // Center color: base + soft Y-gradient (top-light, bottom-dark)
+  vec3 centerCol = mix(shadowCol, highlightCol, ySoft);
+  centerCol = mix(centerCol, tileBase, 0.55);  // pull back hacia identity
+
+  // Rim highlight: solo en bordes superiores (ySoft > 0.5)
+  float topRim = edgeProx * smoothstep(0.45, 1.0, ySoft);
+  float botRim = edgeProx * (1.0 - smoothstep(0.0, 0.55, ySoft));
+  vec3 tileColor = centerCol;
+  tileColor = mix(tileColor, highlightCol, topRim * 0.55);
+  tileColor = mix(tileColor, shadowCol, botRim * 0.40);
+
+  // ─── Low-freq wear noise (micro-variación, NO sub-pixel) ───────────────
+  // fbm a frecuencia baja (uv*2.5) → wave-length ~40cm para tileSize 0.7m.
+  // Sin aliasing porque la frecuencia es siempre > footprint del pixel.
+  float wear = fbm(uv * 2.5);
+  tileColor *= 0.92 + wear * 0.16;  // ±8% modulación, da carácter sin ruido
+
+  // ─── Grout: same-hue darker (uPalette[3] base oscuro) ──────────────────
+  vec3 groutColor = uPalette[3] * 0.75;
+
+  // ─── Body mask con fwidth-AA ────────────────────────────────────────────
+  float aaW = max(fp * 0.5, 0.001);
+  float body = 1.0 - smoothstep(-aaW, aaW, sdf);
+
+  return mix(groutColor, tileColor, body);
+}
+
 // ─── Entry point ────────────────────────────────────────────────────────────
 // UV calc en 2 modos:
 //   - vPisoSize > 0  → MESH-LOCAL AUTO-FIT: tiles enteros encajan en el piso,
@@ -576,6 +657,8 @@ vec3 evaluateFloorPattern(vec2 worldXZ) {
     return patternHex(uv);
   #elif defined(FLOOR_PATTERN_COBBLE)
     return patternCobble(uv);
+  #elif defined(FLOOR_PATTERN_STYLIZED)
+    return patternStylized(uv);
   #else
     return uPalette[0];
   #endif
