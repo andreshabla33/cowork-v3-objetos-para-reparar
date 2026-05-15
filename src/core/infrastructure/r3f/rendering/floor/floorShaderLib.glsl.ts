@@ -267,6 +267,96 @@ vec3 patternPlanks(vec2 uv) {
   return finalColor;
 }
 
+// ─── Pattern: BASKETWEAVE (parquet de bloques perpendiculares) ──────────────
+// Usado por: WOOD_OAK, WOOD_DARK, WOOD_PLANKS_GREEN/TEAL/MUSTARD.
+//
+// Cada bloque de 1×1 (en tileSize units) contiene 2 planks paralelos. Bloques
+// adyacentes alternan orientación (checkerboard) — los planks de un bloque
+// son horizontales y los del bloque vecino son verticales. Resultado: NO hay
+// líneas continuas largas a través del piso → moiré direccional eliminado.
+//
+// Layout esquemático (4 bloques visibles):
+//   +----+----+   ← Block (0,0): horizontal | Block (1,0): vertical
+//   |====| || |
+//   |====| || |
+//   +----+----+
+//   | || |====|   ← Block (0,1): vertical | Block (1,1): horizontal
+//   | || |====|
+//   +----+----+
+//
+// Anti-moiré inherente:
+//   - Sin líneas paralelas largas que crucen todo el piso
+//   - Cada bloque es self-contained — bordes claros sin patrón infinito
+//   - Visualmente "premium parquet" (Versailles-lite)
+//
+// Refs:
+//   - https://www.bona.com/professional/training/wood-floor-101/
+//   - https://substance3d.adobe.com/community-assets/ (Wood Parquet)
+vec3 patternBasketweave(vec2 uv) {
+  vec2 blockId = floor(uv);
+  vec2 blockLocal = fract(uv);
+  float fp = pixelFootprint(uv);
+
+  // Checkerboard: alternar orientación según paridad del bloque.
+  // parity=0 → horizontal (planks a lo largo de X)
+  // parity=1 → vertical   (planks a lo largo de Y)
+  float parity = mod(blockId.x + blockId.y, 2.0);
+  bool rotated = parity > 0.5;
+
+  // Normalizar a coordenadas de plank:
+  //   plankUV.x = a lo largo de la veta (long axis)
+  //   plankUV.y = a lo ancho del plank — dividido en 2 sub-planks
+  // Para bloques rotados, swap X↔Y.
+  vec2 plankUV = rotated ? blockLocal.yx : blockLocal.xy;
+  float plankIdxShort = floor(plankUV.y * 2.0);  // 0 o 1 (cuál de los 2 planks)
+  vec2 plankLocal = vec2(plankUV.x, fract(plankUV.y * 2.0));
+
+  // ID único por plank — incluye block + orientación + sub-plank idx.
+  // Multiplicadores primos-like para descorrelacionar entre bloques vecinos.
+  vec2 plankCell = vec2(
+    blockId.x * 2.137 + blockId.y * 5.829,
+    blockId.x * 7.913 + blockId.y * 1.379 + plankIdxShort * 3.0 + parity * 11.0
+  );
+
+  // ─── Color base random por plank (variance reducida) ────────────────────
+  float h = fhash(plankCell);
+  vec3 baseRandom = mix(uPalette[0], uPalette[1], h * 0.55);
+
+  // Plank fade — kill detalle sub-plank cuando pixel grande.
+  // Cada plank es 1 × 0.5 en plankLocal → use 0.5 * 0.15 = 0.075 como start.
+  float plankFade = detailFadeFactor(fp, 0.075, 0.4);
+  vec3 baseMean = mix(uPalette[0], uPalette[1], 0.275);
+  vec3 base = mix(baseRandom, baseMean, plankFade);
+
+  // ─── Veta longitudinal (a lo largo del plank) ───────────────────────────
+  // Período en plankLocal.x ~0.105 → fade rápido cuando pixel > 4%.
+  float vetaFade = detailFadeFactor(fp, 0.04, 0.16);
+  float veta = sin(plankLocal.x * 60.0 + h * 31.4) * 0.5 + 0.5;
+  veta = pow(veta, 4.0) * 0.06 * (1.0 - vetaFade);
+  base = mix(base, uPalette[3], veta);
+
+  // ─── Grout: 4 lados de cada plank ───────────────────────────────────────
+  // groutLong: extremos del plank (corte transversal donde acaba la veta)
+  // groutShort: borde lateral del plank — incluye separación entre los 2
+  //             planks del bloque + bordes que tocan el bloque siguiente.
+  float aaW = max(fp * 0.5, 0.001);
+  const float groutLong = 0.012;
+  const float groutShort = 0.04;
+  float bodyLong = smoothstep(groutLong - aaW, groutLong + aaW, plankLocal.x)
+                 * smoothstep(groutLong - aaW, groutLong + aaW, 1.0 - plankLocal.x);
+  float bodyShort = smoothstep(groutShort - aaW, groutShort + aaW, plankLocal.y)
+                  * smoothstep(groutShort - aaW, groutShort + aaW, 1.0 - plankLocal.y);
+  float body = bodyLong * bodyShort;
+
+  // Shade sutil — gradient ligero a lo ancho del plank para profundidad
+  float shade = mix(1.03, 0.97, plankLocal.y);
+
+  // Grout color = mismo hue de la madera, 40% más oscuro (same-hue shadow)
+  vec3 groutColor = base * 0.6;
+
+  return mix(groutColor, base * shade, body);
+}
+
 // ─── Pattern: CHEVRON (V-shape blocks) ──────────────────────────────────────
 // Usado por: WOOD_CHEVRON_BURGUNDY
 //
@@ -564,6 +654,8 @@ vec3 evaluateFloorPattern(vec2 worldXZ) {
 
   #if defined(FLOOR_PATTERN_PLANKS)
     return patternPlanks(uv);
+  #elif defined(FLOOR_PATTERN_BASKETWEAVE)
+    return patternBasketweave(uv);
   #elif defined(FLOOR_PATTERN_CHEVRON)
     return patternChevron(uv);
   #elif defined(FLOOR_PATTERN_MARBLE)
