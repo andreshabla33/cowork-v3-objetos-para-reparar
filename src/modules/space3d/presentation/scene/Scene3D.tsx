@@ -44,6 +44,7 @@ import { DayNightCycle } from '@/modules/space3d/presentation/world/DayNightCycl
 import { ObjetosInteractivos } from '@/modules/space3d/presentation/world/ObjetosInteractivos';
 import { ParticulasClima } from '@/modules/space3d/presentation/world/ParticulasClima';
 import { SkyDome } from '@/modules/space3d/presentation/world/SkyDome';
+import { CameraDebugOverlay } from '@/modules/space3d/presentation/world/CameraDebugOverlay';
 import { DEFAULT_SCENE_POLICY, resolveSkyColors, type ScenePolicy } from '@/src/core/domain/entities/espacio3d/ScenePolicy';
 import { generarParedesPerimetrales } from '@/src/core/application/usecases/GenerarParedesPerimetralesUseCase';
 import { ColocarObjetoUseCase } from '@/src/core/application/usecases/ColocarObjetoUseCase';
@@ -974,6 +975,9 @@ export const Scene: React.FC<SceneProps> = ({
         onStart={handleOrbitStart}
         onEnd={handleOrbitEnd}
       />
+
+      {/* Debug overlay opt-in via `?camDebug=1` — muestra dist/max/status */}
+      <CameraDebugOverlay orbitControlsRef={orbitControlsRef} />
 
       {showFloorGrid && (
         <Grid
