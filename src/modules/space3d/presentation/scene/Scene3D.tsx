@@ -44,6 +44,7 @@ import { DayNightCycle } from '@/modules/space3d/presentation/world/DayNightCycl
 import { ObjetosInteractivos } from '@/modules/space3d/presentation/world/ObjetosInteractivos';
 import { ParticulasClima } from '@/modules/space3d/presentation/world/ParticulasClima';
 import { SkyDome } from '@/modules/space3d/presentation/world/SkyDome';
+import { FogZoomController } from '@/modules/space3d/presentation/world/FogZoomController';
 import { DEFAULT_SCENE_POLICY, resolveSkyColors, type ScenePolicy } from '@/src/core/domain/entities/espacio3d/ScenePolicy';
 import { generarParedesPerimetrales } from '@/src/core/application/usecases/GenerarParedesPerimetralesUseCase';
 import { ColocarObjetoUseCase } from '@/src/core/application/usecases/ColocarObjetoUseCase';
@@ -929,6 +930,19 @@ export const Scene: React.FC<SceneProps> = ({
           invalida solo cuando los args cambian (compatible con frameloop="demand").
           Ref: https://threejs.org/docs/#api/en/scenes/Fog */}
       <fog attach="fog" args={[skyColors.bottom, scenePolicy.fog.near, scenePolicy.fog.far]} />
+
+      {/*
+        Distance fog dinámico — cierra la niebla cuando el avatar hace zoom-out
+        para tapar el borde del terrain. Patrón AAA estándar (Roblox linear fog,
+        Minecraft `linear` mode). Lee `OrbitControls.getDistance/minDistance/maxDistance`
+        directamente del ref, así se auto-ajusta cuando el modo de cámara
+        (isometric / drawing / free) cambia los límites de zoom.
+      */}
+      <FogZoomController
+        orbitControlsRef={orbitControlsRef}
+        baseNear={scenePolicy.fog.near}
+        baseFar={scenePolicy.fog.far}
+      />
 
       {/* Skydome encapsulado en <SkyDome /> (ver components/3d/SkyDome.tsx).
           Los colores provienen del dominio (resolveSkyColors) y respetan
