@@ -304,15 +304,16 @@ vec3 patternBasketweave(vec2 uv) {
   bool rotated = parity > 0.5;
 
   // Normalizar a coordenadas de plank:
-  //   plankUV.x = a lo largo de la veta (long axis)
-  //   plankUV.y = a lo ancho del plank — dividido en 2 sub-planks
-  // Para bloques rotados, swap X↔Y.
+  //   plankUV.x = a lo largo de la veta (long axis del plank)
+  //   plankUV.y = a lo ancho del block — 3 grout lines en y={0, 0.5, 1}
   vec2 plankUV = rotated ? blockLocal.yx : blockLocal.xy;
-  float plankIdxShort = floor(plankUV.y * 2.0);  // 0 o 1 (cuál de los 2 planks)
-  vec2 plankLocal = vec2(plankUV.x, fract(plankUV.y * 2.0));
 
-  // ID único por plank — incluye block + orientación + sub-plank idx.
-  // Multiplicadores primos-like para descorrelacionar entre bloques vecinos.
+  // ID por plank: distingue cada uno de los 2 planks dentro del bloque
+  // según en qué mitad del bloque (y<0.5 vs y>=0.5) está el fragment.
+  float plankIdxShort = step(0.5, plankUV.y);
+
+  // ID único para color random: combina block + orientación + sub-plank.
+  // Multiplicadores tipo-primos para descorrelacionar bloques vecinos.
   vec2 plankCell = vec2(
     blockId.x * 2.137 + blockId.y * 5.829,
     blockId.x * 7.913 + blockId.y * 1.379 + plankIdxShort * 3.0 + parity * 11.0
@@ -323,33 +324,51 @@ vec3 patternBasketweave(vec2 uv) {
   vec3 baseRandom = mix(uPalette[0], uPalette[1], h * 0.55);
 
   // Plank fade — kill detalle sub-plank cuando pixel grande.
-  // Cada plank es 1 × 0.5 en plankLocal → use 0.5 * 0.15 = 0.075 como start.
   float plankFade = detailFadeFactor(fp, 0.075, 0.4);
   vec3 baseMean = mix(uPalette[0], uPalette[1], 0.275);
   vec3 base = mix(baseRandom, baseMean, plankFade);
 
   // ─── Veta longitudinal (a lo largo del plank) ───────────────────────────
-  // Período en plankLocal.x ~0.105 → fade rápido cuando pixel > 4%.
   float vetaFade = detailFadeFactor(fp, 0.04, 0.16);
-  float veta = sin(plankLocal.x * 60.0 + h * 31.4) * 0.5 + 0.5;
+  float veta = sin(plankUV.x * 60.0 + h * 31.4) * 0.5 + 0.5;
   veta = pow(veta, 4.0) * 0.06 * (1.0 - vetaFade);
   base = mix(base, uPalette[3], veta);
 
-  // ─── Grout: 4 lados de cada plank ───────────────────────────────────────
-  // groutLong: extremos del plank (corte transversal donde acaba la veta)
-  // groutShort: borde lateral del plank — incluye separación entre los 2
-  //             planks del bloque + bordes que tocan el bloque siguiente.
+  // ─── Grout: distance-based para grosor UNIFORME en todas las líneas ─────
+  //
+  // Fix del commit anterior: la versión con subdivide-and-fract sumaba
+  // grouts de ambos planks en el divider interno → línea 4× más gruesa
+  // que los bordes externos (las "líneas distorsionadas" que se veían).
+  //
+  // Nueva estrategia (Inigo Quilez distance-to-grid):
+  //   - distLong: distancia a la línea grout más cercana en X
+  //     (líneas en plankUV.x = 0 y 1 → extremos del plank).
+  //   - distShort: distancia a la línea grout más cercana en Y
+  //     (líneas en plankUV.y = 0, 0.5, 1 → bordes del bloque + divider).
+  //   - body = smoothstep(width, dist) → uniforme en TODAS las líneas.
+  //
+  // Ref: https://iquilezles.org/articles/distfunctions2d/
+  float distLong = min(plankUV.x, 1.0 - plankUV.x);
+  float distShort = min(
+    min(plankUV.y, 1.0 - plankUV.y),  // dist a y=0 o y=1 (bordes del bloque)
+    abs(plankUV.y - 0.5)                // dist a y=0.5 (divider interno)
+  );
+
   float aaW = max(fp * 0.5, 0.001);
-  const float groutLong = 0.012;
-  const float groutShort = 0.04;
-  float bodyLong = smoothstep(groutLong - aaW, groutLong + aaW, plankLocal.x)
-                 * smoothstep(groutLong - aaW, groutLong + aaW, 1.0 - plankLocal.x);
-  float bodyShort = smoothstep(groutShort - aaW, groutShort + aaW, plankLocal.y)
-                  * smoothstep(groutShort - aaW, groutShort + aaW, 1.0 - plankLocal.y);
+  // Grout uniforme: 1.8% del block = ~8mm en un block de 45cm. Visible
+  // pero discreto. Mismo valor para X (plank ends) y Y (plank sides +
+  // internal divider) → todas las líneas se ven idénticas.
+  const float groutWidth = 0.018;
+  float bodyLong = smoothstep(groutWidth - aaW, groutWidth + aaW, distLong);
+  float bodyShort = smoothstep(groutWidth - aaW, groutWidth + aaW, distShort);
   float body = bodyLong * bodyShort;
 
-  // Shade sutil — gradient ligero a lo ancho del plank para profundidad
-  float shade = mix(1.03, 0.97, plankLocal.y);
+  // Shade sutil — gradient a lo ancho del plank para profundidad.
+  // plankShortLocal: posición [0,1] DENTRO del plank actual (no del block).
+  // Para plank 0 (y<0.5): plankShortLocal = plankUV.y * 2 → [0,1].
+  // Para plank 1 (y>=0.5): plankShortLocal = (plankUV.y - 0.5) * 2 → [0,1].
+  float plankShortLocal = (plankUV.y - plankIdxShort * 0.5) * 2.0;
+  float shade = mix(1.03, 0.97, plankShortLocal);
 
   // Grout color = mismo hue de la madera, 40% más oscuro (same-hue shadow)
   vec3 groutColor = base * 0.6;
