@@ -417,9 +417,9 @@ export const CameraFollow: React.FC<{
     // CRÍTICO: NO pisar `controls.maxDistance` cuando NO hay vista interior.
     // SceneCamera ya lo configuró según el `cameraMode` activo:
     //   - isometric  → ISOMETRIC_MAX_ZOOM (Domain, hoy 14m)
-    //   - drawing    → DRAWING_MAX_ORBIT_DISTANCE (80m)
-    //   - painting   → DRAWING_MAX_ORBIT_DISTANCE (80m)
-    //   - free       → 50m
+    //   - free       → ISOMETRIC_MAX_ZOOM (14m, unificado en commit be1e09d)
+    //   - drawing    → DRAWING_MAX_ORBIT_DISTANCE (80m, admin dibuja zonas)
+    //   - painting   → DRAWING_MAX_ORBIT_DISTANCE (80m, admin decora pisos)
     // Antes este código tenía hardcoded `: 50` que anulaba el límite
     // isométrico cada frame. Bug observado 2026-05-15: ningún cambio de
     // ISOMETRIC_MAX_ZOOM (18→14→11→6→1) tenía efecto al hacer scroll-wheel
