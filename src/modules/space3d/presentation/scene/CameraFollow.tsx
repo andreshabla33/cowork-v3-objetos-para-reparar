@@ -39,7 +39,6 @@ import {
   PAINT_FLOOR_FRAMING,
   TRANSITION_TO_DRAWING_MS,
   ZOOM_RETURN_IDLE_MS,
-  ISOMETRIC_MAX_ZOOM,
   type CameraMode,
 } from '@/src/core/domain/entities/espacio3d/CameraFramingPolicy';
 
@@ -415,15 +414,20 @@ export const CameraFollow: React.FC<{
 
     controls.enabled = !isDragging;
     controls.minDistance = usarVistaInterior ? 1.05 : 1.1;
-    // CRÍTICO: cuando NO hay vista interior y el modo es isométrico, respetar
-    // ISOMETRIC_MAX_ZOOM (Domain) en lugar de hardcoded 50. Antes este 50 fijo
-    // anulaba cualquier intento de limitar el zoom-out del modo isométrico —
-    // el OrbitControls quedaba con maxDistance=50 permitiendo ver el borde
-    // feo del terrain. Para modos no-isométricos (free), 50 sigue siendo OK.
-    const maxDistanceParaModo = isIsometric ? ISOMETRIC_MAX_ZOOM : 50;
-    controls.maxDistance = usarVistaInterior
-      ? Math.max(cameraDistance + 1.1, 3.2)
-      : maxDistanceParaModo;
+    // CRÍTICO: NO pisar `controls.maxDistance` cuando NO hay vista interior.
+    // SceneCamera ya lo configuró según el `cameraMode` activo:
+    //   - isometric  → ISOMETRIC_MAX_ZOOM (Domain, hoy 14m)
+    //   - drawing    → DRAWING_MAX_ORBIT_DISTANCE (80m)
+    //   - painting   → DRAWING_MAX_ORBIT_DISTANCE (80m)
+    //   - free       → 50m
+    // Antes este código tenía hardcoded `: 50` que anulaba el límite
+    // isométrico cada frame. Bug observado 2026-05-15: ningún cambio de
+    // ISOMETRIC_MAX_ZOOM (18→14→11→6→1) tenía efecto al hacer scroll-wheel
+    // porque CameraFollow re-seteaba maxDistance=50 en cada tick.
+    if (usarVistaInterior) {
+      controls.maxDistance = Math.max(cameraDistance + 1.1, 3.2);
+    }
+    // Else: dejar el maxDistance que SceneCamera puso vía `cameraMode`.
 
     const moved = !lastPlayerPos.current || Math.abs(playerPos.x - lastPlayerPos.current.x) > 0.001 || Math.abs(playerPos.z - lastPlayerPos.current.z) > 0.001;
 
@@ -661,6 +665,26 @@ export const CameraFollow: React.FC<{
       const perpZ = dx / len;
       controls.target.x = THREE.MathUtils.lerp(controls.target.x, playerPos.x + perpX * shoulderOffset * shoulderSign, 0.12);
       controls.target.z = THREE.MathUtils.lerp(controls.target.z, playerPos.z + perpZ * shoulderOffset * shoulderSign, 0.12);
+    }
+
+    // Belt-and-suspenders: hard clamp absolute del camera.position al
+    // controls.maxDistance. CameraFollow muta camera.position varias veces
+    // arriba (lerps de framing) y OrbitControls.update() NO clampa esas
+    // mutaciones directas — solo clampa su propio dolly interno. Sin este
+    // clamp, mutaciones agresivas (o cambios de framing por modo) podían
+    // empujar la cámara más allá de ISOMETRIC_MAX_ZOOM. Cero allocations.
+    const maxDistAbs = controls.maxDistance;
+    if (Number.isFinite(maxDistAbs)) {
+      const odx = camera.position.x - controls.target.x;
+      const ody = camera.position.y - controls.target.y;
+      const odz = camera.position.z - controls.target.z;
+      const odist2 = odx * odx + ody * ody + odz * odz;
+      if (odist2 > maxDistAbs * maxDistAbs) {
+        const scale = maxDistAbs / Math.sqrt(odist2);
+        camera.position.x = controls.target.x + odx * scale;
+        camera.position.y = controls.target.y + ody * scale;
+        camera.position.z = controls.target.z + odz * scale;
+      }
     }
 
     controls.update();
