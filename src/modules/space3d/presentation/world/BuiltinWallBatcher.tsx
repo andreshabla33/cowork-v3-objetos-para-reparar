@@ -363,17 +363,95 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
     log.info('Batched geometry diagnostic', diag);
   }, [merged]);
 
-  if (!merged || merged.length === 0) return null;
-
   const glassMaterial = materials.glass?.material ?? _fallbackMaterial;
   const metalMaterial = materials.metal?.material ?? _fallbackMaterial;
 
   // Separate merged groups by category.
   // Fase 6A: opaque groups are now per-materialSubType (1-3 groups typically).
-  // Glass geometries are NOT merged (Fase 5C fix) for correct WebGPU BLEND pipeline.
-  const opaqueGroups = merged.filter(({ category }) => category === 'opaque');
-  const metalGroup = merged.find(({ category }) => category === 'metal');
-  const glassGroups = merged.filter(({ category }) => category === 'glass');
+  // Fase 7A (2026-05-15): glass geometries collapse a 1 BatchedMesh (1 draw call)
+  // en lugar de N <mesh> individuales (1 por pane). Ver glassBatchedMesh abajo.
+  const opaqueGroups = useMemo(
+    () => (merged ?? []).filter(({ category }) => category === 'opaque'),
+    [merged],
+  );
+  const metalGroup = useMemo(
+    () => (merged ?? []).find(({ category }) => category === 'metal'),
+    [merged],
+  );
+  const glassGroups = useMemo(
+    () => (merged ?? []).filter(({ category }) => category === 'glass'),
+    [merged],
+  );
+
+  // ── Glass BatchedMesh (Fase 7A — 2026-05-15) ──────────────────────────────
+  //
+  // Antes: cada glass pane se rendereaba como su propio <mesh>. En espacios
+  // grandes con muchas paredes-ventana, esto producía 300+ draw calls solo
+  // de vidrio (log: "Builtin walls merged ... bucketSizes.glass: 306").
+  //
+  // Ahora: usamos `THREE.BatchedMesh` (estable r177+) que permite agrupar N
+  // geometries con dimensiones DIFERENTES en 1 sola draw call, compartiendo
+  // el mismo material. InstancedMesh NO sirve aquí porque las glass panes
+  // tienen `BoxGeometry(anchoInt, altoInt, espesor)` con dimensiones que
+  // varían por hueco — InstancedMesh requiere geometry idéntica.
+  //
+  // Trade-off conocido:
+  //   - Depth sorting es per-mesh (todo el BatchedMesh es 1 objeto), no
+  //     per-pane. Si dos glass panes se solapan VISUALMENTE en pantalla,
+  //     el orden depende del index en el batched, no de la distancia real.
+  //   - En Cowork las paredes glass viven en perímetros distintos →
+  //     superposición visual rara → glitch invisible en uso normal.
+  //   - Si se observa artefacto en algún edge case, se puede revertir
+  //     mappeando glassGroups a <mesh> individuales como antes.
+  //
+  // El glass material sigue siendo el mismo (transparent + depthWrite=false +
+  // DoubleSide + NormalBlending) → WebGPU compila BLEND pipeline correcto.
+  //
+  // Ref: https://threejs.org/docs/#api/en/objects/BatchedMesh
+  // Ref: BatchedMesh.setColorAt cambió en r183 (#32725) — alpha respetada;
+  //      no aplicamos setColorAt aquí porque el color es uniforme.
+  const glassBatchedMesh = useMemo<THREE.BatchedMesh | null>(() => {
+    if (glassGroups.length === 0) return null;
+
+    let totalVerts = 0;
+    let totalIndices = 0;
+    for (const { geometry } of glassGroups) {
+      const geo = geometry as THREE.BufferGeometry;
+      totalVerts += geo.attributes.position.count;
+      const idx = geo.getIndex();
+      totalIndices += idx ? idx.count : geo.attributes.position.count;
+    }
+
+    const batched = new THREE.BatchedMesh(
+      glassGroups.length,
+      totalVerts,
+      totalIndices,
+      glassMaterial as THREE.Material,
+    );
+
+    for (const { geometry } of glassGroups) {
+      batched.addGeometry(geometry as THREE.BufferGeometry);
+    }
+
+    batched.castShadow = false;
+    batched.receiveShadow = true;
+    batched.frustumCulled = false;
+    batched.renderOrder = 10;
+    batched.name = 'BuiltinWallGlassBatched';
+
+    return batched;
+  }, [glassGroups, glassMaterial]);
+
+  // Dispose del BatchedMesh anterior cuando glassGroups cambia (re-merge) o
+  // al unmount. El group padre tiene `dispose={null}` así que R3F NO lo
+  // dispone automáticamente — manejamos el lifecycle aquí.
+  useEffect(() => {
+    return () => {
+      glassBatchedMesh?.dispose();
+    };
+  }, [glassBatchedMesh]);
+
+  if (!merged || merged.length === 0) return null;
 
   // dispose={null}: los recursos (geometrías mergeadas + materiales) son
   // gestionados por caches a nivel módulo. Sin este flag, R3F dispondría las
@@ -421,33 +499,27 @@ export const BuiltinWallBatcher: React.FC<BuiltinWallBatcherProps> = ({ objetos 
         />
       )}
 
-      {/* Glass panes — individual meshes for correct WebGPU BLEND pipeline.
+      {/* Glass panes — 1 BatchedMesh con N geometries (Fase 7A — 2026-05-15).
         *
-        * Each glass pane is a separate mesh so:
-        *   1. WebGPU compiles a proper BLEND (alpha blending) render pipeline per-mesh
-        *   2. Three.js can depth-sort individual panes back-to-front for correct compositing
-        *   3. No alphaTest interference (MASK vs BLEND pipeline conflict)
+        * Reemplaza el patron previo de N <mesh> individuales (1 por pane).
+        * Beneficio: 306 panes glass → 1 draw call (vs 306). Impacto perfom
+        * significativo en espacios con muchas ventanas/mamparas.
         *
-        * Performance: ~6 extra draw calls (was 1 merged). Negligible impact.
+        * Material compartido (BLEND pipeline correcto): transparent=true +
+        * depthWrite=false + DoubleSide + NormalBlending. La construcción del
+        * BatchedMesh + dispose viven arriba (useMemo + useEffect cleanup).
         *
-        * renderOrder={10}: renders well after all opaque/metal (renderOrder=0)
-        * frustumCulled={false}: individual panes are small but renderOrder must be respected
-        *
-        * Ref: Three.js docs — Object3D.renderOrder
-        *   https://threejs.org/docs/#api/en/core/Object3D.renderOrder
+        * `<primitive object>` es el patron R3F-canónico para attachar objetos
+        * pre-construidos imperativamente:
+        *   https://r3f.docs.pmnd.rs/api/objects (Using imperative code)
         */}
-      {glassGroups.map(({ geometry }, idx) => (
-        <mesh
-          key={`glass-${idx}`}
-          ref={idx === 0 ? glassRef : undefined}
-          geometry={geometry as THREE.BufferGeometry}
-          material={glassMaterial}
-          castShadow={false}
-          receiveShadow
-          frustumCulled={false}
-          renderOrder={10}
+      {glassBatchedMesh && (
+        <primitive
+          object={glassBatchedMesh}
+          ref={glassRef as React.Ref<THREE.Object3D>}
+          dispose={null}
         />
-      ))}
+      )}
     </group>
   );
 };
