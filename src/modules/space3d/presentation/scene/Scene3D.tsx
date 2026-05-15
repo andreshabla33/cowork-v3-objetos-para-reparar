@@ -460,25 +460,72 @@ export const Scene: React.FC<SceneProps> = ({
   // Terreno (suelo + montañas) — solo renderiza algo si tipo='heightfield'
   const { terreno: terrenoPersistido } = useTerreno(espacioIdPerimeter);
 
+  // Envelope BBOX de las zonas empresa activas. Si existen zonas, las paredes
+  // perimetrales se ajustan a su límite (no al terreno completo) para que
+  // visualmente queden flush con el borde de la zona empresa. Esto honra la
+  // intención semántica del workspace: la "perimetral" del trabajo es el
+  // conjunto de zonas-empresa, no el terreno técnico que las contiene.
+  //
+  // Fallback: si no hay zonas activas, usamos terrainBounds (modo histórico
+  // para spaces exploration sin empresa).
+  //
+  // Ref: BBOX union pattern — https://threejs.org/docs/#api/en/math/Box3
+  const zonesEnvelope = useMemo(() => {
+    if (zonasActivas.length === 0) return null;
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+    for (const zona of zonasActivas) {
+      const cx = Number(zona.posicion_x) / 16;
+      const cz = Number(zona.posicion_y) / 16;
+      const halfW = Math.max(1, Number(zona.ancho) / 16) / 2;
+      const halfH = Math.max(1, Number(zona.alto) / 16) / 2;
+      minX = Math.min(minX, cx - halfW);
+      maxX = Math.max(maxX, cx + halfW);
+      minZ = Math.min(minZ, cz - halfH);
+      maxZ = Math.max(maxZ, cz + halfH);
+    }
+    return {
+      sizeX: maxX - minX,
+      sizeZ: maxZ - minZ,
+      centerX: (minX + maxX) / 2,
+      centerZ: (minZ + maxZ) / 2,
+      topY: terrainBounds.topY,
+    };
+  }, [zonasActivas, terrainBounds.topY]);
+
   // Paredes perimetrales virtuales — generadas por el use case del Application
-  // layer a partir del terrainBounds y la policy persistida. No persisten en
-  // `espacio_objetos`; se concatenan al array de builtin walls reales y pasan
-  // por el mismo BuiltinWallBatcher (cero duplicación de pipeline de rendering).
+  // layer. No persisten en `espacio_objetos`; se concatenan al array de
+  // builtin walls reales y pasan por el mismo BuiltinWallBatcher (cero
+  // duplicación de pipeline de rendering).
+  //
+  // Bounds source: zonesEnvelope (BBOX zonas activas) > terrainBounds (full).
+  // Cuando usamos zonesEnvelope forzamos `margin=0` para que las paredes
+  // queden FLUSH con el borde de la zona (sin separación) — UX requirement
+  // del MVP. La policy.margin del DB sigue aplicando si no hay zonas activas.
   const paredesPerimetrales = useMemo(() => {
     if (!perimeterPolicyPersisted.enabled) return [];
-    if (terrainBounds.sizeX <= 0 || terrainBounds.sizeZ <= 0) return [];
+
+    const bounds = zonesEnvelope ?? {
+      sizeX: terrainBounds.sizeX,
+      sizeZ: terrainBounds.sizeZ,
+      centerX: terrainBounds.centerX,
+      centerZ: terrainBounds.centerZ,
+      topY: terrainBounds.topY,
+    };
+    if (bounds.sizeX <= 0 || bounds.sizeZ <= 0) return [];
+
+    const effectivePolicy = zonesEnvelope
+      ? Object.freeze({ ...perimeterPolicyPersisted, margin: 0 })
+      : perimeterPolicyPersisted;
+
     return generarParedesPerimetrales(
-      {
-        sizeX: terrainBounds.sizeX,
-        sizeZ: terrainBounds.sizeZ,
-        centerX: terrainBounds.centerX,
-        centerZ: terrainBounds.centerZ,
-        topY: terrainBounds.topY,
-      },
-      perimeterPolicyPersisted,
+      bounds,
+      effectivePolicy,
       espacioIdPerimeter ?? 'unknown',
     );
-  }, [perimeterPolicyPersisted, terrainBounds, espacioIdPerimeter]);
+  }, [perimeterPolicyPersisted, zonesEnvelope, terrainBounds, espacioIdPerimeter]);
 
   // Fase 5A: Array estable de objetos builtin para BuiltinWallBatcher (evita .filter() inline en JSX)
   // Concatena paredes perimetrales virtuales — BuiltinWallBatcher las trata igual
