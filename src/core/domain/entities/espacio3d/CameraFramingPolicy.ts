@@ -140,15 +140,20 @@ export const ISOMETRIC_FRAMING: CameraFraming = Object.freeze({
 export const ISOMETRIC_POLAR_ANGLE = Math.PI / 4;
 
 /**
- * Zoom permitido en modo isométrico. Min === Max === 1m → zoom totalmente
- * BLOQUEADO. drei OrbitControls con min===max desactiva el wheel zoom y
- * mantiene la cámara fija a 1m del target. El avatar dominará la pantalla
- * — vista ultra-cercana, casi POV.
- * Calibrado tras iter 6 (2026-05-15): zoom locked para foco absoluto.
- * Histórico: iter 5 = 5-6, iter 4 = 11, iter 3 = 14, iter 2 = 18, iter 1 = 25.
+ * Zoom permitido en modo isométrico. Min = 5m (más cerca = invasivo, el
+ * avatar tapa el contexto). Max = 14m (más lejos = se asomaba el borde
+ * feo del mundo + el usuario "salía" de la vista de su zona).
+ *
+ * CRÍTICO: este valor lo respetan TANTO SceneCamera (al inicializar el
+ * OrbitControls) como CameraFollow (que muta `controls.maxDistance` cada
+ * frame según el modo/zona — antes hardcoded a 50, causando que ningún
+ * cambio de ISOMETRIC_MAX_ZOOM tuviera efecto real al hacer zoom-out).
+ *
+ * Histórico: iter 6 = 1 (locked, broken por sobre-write de CameraFollow),
+ * iter 5 = 5-6, iter 4 = 11, iter 3 = 14, iter 2 = 18, iter 1 = 25.
  */
-export const ISOMETRIC_MIN_ZOOM = 1;
-export const ISOMETRIC_MAX_ZOOM = 1;
+export const ISOMETRIC_MIN_ZOOM = 5;
+export const ISOMETRIC_MAX_ZOOM = 14;
 
 /**
  * Tiempo sin interacción manual con OrbitControls (drag / wheel / pinch) para

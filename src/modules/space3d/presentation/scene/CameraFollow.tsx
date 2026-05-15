@@ -39,6 +39,7 @@ import {
   PAINT_FLOOR_FRAMING,
   TRANSITION_TO_DRAWING_MS,
   ZOOM_RETURN_IDLE_MS,
+  ISOMETRIC_MAX_ZOOM,
   type CameraMode,
 } from '@/src/core/domain/entities/espacio3d/CameraFramingPolicy';
 
@@ -414,7 +415,15 @@ export const CameraFollow: React.FC<{
 
     controls.enabled = !isDragging;
     controls.minDistance = usarVistaInterior ? 1.05 : 1.1;
-    controls.maxDistance = usarVistaInterior ? Math.max(cameraDistance + 1.1, 3.2) : 50;
+    // CRÍTICO: cuando NO hay vista interior y el modo es isométrico, respetar
+    // ISOMETRIC_MAX_ZOOM (Domain) en lugar de hardcoded 50. Antes este 50 fijo
+    // anulaba cualquier intento de limitar el zoom-out del modo isométrico —
+    // el OrbitControls quedaba con maxDistance=50 permitiendo ver el borde
+    // feo del terrain. Para modos no-isométricos (free), 50 sigue siendo OK.
+    const maxDistanceParaModo = isIsometric ? ISOMETRIC_MAX_ZOOM : 50;
+    controls.maxDistance = usarVistaInterior
+      ? Math.max(cameraDistance + 1.1, 3.2)
+      : maxDistanceParaModo;
 
     const moved = !lastPlayerPos.current || Math.abs(playerPos.x - lastPlayerPos.current.x) > 0.001 || Math.abs(playerPos.z - lastPlayerPos.current.z) > 0.001;
 
