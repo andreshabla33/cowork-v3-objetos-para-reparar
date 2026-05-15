@@ -19,6 +19,7 @@ import { FloorType } from '@/core/domain/entities';
 
 export type FloorPattern =
   | 'PLANKS'
+  | 'BASKETWEAVE'
   | 'CHEVRON'
   | 'MARBLE'
   | 'CONCRETE'
@@ -53,55 +54,57 @@ export interface FloorSpec {
 // ─── Catálogo ────────────────────────────────────────────────────────────────
 
 export const FLOOR_SPECS: Record<FloorType, FloorSpec> = {
-  // ── PLANKS ───────────────────────────────────────────────────────────────
-  // Wood floors temporales con pattern PLANKS hasta que se defina el suelo
-  // definitivo para MVP. Heredan todos los fixes de AA refinados
-  // (fwidth-AA, variance reduction, same-hue grout, distance-based body).
+  // ── BASKETWEAVE (parquet de bloques perpendiculares — definitivo MVP) ────
+  // Pattern requerido por usuario para wood floors. Bloques alternan
+  // orientación (checkerboard) → sin líneas horizontales largas → moiré
+  // direccional eliminado por construcción. Look "premium parquet"
+  // estilo Versailles-lite. Distance-based grout uniforme (commit 7715815).
+  // tileSize 0.45m → bloque de 45cm con planks de 45×22cm aprox.
   [FloorType.WOOD_OAK]: {
-    pattern: 'PLANKS',
+    pattern: 'BASKETWEAVE',
     palette: ['#c8a96e', '#b8944f', '#d4b077', '#3a2410'],
     variant: 0,
-    tileSize: 0.7,
+    tileSize: 0.45,
     roughness: 0.65,
     metalness: 0.02,
     opacity: 1,
     swatchColor: '#c8a96e',
   },
   [FloorType.WOOD_DARK]: {
-    pattern: 'PLANKS',
+    pattern: 'BASKETWEAVE',
     palette: ['#4a3322', '#3d2b1a', '#5a4030', '#1a0e05'],
     variant: 0,
-    tileSize: 0.7,
+    tileSize: 0.45,
     roughness: 0.55,
     metalness: 0.05,
     opacity: 1,
     swatchColor: '#3d2b1a',
   },
   [FloorType.WOOD_PLANKS_GREEN]: {
-    pattern: 'PLANKS',
+    pattern: 'BASKETWEAVE',
     palette: ['#86b855', '#6da043', '#98c668', '#2e4218'],
     variant: 0,
-    tileSize: 0.5,
+    tileSize: 0.35,
     roughness: 0.75,
     metalness: 0.02,
     opacity: 1,
     swatchColor: '#86b855',
   },
   [FloorType.WOOD_PLANKS_TEAL]: {
-    pattern: 'PLANKS',
+    pattern: 'BASKETWEAVE',
     palette: ['#3a8fae', '#2d7896', '#4ba3c2', '#1a4252'],
     variant: 0,
-    tileSize: 0.5,
+    tileSize: 0.35,
     roughness: 0.75,
     metalness: 0.02,
     opacity: 1,
     swatchColor: '#3a8fae',
   },
   [FloorType.WOOD_PLANKS_MUSTARD]: {
-    pattern: 'PLANKS',
+    pattern: 'BASKETWEAVE',
     palette: ['#d4a236', '#c2902a', '#e6b350', '#5c4014'],
     variant: 0,
-    tileSize: 0.5,
+    tileSize: 0.35,
     roughness: 0.75,
     metalness: 0.02,
     opacity: 1,

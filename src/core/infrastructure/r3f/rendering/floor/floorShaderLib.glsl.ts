@@ -267,6 +267,97 @@ vec3 patternPlanks(vec2 uv) {
   return finalColor;
 }
 
+// ─── Pattern: BASKETWEAVE (parquet de bloques perpendiculares) ──────────────
+// Usado por: WOOD_OAK, WOOD_DARK, WOOD_PLANKS_GREEN/TEAL/MUSTARD.
+//
+// Cada bloque de 1×1 (en tileSize units) contiene 2 planks paralelos. Bloques
+// adyacentes alternan orientación (checkerboard) — los planks de un bloque
+// son horizontales y los del bloque vecino son verticales. Resultado: NO hay
+// líneas continuas largas a través del piso → moiré direccional eliminado
+// por construcción.
+//
+// Layout esquemático (4 bloques visibles):
+//   +----+----+   ← Block (0,0): horizontal | Block (1,0): vertical
+//   |====| || |
+//   |====| || |
+//   +----+----+
+//   | || |====|   ← Block (0,1): vertical | Block (1,1): horizontal
+//   | || |====|
+//   +----+----+
+//
+// Distance-based grout (Inigo Quilez distance-to-grid) → grosor UNIFORME
+// en TODAS las líneas (plank ends + bloque outer + divider interno).
+// Sin doble-conteo en frontera entre planks del mismo bloque.
+//
+// Refs:
+//   - https://www.bona.com/professional/training/wood-floor-101/
+//   - https://iquilezles.org/articles/distfunctions2d/
+//   - https://substance3d.adobe.com/community-assets/ (Wood Parquet)
+vec3 patternBasketweave(vec2 uv) {
+  vec2 blockId = floor(uv);
+  vec2 blockLocal = fract(uv);
+  float fp = pixelFootprint(uv);
+
+  // Checkerboard de orientación
+  float parity = mod(blockId.x + blockId.y, 2.0);
+  bool rotated = parity > 0.5;
+
+  // Normalizar a coordenadas de plank:
+  //   plankUV.x = a lo largo de la veta (long axis)
+  //   plankUV.y = ancho del block — 3 grout lines en y={0, 0.5, 1}
+  vec2 plankUV = rotated ? blockLocal.yx : blockLocal.xy;
+
+  // ID por plank: 0 si en mitad inferior, 1 si en mitad superior del bloque
+  float plankIdxShort = step(0.5, plankUV.y);
+
+  // ID único para color random (descorrelacionado entre bloques vecinos)
+  vec2 plankCell = vec2(
+    blockId.x * 2.137 + blockId.y * 5.829,
+    blockId.x * 7.913 + blockId.y * 1.379 + plankIdxShort * 3.0 + parity * 11.0
+  );
+
+  // Color base random (variance baja para matched-set look)
+  float h = fhash(plankCell);
+  vec3 baseRandom = mix(uPalette[0], uPalette[1], h * 0.55);
+
+  // Plank fade — kill detalle sub-plank cuando pixel grande
+  float plankFade = detailFadeFactor(fp, 0.075, 0.4);
+  vec3 baseMean = mix(uPalette[0], uPalette[1], 0.275);
+  vec3 base = mix(baseRandom, baseMean, plankFade);
+
+  // Veta longitudinal — fade rápido a distancia
+  float vetaFade = detailFadeFactor(fp, 0.04, 0.16);
+  float veta = sin(plankUV.x * 60.0 + h * 31.4) * 0.5 + 0.5;
+  veta = pow(veta, 4.0) * 0.06 * (1.0 - vetaFade);
+  base = mix(base, uPalette[3], veta);
+
+  // ─── Distance-based grout (grosor uniforme) ─────────────────────────────
+  // distLong = distancia a la línea grout más cercana en X (extremos plank)
+  // distShort = distancia a la línea grout más cercana en Y (3 líneas: 0, 0.5, 1)
+  // Esto evita el doble-conteo del divider interno que produciría grout
+  // 4× más grueso que los bordes externos.
+  float distLong = min(plankUV.x, 1.0 - plankUV.x);
+  float distShort = min(
+    min(plankUV.y, 1.0 - plankUV.y),  // dist a y=0 o y=1 (bordes del bloque)
+    abs(plankUV.y - 0.5)                // dist a y=0.5 (divider interno)
+  );
+
+  float aaW = max(fp * 0.5, 0.001);
+  const float groutWidth = 0.018;  // 1.8% del block = ~8mm en bloque de 45cm
+  float bodyLong = smoothstep(groutWidth - aaW, groutWidth + aaW, distLong);
+  float bodyShort = smoothstep(groutWidth - aaW, groutWidth + aaW, distShort);
+  float body = bodyLong * bodyShort;
+
+  // Shade sutil — gradient por plank (top-light/bottom-dark dentro del plank)
+  float plankShortLocal = (plankUV.y - plankIdxShort * 0.5) * 2.0;
+  float shade = mix(1.03, 0.97, plankShortLocal);
+
+  // Grout color = same-hue (madera 40% más oscura, no línea negra)
+  vec3 groutColor = base * 0.6;
+
+  return mix(groutColor, base * shade, body);
+}
+
 // ─── Pattern: CHEVRON (V-shape blocks) ──────────────────────────────────────
 // Usado por: WOOD_CHEVRON_BURGUNDY
 //
@@ -645,6 +736,8 @@ vec3 evaluateFloorPattern(vec2 worldXZ) {
 
   #if defined(FLOOR_PATTERN_PLANKS)
     return patternPlanks(uv);
+  #elif defined(FLOOR_PATTERN_BASKETWEAVE)
+    return patternBasketweave(uv);
   #elif defined(FLOOR_PATTERN_CHEVRON)
     return patternChevron(uv);
   #elif defined(FLOOR_PATTERN_MARBLE)
