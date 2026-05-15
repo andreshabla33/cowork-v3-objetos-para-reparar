@@ -44,7 +44,7 @@ import { DayNightCycle } from '@/modules/space3d/presentation/world/DayNightCycl
 import { ObjetosInteractivos } from '@/modules/space3d/presentation/world/ObjetosInteractivos';
 import { ParticulasClima } from '@/modules/space3d/presentation/world/ParticulasClima';
 import { SkyDome } from '@/modules/space3d/presentation/world/SkyDome';
-import { DistantSkyline } from '@/modules/space3d/presentation/world/DistantSkyline';
+import { FogProximityController } from '@/modules/space3d/presentation/world/FogProximityController';
 import { DEFAULT_SCENE_POLICY, resolveSkyColors, type ScenePolicy } from '@/src/core/domain/entities/espacio3d/ScenePolicy';
 import { generarParedesPerimetrales } from '@/src/core/application/usecases/GenerarParedesPerimetralesUseCase';
 import { ColocarObjetoUseCase } from '@/src/core/application/usecases/ColocarObjetoUseCase';
@@ -963,18 +963,16 @@ export const Scene: React.FC<SceneProps> = ({
       />
 
       {/*
-        Skyline lejana low-poly — elimina el "flotar en el vacío" que se ve
-        desde la vista aérea. Gated por gpuRenderConfig.useSky (tier ≥ 2);
-        en hardware bajo se oculta (solo 80 cajas instanciadas = barato,
-        pero mantenemos coherencia con las demás features visuales Tier 2).
-        Radio derivado del terrainBounds para escalar con el tamaño del espacio.
+        Proximity fog controller — cierra la niebla atmosférica conforme el
+        avatar se acerca a las paredes perimetrales del envelope de zonas.
+        UX-friendly: lejos del borde = vista clara; cerca del borde = niebla
+        rolling in. Sin geometría adicional — muta scene.fog.far via useFrame.
+        Si no hay zonesEnvelope (espacio sin zonas activas), restaura base.
       */}
-      <DistantSkyline
-        enabled={!!gpuRenderConfig?.useSky}
-        radius={Math.max(terrainBounds.sizeX, terrainBounds.sizeZ) * 1.1}
-        centerX={terrainBounds.centerX}
-        centerZ={terrainBounds.centerZ}
-        baseY={terrainBounds.topY}
+      <FogProximityController
+        zonesEnvelope={zonesEnvelope}
+        playerPosRef={playerColliderPositionRef}
+        baseFar={scenePolicy.fog.far}
       />
 
       {/* Controles de cámara — toda la lógica de límites por modo/contexto
