@@ -644,59 +644,85 @@ vec3 patternCobble(vec2 uv) {
 //  - https://substance3d.adobe.com/tutorials/courses/foundations-stylized-shading
 vec3 patternStylized(vec2 uv) {
   vec2 cellId = floor(uv);
-  vec2 local = fract(uv) - 0.5;  // [-0.5, 0.5] centered
+  vec2 local = fract(uv) - 0.5;  // [-0.5, 0.5] centered en celda
   float fp = pixelFootprint(uv);
 
-  // ─── SDF rounded square (Inigo Quilez) ─────────────────────────────────
-  // tileHalf=0.42 → tile cubre 84% de la celda, 16% de grout total.
-  // cornerR=0.06 → esquinas suavemente redondeadas (look "puffy").
-  const float tileHalf = 0.42;
-  const float cornerR = 0.06;
-  vec2 q = abs(local) - vec2(tileHalf - cornerR);
+  // ─── Subdivision: 3 layouts hash-driven ────────────────────────────────
+  // 55% single big tile / 25% 2 horizontal halves / 20% 2 vertical halves.
+  // Gap entre sub-tiles dentro del cell = gap entre cells = 0.08 uniforme.
+  float cellHash = fhash(cellId * 1.379);
+  vec2 center = vec2(0.0);
+  vec2 halfExt = vec2(0.46);
+  vec2 subTileId = cellId;
+
+  if (cellHash < 0.55) {
+    // Layout A: single big tile (default)
+  } else if (cellHash < 0.80) {
+    // Layout B: 2 horizontal tiles
+    float subY = step(0.0, local.y);
+    center.y = (subY - 0.5) * 0.5;
+    halfExt = vec2(0.46, 0.21);
+    subTileId.y += subY * 0.5;
+  } else {
+    // Layout C: 2 vertical tiles
+    float subX = step(0.0, local.x);
+    center.x = (subX - 0.5) * 0.5;
+    halfExt = vec2(0.21, 0.46);
+    subTileId.x += subX * 0.5;
+  }
+
+  // ─── SDF rounded rectangle (Inigo Quilez) ──────────────────────────────
+  const float cornerR = 0.05;
+  vec2 p = local - center;
+  vec2 q = abs(p) - halfExt + cornerR;
   float sdf = min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - cornerR;
   // sdf < 0 = dentro del tile, > 0 = en grout
 
-  // ─── Per-tile random color (variance baja — matched-set look) ──────────
-  float h = fhash(cellId);
-  // h*0.4 → cada tile varía solo ±20% entre uPalette[0] y uPalette[1].
-  // Tight palette = no salt-and-pepper sparkle entre tiles vecinos.
-  vec3 tileBase = mix(uPalette[0], uPalette[1], h * 0.4);
+  // ─── Per-tile color (variance fuerte — multi-tonal stylized look) ──────
+  float h = fhash(subTileId * 2.137);
+  float h2 = fhash(subTileId * 7.913);
 
-  // ─── Y-gradient soft (fake hemisphere shading) ─────────────────────────
-  // ySoft: 0 en bottom del tile, 1 en top, suavizado para look puffy.
-  // Aplica AÚN DENTRO del centro → el tile entero tiene gradient sutil.
-  float yNorm = clamp(local.y / tileHalf, -1.0, 1.0);
-  float ySoft = clamp(yNorm * 0.55 + 0.5, 0.0, 1.0);
+  // Base: variance 0.65 entre uPalette[0] y uPalette[1]
+  vec3 tileBase = mix(uPalette[0], uPalette[1], h * 0.65);
+  // ~15% tiles con tint hacia palette[2] (peach/cream highlight)
+  tileBase = mix(tileBase, uPalette[2], smoothstep(0.78, 0.92, h2) * 0.32);
+  // ~10% tiles con tint hacia darker (deeper terracotta)
+  vec3 deeperTone = mix(uPalette[0], uPalette[3], 0.35);
+  tileBase = mix(tileBase, deeperTone, smoothstep(0.12, 0.04, h2) * 0.28);
 
-  // ─── Edge-proximity rim (highlight top, shadow bottom) ─────────────────
-  // edgeProx: 0 deep inside, 1 right at edge. -0.10 = banda de 10% del cell.
-  float edgeProx = 1.0 - smoothstep(0.0, -0.10, sdf);
+  // ─── DIRECTIONAL bevel: upper-left light (Pixar/Genshin convention) ────
+  // Fake-normal: para SDF interior, normalize(p) approximates outward normal
+  // de la "puffy hemisphere". Light desde upper-left → bordes top-left
+  // brillan, bordes bottom-right en sombra. Bevel pronunciado, no sutil.
+  vec2 lightDir = vec2(-0.5, 0.866);  // 30° from vertical, upper-left
+  vec2 surfaceNorm = normalize(p + vec2(0.0001));
+  float ndotl = dot(surfaceNorm, lightDir);  // -1 (away) to 1 (toward)
 
-  // Colors auxiliares (mezclas de paleta para no introducir hues nuevos)
-  vec3 highlightCol = mix(uPalette[1], uPalette[2], 0.7);  // cream warm
-  vec3 shadowCol = mix(uPalette[0], uPalette[3], 0.45);    // dark warm
+  // Edge proximity: 1 al borde (sdf=0), 0 deep inside. Banda 13% = pronunciado.
+  float edgeProx = smoothstep(-0.13, -0.02, sdf);
+  float lightFactor = ndotl * edgeProx;
 
-  // Center color: base + soft Y-gradient (top-light, bottom-dark)
-  vec3 centerCol = mix(shadowCol, highlightCol, ySoft);
-  centerCol = mix(centerCol, tileBase, 0.55);  // pull back hacia identity
+  // Bevel colors (mezclas de palette para mantener cohesión)
+  vec3 highlightCol = mix(uPalette[1], uPalette[2], 0.85);  // pale cream
+  vec3 shadowCol = mix(uPalette[0], uPalette[3], 0.55);     // dark warm
 
-  // Rim highlight: solo en bordes superiores (ySoft > 0.5)
-  float topRim = edgeProx * smoothstep(0.45, 1.0, ySoft);
-  float botRim = edgeProx * (1.0 - smoothstep(0.0, 0.55, ySoft));
-  vec3 tileColor = centerCol;
-  tileColor = mix(tileColor, highlightCol, topRim * 0.55);
-  tileColor = mix(tileColor, shadowCol, botRim * 0.40);
+  vec3 tileColor = tileBase;
+  // Bevel pronunciado: 75% highlight intensity, 65% shadow intensity
+  tileColor = mix(tileColor, highlightCol, max(0.0, lightFactor) * 0.75);
+  tileColor = mix(tileColor, shadowCol, max(0.0, -lightFactor) * 0.65);
 
-  // ─── Low-freq wear noise (micro-variación, NO sub-pixel) ───────────────
-  // fbm a frecuencia baja (uv*2.5) → wave-length ~40cm para tileSize 0.7m.
-  // Sin aliasing porque la frecuencia es siempre > footprint del pixel.
-  float wear = fbm(uv * 2.5);
-  tileColor *= 0.92 + wear * 0.16;  // ±8% modulación, da carácter sin ruido
+  // ─── Subtle Y-gradient interno (additional depth cue) ──────────────────
+  float yNorm = clamp(p.y / max(halfExt.y, 0.001), -1.0, 1.0);
+  tileColor *= 1.0 + yNorm * 0.06;
 
-  // ─── Grout: same-hue darker (uPalette[3] base oscuro) ──────────────────
-  vec3 groutColor = uPalette[3] * 0.75;
+  // ─── Low-freq wear noise (no aliasing por construcción) ────────────────
+  float wear = fbm(uv * 3.0);
+  tileColor *= 0.92 + wear * 0.16;
 
-  // ─── Body mask con fwidth-AA ────────────────────────────────────────────
+  // ─── Grout: warm dark cohesivo con palette ─────────────────────────────
+  vec3 groutColor = mix(uPalette[3], uPalette[0], 0.12) * 0.65;
+
+  // ─── Body mask con fwidth-AA ───────────────────────────────────────────
   float aaW = max(fp * 0.5, 0.001);
   float body = 1.0 - smoothstep(-aaW, aaW, sdf);
 
