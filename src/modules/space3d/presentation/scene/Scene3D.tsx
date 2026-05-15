@@ -972,6 +972,7 @@ export const Scene: React.FC<SceneProps> = ({
       <FogProximityController
         zonesEnvelope={zonesEnvelope}
         playerPosRef={playerColliderPositionRef}
+        baseNear={scenePolicy.fog.near}
         baseFar={scenePolicy.fog.far}
       />
 
