@@ -44,7 +44,6 @@ import { DayNightCycle } from '@/modules/space3d/presentation/world/DayNightCycl
 import { ObjetosInteractivos } from '@/modules/space3d/presentation/world/ObjetosInteractivos';
 import { ParticulasClima } from '@/modules/space3d/presentation/world/ParticulasClima';
 import { SkyDome } from '@/modules/space3d/presentation/world/SkyDome';
-import { FogProximityController } from '@/modules/space3d/presentation/world/FogProximityController';
 import { DEFAULT_SCENE_POLICY, resolveSkyColors, type ScenePolicy } from '@/src/core/domain/entities/espacio3d/ScenePolicy';
 import { generarParedesPerimetrales } from '@/src/core/application/usecases/GenerarParedesPerimetralesUseCase';
 import { ColocarObjetoUseCase } from '@/src/core/application/usecases/ColocarObjetoUseCase';
@@ -960,20 +959,6 @@ export const Scene: React.FC<SceneProps> = ({
         enableDayNightCycle={enableDayNightCycle}
         theme={theme}
         gpuRenderConfig={gpuRenderConfig}
-      />
-
-      {/*
-        Proximity fog controller — cierra la niebla atmosférica conforme el
-        avatar se acerca a las paredes perimetrales del envelope de zonas.
-        UX-friendly: lejos del borde = vista clara; cerca del borde = niebla
-        rolling in. Sin geometría adicional — muta scene.fog.far via useFrame.
-        Si no hay zonesEnvelope (espacio sin zonas activas), restaura base.
-      */}
-      <FogProximityController
-        zonesEnvelope={zonesEnvelope}
-        playerPosRef={playerColliderPositionRef}
-        baseNear={scenePolicy.fog.near}
-        baseFar={scenePolicy.fog.far}
       />
 
       {/* Controles de cámara — toda la lógica de límites por modo/contexto
