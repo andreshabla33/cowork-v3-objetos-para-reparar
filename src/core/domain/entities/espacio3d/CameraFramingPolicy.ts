@@ -140,16 +140,15 @@ export const ISOMETRIC_FRAMING: CameraFraming = Object.freeze({
 export const ISOMETRIC_POLAR_ANGLE = Math.PI / 4;
 
 /**
- * Zoom permitido en modo isométrico. Min = 5m (más cerca = invasivo, el
- * avatar tapa el contexto). Max = 6m (rango cerrado — sin posibilidad de
- * ver el borde feo del mundo; el avatar siempre queda en su zona local).
- * Calibrado tras iter 5 (2026-05-15): rango mínimo (1m de variación) — foco
- * absoluto en zona-empresa. El auto-return idle (ZOOM_RETURN_IDLE_MS) trae
- * la cámara de vuelta al framing default cuando el usuario suelta el scroll.
- * Histórico: iter 4 = 11, iter 3 = 14, iter 2 = 18, iter 1 = 25, default = 12.
+ * Zoom permitido en modo isométrico. Min === Max === 1m → zoom totalmente
+ * BLOQUEADO. drei OrbitControls con min===max desactiva el wheel zoom y
+ * mantiene la cámara fija a 1m del target. El avatar dominará la pantalla
+ * — vista ultra-cercana, casi POV.
+ * Calibrado tras iter 6 (2026-05-15): zoom locked para foco absoluto.
+ * Histórico: iter 5 = 5-6, iter 4 = 11, iter 3 = 14, iter 2 = 18, iter 1 = 25.
  */
-export const ISOMETRIC_MIN_ZOOM = 5;
-export const ISOMETRIC_MAX_ZOOM = 6;
+export const ISOMETRIC_MIN_ZOOM = 1;
+export const ISOMETRIC_MAX_ZOOM = 1;
 
 /**
  * Tiempo sin interacción manual con OrbitControls (drag / wheel / pinch) para
