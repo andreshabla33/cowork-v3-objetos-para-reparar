@@ -141,11 +141,15 @@ export const ISOMETRIC_POLAR_ANGLE = Math.PI / 4;
 
 /**
  * Zoom permitido en modo isométrico. Min = 5m (más cerca = invasivo, el
- * avatar tapa el contexto). Max = 18m (más lejos = el avatar se pierde).
- * Calibrado tras iter 2 — antes era 8/25 cuando el default era 12.
+ * avatar tapa el contexto). Max = 14m (más lejos = se empezaba a ver el
+ * borde del terrain feo + el usuario "salía" de la vista de su zona).
+ * Calibrado tras iter 3 (2026-05-15): 18 → 14 para forzar foco en zona-
+ * empresa local. El auto-return idle (ZOOM_RETURN_IDLE_MS) trae la cámara
+ * de vuelta al framing default cuando el usuario suelta el scroll.
+ * Histórico: iter 2 = 18, iter 1 = 25, default original = 12.
  */
 export const ISOMETRIC_MIN_ZOOM = 5;
-export const ISOMETRIC_MAX_ZOOM = 18;
+export const ISOMETRIC_MAX_ZOOM = 14;
 
 /**
  * Tiempo sin interacción manual con OrbitControls (drag / wheel / pinch) para
