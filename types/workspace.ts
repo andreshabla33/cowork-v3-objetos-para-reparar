@@ -95,6 +95,7 @@ export type SubTabType =
   | 'space'
   | 'chat'
   | 'tasks'
+  | 'juntas'
   | 'grabaciones'
   | 'metricas'
   | 'miembros'

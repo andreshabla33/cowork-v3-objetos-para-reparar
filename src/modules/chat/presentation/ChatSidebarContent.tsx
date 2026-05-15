@@ -214,13 +214,13 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 
         <button
           type="button"
-          onClick={() => setActiveSubTab('grabaciones')}
+          onClick={() => setActiveSubTab('juntas')}
           className="ag-side__item"
+          title="Salas activas, programadas hoy y proximidad"
         >
           <span className="ag-side__item-icon" aria-hidden="true"><IconCamera /></span>
           <span className="ag-side__item-label">Juntas</span>
           <span className="ag-side__item-meta">
-            <span>3 hoy</span>
             <IconChevron />
           </span>
         </button>

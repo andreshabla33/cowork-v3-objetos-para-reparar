@@ -17,7 +17,7 @@ interface Notification {
 export interface UISlice {
   theme: ThemeType;
   view: 'dashboard' | 'workspace' | 'invitation' | 'loading' | 'onboarding' | 'onboarding_creador' | 'reset_password';
-  activeSubTab: 'space' | 'tasks' | 'miembros' | 'settings' | 'builder' | 'chat' | 'avatar' | 'calendar' | 'grabaciones' | 'metricas';
+  activeSubTab: 'space' | 'tasks' | 'miembros' | 'settings' | 'builder' | 'chat' | 'avatar' | 'juntas' | 'calendar' | 'grabaciones' | 'metricas';
   notifications: Notification[];
   isMiniMode: boolean;
   /**
