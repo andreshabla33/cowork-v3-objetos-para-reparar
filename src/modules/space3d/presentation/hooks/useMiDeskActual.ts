@@ -37,8 +37,13 @@ export function useMiDeskActual(areas: AreaEscritorio[]): AreaEscritorio | null 
       }
       const adentro = areas.find((a) => puntoEnAreaEscritorio({ x: px, z: pz }, a)) ?? null;
       // Set solo si cambia para evitar re-renders innecesarios.
+      // Comparamos REFERENCIA, no solo `.id`: cuando el realtime UPDATE
+      // reemplaza un area_escritorio (ej. flip de `audio_aislado`), el id
+      // sigue siendo el mismo pero el objeto es nuevo. Con la comparación
+      // por id, el setter quedaba con el prev stale → A no podía des-
+      // bloquear el candado del desk (bug 2026-05-16).
       setMiDesk((prev) => {
-        if (prev?.id === adentro?.id) return prev;
+        if (prev === adentro) return prev;
         return adentro;
       });
     };
