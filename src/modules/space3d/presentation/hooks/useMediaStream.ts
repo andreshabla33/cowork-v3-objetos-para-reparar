@@ -291,13 +291,24 @@ export function useMediaStream(params: {
       } catch (err) {
         log.error('Media error', { error: err instanceof Error ? err.message : String(err) });
       } finally {
-        if (mounted) {
-          isProcessingStreamRef.current = false;
-          if (pendingUpdateRef.current) {
-            log.info('Executing pending manageStream update', {});
-            pendingUpdateRef.current = false;
-            manageStream();
-          }
+        // CRÍTICO: `isProcessingStreamRef` es un ref compartido del HOOK
+        // (sobrevive el ciclo de vida del effect), por lo tanto debe
+        // resetearse SIEMPRE — no condicional a `mounted`. Si el effect
+        // se re-corrió mid-flight (deps cambiaron durante un await),
+        // `mounted=false` queda en la closure vieja. Antes del fix, el
+        // finally skippeaba el reset → isProcessing quedaba en true
+        // permanentemente → todas las llamadas siguientes bail como
+        // "busy" → cámara apagada que no se podía re-encender
+        // (bug 2026-05-16).
+        //
+        // El replay del pendingUpdate sí queda mount-gated porque ejecuta
+        // trabajo en el closure viejo; si el effect ya se re-corrió, el
+        // nuevo effect (con state fresco) tomará cargo.
+        isProcessingStreamRef.current = false;
+        if (mounted && pendingUpdateRef.current) {
+          log.info('Executing pending manageStream update', {});
+          pendingUpdateRef.current = false;
+          manageStream();
         }
       }
     };
