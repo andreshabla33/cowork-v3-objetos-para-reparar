@@ -10,8 +10,8 @@
 
 import { Room, RoomConnectOptions, RoomEvent, Track, TrackPublication, RemoteParticipant, LocalTrack, LocalTrackPublication, LocalVideoTrack } from 'livekit-client';
 import { logger } from '@/core/infrastructure/observability/logger';
-import { PublicarLocalTrackUseCase } from '@/src/core/application/usecases/PublicarLocalTrackUseCase';
-import { getLocalVideoTrackFactory } from '@/src/core/infrastructure/adapters/LocalVideoTrackFactory';
+import { getLocalVideoTrackFactory, type LocalVideoTrackFactory } from '@/src/core/infrastructure/adapters/LocalVideoTrackFactory';
+import type { VideoTrackHandle } from '@/src/core/domain/types/media';
 import {
   PreflightError,
   DataPacketContract,
@@ -95,8 +95,8 @@ export class SpaceRealtimeCoordinator {
   private readonly dataPublisher: RealtimeDataPublisher;
   /** Servicio compuesto — parsing de DataReceived (elimina duplicación con Gateway) */
   private eventParser: RealtimeEventParser;
-  /** Use-case compartido — resuelve raw→wrapper y publica en la Room. */
-  private readonly publicarLocalTrack: PublicarLocalTrackUseCase;
+  /** Factory de wrappers — resuelve MediaStreamTrack/handle a LocalVideoTrack. */
+  private readonly localVideoFactory: LocalVideoTrackFactory;
 
   // State
   private connected = false;
@@ -115,7 +115,7 @@ export class SpaceRealtimeCoordinator {
     this.options = options;
     this.dataPublisher = new RealtimeDataPublisher(() => this.room);
     this.eventParser = new RealtimeEventParser(this.eventBus, options.onDataReceived);
-    this.publicarLocalTrack = new PublicarLocalTrackUseCase(getLocalVideoTrackFactory());
+    this.localVideoFactory = getLocalVideoTrackFactory();
   }
 
   /**
@@ -228,12 +228,21 @@ export class SpaceRealtimeCoordinator {
     }
 
     try {
-      const publication = await this.publicarLocalTrack.ejecutar({
-        room: this.room,
-        track,
-        source,
-        publishOptions: crearOpcionesPublicacionTrackLiveKit(source),
-      });
+      // Resolver: raw MediaStreamTrack → LocalVideoTrack wrapped (vía handle)
+      // si es cámara; mic/screen quedan como MediaStreamTrack. Si el caller
+      // ya pasó un LocalVideoTrack pre-wrapped, lo usamos tal cual.
+      let native: MediaStreamTrack | LocalVideoTrack;
+      if (track instanceof LocalVideoTrack) {
+        native = track;
+      } else {
+        const resolved = this.localVideoFactory.resolveForPublish(track, source);
+        native = this.handleToNative(resolved);
+      }
+
+      const publication = await this.room.localParticipant.publishTrack(
+        native,
+        crearOpcionesPublicacionTrackLiveKit(source),
+      );
 
       this.localTrackPublications.set(publication.trackSid, publication);
       this.options.onTrackPublished?.(publication.track as LocalTrack, publication);
@@ -245,6 +254,24 @@ export class SpaceRealtimeCoordinator {
       this.log.error('Failed to publish track', { error });
       return null;
     }
+  }
+
+  /**
+   * Resuelve un `MediaStreamTrack | LocalVideoTrack | VideoTrackHandle` al
+   * objeto que `LocalParticipant.publishTrack` acepta. Para handles emitidos
+   * por la factory devuelve el `LocalVideoTrack` cacheado.
+   */
+  private handleToNative(
+    resolved: MediaStreamTrack | LocalVideoTrack | VideoTrackHandle,
+  ): MediaStreamTrack | LocalVideoTrack {
+    if (resolved instanceof MediaStreamTrack || resolved instanceof LocalVideoTrack) {
+      return resolved;
+    }
+    const native = this.localVideoFactory.resolveNative(resolved);
+    if (!native) {
+      throw new Error(`Cannot resolve VideoTrackHandle ${resolved.id} to native track`);
+    }
+    return native;
   }
 
   /**

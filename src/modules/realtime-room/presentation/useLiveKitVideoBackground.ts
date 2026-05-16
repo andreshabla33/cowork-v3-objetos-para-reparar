@@ -43,8 +43,10 @@ import { useEffect, useRef } from 'react';
 import type { LocalVideoTrack } from 'livekit-client';
 import { GestionarBackgroundVideoUseCase } from '@/src/core/application/usecases/GestionarBackgroundVideoUseCase';
 import { getLiveKitBackgroundAdapter } from '@/src/core/infrastructure/adapters/LiveKitOfficialBackgroundAdapter';
+import { getLocalVideoTrackFactory } from '@/src/core/infrastructure/adapters/LocalVideoTrackFactory';
 import { getBackgroundCapability } from '@/src/core/infrastructure/browser/BackgroundCapabilityDetector';
 import type { EffectType } from '@/src/core/domain/ports/IVideoTrackProcessor';
+import type { VideoTrackHandle } from '@/src/core/domain/types/media';
 import { logger } from '@/core/infrastructure/observability/logger';
 
 const log = logger.child('useLiveKitVideoBackground');
@@ -108,6 +110,19 @@ export function useLiveKitVideoBackground(
   /** Último `LocalVideoTrack` sobre el que se hizo `attachProcessor`. */
   const attachedTrackRef = useRef<LocalVideoTrack | null>(null);
 
+  /** Factory para traducir LocalVideoTrack ↔ VideoTrackHandle. */
+  const factory = getLocalVideoTrackFactory();
+
+  /** Determina el `kind` del handle según el `Track.Source` del LocalVideoTrack. */
+  const kindOf = (lt: LocalVideoTrack): 'camera' | 'screen' | 'background' => {
+    const src = lt.source as unknown as string;
+    if (src === 'screen_share' || src === 'screen_share_audio') return 'screen';
+    return 'camera';
+  };
+
+  const handleFromTrack = (lt: LocalVideoTrack): VideoTrackHandle =>
+    factory.handleOf(lt, kindOf(lt));
+
   /**
    * Deferred detach — React Strict Mode safe.
    * El cleanup programa el `detachFromTrack()` en `setTimeout(0)`; si hay
@@ -144,7 +159,7 @@ export function useLiveKitVideoBackground(
         // No hay attach proactivo: setEffect() hace attach implícito cuando
         // se necesita. Si effect=none, el processor NO se crea.
         if (attachedTrackRef.current && attachedTrackRef.current !== track) {
-          await useCase.detachFromTrack(attachedTrackRef.current);
+          await useCase.detachFromTrack(handleFromTrack(attachedTrackRef.current));
           if (cancelled) return;
           log.info('previous track detached');
         }
@@ -155,7 +170,7 @@ export function useLiveKitVideoBackground(
         // ── Aplicar o desactivar el efecto ────────────────────────────────
         if (wantEffect) {
           // setEffect hace attach implícito si no hay sesión (WASM cached → ~100ms)
-          await useCase.setEffect(track, {
+          await useCase.setEffect(handleFromTrack(track), {
             effectType,
             blurRadius,
             backgroundImageUrl: backgroundImage ?? undefined,
@@ -169,7 +184,7 @@ export function useLiveKitVideoBackground(
         } else {
           // disableEffect libera el processor real (stopProcessor),
           // no lo deja en passthrough. Ahorra 5-15ms/frame de GPU.
-          await useCase.disableEffect(track);
+          await useCase.disableEffect(handleFromTrack(track));
           if (!cancelled) {
             log.info('effect disabled (processor released)');
           }
@@ -191,7 +206,7 @@ export function useLiveKitVideoBackground(
         deferredDetachRef.current = null;
         if (trackToDetach) {
           log.info('deferred detach ejecutado (unmount real)');
-          void useCase.detachFromTrack(trackToDetach).catch(() => {});
+          void useCase.detachFromTrack(handleFromTrack(trackToDetach)).catch(() => {});
           attachedTrackRef.current = null;
         }
       }, 0);

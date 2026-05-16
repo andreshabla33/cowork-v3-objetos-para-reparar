@@ -1,7 +1,8 @@
 /**
  * @module infrastructure/adapters/LocalVideoTrackFactory
  *
- * Factory de infraestructura para wrapping de MediaStreamTrack → LocalVideoTrack.
+ * Factory de infraestructura para wrapping de MediaStreamTrack → LocalVideoTrack
+ * y bridge con `VideoTrackHandle` (tipo opaco del Domain).
  *
  * ════════════════════════════════════════════════════════════════
  * CLEAN ARCHITECTURE — Separación de capas
@@ -13,6 +14,12 @@
  *   1. El wrapping de MediaStreamTrack → LocalVideoTrack
  *   2. La política userProvidedTrack=true (LiveKit no detiene el track subyacente)
  *   3. El caché por trackId para evitar wrappers duplicados bajo Strict Mode
+ *   4. El registry handleId ↔ LocalVideoTrack (Domain ↔ Infrastructure)
+ *
+ * Refactor 2026-05-16 (Fase 0.1 monorepo): la factory ahora es también el
+ * resolver entre `VideoTrackHandle` (Domain) y `LocalVideoTrack` (livekit-
+ * client). Application/Domain pasan handles; el adapter LiveKit consulta
+ * `resolveNative(handleId)` para obtener el objeto real del SDK.
  *
  * ════════════════════════════════════════════════════════════════
  * CACHÉ POR TRACK ID — Garantía de referencia estable
@@ -30,14 +37,34 @@
  * 'ended' (el browser notifica vía el evento 'ended').
  *
  * @see src/core/infrastructure/adapters/LiveKitOfficialBackgroundAdapter.ts
- * @see components/meetings/videocall/hooks/useMeetingMediaBridge.ts
+ * @see src/core/domain/types/media.ts
  */
 
 import { LocalVideoTrack } from 'livekit-client';
 import { logger } from '@/core/infrastructure/observability/logger';
-import type { IVideoTrackPublishResolver, VideoPublishSource } from '../../domain/ports/IVideoTrackPublishResolver';
+import type {
+  IVideoTrackPublishResolver,
+  VideoPublishSource,
+} from '../../domain/ports/IVideoTrackPublishResolver';
+import type { VideoTrackHandle } from '../../domain/types/media';
 
 const log = logger.child('LocalVideoTrackFactory');
+
+/** Marca interna que reconoce handles emitidos por esta factory. */
+const HANDLE_MARK: unique symbol = Symbol('LocalVideoTrackHandle');
+
+interface InternalHandle extends VideoTrackHandle {
+  readonly [HANDLE_MARK]: true;
+}
+
+function isFactoryHandle(value: unknown): value is InternalHandle {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    HANDLE_MARK in value &&
+    (value as InternalHandle)[HANDLE_MARK] === true
+  );
+}
 
 // ─── Singleton factory ────────────────────────────────────────────────────────
 
@@ -56,35 +83,23 @@ export class LocalVideoTrackFactory implements IVideoTrackPublishResolver {
 
   /**
    * Retorna un LocalVideoTrack wrapper para el MediaStreamTrack dado.
-   *
-   * Si ya existe un wrapper en caché para este trackId, lo retorna
-   * directamente (misma referencia de objeto → estabilidad entre renders).
-   *
-   * Si no existe, crea un nuevo wrapper con userProvidedTrack=true para
-   * que LiveKit no detenga el MediaStreamTrack subyacente al cleanup.
-   *
-   * @param rawTrack MediaStreamTrack activo de la cámara del usuario
-   * @returns LocalVideoTrack wrapper estable y cacheado
+   * Mismo wrapper si ya existe (referencia estable bajo Strict Mode).
    */
   wrapRawTrack(rawTrack: MediaStreamTrack): LocalVideoTrack {
     const trackId = rawTrack.id;
 
-    // Retornar wrapper existente si el track sigue activo
     const existing = this.cache.get(trackId);
     if (existing) {
       log.debug('wrapRawTrack: retornando wrapper cacheado', { trackId });
       return existing;
     }
 
-    // Crear nuevo wrapper con userProvidedTrack=true:
-    //   - Preserva el MediaStreamTrack subyacente al cleanup del componente
-    //   - LiveKit llama stopProcessor() en el wrapper, no .stop() en el track
+    // userProvidedTrack=true: LiveKit no detiene el MediaStreamTrack subyacente
     const wrapper = new LocalVideoTrack(rawTrack, undefined, true);
     this.cache.set(trackId, wrapper);
 
     log.debug('wrapRawTrack: nuevo wrapper creado', { trackId });
 
-    // Limpiar caché automáticamente cuando el track termine
     rawTrack.addEventListener('ended', () => {
       this.cache.delete(trackId);
       log.debug('wrapRawTrack: wrapper eliminado del caché (track ended)', { trackId });
@@ -93,7 +108,53 @@ export class LocalVideoTrackFactory implements IVideoTrackPublishResolver {
     return wrapper;
   }
 
-  /** Lookup read-only del wrapper cacheado. */
+  /**
+   * Crea un `VideoTrackHandle` (Domain) para el `LocalVideoTrack` dado.
+   * El handle es estable mientras el wrapper esté en caché.
+   *
+   * El adapter LiveKit recibe handles desde Application/Domain y los
+   * resuelve a `LocalVideoTrack` vía `resolveNative()`.
+   */
+  handleOf(
+    localTrack: LocalVideoTrack,
+    kind: 'camera' | 'screen' | 'background',
+  ): VideoTrackHandle {
+    const id = localTrack.mediaStreamTrack.id;
+    // Asegurar que esté en caché (idempotente — wrapRawTrack ya lo hace)
+    if (!this.cache.has(id)) {
+      this.cache.set(id, localTrack);
+    }
+    const handle: InternalHandle = {
+      id,
+      kind,
+      [HANDLE_MARK]: true,
+    };
+    return handle;
+  }
+
+  /**
+   * Atajo: wrap + handle en una sola llamada para callers que parten
+   * de un MediaStreamTrack crudo.
+   */
+  handleFor(
+    rawTrack: MediaStreamTrack,
+    kind: 'camera' | 'screen' | 'background',
+  ): VideoTrackHandle {
+    const wrapper = this.wrapRawTrack(rawTrack);
+    return this.handleOf(wrapper, kind);
+  }
+
+  /**
+   * Resuelve un `VideoTrackHandle` al `LocalVideoTrack` nativo del SDK.
+   * Usado por el adapter LiveKit para acceder a métodos del SDK
+   * (`setProcessor`, `stopProcessor`, etc.) sin que Application/Domain
+   * conozcan el tipo concreto.
+   */
+  resolveNative(handle: VideoTrackHandle): LocalVideoTrack | null {
+    return this.cache.get(handle.id) ?? null;
+  }
+
+  /** Lookup read-only del wrapper cacheado (compat). */
   peekWrapper(rawTrackId: string): LocalVideoTrack | null {
     return this.cache.get(rawTrackId) ?? null;
   }
@@ -102,37 +163,40 @@ export class LocalVideoTrackFactory implements IVideoTrackPublishResolver {
    * Resuelve el wrapper a publicar. Para cámara delega a `wrapRawTrack`
    * (idempotente: reutiliza el cacheado o crea y cachea uno nuevo).
    *
+   * Si recibe un `VideoTrackHandle` emitido por esta factory, devuelve
+   * el handle tal cual (el publisher adapter lo resolverá a LocalVideoTrack
+   * cuando se necesite el objeto nativo).
+   *
    * Garantiza Single Source of Truth del `LocalVideoTrack` de cámara sin
-   * importar el orden en que corran los useEffects de Presentation
-   * (`useLocalCameraTrack`) y Application (`coordinator.publishTrack`):
-   * el primero que llegue crea el wrapper, el segundo obtiene la misma
-   * referencia. Así LiveKit nunca construye un wrapper interno adicional
-   * en `publishTrack(MediaStreamTrack)` y el `setProcessor()` del preview
-   * persiste en la publicación.
+   * importar el orden en que corran los useEffects de Presentation y
+   * Application: el primero que llegue crea el wrapper, el segundo
+   * obtiene la misma referencia. Así LiveKit nunca construye un wrapper
+   * interno adicional en `publishTrack(MediaStreamTrack)` y el
+   * `setProcessor()` del preview persiste en la publicación.
    *
    * @see https://github.com/livekit/track-processors-js
    */
-  resolveForPublish<T extends MediaStreamTrack | LocalVideoTrack>(
+  resolveForPublish<T extends MediaStreamTrack | VideoTrackHandle>(
     track: T,
     source: VideoPublishSource,
-  ): T | LocalVideoTrack {
-    if (track instanceof LocalVideoTrack || source !== 'camera') return track;
-    return this.wrapRawTrack(track);
+  ): T | VideoTrackHandle {
+    // Handle ya resuelto → pasa tal cual
+    if (isFactoryHandle(track)) return track;
+    // Solo wrapeamos cámara (mic/screen quedan como MediaStreamTrack)
+    if (source !== 'camera') return track;
+    // MediaStreamTrack crudo → wrap + handle
+    const mediaTrack = track as MediaStreamTrack;
+    return this.handleFor(mediaTrack, 'camera');
   }
 
-  /**
-   * Elimina un wrapper del caché de forma explícita.
-   * Útil cuando el track es reemplazado por uno nuevo del mismo dispositivo.
-   */
+  /** Elimina un wrapper del caché de forma explícita. */
   releaseWrapper(rawTrackId: string): void {
     if (this.cache.delete(rawTrackId)) {
       log.debug('wrapRawTrack: wrapper liberado explícitamente', { rawTrackId });
     }
   }
 
-  /**
-   * Limpia todo el caché. Llamar en dispose/teardown del hook.
-   */
+  /** Limpia todo el caché. Llamar en dispose/teardown. */
   dispose(): void {
     this.cache.clear();
     log.debug('LocalVideoTrackFactory disposed');

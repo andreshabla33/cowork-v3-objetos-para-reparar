@@ -4,11 +4,10 @@ import { TrackPublicationCoordinator, crearOpcionesPublicacionTrackLiveKit, load
 import { createProcessedAudioTrack, type ProcessedAudioTrackHandle } from '@/core/infrastructure/audio/audioProcessing';
 import { SpaceMediaCoordinator, type SpaceMediaCoordinatorState } from '@/modules/realtime-room';
 import { getLocalVideoTrackFactory } from '@/src/core/infrastructure/adapters/LocalVideoTrackFactory';
-import { PublicarLocalTrackUseCase } from '@/src/core/application/usecases/PublicarLocalTrackUseCase';
 import { logger } from '@/core/infrastructure/observability/logger';
 import { getLiveKitBackgroundAdapter } from '@/core/infrastructure/adapters/LiveKitOfficialBackgroundAdapter';
 
-const publicarLocalTrackUseCase = new PublicarLocalTrackUseCase(getLocalVideoTrackFactory());
+const localVideoFactory = getLocalVideoTrackFactory();
 
 const log = logger.child('useMeetingMediaBridge');
 
@@ -540,12 +539,18 @@ export const useMeetingMediaBridge = ({
               await localTrack.unmute();
             }
           } else {
-            await publicarLocalTrackUseCase.ejecutar({
-              room,
-              track: item.track,
-              source: item.source,
-              publishOptions: crearOpcionesPublicacionTrackLiveKit(item.source),
-            });
+            // Resolver: cámara → LocalVideoTrack wrapped (vía handle factory)
+            // para preservar el processor de blur del preview. Mic/screen
+            // quedan como MediaStreamTrack.
+            const resolved = localVideoFactory.resolveForPublish(item.track, item.source);
+            const native =
+              resolved instanceof MediaStreamTrack || resolved instanceof LocalVideoTrack
+                ? resolved
+                : (localVideoFactory.resolveNative(resolved) ?? item.track);
+            await room.localParticipant.publishTrack(
+              native,
+              crearOpcionesPublicacionTrackLiveKit(item.source),
+            );
           }
         } else if (item.action === 'unpublish' && localTrack) {
           if (!localTrack.isMuted && typeof localTrack.mute === 'function') {

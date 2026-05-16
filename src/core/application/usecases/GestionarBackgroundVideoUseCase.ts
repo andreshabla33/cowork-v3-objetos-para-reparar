@@ -8,14 +8,20 @@
  * CICLO DE VIDA (patrón oficial LiveKit)
  * ════════════════════════════════════════════════════════════════
  *
- *   attachToTrack(track)   → setProcessor(disabled) [una sola vez]
- *   setEffect(track, cfg)  → switchTo(blur | virtual-background)
- *   disableEffect(track)   → switchTo(disabled) — processor vivo, sin efecto
- *   detachFromTrack(track) → stopProcessor() [cleanup final, unmount]
+ *   attachToTrack(handle)   → setProcessor(disabled) [una sola vez]
+ *   setEffect(handle, cfg)  → switchTo(blur | virtual-background)
+ *   disableEffect(handle)   → switchTo(disabled) — processor vivo, sin efecto
+ *   detachFromTrack(handle) → stopProcessor() [cleanup final, unmount]
  *
  * La capa de presentación (VideoWithBackground, useLiveKitVideoBackground)
  * no conoce detalles del SDK de LiveKit: solo orquesta a través de este
  * Use Case, manteniendo el desacoplamiento de Clean Architecture.
+ *
+ * Refactor 2026-05-16 (Fase 0.1 monorepo): los métodos aceptan
+ * `VideoTrackHandle` (tipo opaco de Domain) en lugar de `LocalVideoTrack`
+ * (tipo concreto de livekit-client). El adapter resuelve el handle al
+ * objeto nativo internamente. Esto elimina la dependencia de Application
+ * sobre el SDK de transport.
  *
  * ════════════════════════════════════════════════════════════════
  * GARANTÍAS
@@ -29,9 +35,9 @@
  * @see https://github.com/livekit/track-processors-js (patrón disabled → switchTo)
  */
 
-import type { LocalVideoTrack } from 'livekit-client';
 import type { LiveKitOfficialBackgroundAdapter } from '../../infrastructure/adapters/LiveKitOfficialBackgroundAdapter';
 import type { VideoTrackProcessorConfig } from '../../domain/ports/IVideoTrackProcessor';
+import type { VideoTrackHandle } from '../../domain/types/media';
 import { getBackgroundCapability } from '../../infrastructure/browser/BackgroundCapabilityDetector';
 import { logger } from '@/core/infrastructure/observability/logger';
 
@@ -48,7 +54,7 @@ export class GestionarBackgroundVideoUseCase {
    *
    * Si el browser no soporta background processors, retorna silenciosamente.
    */
-  async attachToTrack(track: LocalVideoTrack): Promise<void> {
+  async attachToTrack(track: VideoTrackHandle): Promise<void> {
     const capability = getBackgroundCapability();
     if (!capability.supported) {
       log.debug('attachToTrack: browser no soportado, skip', {
@@ -63,12 +69,9 @@ export class GestionarBackgroundVideoUseCase {
   /**
    * Activa o cambia el efecto de fondo.
    * Si el processor no está adjunto aún, lo adjunta implícitamente.
-   *
-   * @param track  LocalVideoTrack (preview o publicado)
-   * @param config Configuración del efecto
    */
   async setEffect(
-    track: LocalVideoTrack,
+    track: VideoTrackHandle,
     config: VideoTrackProcessorConfig,
   ): Promise<void> {
     const capability = getBackgroundCapability();
@@ -92,7 +95,7 @@ export class GestionarBackgroundVideoUseCase {
    * El pipeline WebGL permanece vivo en passthrough.
    * Reactivar con setEffect() es instantáneo (solo switchTo).
    */
-  async disableEffect(track: LocalVideoTrack): Promise<void> {
+  async disableEffect(track: VideoTrackHandle): Promise<void> {
     await this.adapter.disableEffect(track);
   }
 
@@ -101,7 +104,7 @@ export class GestionarBackgroundVideoUseCase {
    * Debe llamarse SOLO en el unmount definitivo del componente o track.
    * Después de este punto, attachToTrack() requeriría un nuevo init de WASM.
    */
-  async detachFromTrack(track: LocalVideoTrack): Promise<void> {
+  async detachFromTrack(track: VideoTrackHandle): Promise<void> {
     await this.adapter.detachProcessor(track);
   }
 
@@ -115,7 +118,6 @@ export class GestionarBackgroundVideoUseCase {
 
   /**
    * Retorna si el procesamiento ocurrirá off-main-thread (Chrome 94+).
-   * Off-main-thread: no compite con Three.js / React render en el main thread.
    */
   isOffMainThread(): boolean {
     return getBackgroundCapability().offMainThread;

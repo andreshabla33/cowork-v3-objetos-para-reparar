@@ -71,6 +71,8 @@ import type {
   IVideoTrackProcessor,
   VideoTrackProcessorConfig,
 } from '../../domain/ports/IVideoTrackProcessor';
+import type { VideoTrackHandle } from '../../domain/types/media';
+import { getLocalVideoTrackFactory, type LocalVideoTrackFactory } from './LocalVideoTrackFactory';
 
 const log = logger.child('LiveKitOfficialBackgroundAdapter');
 
@@ -103,6 +105,25 @@ interface ActiveSession {
  *   detachProcessor()  → stopProcessor() [cleanup final]
  */
 export class LiveKitOfficialBackgroundAdapter implements IVideoTrackProcessor {
+  /**
+   * Factory inyectada que mantiene el registry handleId ↔ LocalVideoTrack.
+   * El adapter consulta `resolveNative()` para obtener el objeto nativo
+   * del SDK desde un `VideoTrackHandle` de Domain.
+   */
+  constructor(private readonly factory: LocalVideoTrackFactory = getLocalVideoTrackFactory()) {}
+
+  /**
+   * Resuelve un handle al objeto nativo del SDK. Si el handle no está
+   * registrado, retorna null y el adapter no actúa (idempotente safe).
+   */
+  private resolveNative(handle: VideoTrackHandle): LocalVideoTrack | null {
+    const native = this.factory.resolveNative(handle);
+    if (!native) {
+      log.warn('No native track for handle (skip)', { handleId: handle.id, kind: handle.kind });
+    }
+    return native;
+  }
+
   private sessions = new Map<string, ActiveSession>();
 
   /**
@@ -234,12 +255,14 @@ export class LiveKitOfficialBackgroundAdapter implements IVideoTrackProcessor {
    *   - Si hay un attach en vuelo → espera a que complete (no inicia otro)
    *   - Si no hay nada → crea processor en disabled + setProcessor
    */
-  async attachProcessor(track: LocalVideoTrack): Promise<void> {
+  async attachProcessor(handle: VideoTrackHandle): Promise<void> {
     if (!supportsBackgroundProcessors()) {
       log.warn('Browser no soporta background processors');
       return;
     }
 
+    const track = this.resolveNative(handle);
+    if (!track) return;
     const trackId = this.getTrackId(track);
 
     // Guard 1: sesión ya registrada → skip
@@ -327,16 +350,18 @@ export class LiveKitOfficialBackgroundAdapter implements IVideoTrackProcessor {
    * Usa processor.switchTo() → hot-swap sin re-init de WASM/WebGL.
    */
   async setEffect(
-    track: LocalVideoTrack,
+    handle: VideoTrackHandle,
     config: VideoTrackProcessorConfig,
   ): Promise<void> {
     if (!supportsBackgroundProcessors()) return;
 
+    const track = this.resolveNative(handle);
+    if (!track) return;
     const trackId = this.getTrackId(track);
 
     // Attach implícito si no existe sesión
     if (!this.sessions.has(trackId)) {
-      await this.attachProcessor(track);
+      await this.attachProcessor(handle);
     }
 
     const session = this.sessions.get(trackId);
@@ -356,7 +381,9 @@ export class LiveKitOfficialBackgroundAdapter implements IVideoTrackProcessor {
    * ahorro continuo de 5-15 ms/frame de GPU mientras el efecto está off.
    * En Intel Iris Xe la ganancia es ~10-20 FPS sostenida.
    */
-  async disableEffect(track: LocalVideoTrack): Promise<void> {
+  async disableEffect(handle: VideoTrackHandle): Promise<void> {
+    const track = this.resolveNative(handle);
+    if (!track) return;
     const trackId = this.getTrackId(track);
     const session = this.sessions.get(trackId);
 
@@ -394,7 +421,9 @@ export class LiveKitOfficialBackgroundAdapter implements IVideoTrackProcessor {
    * Llama track.stopProcessor() para liberar WASM, WebGL y todos los recursos.
    * Solo debe llamarse en el unmount definitivo del componente.
    */
-  async detachProcessor(track: LocalVideoTrack): Promise<void> {
+  async detachProcessor(handle: VideoTrackHandle): Promise<void> {
+    const track = this.resolveNative(handle);
+    if (!track) return;
     const trackId = this.getTrackId(track);
 
     // Invalida cualquier attachProcessor concurrente en vuelo
