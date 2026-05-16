@@ -38,6 +38,7 @@ import {
   LocalVideoTrackFactory,
   getLocalVideoTrackFactory,
 } from '../../../src/core/infrastructure/adapters/LocalVideoTrackFactory';
+import type { VideoTrackHandle } from '../../../src/core/domain/types/media';
 
 // Minimal MediaStreamTrack stand-in: only the fields the factory touches
 // (`id` + `addEventListener('ended')`).
@@ -98,17 +99,14 @@ describe('LocalVideoTrackFactory — preview/publish wrapper identity', () => {
       const previewWrapper = factory.wrapRawTrack(mst);
       const publishHandle = factory.resolveForPublish(mst, 'camera');
 
-      // Post Fase 0.1: resolveForPublish ahora devuelve VideoTrackHandle (Domain).
-      // El adapter LiveKit lo resuelve a LocalVideoTrack vía factory.resolveNative.
-      // Invariante crítico: la resolución debe apuntar al MISMO wrapper que
-      // wrapRawTrack ya devolvió. Si esto se rompe, el flicker de cámara
-      // del bugfix 2026-04-07 reaparece.
-      // Para source='camera' resolveForPublish devuelve un VideoTrackHandle.
-      // Identificamos por la presencia de `kind` (los MediaStreamTrack no lo tienen).
-      if (!('kind' in publishHandle) || (publishHandle.kind !== 'camera' && publishHandle.kind !== 'screen' && publishHandle.kind !== 'background')) {
-        throw new Error('Expected VideoTrackHandle for source=camera');
-      }
-      const resolved = factory.resolveNative(publishHandle);
+      // Post Fase 0.1: resolveForPublish para source='camera' devuelve un
+      // VideoTrackHandle (Domain) que el adapter resuelve a LocalVideoTrack.
+      // Invariante crítico: resolveNative(handle) === el wrapper de
+      // wrapRawTrack. Si esto se rompe, el flicker de cámara del bugfix
+      // 2026-04-07 reaparece.
+      const handle = publishHandle as VideoTrackHandle;
+      expect(handle.kind).toBe('camera');
+      const resolved = factory.resolveNative(handle);
       expect(resolved).toBe(previewWrapper);
     });
 
@@ -118,12 +116,9 @@ describe('LocalVideoTrackFactory — preview/publish wrapper identity', () => {
       const publishHandle = factory.resolveForPublish(mst, 'camera');
       const previewWrapper = factory.wrapRawTrack(mst);
 
-      // Para source='camera' resolveForPublish devuelve un VideoTrackHandle.
-      // Identificamos por la presencia de `kind` (los MediaStreamTrack no lo tienen).
-      if (!('kind' in publishHandle) || (publishHandle.kind !== 'camera' && publishHandle.kind !== 'screen' && publishHandle.kind !== 'background')) {
-        throw new Error('Expected VideoTrackHandle for source=camera');
-      }
-      const resolved = factory.resolveNative(publishHandle);
+      const handle = publishHandle as VideoTrackHandle;
+      expect(handle.kind).toBe('camera');
+      const resolved = factory.resolveNative(handle);
       expect(resolved).toBe(previewWrapper);
     });
 
