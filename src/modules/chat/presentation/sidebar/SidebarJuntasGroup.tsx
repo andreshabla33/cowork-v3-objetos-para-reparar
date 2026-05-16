@@ -117,51 +117,53 @@ export const SidebarJuntasGroup: React.FC = () => {
         </span>
       </button>
 
-      {/* Contenido expandible */}
+      {/* Contenido expandible — inline preview estilo Gather */}
       {expanded && (
-        <div className="pl-4 pr-2 pb-2 space-y-2">
-          {/* ── Tu sala actual (si está en meeting zone) ─────────────────── */}
+        <div className="px-2 pb-3 space-y-2.5">
+          {/* ── 🟢 Estás en una sala (meeting zone activo) ───────────────── */}
           {currentMeetingZoneId && (
-            <div className="px-2 py-1.5 rounded-lg bg-emerald-50/60 border border-emerald-200/50">
+            <div className="mx-1 px-2.5 py-2 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/40 border border-emerald-300/60 shadow-sm">
               <div className="flex items-center gap-1.5 mb-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[9px] font-bold uppercase tracking-widest text-emerald-700">
-                  Estás en una sala
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+                <span className="text-[9px] font-black uppercase tracking-[0.15em] text-emerald-700">
+                  En vivo · tu sala
                 </span>
               </div>
-              <p className="text-[11px] text-emerald-900/80 truncate">
+              <p className="text-[11px] text-emerald-900/90 font-medium truncate">
                 Conversación de proximidad activa
               </p>
             </div>
           )}
 
-          {/* ── En proximidad (stream activo) ────────────────────────────── */}
+          {/* ── 💜 Stream de proximidad ──────────────────────────────────── */}
           {usersInProximity.length > 0 && (
-            <div className="px-2 py-1.5">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-600">
-                  En proximidad ({usersInProximity.length})
+            <div className="mx-1 px-2.5 py-2 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50/40 border border-indigo-200/60">
+              <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_6px_rgba(99,102,241,0.5)]" />
+                  <span className="text-[9px] font-black uppercase tracking-[0.15em] text-indigo-700">
+                    Proximidad
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono font-bold text-indigo-600">
+                  {usersInProximity.length}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <AvatarStack users={usersInProximity} max={5} size={26} />
-              </div>
+              <AvatarStack users={usersInProximity} max={6} size={28} borderColor="white" />
             </div>
           )}
 
-          {/* ── Salas activas ────────────────────────────────────────────── */}
+          {/* ── 🟡 Salas activas en el espacio 3D ────────────────────────── */}
           {salasConGente.length > 0 && (
-            <div className="px-2 py-1.5">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-600">
-                  Salas activas ({salasConGente.length})
+            <div className="px-1">
+              <div className="flex items-center gap-1.5 mb-1.5 px-1">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                <span className="text-[9px] font-black uppercase tracking-[0.15em] text-zinc-600">
+                  Salas ({salasConGente.length})
                 </span>
               </div>
               <ul className="space-y-1.5">
                 {salasConGente.map((sala) => {
-                  // Map ParticipanteSalaData → AvatarStackItem
                   const participantUsers = (sala.participantes ?? [])
                     .map((p) => {
                       const u = p.usuario;
@@ -174,23 +176,25 @@ export const SidebarJuntasGroup: React.FC = () => {
                     })
                     .filter((u): u is NonNullable<typeof u> => u !== null);
                   return (
-                    <li
-                      key={sala.id}
-                      className="flex items-center gap-2 px-1.5 py-1 rounded-md hover:bg-zinc-100/60 cursor-pointer group"
-                      onClick={() => joinRoom(sala.id)}
-                      title={`Unirse a ${sala.nombre}`}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[11px] font-semibold text-zinc-700 truncate">
-                          {sala.nombre}
-                        </p>
-                        <div className="mt-1">
-                          <AvatarStack users={participantUsers} max={4} size={20} />
+                    <li key={sala.id}>
+                      <button
+                        type="button"
+                        onClick={() => joinRoom(sala.id)}
+                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg bg-white border border-zinc-200/70 hover:border-indigo-300 hover:bg-indigo-50/40 transition-all cursor-pointer group text-left"
+                        title={`Unirse a ${sala.nombre}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-bold text-zinc-800 truncate">
+                            {sala.nombre}
+                          </p>
+                          <div className="mt-1">
+                            <AvatarStack users={participantUsers} max={4} size={22} borderColor="white" />
+                          </div>
                         </div>
-                      </div>
-                      <span className="text-[10px] text-indigo-500 opacity-0 group-hover:opacity-100 font-bold uppercase tracking-wider">
-                        Unirse →
-                      </span>
+                        <span className="text-[9px] font-black uppercase tracking-widest text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                          Unirse
+                        </span>
+                      </button>
                     </li>
                   );
                 })}
@@ -198,13 +202,14 @@ export const SidebarJuntasGroup: React.FC = () => {
             </div>
           )}
 
-          {/* Empty state — nada activo ahora */}
+          {/* Empty state — nada activo */}
           {!currentMeetingZoneId
             && usersInProximity.length === 0
             && salasConGente.length === 0 && (
-            <p className="px-2 py-2 text-[10px] text-zinc-400 italic leading-relaxed">
-              Cuando alguien entre a una sala o se acerque por proximidad,
-              aparecerá aquí.
+            <p className="mx-1 px-2 py-3 text-[10px] text-zinc-400 italic leading-relaxed text-center">
+              Sin actividad ahora.
+              <br />
+              Las reuniones aparecerán aquí.
             </p>
           )}
         </div>

@@ -19,7 +19,6 @@ const MiembrosView = lazy(() => import('@/modules/user/presentation/MiembrosView
 const AvatarCustomizer3D = lazy(() => import('@/modules/customizer/presentation/AvatarCustomizer3D'));
 const ChatPanel = lazy(() => import('@/modules/chat/presentation/ChatPanel').then(module => ({ default: module.ChatPanel })));
 const CalendarPanel = lazy(() => import('@/modules/meetings/presentation/CalendarPanel'));
-const JuntasPanel = lazy(() => import('@/modules/meetings/presentation/JuntasPanel'));
 const GrabacionesHistorial = lazy(() => import('@/modules/meetings/presentation/recording/GrabacionesHistorial'));
 const MetricasEmpresaPanel = lazy(() => import('@/modules/workspace/presentation/MetricasEmpresaPanel'));
 
@@ -36,7 +35,6 @@ const FallbackPanel = () => (
 const SUB_TAB_LABELS: Partial<Record<SubTabType, string>> = {
   chat: 'Chat',
   tasks: 'Tareas',
-  juntas: 'Juntas',
   calendar: 'Calendario',
   grabaciones: 'Grabaciones',
   miembros: 'Miembros',
@@ -87,7 +85,6 @@ export const WorkspaceContentRouter: React.FC<WorkspaceContentRouterProps> = Rea
         {activeSubTab === 'avatar' && <AvatarCustomizer3D />}
         {activeSubTab === 'chat' && <ChatPanel chatOnly={true} />}
         {activeSubTab === 'calendar' && <CalendarPanel />}
-        {activeSubTab === 'juntas' && <JuntasPanel />}
         {activeSubTab === 'grabaciones' && <GrabacionesHistorial />}
         {activeSubTab === 'metricas' && <MetricasEmpresaPanel />}
       </Suspense>
