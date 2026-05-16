@@ -5,6 +5,7 @@
  */
 import type { StateCreator } from 'zustand';
 import type { User, Task, TaskStatus } from '@/types';
+import type { ProximityCluster } from '@/src/core/domain/services/ProximityClusterer';
 
 export interface UsersSlice {
   users: User[];
@@ -45,6 +46,16 @@ export interface UsersSlice {
    * "Tu sala actual" como sección destacada en "Juntas".
    */
   currentMeetingZoneId: string | null;
+  /**
+   * Clusters de proximidad GLOBALES del workspace — patrón Gather "Active
+   * Areas". Lista de grupos de ≥2 personas conversando entre sí (por
+   * proximidad ad-hoc o por meeting zone compartida). Mirror desde
+   * `useProximity` que computa el clustering via `clusterize` Domain.
+   *
+   * El sidebar lo renderiza para mostrar las conversaciones activas de
+   * OTROS users (no solo el cluster del local user).
+   */
+  proximityClusters: readonly ProximityCluster[];
   tasks: Task[];
 
   setOnlineUsers: (users: User[]) => void;
@@ -53,6 +64,7 @@ export interface UsersSlice {
   setUsersInAudioRangeIds: (ids: Set<string>) => void;
   setUsersInCallIds: (ids: Set<string>) => void;
   setCurrentMeetingZoneId: (id: string | null) => void;
+  setProximityClusters: (clusters: readonly ProximityCluster[]) => void;
   addTask: (task: Task) => void;
   updateTaskStatus: (id: string, status: TaskStatus) => void;
 }
@@ -65,6 +77,7 @@ export const createUsersSlice: StateCreator<UsersSlice, [], [], UsersSlice> = (s
   usersInAudioRangeIds: new Set<string>(),
   usersInCallIds: new Set<string>(),
   currentMeetingZoneId: null,
+  proximityClusters: [],
   tasks: [],
 
   setOnlineUsers: (users) => set({ onlineUsers: users }),
@@ -74,6 +87,7 @@ export const createUsersSlice: StateCreator<UsersSlice, [], [], UsersSlice> = (s
   setUsersInAudioRangeIds: (ids) => set({ usersInAudioRangeIds: ids }),
   setUsersInCallIds: (ids) => set({ usersInCallIds: ids }),
   setCurrentMeetingZoneId: (id) => set({ currentMeetingZoneId: id }),
+  setProximityClusters: (clusters) => set({ proximityClusters: clusters }),
   addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
   updateTaskStatus: (id, status) =>
     set((state) => ({

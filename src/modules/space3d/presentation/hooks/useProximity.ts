@@ -19,6 +19,7 @@ import {
 } from '@/src/core/domain/entities/realtime/MeetingRoomAssignment';
 import { classifyZonasEmpresa } from '@/src/core/domain/entities/realtime/ZonaEmpresaKind';
 import { SpatialHashGrid } from '@/src/core/domain/services/SpatialHashGrid';
+import { clusterize, type ProximityClusterMember } from '@/src/core/domain/services/ProximityClusterer';
 import { avatarStore } from '@/core/infrastructure/r3f/ecs/AvatarECS';
 import { logger } from '@/core/infrastructure/observability/logger';
 
@@ -615,6 +616,87 @@ export function useProximity(params: {
   useEffect(() => {
     setCurrentMeetingZoneIdInStore(currentMeetingZoneId);
   }, [currentMeetingZoneId, setCurrentMeetingZoneIdInStore]);
+
+  // ────────────────────────────────────────────────────────────────────
+  // Proximity Clusters Globales — patrón Gather "Active Areas"
+  // ────────────────────────────────────────────────────────────────────
+  // Compute clusters de TODO el workspace (no solo el local cluster) para
+  // que el sidebar pueda mostrar conversaciones activas de OTROS users.
+  // El clustering vive en Domain (ProximityClusterer) — esta capa solo
+  // adapta el shape de los users y publica el resultado al store.
+  //
+  // Incluye al local user — el sidebar puede filtrar/destacar visualmente
+  // el cluster que contiene al current user con `usersInCallIds`.
+  //
+  // Performance: SpatialHashGrid + union-find = O(n·α(n)) por frame.
+  // Con n=50 users < 0.5ms. Se recomputa solo cuando cambian las coords
+  // hidratadas, no cada render.
+  const allClusters = useMemo(() => {
+    if (!isHydrated) return [];
+
+    const meetingZonesById = new Map(meetingZones.map((z) => [z.id, z]));
+    const isInMeetingZone = (
+      u: { x: number; y: number },
+    ): string | null => {
+      for (const z of meetingZones) {
+        if (isPointInMeetingZoneEnter(u, z)) return z.id;
+      }
+      return null;
+    };
+    const isInPrivateArea = (u: { x: number; y: number }): string | null => {
+      for (const a of areasAudioAisladas) {
+        if (isPointInZone(u.x, u.y, a)) return a.id;
+      }
+      return null;
+    };
+
+    const allUsers: ProximityClusterMember[] = [];
+    // El local user — usar stableProximityCoords + currentMeetingZoneId
+    if (session?.user?.id) {
+      allUsers.push({
+        id: session.user.id,
+        x: stableProximityCoords.x,
+        y: stableProximityCoords.y,
+        meetingZoneId: currentMeetingZoneId,
+        areaAudioAisladaId: null,
+      });
+    }
+    // Remote users — derivar zone/private membership desde sus coords
+    for (const u of usuariosEnChunks) {
+      if (u.id === session?.user?.id) continue; // ya añadido como local
+      allUsers.push({
+        id: u.id,
+        x: u.x,
+        y: u.y,
+        meetingZoneId: isInMeetingZone(u),
+        areaAudioAisladaId: isInPrivateArea(u),
+      });
+    }
+
+    return clusterize({
+      users: allUsers,
+      radius: userProximityRadius,
+      minSize: 2,
+    });
+    // meetingZonesById not used yet but reserved for future labeling.
+    void meetingZonesById;
+  }, [
+    isHydrated,
+    usuariosEnChunks,
+    stableProximityCoords.x,
+    stableProximityCoords.y,
+    currentMeetingZoneId,
+    session?.user?.id,
+    userProximityRadius,
+    meetingZones,
+    areasAudioAisladas,
+  ]);
+
+  // Mirror clusters al store para que el sidebar los consuma.
+  const setProximityClustersInStore = useStore((s) => s.setProximityClusters);
+  useEffect(() => {
+    setProximityClustersInStore(allClusters);
+  }, [allClusters, setProximityClustersInStore]);
 
   return {
     stableProximityCoords,
