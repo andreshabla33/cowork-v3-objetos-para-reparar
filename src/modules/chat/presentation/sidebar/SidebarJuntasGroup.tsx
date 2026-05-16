@@ -2,18 +2,21 @@
 /**
  * @module chat/presentation/sidebar/SidebarJuntasGroup
  *
- * Sección "Juntas" del sidebar lateral — patrón Gather Town.
+ * Sección "Juntas" del sidebar lateral — patrón Gather Town inline-only.
  *
  * Estructura (top-to-bottom):
- *   1. Toggle "Juntas" con chevron rotativo (expand/collapse).
- *   2. ▾ Tu sala actual (sólo si está en meeting zone) — destacada.
- *   3. ▾ En proximidad — stream activo de proximidad (`usersInCallIds` del store).
- *      Avatar stack horizontal estilo Gather.
- *   4. ▾ Salas activas — todas las `salas_reunion` con participantes,
- *      avatar stack + nombre + botón "Unirse".
- *   5. Link "Ver detalle" → abre el panel central `JuntasPanel` (subtab).
+ *   1. Toggle "Juntas" con chevron rotativo + counter (expand/collapse).
+ *   2. 🟢 "En vivo · tu sala" — card destacada si el avatar local
+ *      está en una meeting zone (`currentMeetingZoneId`).
+ *   3. 💜 "Proximidad" — stream activo de proximidad (`usersInCallIds`
+ *      del store) con avatar stack horizontal.
+ *   4. 🟡 "Salas (N)" — todas las salas_reunion con participantes,
+ *      cada una con su avatar stack + click-to-join.
+ *   5. Empty state — copy amigable cuando no hay actividad.
  *
- * NO abre modal. Todo inline en el sidebar, exactamente como Gather.
+ * 100% inline. NO abre modal NI navega a otra subtab. El panel central
+ * de "Juntas" (JuntasPanel.tsx) fue eliminado del filesystem el 2026-05-15
+ * tras feedback del user de que insistía en abrirse — garantía total.
  *
  * Refs:
  *   - Gather Participants Panel — https://support.gather.town/hc/en-us/articles/23149472282004

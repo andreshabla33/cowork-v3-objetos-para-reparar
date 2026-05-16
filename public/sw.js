@@ -3,7 +3,7 @@
  * Cache estratégico: shell estática + assets 3D (GLB, texturas) + API responses.
  */
 
-const CACHE_NAME = 'cowork3d-v2';
+const CACHE_NAME = 'cowork3d-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
