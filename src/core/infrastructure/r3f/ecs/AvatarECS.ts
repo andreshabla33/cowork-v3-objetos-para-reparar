@@ -107,6 +107,18 @@ class AvatarStore implements IAvatarResourceDisposer {
    */
   private _disposeCallbacks = new Set<AvatarDisposeCallback>();
 
+  /**
+   * Callbacks fired when an avatar transitions `hasReceivedFirstRealTarget`
+   * false → true (first authoritative DataChannel packet arrived).
+   *
+   * Purpose: React layers (e.g. `useProximity`) gate behavior on this flag
+   * (see `useProximity.ts` guard). Without a notification, useMemo deps never
+   * re-fire when the flag flips → asymmetric proximity activation bug
+   * (B doesn't see A's stream until B moves to trigger a different dep).
+   * Subscribers can bump a counter to force the dependent useMemo to recompute.
+   */
+  private _firstTargetCallbacks = new Set<(userId: string) => void>();
+
   // ── Resource Disposal (IAvatarResourceDisposer) ────────────────────────
 
   /**
@@ -141,6 +153,28 @@ class AvatarStore implements IAvatarResourceDisposer {
   /** Remove all registered callbacks (scene unmount) */
   clearAll(): void {
     this._disposeCallbacks.clear();
+    this._firstTargetCallbacks.clear();
+  }
+
+  /**
+   * Register a callback fired when any avatar receives its first authoritative
+   * DataChannel target (`hasReceivedFirstRealTarget` flips false → true).
+   * Returns an unsubscribe function for cleanup.
+   */
+  onFirstTarget(callback: (userId: string) => void): () => void {
+    this._firstTargetCallbacks.add(callback);
+    return () => { this._firstTargetCallbacks.delete(callback); };
+  }
+
+  /** Fire all registered first-target callbacks (called from movementSystem). */
+  notifyFirstTarget(userId: string): void {
+    for (const cb of this._firstTargetCallbacks) {
+      try {
+        cb(userId);
+      } catch {
+        // Never let a subscriber crash the ECS
+      }
+    }
   }
 
   // ── CRUD ────────────────────────────────────────────────────────────────

@@ -104,6 +104,11 @@ export const movementSystem = {
       entity.currentX = x;
       entity.currentZ = z;
       entity.hasReceivedFirstRealTarget = true;
+      // Notify React subscribers (e.g. useProximity guard) — without this,
+      // dependent useMemos never re-evaluate until *their own* deps change,
+      // which causes asymmetric proximity activation when the receiver is
+      // stationary (bug 2026-05-16).
+      avatarStore.notifyFirstTarget(userId);
     }
   },
 };

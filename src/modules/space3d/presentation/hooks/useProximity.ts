@@ -79,6 +79,22 @@ export function useProximity(params: {
   const activeSpeakerPolicyRef = useRef(new ActiveSpeakerPolicy());
   const galleryPolicyRef = useRef(new GalleryPolicy());
 
+  // ========== Tick de hidratación ECS ==========
+  // Re-evalúa proximidad cuando cualquier avatar remoto recibe su primer
+  // DataChannel packet (flippea `hasReceivedFirstRealTarget`). Sin esto, el
+  // guard en `usersInCall` bloquea al remote indefinidamente si el receiver
+  // está estático — bug asymmetric proximity activation 2026-05-16.
+  //
+  // Ref net-code: la subscripción mirror del store ECS evita teleports a la
+  // útilizar coords stale de Supabase Presence (CRDT throttled 45s).
+  const [ecsHydrationTick, setEcsHydrationTick] = useState(0);
+  useEffect(() => {
+    const unsubscribe = avatarStore.onFirstTarget(() => {
+      setEcsHydrationTick((t) => t + 1);
+    });
+    return unsubscribe;
+  }, []);
+
   // ========== Coordenadas estabilizadas para cálculo de proximidad ==========
   const [stableProximityCoords, setStableProximityCoords] = useState({ x: currentUserEcs.x, y: currentUserEcs.y });
   const stableProximityCoordsRef = useRef({ x: currentUserEcs.x, y: currentUserEcs.y });
@@ -426,7 +442,7 @@ export function useProximity(params: {
 
     connectedUsersRef.current = nextConnectedUsers;
     return users;
-  }, [isHydrated, usuariosEnChunks, stableProximityCoords.x, stableProximityCoords.y, session?.user?.id, isScreenShareEnabled, userProximityRadius, conversacionesBloqueadasRemoto, effectiveZone, remoteParticipantIds]);
+  }, [isHydrated, usuariosEnChunks, stableProximityCoords.x, stableProximityCoords.y, session?.user?.id, isScreenShareEnabled, userProximityRadius, conversacionesBloqueadasRemoto, effectiveZone, remoteParticipantIds, ecsHydrationTick]);
 
   const hasActiveCall = usersInCall.length > 0;
   const usersInCallIds = useMemo(() => new Set(usersInCall.map(u => u.id)), [usersInCall]);
