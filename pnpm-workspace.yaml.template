@@ -1,0 +1,7 @@
+# Activar renombrando a `pnpm-workspace.yaml` cuando ejecutes Fase 1.A.1
+# del roadmap (docs/MONOREPO_FASE_1_EXECUTION.md). Hasta entonces este
+# archivo es inerte — pnpm lo ignora con el sufijo .template.
+
+packages:
+  - 'apps/*'
+  - 'packages/*'

@@ -1,0 +1,43 @@
+{
+  "// activación": "Activar renombrando a tsconfig.base.json cuando ejecutes Fase 1.A.3. Cada package y app harán `extends`: ./tsconfig.base.json (o relativo).",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictPropertyInitialization": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "noEmit": true,
+    "useDefineForClassFields": false,
+    "experimentalDecorators": true,
+    "baseUrl": ".",
+    "paths": {
+      "@cowork/domain": ["./packages/domain/src/index.ts"],
+      "@cowork/domain/*": ["./packages/domain/src/*"],
+      "@cowork/application": ["./packages/application/src/index.ts"],
+      "@cowork/application/*": ["./packages/application/src/*"],
+      "@cowork/infrastructure-livekit": ["./packages/infrastructure-livekit/src/index.ts"],
+      "@cowork/infrastructure-livekit/*": ["./packages/infrastructure-livekit/src/*"],
+      "@cowork/infrastructure-supabase": ["./packages/infrastructure-supabase/src/index.ts"],
+      "@cowork/infrastructure-supabase/*": ["./packages/infrastructure-supabase/src/*"],
+      "@cowork/infrastructure-sentry": ["./packages/infrastructure-sentry/src/index.ts"],
+      "@cowork/infrastructure-sentry/*": ["./packages/infrastructure-sentry/src/*"],
+      "@cowork/ecs-core": ["./packages/ecs-core/src/index.ts"],
+      "@cowork/ecs-core/*": ["./packages/ecs-core/src/*"],
+      "@cowork/stores": ["./packages/stores/src/index.ts"],
+      "@cowork/stores/*": ["./packages/stores/src/*"],
+      "@cowork/ui-react": ["./packages/ui-react/src/index.ts"],
+      "@cowork/ui-react/*": ["./packages/ui-react/src/*"]
+    }
+  }
+}

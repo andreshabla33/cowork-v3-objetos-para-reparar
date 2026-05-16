@@ -1,0 +1,19 @@
+{
+  "name": "@cowork/ecs-core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*"
+  },
+  "dependencies": {
+    "bitecs": "^0.4.0",
+    "@cowork/domain": "workspace:*"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "_comment": "NO incluye AvatarSystems.ts ni CullingSystem (R3F-specific). Esos quedan en apps/cowork-3d."
+}
