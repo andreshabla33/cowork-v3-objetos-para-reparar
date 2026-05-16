@@ -213,9 +213,9 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
           <span className="ag-side__item-label">Calendar</span>
         </button>
 
-        {/* Juntas: sección expandible inline estilo Gather con avatar stacks
-            de personas en stream de proximidad + salas activas con
-            participantes. NO abre modal — todo inline. */}
+        {/* Áreas Activas + Proximidad — patrón Gather Town "Active Areas".
+            Aparece SOLO cuando hay actividad real (salas con gente o
+            cluster de proximidad). Cero click necesario para verlo. */}
         <SidebarJuntasGroup />
 
         {/* CANALES */}
