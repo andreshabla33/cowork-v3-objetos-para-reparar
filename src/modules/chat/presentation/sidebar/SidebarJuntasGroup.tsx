@@ -62,22 +62,28 @@ const mapUserToAvatarItem = (u: User | undefined): AvatarStackItem | null => {
 };
 
 export const SidebarJuntasGroup: React.FC = () => {
-  const { proximityClusters, onlineUsers, currentUserId } = useStore(
+  const { proximityClusters, onlineUsers, currentUser } = useStore(
     useShallow((s) => ({
       proximityClusters: s.proximityClusters,
       onlineUsers: s.onlineUsers,
-      currentUserId: s.currentUser?.id ?? null,
+      currentUser: s.currentUser,
     })),
   );
 
+  const currentUserId = currentUser?.id ?? null;
+
   const { rooms, joinRoom } = useMeetingRooms();
 
-  // Index O(1) de users + salas para resolución rápida en map.
+  // Index O(1) de users — incluye el LOCAL user (no siempre está en
+  // `onlineUsers` que es solo remote presence). Sin esto, clusters
+  // mixtos local+remote quedan con un solo avatar resuelto y se
+  // descartan por el filtro `members.length < 2`.
   const userById = useMemo(() => {
     const m = new Map<string, User>();
     for (const u of onlineUsers) m.set(u.id, u);
+    if (currentUser?.id) m.set(currentUser.id, currentUser as User);
     return m;
-  }, [onlineUsers]);
+  }, [onlineUsers, currentUser]);
 
   const salaById = useMemo(() => {
     const m = new Map<string, (typeof rooms)[number]>();

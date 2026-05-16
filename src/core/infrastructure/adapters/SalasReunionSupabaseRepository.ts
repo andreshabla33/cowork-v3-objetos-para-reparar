@@ -21,10 +21,15 @@ const log = logger.child('salas-reunion-repo');
 export class SalasReunionSupabaseRepository implements ISalasReunionRepository {
   async obtenerSalas(espacioId: string): Promise<SalaReunionData[]> {
     try {
+      // Schema drift fix (2026-05-15): la tabla `participantes_sala` real usa
+      // `nombre_invitado` / `email_invitado` / `tipo_participante` en lugar de
+      // los campos del Domain `nombre_externo` / `email_externo` / `es_externo`.
+      // Mapeamos en el adapter (frontera Infra → Domain). Sin esto la query
+      // devolvía 400 y `rooms` quedaba en [] permanente.
       const { data, error } = await supabase
         .from('salas_reunion')
         .select(
-          '*, creador:usuarios!salas_reunion_creador_id_fkey(id, nombre, email, avatar_url), participantes:participantes_sala(id, sala_id, usuario_id, es_externo, nombre_externo, email_externo, mic_activo, cam_activa, ultima_actividad, usuario:usuarios(id, nombre, email, avatar_url))'
+          '*, creador:usuarios!salas_reunion_creador_id_fkey(id, nombre, email, avatar_url), participantes:participantes_sala(id, sala_id, usuario_id, tipo_participante, nombre_invitado, email_invitado, mic_activo, cam_activa, ultima_actividad, usuario:usuarios(id, nombre, email, avatar_url))'
         )
         .eq('espacio_id', espacioId)
         .eq('activa', true)
@@ -34,7 +39,41 @@ export class SalasReunionSupabaseRepository implements ISalasReunionRepository {
         log.warn('Failed to fetch rooms', { error: error.message, espacioId });
         return [];
       }
-      return (data as SalaReunionData[]) || [];
+
+      // Adapter: shape DB → shape Domain.
+      type ParticipanteDB = {
+        id: string;
+        sala_id: string;
+        usuario_id?: string | null;
+        tipo_participante?: string | null;
+        nombre_invitado?: string | null;
+        email_invitado?: string | null;
+        mic_activo?: boolean | null;
+        cam_activa?: boolean | null;
+        ultima_actividad?: string | null;
+        usuario?: { id: string; nombre: string; email: string; avatar_url?: string | null } | null;
+      };
+      type SalaDB = Omit<SalaReunionData, 'participantes'> & {
+        participantes?: ParticipanteDB[] | null;
+      };
+
+      const mapeadas: SalaReunionData[] = (data as SalaDB[] | null ?? []).map((sala) => ({
+        ...sala,
+        participantes: (sala.participantes ?? []).map<ParticipanteSalaData>((p) => ({
+          id: p.id,
+          sala_id: p.sala_id,
+          usuario_id: p.usuario_id ?? null,
+          es_externo: p.tipo_participante === 'invitado' || p.tipo_participante === 'externo',
+          nombre_externo: p.nombre_invitado ?? null,
+          email_externo: p.email_invitado ?? null,
+          mic_activo: Boolean(p.mic_activo),
+          cam_activa: Boolean(p.cam_activa),
+          ultima_actividad: p.ultima_actividad ?? new Date().toISOString(),
+          usuario: p.usuario ?? null,
+        })),
+      }));
+
+      return mapeadas;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       log.error('Exception fetching rooms', { error: message, espacioId });

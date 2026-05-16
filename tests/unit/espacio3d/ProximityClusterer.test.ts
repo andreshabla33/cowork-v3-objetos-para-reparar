@@ -100,8 +100,8 @@ describe('ProximityClusterer · clusterize()', () => {
     expect(out).toHaveLength(2);
     const zoneA = out.find((c) => c.anchorId === 'zone-A');
     const zoneB = out.find((c) => c.anchorId === 'zone-B');
-    expect(zoneA?.memberIds.sort()).toEqual(['a', 'b']);
-    expect(zoneB?.memberIds.sort()).toEqual(['c', 'd']);
+    expect(zoneA?.memberIds.slice().sort()).toEqual(['a', 'b']);
+    expect(zoneB?.memberIds.slice().sort()).toEqual(['c', 'd']);
   });
 
   it('agrupa users por private-area (mismo huddle)', () => {
@@ -185,8 +185,8 @@ describe('ProximityClusterer · clusterize()', () => {
     // luego por id lexicográfico
     const zoneCluster = out.find((c) => c.kind === 'meeting-zone');
     const openCluster = out.find((c) => c.kind === 'open-proximity');
-    expect(zoneCluster?.memberIds.sort()).toEqual(['admin', 'user1']);
-    expect(openCluster?.memberIds.sort()).toEqual(['user2', 'user3']);
+    expect(zoneCluster?.memberIds.slice().sort()).toEqual(['admin', 'user1']);
+    expect(openCluster?.memberIds.slice().sort()).toEqual(['user2', 'user3']);
   });
 
   it('performance: ejecuta < 50ms para 100 users distribuidos aleatoriamente', () => {
