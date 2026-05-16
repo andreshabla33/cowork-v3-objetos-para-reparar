@@ -33,7 +33,7 @@ export class SalasReunionSupabaseRepository implements ISalasReunionRepository {
         )
         .eq('espacio_id', espacioId)
         .eq('activa', true)
-        .order('creada_en', { ascending: false });
+        .order('creado_en', { ascending: false });
 
       if (error) {
         log.warn('Failed to fetch rooms', { error: error.message, espacioId });
@@ -152,10 +152,13 @@ export class SalasReunionSupabaseRepository implements ISalasReunionRepository {
 
   async obtenerSalaPorId(salaId: string): Promise<SalaReunionData | null> {
     try {
+      // Mismo schema drift mapping que obtenerSalas (BD usa nombre_invitado/
+      // email_invitado/tipo_participante, Domain expone nombre_externo/
+      // email_externo/es_externo).
       const { data, error } = await supabase
         .from('salas_reunion')
         .select(
-          '*, creador:usuarios!salas_reunion_creador_id_fkey(id, nombre, email, avatar_url), participantes:participantes_sala(id, sala_id, usuario_id, es_externo, nombre_externo, email_externo, mic_activo, cam_activa, ultima_actividad, usuario:usuarios(id, nombre, email, avatar_url))'
+          '*, creador:usuarios!salas_reunion_creador_id_fkey(id, nombre, email, avatar_url), participantes:participantes_sala(id, sala_id, usuario_id, tipo_participante, nombre_invitado, email_invitado, mic_activo, cam_activa, ultima_actividad, usuario:usuarios(id, nombre, email, avatar_url))'
         )
         .eq('id', salaId)
         .single();
@@ -164,7 +167,39 @@ export class SalasReunionSupabaseRepository implements ISalasReunionRepository {
         log.warn('Failed to fetch room by ID', { error: error.message, salaId });
         return null;
       }
-      return (data as SalaReunionData) || null;
+      if (!data) return null;
+
+      type ParticipanteDB = {
+        id: string;
+        sala_id: string;
+        usuario_id?: string | null;
+        tipo_participante?: string | null;
+        nombre_invitado?: string | null;
+        email_invitado?: string | null;
+        mic_activo?: boolean | null;
+        cam_activa?: boolean | null;
+        ultima_actividad?: string | null;
+        usuario?: { id: string; nombre: string; email: string; avatar_url?: string | null } | null;
+      };
+      type SalaDB = Omit<SalaReunionData, 'participantes'> & {
+        participantes?: ParticipanteDB[] | null;
+      };
+      const sala = data as SalaDB;
+      return {
+        ...sala,
+        participantes: (sala.participantes ?? []).map<ParticipanteSalaData>((p) => ({
+          id: p.id,
+          sala_id: p.sala_id,
+          usuario_id: p.usuario_id ?? null,
+          es_externo: p.tipo_participante === 'invitado' || p.tipo_participante === 'externo',
+          nombre_externo: p.nombre_invitado ?? null,
+          email_externo: p.email_invitado ?? null,
+          mic_activo: Boolean(p.mic_activo),
+          cam_activa: Boolean(p.cam_activa),
+          ultima_actividad: p.ultima_actividad ?? new Date().toISOString(),
+          usuario: p.usuario ?? null,
+        })),
+      };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       log.error('Exception fetching room by ID', { error: message, salaId });
@@ -177,7 +212,7 @@ export class SalasReunionSupabaseRepository implements ISalasReunionRepository {
       const { data, error } = await supabase
         .from('participantes_sala')
         .select(
-          '*, usuario:usuarios!participantes_sala_usuario_id_fkey(id, nombre, email, avatar_url)'
+          'id, sala_id, usuario_id, tipo_participante, nombre_invitado, email_invitado, mic_activo, cam_activa, ultima_actividad, usuario:usuarios!participantes_sala_usuario_id_fkey(id, nombre, email, avatar_url)'
         )
         .eq('sala_id', salaId);
 
@@ -185,7 +220,31 @@ export class SalasReunionSupabaseRepository implements ISalasReunionRepository {
         log.warn('Failed to fetch room participants', { error: error.message, salaId });
         return [];
       }
-      return (data as ParticipanteSalaData[]) || [];
+
+      type ParticipanteDB = {
+        id: string;
+        sala_id: string;
+        usuario_id?: string | null;
+        tipo_participante?: string | null;
+        nombre_invitado?: string | null;
+        email_invitado?: string | null;
+        mic_activo?: boolean | null;
+        cam_activa?: boolean | null;
+        ultima_actividad?: string | null;
+        usuario?: { id: string; nombre: string; email: string; avatar_url?: string | null } | null;
+      };
+      return ((data as unknown as ParticipanteDB[] | null) ?? []).map<ParticipanteSalaData>((p) => ({
+        id: p.id,
+        sala_id: p.sala_id,
+        usuario_id: p.usuario_id ?? null,
+        es_externo: p.tipo_participante === 'invitado' || p.tipo_participante === 'externo',
+        nombre_externo: p.nombre_invitado ?? null,
+        email_externo: p.email_invitado ?? null,
+        mic_activo: Boolean(p.mic_activo),
+        cam_activa: Boolean(p.cam_activa),
+        ultima_actividad: p.ultima_actividad ?? new Date().toISOString(),
+        usuario: p.usuario ?? null,
+      }));
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       log.error('Exception fetching room participants', { error: message, salaId });
@@ -197,14 +256,17 @@ export class SalasReunionSupabaseRepository implements ISalasReunionRepository {
     datos: DatosAgregarParticipanteSala,
   ): Promise<ParticipanteSalaData | null> {
     try {
+      // BD usa tipo_participante ('host'|'miembro'|'invitado') / nombre_invitado
+      // / email_invitado. Domain expone es_externo / nombre_externo / email_externo.
+      // Mapeamos en la frontera Infra → Domain.
       const { data, error } = await supabase
         .from('participantes_sala')
         .insert({
           sala_id: datos.sala_id,
           usuario_id: datos.usuario_id,
-          es_externo: datos.es_externo,
-          nombre_externo: datos.nombre_externo,
-          email_externo: datos.email_externo,
+          tipo_participante: datos.es_externo ? 'invitado' : 'miembro',
+          nombre_invitado: datos.nombre_externo,
+          email_invitado: datos.email_externo,
           mic_activo: datos.mic_activo ?? true,
           cam_activa: datos.cam_activa ?? false,
           ultima_actividad: new Date().toISOString(),
@@ -223,7 +285,32 @@ export class SalasReunionSupabaseRepository implements ISalasReunionRepository {
       log.info('Room participant added', {
         salaId: datos.sala_id, usuarioId: datos.usuario_id,
       });
-      return data as ParticipanteSalaData;
+
+      type ParticipanteDB = {
+        id: string;
+        sala_id: string;
+        usuario_id?: string | null;
+        tipo_participante?: string | null;
+        nombre_invitado?: string | null;
+        email_invitado?: string | null;
+        mic_activo?: boolean | null;
+        cam_activa?: boolean | null;
+        ultima_actividad?: string | null;
+        usuario?: { id: string; nombre: string; email: string; avatar_url?: string | null } | null;
+      };
+      const p = data as ParticipanteDB;
+      return {
+        id: p.id,
+        sala_id: p.sala_id,
+        usuario_id: p.usuario_id ?? null,
+        es_externo: p.tipo_participante === 'invitado' || p.tipo_participante === 'externo',
+        nombre_externo: p.nombre_invitado ?? null,
+        email_externo: p.email_invitado ?? null,
+        mic_activo: Boolean(p.mic_activo),
+        cam_activa: Boolean(p.cam_activa),
+        ultima_actividad: p.ultima_actividad ?? new Date().toISOString(),
+        usuario: p.usuario ?? null,
+      };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       log.error('Exception adding room participant', { error: message });
