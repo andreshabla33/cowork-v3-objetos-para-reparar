@@ -62,12 +62,11 @@ const IconChevron: React.FC<{ rotated?: boolean }> = ({ rotated }) => (
 export const SidebarJuntasGroup: React.FC = () => {
   const [expanded, setExpanded] = useState(true);
 
-  const { usersInCallIds, currentMeetingZoneId, onlineUsers, setActiveSubTab } = useStore(
+  const { usersInCallIds, currentMeetingZoneId, onlineUsers } = useStore(
     useShallow((s) => ({
       usersInCallIds: s.usersInCallIds,
       currentMeetingZoneId: s.currentMeetingZoneId,
       onlineUsers: s.onlineUsers,
-      setActiveSubTab: s.setActiveSubTab,
     })),
   );
 
@@ -137,7 +136,7 @@ export const SidebarJuntasGroup: React.FC = () => {
           )}
 
           {/* ── En proximidad (stream activo) ────────────────────────────── */}
-          {usersInProximity.length > 0 ? (
+          {usersInProximity.length > 0 && (
             <div className="px-2 py-1.5">
               <div className="flex items-center gap-1.5 mb-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
@@ -149,12 +148,6 @@ export const SidebarJuntasGroup: React.FC = () => {
                 <AvatarStack users={usersInProximity} max={5} size={26} />
               </div>
             </div>
-          ) : (
-            !currentMeetingZoneId && (
-              <p className="px-2 py-1 text-[10px] text-zinc-400 italic">
-                Nadie en proximidad ahora.
-              </p>
-            )
           )}
 
           {/* ── Salas activas ────────────────────────────────────────────── */}
@@ -205,14 +198,15 @@ export const SidebarJuntasGroup: React.FC = () => {
             </div>
           )}
 
-          {/* ── Link a vista expandida ───────────────────────────────────── */}
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('juntas')}
-            className="block w-full text-left px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-indigo-500 hover:text-indigo-700"
-          >
-            Ver todas las juntas →
-          </button>
+          {/* Empty state — nada activo ahora */}
+          {!currentMeetingZoneId
+            && usersInProximity.length === 0
+            && salasConGente.length === 0 && (
+            <p className="px-2 py-2 text-[10px] text-zinc-400 italic leading-relaxed">
+              Cuando alguien entre a una sala o se acerque por proximidad,
+              aparecerá aquí.
+            </p>
+          )}
         </div>
       )}
     </div>
