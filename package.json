@@ -56,7 +56,6 @@
     "i18next-http-backend": "^3.0.2",
     "livekit-client": "^2.18.9",
     "lucide-react": "^0.468.0",
-    "phaser": "3.80.1",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-i18next": "^16.5.4",
