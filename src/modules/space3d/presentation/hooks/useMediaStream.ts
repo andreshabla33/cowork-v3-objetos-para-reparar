@@ -49,27 +49,28 @@ export function useMediaStream(params: {
   }, [limpiarAudioProcesado]);
 
   // ========== getUserMedia management ==========
-  const isProcessingStreamRef = useRef(false);
-  const pendingUpdateRef = useRef(false);
+  // Patrón canónico React 19 — https://react.dev/learn/synchronizing-with-effects
+  // Cada corrida del effect gestiona su propio "ignore" flag. La cleanup
+  // function setea ignore=true antes de que el siguiente effect arranque,
+  // por lo que cualquier work in-flight bail-ea en su próximo `if (ignore)`
+  // check. No usamos un ref hook-wide como mutex (anti-patrón documentado:
+  // los refs persisten más allá del lifecycle del effect → quedan stuck si
+  // el reset depende del closure que ya se desmontó).
+  //
+  // activeStreamRef + audioProcesadoRef sí son refs hook-wide porque
+  // representan recursos long-lived (el MediaStream + AudioContext) que
+  // sobreviven re-runs del effect — semántica distinta a un mutex.
   const shouldHaveStreamRef = useRef(false);
   shouldHaveStreamRef.current = desiredMediaState.isMicrophoneEnabled || desiredMediaState.isCameraEnabled || desiredMediaState.isScreenShareEnabled;
 
   useEffect(() => {
-    let mounted = true;
+    let ignore = false;
 
     const manageStream = async () => {
-      if (isProcessingStreamRef.current) {
-        log.info('ManageStream busy, marking pending update', { processing: true });
-        pendingUpdateRef.current = true;
-        return;
-      }
-
       const shouldHaveStream = shouldHaveStreamRef.current;
       log.info('ManageStream starting', { shouldHaveStream });
 
       try {
-        isProcessingStreamRef.current = true;
-
         if (shouldHaveStream) {
           if (!activeStreamRef.current) {
             // Validate saved deviceIds against CURRENT enumeration. Without this,
@@ -84,6 +85,7 @@ export function useMediaStream(params: {
             if (validCameraId || validMicId) {
               try {
                 const devices = await navigator.mediaDevices.enumerateDevices();
+                if (ignore) return;
                 const videoIds = new Set(
                   devices.filter(d => d.kind === 'videoinput' && d.deviceId).map(d => d.deviceId),
                 );
@@ -99,6 +101,7 @@ export function useMediaStream(params: {
                   validMicId = null;
                 }
               } catch (err) {
+                if (ignore) return;
                 log.warn('Could not validate saved devices', { error: err instanceof Error ? err.message : String(err) });
               }
             }
@@ -167,7 +170,7 @@ export function useMediaStream(params: {
               throw err;
             });
 
-            if (!mounted) {
+            if (ignore) {
               newStream.getTracks().forEach(t => t.stop());
               return;
             }
@@ -183,6 +186,10 @@ export function useMediaStream(params: {
             if (audioTrack && audioSettings.noiseReduction) {
               const nivel = audioSettings.noiseReductionLevel === 'enhanced' ? 'enhanced' : 'standard';
               const processedTrack = await crearAudioProcesado(audioTrack, nivel);
+              if (ignore) {
+                newStream.getTracks().forEach(t => t.stop());
+                return;
+              }
               if (processedTrack) {
                 const mixed = new MediaStream([processedTrack, ...newStream.getVideoTracks()]);
                 streamToUse = mixed;
@@ -215,6 +222,7 @@ export function useMediaStream(params: {
                 if (validMicIdOnDemand) {
                   try {
                     const devices = await navigator.mediaDevices.enumerateDevices();
+                    if (ignore) return;
                     const audioIds = new Set(
                       devices.filter(d => d.kind === 'audioinput' && d.deviceId).map(d => d.deviceId),
                     );
@@ -223,17 +231,25 @@ export function useMediaStream(params: {
                       validMicIdOnDemand = null;
                     }
                   } catch {
-                    // ignore — falls through with validMicIdOnDemand as-is
+                    // enumerateDevices failure — falls through with validMicIdOnDemand as-is
                   }
                 }
                 if (validMicIdOnDemand) {
                   audioConstraints.deviceId = { exact: validMicIdOnDemand };
                 }
                 const audioStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+                if (ignore) {
+                  audioStream.getTracks().forEach(t => t.stop());
+                  return;
+                }
                 let newAudioTrack: MediaStreamTrack | null = audioStream.getAudioTracks()[0] ?? null;
                 if (newAudioTrack && audioSettings.noiseReduction) {
                   const nivel = audioSettings.noiseReductionLevel === 'enhanced' ? 'enhanced' : 'standard';
                   const processedTrack = await crearAudioProcesado(newAudioTrack, nivel);
+                  if (ignore) {
+                    audioStream.getTracks().forEach(t => t.stop());
+                    return;
+                  }
                   if (processedTrack) newAudioTrack = processedTrack;
                 }
                 if (newAudioTrack && activeStreamRef.current) {
@@ -242,6 +258,7 @@ export function useMediaStream(params: {
                   log.info('Audio track added', { noiseReduction: audioSettings.noiseReduction });
                 }
               } catch (e) {
+                if (ignore) return;
                 log.error('Error getting audio track', { error: e instanceof Error ? e.message : String(e) });
               }
             } else {
@@ -263,19 +280,25 @@ export function useMediaStream(params: {
                   videoConstraints.deviceId = { exact: cameraSettings.selectedCameraId };
                 }
                 const videoStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints });
+                if (ignore) {
+                  videoStream.getTracks().forEach(t => t.stop());
+                  return;
+                }
                 const newVideoTrack = videoStream.getVideoTracks()[0];
                 if (newVideoTrack && activeStreamRef.current) {
                   activeStreamRef.current.addTrack(newVideoTrack);
                   setStream(new MediaStream(activeStreamRef.current.getTracks()));
                 }
               } catch (e) {
+                if (ignore) return;
                 log.error('Error getting video track', { error: e instanceof Error ? e.message : String(e) });
               }
             }
           }
         } else {
-          // Re-check with delay
+          // Re-check con delay (300ms debounce contra flicker on/off).
           await new Promise(r => setTimeout(r, 300));
+          if (ignore) return;
           if (shouldHaveStreamRef.current) {
             log.info('ManageStream: stop cancelled - shouldHaveStream changed to true', {});
             return;
@@ -289,32 +312,20 @@ export function useMediaStream(params: {
           }
         }
       } catch (err) {
+        if (ignore) return;
         log.error('Media error', { error: err instanceof Error ? err.message : String(err) });
-      } finally {
-        // CRÍTICO: `isProcessingStreamRef` es un ref compartido del HOOK
-        // (sobrevive el ciclo de vida del effect), por lo tanto debe
-        // resetearse SIEMPRE — no condicional a `mounted`. Si el effect
-        // se re-corrió mid-flight (deps cambiaron durante un await),
-        // `mounted=false` queda en la closure vieja. Antes del fix, el
-        // finally skippeaba el reset → isProcessing quedaba en true
-        // permanentemente → todas las llamadas siguientes bail como
-        // "busy" → cámara apagada que no se podía re-encender
-        // (bug 2026-05-16).
-        //
-        // El replay del pendingUpdate sí queda mount-gated porque ejecuta
-        // trabajo en el closure viejo; si el effect ya se re-corrió, el
-        // nuevo effect (con state fresco) tomará cargo.
-        isProcessingStreamRef.current = false;
-        if (mounted && pendingUpdateRef.current) {
-          log.info('Executing pending manageStream update', {});
-          pendingUpdateRef.current = false;
-          manageStream();
-        }
       }
     };
 
+    // 500ms debounce: si las deps cambian rápido (toggle ON/OFF/ON), evita
+    // disparar múltiples getUserMedia consecutivos. La cleanup cancela el
+    // timer si aún no disparó; si ya disparó, `ignore=true` bail-ea cada
+    // await del manageStream in-flight.
     const timer = setTimeout(() => { manageStream(); }, 500);
-    return () => { mounted = false; clearTimeout(timer); };
+    return () => {
+      ignore = true;
+      clearTimeout(timer);
+    };
   }, [
     desiredMediaState.isMicrophoneEnabled,
     desiredMediaState.isCameraEnabled,
