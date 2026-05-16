@@ -19,6 +19,7 @@ import { useComposedStore as useStore } from '@/modules/_state/composedStore';
 import { useShallow } from 'zustand/react/shallow';
 import { ModalCrearGrupo } from './ModalCrearGrupo';
 import { ChatToast } from '@/modules/chat/presentation/ChatToast';
+import { SidebarJuntasGroup } from './sidebar/SidebarJuntasGroup';
 import { PresenceStatus } from '@/types';
 import type { ChatGroup } from '@/types';
 import type { MiembroChatData } from '@/src/core/domain/ports/IChatRepository';
@@ -212,18 +213,10 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
           <span className="ag-side__item-label">Calendar</span>
         </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveSubTab('juntas')}
-          className="ag-side__item"
-          title="Salas activas, programadas hoy y proximidad"
-        >
-          <span className="ag-side__item-icon" aria-hidden="true"><IconCamera /></span>
-          <span className="ag-side__item-label">Juntas</span>
-          <span className="ag-side__item-meta">
-            <IconChevron />
-          </span>
-        </button>
+        {/* Juntas: sección expandible inline estilo Gather con avatar stacks
+            de personas en stream de proximidad + salas activas con
+            participantes. NO abre modal — todo inline. */}
+        <SidebarJuntasGroup />
 
         {/* CANALES */}
         <div className="ag-side__section">

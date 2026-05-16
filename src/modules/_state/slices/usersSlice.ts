@@ -30,12 +30,29 @@ export interface UsersSlice {
    * the full Space3D hook tree.
    */
   usersInAudioRangeIds: Set<string>;
+  /**
+   * IDs de usuarios en el "stream de proximidad" actual (cluster activo en
+   * conversación con el local user — patrón Gather "nearby in call").
+   * Subconjunto de `usersInAudioRangeIds` que cumple la histéresis de
+   * activación. Mirror de `useProximity.usersInCallIds` publicado al store
+   * para que el sidebar (ChatSidebarContent) pueda mostrar el cluster
+   * inline estilo Gather sin re-instanciar la lógica de proximidad.
+   */
+  usersInCallIds: Set<string>;
+  /**
+   * ID de la meeting zone donde está el avatar local, o null. Mirror de
+   * `useProximity.currentMeetingZoneId`. El sidebar lo usa para mostrar
+   * "Tu sala actual" como sección destacada en "Juntas".
+   */
+  currentMeetingZoneId: string | null;
   tasks: Task[];
 
   setOnlineUsers: (users: User[]) => void;
   setRemoteParticipantIds: (ids: Set<string>) => void;
   bumpParticipantJoinVersion: () => void;
   setUsersInAudioRangeIds: (ids: Set<string>) => void;
+  setUsersInCallIds: (ids: Set<string>) => void;
+  setCurrentMeetingZoneId: (id: string | null) => void;
   addTask: (task: Task) => void;
   updateTaskStatus: (id: string, status: TaskStatus) => void;
 }
@@ -46,6 +63,8 @@ export const createUsersSlice: StateCreator<UsersSlice, [], [], UsersSlice> = (s
   remoteParticipantIds: new Set<string>(),
   participantJoinVersion: 0,
   usersInAudioRangeIds: new Set<string>(),
+  usersInCallIds: new Set<string>(),
+  currentMeetingZoneId: null,
   tasks: [],
 
   setOnlineUsers: (users) => set({ onlineUsers: users }),
@@ -53,6 +72,8 @@ export const createUsersSlice: StateCreator<UsersSlice, [], [], UsersSlice> = (s
   bumpParticipantJoinVersion: () =>
     set((state) => ({ participantJoinVersion: state.participantJoinVersion + 1 })),
   setUsersInAudioRangeIds: (ids) => set({ usersInAudioRangeIds: ids }),
+  setUsersInCallIds: (ids) => set({ usersInCallIds: ids }),
+  setCurrentMeetingZoneId: (id) => set({ currentMeetingZoneId: id }),
   addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
   updateTaskStatus: (id, status) =>
     set((state) => ({

@@ -475,11 +475,17 @@ export function useProximity(params: {
   const usersInAudioRangeIds = useMemo(() => new Set(usersInAudioRange.map(u => u.id)), [usersInAudioRange]);
 
   // Mirror to Zustand so consumers outside the 3D hook tree (chat notifications,
-  // hand-raise sounds) can spatially gate without needing props threaded down.
+  // hand-raise sounds, sidebar) can spatially gate without needing props threaded down.
   const setUsersInAudioRangeIdsInStore = useStore((s) => s.setUsersInAudioRangeIds);
+  const setUsersInCallIdsInStore = useStore((s) => s.setUsersInCallIds);
   useEffect(() => {
     setUsersInAudioRangeIdsInStore(usersInAudioRangeIds);
   }, [usersInAudioRangeIds, setUsersInAudioRangeIdsInStore]);
+  useEffect(() => {
+    // Mirror del cluster activo de proximidad — usado por ChatSidebarContent
+    // (sección "En proximidad" estilo Gather) sin re-instanciar useProximity.
+    setUsersInCallIdsInStore(usersInCallIds);
+  }, [usersInCallIds, setUsersInCallIdsInStore]);
 
   // ========== Distancias ==========
   const userDistances = useMemo(() => {
@@ -602,6 +608,13 @@ export function useProximity(params: {
     if (!isMeetingZone(effectiveZone.configuracion)) return null;
     return effectiveZone.id;
   }, [effectiveZone]);
+
+  // Mirror del meeting zone actual al store — usado por ChatSidebarContent
+  // para mostrar "Tu sala actual" como sección destacada en "Juntas".
+  const setCurrentMeetingZoneIdInStore = useStore((s) => s.setCurrentMeetingZoneId);
+  useEffect(() => {
+    setCurrentMeetingZoneIdInStore(currentMeetingZoneId);
+  }, [currentMeetingZoneId, setCurrentMeetingZoneIdInStore]);
 
   return {
     stableProximityCoords,
